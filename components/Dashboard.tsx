@@ -370,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
               <div className={`p-5 rounded-[28px] border-2 relative overflow-hidden ${bossStats.stagnantMachines.length > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-100'}`}>
                  <h4 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${bossStats.stagnantMachines.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                    <AlertCircle size={14} className="inline mr-1" /> 异常静默机器 (>7 Days)
+                    <AlertCircle size={14} className="inline mr-1" /> 异常静默机器 (&gt; Days)
                  </h4>
                  <div className="flex items-center justify-between">
                     <span className={`text-2xl font-black ${bossStats.stagnantMachines.length > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{bossStats.stagnantMachines.length}</span>
@@ -382,7 +382,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
               <div className={`p-5 rounded-[28px] border-2 relative overflow-hidden ${bossStats.riskyDrivers.length > 0 ? 'bg-rose-50 border-rose-100' : 'bg-white border-slate-100'}`}>
                  <h4 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${bossStats.riskyDrivers.length > 0 ? 'text-rose-600' : 'text-slate-400'}`}>
-                    <Wallet size={14} className="inline mr-1" /> 高风险欠款司机 (>100k)
+                    <Wallet size={14} className="inline mr-1" /> 高风险欠款司机 (&gt;100k)
                  </h4>
                  <div className="flex items-center justify-between">
                     <span className={`text-2xl font-black ${bossStats.riskyDrivers.length > 0 ? 'text-rose-600' : 'text-slate-300'}`}>{bossStats.riskyDrivers.length}</span>
