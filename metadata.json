@@ -1,0 +1,8 @@
+{
+  "name": "BAHATI JACKPOTS",
+  "description": "专业自动售货机运营管理系统，支持 AI 视觉审计、财务自动化结算及车队监控。",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}
