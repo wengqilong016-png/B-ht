@@ -191,11 +191,14 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
         config: { 
           thinkingConfig: (useDeepThink && !useOCR) ? { thinkingBudget: 32768 } : undefined,
           tools: useOCR ? undefined : [{ googleSearch: {} }],
-          systemInstruction: systemInstruction
+          systemInstruction: systemInstruction + "\nIMPORTANT: If the visual reading matches the expected business logic, start your response with [PASS]. If there is a discrepancy or damage, start with [FLAG]."
         }
       });
       
-      const botMsg = response.text || (useOCR ? "无法识别读数" : "抱歉，分析链路暂时无法提供反馈。");
+      const rawBotMsg = response.text || (useOCR ? "无法识别读数" : "抱歉，分析链路暂时无法提供反馈。");
+      const isFlagged = rawBotMsg.includes('[FLAG]');
+      const botMsg = rawBotMsg.replace('[PASS]', '').replace('[FLAG]', '').trim();
+      
       const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks;
       
       setChat(prev => [...prev, { 
@@ -205,14 +208,14 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
         isThinking: useDeepThink && !useOCR
       }]);
 
-      // Create log entry
+      // Create log entry - Only include imageUrl if flagged or it's a critical audit
       const newLog: AILog = {
         id: `LOG-${Date.now()}`,
         timestamp: new Date().toISOString(),
         driverId: currentUser.id,
         driverName: currentUser.name,
         query: useOCR ? `[OCR] ${userMsg || 'Auto-Read'}` : (userMsg || "Image Analysis"),
-        imageUrl: userImg || undefined,
+        imageUrl: (isFlagged || !useOCR) ? userImg || undefined : undefined, // Smart filtering
         response: botMsg,
         modelUsed: modelName,
         relatedTransactionId: selectedContextId || undefined,
