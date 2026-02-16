@@ -22,10 +22,8 @@ import {
 import { supabase, checkDbHealth } from './supabaseClient';
 import { cn } from './lib/utils';
 
-const INITIAL_DRIVERS: Driver[] = [
-  { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', password: '', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-];
+// Remove hardcoded INITIAL_DRIVERS to prevent data reset on updates
+const INITIAL_DRIVERS: Driver[] = [];
 
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'collect' | 'register' | 'history' | 'reports' | 'ai' | 'debt'>('dashboard');
@@ -36,7 +34,7 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(false);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
+  const [drivers, setDrivers] = useState<Driver[]>([]); // Initialize empty
   const [locations, setLocations] = useState<Location[]>([]);
   const [dailySettlements, setDailySettlements] = useState<DailySettlement[]>([]);
   const [aiLogs, setAiLogs] = useState<AILog[]>([]);
@@ -58,13 +56,22 @@ const App: React.FC = () => {
         ]);
 
         if (resLoc.data) setLocations(resLoc.data);
-        if (resDrivers.data) setDrivers(resDrivers.data);
+        // Only update drivers if DB returns data, otherwise keep local or empty to avoid wiping
+        if (resDrivers.data && resDrivers.data.length > 0) {
+            setDrivers(resDrivers.data);
+        } else {
+            // Fallback: If DB empty, check local storage
+            const localDrivers = JSON.parse(localStorage.getItem(CONSTANTS.STORAGE_DRIVERS_KEY) || '[]');
+            if (localDrivers.length > 0) setDrivers(localDrivers);
+        }
+
         if (resTx.data) setTransactions(resTx.data);
         if (resSettlement.data) setDailySettlements(resSettlement.data);
         if (resLogs.data) setAiLogs(resLogs.data);
         if (resNotifs.data) setNotifications(resNotifs.data);
       } catch (err) {
         console.error("Fetch failed, using local data", err);
+        loadFromLocalStorage(); // Fallback on error
       }
     } else {
       loadFromLocalStorage();
@@ -116,8 +123,11 @@ const App: React.FC = () => {
       try { return s ? JSON.parse(s) : fallback; } catch { return fallback; }
     };
     setLocations(getStored(CONSTANTS.STORAGE_LOCATIONS_KEY, []));
-    const storedDrivers = getStored(CONSTANTS.STORAGE_DRIVERS_KEY, INITIAL_DRIVERS);
-    setDrivers(storedDrivers.length >= INITIAL_DRIVERS.length ? storedDrivers : INITIAL_DRIVERS);
+    
+    // IMPORTANT: Do NOT reset to hardcoded drivers. Load what is stored, or empty.
+    const storedDrivers = getStored(CONSTANTS.STORAGE_DRIVERS_KEY, []);
+    setDrivers(storedDrivers);
+
     setTransactions(getStored(CONSTANTS.STORAGE_TRANSACTIONS_KEY, []));
     setDailySettlements(getStored(CONSTANTS.STORAGE_SETTLEMENTS_KEY, []));
     setAiLogs(getStored(CONSTANTS.STORAGE_AI_LOGS_KEY, []));
@@ -171,9 +181,17 @@ const App: React.FC = () => {
 
   const handleUpdateDrivers = async (newDriversList: Driver[]) => {
     setDrivers(newDriversList);
+    // Always save to local storage immediately
+    localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(newDriversList));
+    
     if (isOnline) {
+      // Upsert entire list or individual drivers? Upserting list is safer for now but can be heavy.
+      // Better to upsert each one to handle updates.
       const { error } = await supabase.from('drivers').upsert(newDriversList);
-      if (error) handleError(error, "Update Drivers");
+      if (error) {
+          handleError(error, "Update Drivers Sync");
+          // If sync fails, user still has local data.
+      }
     }
   };
 

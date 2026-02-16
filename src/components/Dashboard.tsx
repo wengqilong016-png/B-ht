@@ -815,6 +815,36 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                  <div className="space-y-4">
                     <input type="number" placeholder={t.inputCash} value={actualCash} onChange={e => setActualCash(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none" />
                     <input type="number" placeholder={t.inputCoins} value={actualCoins} onChange={e => setActualCoins(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none" />
+                    
+                    {/* Transfer Proof Upload */}
+                    <div className="relative">
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        id="proof-upload" 
+                        className="hidden" 
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                             // Simple upload logic placeholder - in real app, this should upload to Supabase Storage
+                             const reader = new FileReader();
+                             reader.onload = (ev) => {
+                                // For now, store as base64 string in local state, but marked for Supabase upload
+                                // In production, this should be uploaded to 'receipts' bucket
+                                const base64 = ev.target?.result as string;
+                                // We'll verify this during handleSettlement
+                                (window as any).tempProofImage = base64; 
+                                alert("凭证已选择 (Image Selected)");
+                             };
+                             reader.readAsDataURL(file);
+                          }
+                        }}
+                      />
+                      <label htmlFor="proof-upload" className="flex items-center justify-center gap-2 w-full py-4 bg-indigo-600/20 border border-indigo-500/50 rounded-2xl text-indigo-300 font-bold uppercase cursor-pointer hover:bg-indigo-600/30 transition-all">
+                         <Camera size={20} />
+                         <span>{t.uploadProof || "上传汇款凭证 (Upload Receipt)"}</span>
+                      </label>
+                    </div>
                  </div>
               </div>
               <div className={`p-8 rounded-[40px] border-2 border-dashed ${shortage === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}>
