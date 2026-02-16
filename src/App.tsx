@@ -185,13 +185,15 @@ const App: React.FC = () => {
     localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(newDriversList));
     
     if (isOnline) {
-      // Upsert entire list or individual drivers? Upserting list is safer for now but can be heavy.
-      // Better to upsert each one to handle updates.
       const { error } = await supabase.from('drivers').upsert(newDriversList);
       if (error) {
-          handleError(error, "Update Drivers Sync");
-          // If sync fails, user still has local data.
+          console.error("Sync Error:", error);
+          alert(`数据未能保存到云端 (Cloud Sync Failed)!\n错误原因: ${error.message}\n提示: 请确保 Supabase 中已创建 drivers 表并关闭了 RLS 权限。`);
+      } else {
+          // Success feedback could be added here if needed
       }
+    } else {
+      alert("当前处于离线状态，数据仅保存在手机本地。");
     }
   };
 
