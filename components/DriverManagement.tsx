@@ -183,6 +183,53 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
           ))}
        </div>
 
+       {/* Salary Calculation Modal */}
+       {salaryId && salaryData && (
+         <div className="fixed inset-0 z-[70] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
+           <div className="bg-white w-full max-w-sm rounded-[35px] overflow-hidden shadow-2xl relative">
+             <div className="bg-indigo-600 p-8 text-white relative">
+               <button onClick={() => setSalaryId(null)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={18} /></button>
+               <h3 className="text-xl font-black uppercase">薪资结算单 PAYSLIP</h3>
+               <p className="text-[10px] font-bold text-indigo-200 uppercase mt-1 tracking-widest">{salaryData.driver.name} • {new Date().toLocaleDateString()}</p>
+             </div>
+             
+             <div className="p-8 space-y-6">
+               <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs font-bold text-slate-500">
+                     <span>基本工资 (Base)</span>
+                     <span>TZS {salaryData.base.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold text-emerald-600">
+                     <span>业绩提成 (Comm {(salaryData.rate*100).toFixed(0)}%)</span>
+                     <span>+ TZS {salaryData.comm.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-xs font-bold text-rose-500 border-b border-dashed border-slate-200 pb-3">
+                     <span>欠款抵扣 (Debt)</span>
+                     <span>- TZS {salaryData.debt.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-lg font-black text-slate-900 pt-1">
+                     <span>实发合计 (Total)</span>
+                     <span>TZS {salaryData.total.toLocaleString()}</span>
+                  </div>
+               </div>
+
+               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 space-y-2">
+                 <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                    <span>总营收 Revenue</span>
+                    <span>TZS {salaryData.revenue.toLocaleString()}</span>
+                 </div>
+                 <div className="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                    <span>剩余欠款 Due</span>
+                    <span>TZS {(salaryData.driver.remainingDebt - salaryData.debt).toLocaleString()}</span>
+                 </div>
+               </div>
+
+               <button onClick={() => setSalaryId(null)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-sm">关闭 CLOSE</button>
+             </div>
+           </div>
+         </div>
+       )}
+
        {isFormOpen && (
          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
            <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95">

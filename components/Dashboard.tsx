@@ -370,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
               <div className={`p-5 rounded-[28px] border-2 relative overflow-hidden ${bossStats.stagnantMachines.length > 0 ? 'bg-amber-50 border-amber-100' : 'bg-white border-slate-100'}`}>
                  <h4 className={`text-[10px] font-black uppercase tracking-widest mb-2 ${bossStats.stagnantMachines.length > 0 ? 'text-amber-600' : 'text-slate-400'}`}>
-                    <AlertCircle size={14} className="inline mr-1" /> 异常静默机器 (&gt; Days)
+                    <AlertCircle size={14} className="inline mr-1" /> 异常静默机器 (&gt;7 Days)
                  </h4>
                  <div className="flex items-center justify-between">
                     <span className={`text-2xl font-black ${bossStats.stagnantMachines.length > 0 ? 'text-amber-600' : 'text-slate-300'}`}>{bossStats.stagnantMachines.length}</span>

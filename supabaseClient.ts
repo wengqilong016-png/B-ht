@@ -1,33 +1,27 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-// 1. Try Local Storage (Manual Override for Cloud Deployments)
+// Your Hardcoded Credentials
+export const DEFAULT_SUPABASE_URL = 'https://smouwcsqimfwdwrgpons.supabase.co';
+export const DEFAULT_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtb3V3Y3NxaW1md2R3cmdwb25zIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njc0MTY1NjAsImV4cCI6MjA4Mjk5MjU2MH0.3itabnaWFjXjSo4HJQRMfJUMpPtSYJTtf-QrC7iyGLo';
+
+// 1. Try Local Storage (Manual Override via UI Settings)
 const storedUrl = localStorage.getItem('bahati_supa_url');
 const storedKey = localStorage.getItem('bahati_supa_key');
 
-// 2. Try Environment Variables (Build Time Fallback)
-// Safe access to process.env to prevent crashes if polyfill misses
-const envUrl = (typeof process !== 'undefined' && process.env) ? process.env.VITE_SUPABASE_URL : '';
-const envKey = (typeof process !== 'undefined' && process.env) ? process.env.VITE_SUPABASE_ANON_KEY : '';
+// 2. Resolve Final Credentials
+// Prefer stored values if they exist, otherwise use hardcoded defaults.
+const finalUrl = storedUrl || DEFAULT_SUPABASE_URL;
+const finalKey = storedKey || DEFAULT_SUPABASE_ANON_KEY;
 
-// 3. Resolve Final Credentials
-const supabaseUrl = storedUrl || envUrl || '';
-const supabaseAnonKey = storedKey || envKey || '';
-
-const isConfigured = supabaseUrl && supabaseUrl !== 'https://placeholder.supabase.co' && supabaseUrl !== '';
+const isConfigured = finalUrl && finalUrl.startsWith('http') && finalKey.length > 20;
 
 if (!isConfigured) {
-  console.warn(
-    "%c[BAHATI PRO] Deployment Warning: Supabase credentials missing. App running in LOCAL-FIRST mode.",
-    "background: #fff3cd; color: #856404; font-weight: bold; padding: 4px; border-radius: 4px;"
-  );
+  console.warn("[BAHATI PRO] Supabase client is not properly configured.");
 }
 
 // Initialize the client.
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder'
-);
+export const supabase = createClient(finalUrl, finalKey);
 
 /**
  * Utility to save credentials manually from the UI
@@ -36,7 +30,6 @@ export const saveSupabaseConfig = (url: string, key: string) => {
     if(!url || !key) return;
     localStorage.setItem('bahati_supa_url', url.trim());
     localStorage.setItem('bahati_supa_key', key.trim());
-    // Force reload to re-initialize the supabase client with new keys
     window.location.reload();
 };
 
@@ -52,7 +45,6 @@ export const clearSupabaseConfig = () => {
 export const checkDbHealth = async (): Promise<boolean> => {
   if (!isConfigured) return false;
   try {
-    // Try a lightweight query to check connection
     const { error } = await supabase.from('drivers').select('count', { count: 'exact', head: true });
     return !error;
   } catch {

@@ -12,18 +12,12 @@ import DebtManager from './components/DebtManager';
 import { LayoutDashboard, History, PlusCircle, CreditCard, PieChart, Brain, LogOut, Globe, Loader2, WifiOff, PlusSquare, Bell, X, Check, ArrowRight, Wifi, RefreshCw } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 
-// Expanded Initial Drivers List (10 Ports)
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', password: '', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-03', name: 'Driver 3', username: 'driver3', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-04', name: 'Driver 4', username: 'driver4', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-05', name: 'Driver 5', username: 'driver5', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-06', name: 'Driver 6', username: 'driver6', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-07', name: 'Driver 7', username: 'driver7', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-08', name: 'Driver 8', username: 'driver8', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-09', name: 'Driver 9', username: 'driver9', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-10', name: 'Driver 10', username: 'driver10', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
 ];
 
 const App: React.FC = () => {
@@ -34,18 +28,14 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isOnline, setIsOnline] = useState(false);
 
-  // Data States
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
   const [locations, setLocations] = useState<Location[]>([]);
   const [dailySettlements, setDailySettlements] = useState<DailySettlement[]>([]);
   const [aiLogs, setAiLogs] = useState<AILog[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [showNotifications, setShowNotifications] = useState(false);
 
-  // --- 1. Initialization & Data Fetching ---
   const fetchAllData = async () => {
-    // Phase 1: Check Connection
     const online = await checkDbHealth();
     setIsOnline(online);
 
@@ -77,14 +67,11 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchAllData();
-
-    // Auto-check connection every 60 seconds
     const healthCheck = setInterval(async () => {
       const online = await checkDbHealth();
       setIsOnline(online);
     }, 60000);
 
-    // Setup Realtime Subscription
     const channels = supabase.channel('app-v1-realtime')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, payload => handleRealtimeUpdate(setLocations, payload))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, payload => handleRealtimeUpdate(setDrivers, payload))
@@ -109,7 +96,6 @@ const App: React.FC = () => {
     }
   };
 
-  // --- 2. Local Storage Persistence ---
   useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations)); }, [locations]);
   useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers)); }, [drivers]);
   useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
@@ -123,23 +109,27 @@ const App: React.FC = () => {
       try { return s ? JSON.parse(s) : fallback; } catch { return fallback; }
     };
     setLocations(getStored(CONSTANTS.STORAGE_LOCATIONS_KEY, []));
-    
-    // Safety check: ensure we always have at least the INITIAL_DRIVERS or merge them
     const storedDrivers = getStored(CONSTANTS.STORAGE_DRIVERS_KEY, INITIAL_DRIVERS);
     setDrivers(storedDrivers.length >= INITIAL_DRIVERS.length ? storedDrivers : INITIAL_DRIVERS);
-    
     setTransactions(getStored(CONSTANTS.STORAGE_TRANSACTIONS_KEY, []));
     setDailySettlements(getStored(CONSTANTS.STORAGE_SETTLEMENTS_KEY, []));
     setAiLogs(getStored(CONSTANTS.STORAGE_AI_LOGS_KEY, []));
     setNotifications(getStored(CONSTANTS.STORAGE_NOTIFICATIONS_KEY, []));
   };
 
-  // --- 3. Core Business Actions ---
+  const handleError = (error: any, context: string) => {
+    console.error(`Error in ${context}:`, error);
+    if (error.code === '42501') {
+      alert(`权限不足 (Permission Denied): 请确保数据库 RLS 已关闭或已配置策略。\n\nDetail: ${error.message}`);
+    } else {
+      alert(`操作失败 (${context}): ${error.message || '未知错误'}`);
+    }
+  };
+
   const handleNewTransaction = async (tx: Transaction) => {
     const txWithSync = { ...tx, isSynced: isOnline };
     setTransactions(prev => [txWithSync, ...prev]);
     
-    // Update linked data states locally
     setLocations(prev => prev.map(loc => loc.id === tx.locationId ? { ...loc, lastScore: tx.currentScore } : loc));
     setDrivers(prev => prev.map(d => d.id === tx.driverId ? { 
       ...d, 
@@ -150,17 +140,23 @@ const App: React.FC = () => {
 
     if (isOnline) {
       try {
-        await supabase.from('transactions').insert(txWithSync);
-        await supabase.from('locations').update({ lastScore: tx.currentScore }).eq('id', tx.locationId);
+        const { error: txErr } = await supabase.from('transactions').insert(txWithSync);
+        if (txErr) throw txErr;
+        
+        const { error: locErr } = await supabase.from('locations').update({ lastScore: tx.currentScore }).eq('id', tx.locationId);
+        if (locErr) throw locErr;
+
         const updatedDriver = drivers.find(d => d.id === tx.driverId);
         if (updatedDriver) {
-           await supabase.from('drivers').update({ 
+           const { error: drvErr } = await supabase.from('drivers').update({ 
              remainingDebt: Math.max(0, updatedDriver.remainingDebt - (tx.debtDeduction || 0)),
              currentGps: tx.gps,
              lastActive: tx.timestamp
            }).eq('id', tx.driverId);
+           if (drvErr) throw drvErr;
         }
-      } catch (err) {
+      } catch (err: any) {
+        handleError(err, "New Transaction Sync");
         setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isSynced: false } : t));
       }
     }
@@ -170,29 +166,36 @@ const App: React.FC = () => {
     setDrivers(newDriversList);
     if (isOnline) {
       const { error } = await supabase.from('drivers').upsert(newDriversList);
-      if (error) console.error("Cloud update failed:", error);
+      if (error) handleError(error, "Update Drivers");
     }
   };
 
   const handleUpdateLocations = async (newLocations: Location[]) => {
     setLocations(newLocations);
     if (isOnline) {
-      await supabase.from('locations').upsert(newLocations).catch(e => console.error(e));
+      const { error } = await supabase.from('locations').upsert(newLocations);
+      if (error) handleError(error, "Update Locations");
     }
   };
 
   const handleSaveSettlement = async (settlement: DailySettlement) => {
     setDailySettlements(prev => [settlement, ...prev]);
-    if (isOnline) await supabase.from('daily_settlements').insert(settlement).catch(e => console.error(e));
+    if (isOnline) {
+      const { error } = await supabase.from('daily_settlements').insert(settlement);
+      if (error) handleError(error, "Save Settlement");
+    }
   };
 
   const handleLogAI = async (log: AILog) => {
     setAiLogs(prev => [log, ...prev]);
-    if (isOnline) await supabase.from('ai_logs').insert(log).catch(e => console.error(e));
+    if (isOnline) {
+      const { error } = await supabase.from('ai_logs').insert(log);
+      if (error) handleError(error, "AI Hub Log");
+    }
   };
 
   const syncOfflineData = async () => {
-    if (!isOnline) { alert("网络未连接，无法同步 Network Unavailable"); return; }
+    if (!isOnline) { alert("网络未连接 Network Offline"); return; }
     setIsSyncing(true);
     const offlineTxs = transactions.filter(t => !t.isSynced);
     
@@ -202,10 +205,18 @@ const App: React.FC = () => {
       if (!error) {
         setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isSynced: true } : t));
         successCount++;
+      } else {
+        handleError(error, `Sync TX ${tx.id}`);
+        break; 
       }
     }
     setIsSyncing(false);
-    if (successCount > 0) alert(`已成功同步 ${successCount} 条记录至云端`);
+    if (successCount > 0) alert(`已成功同步 ${successCount} 条记录`);
+  };
+
+  const handleUserLogin = (user: User) => {
+    setCurrentUser(user);
+    setLang(user.role === 'admin' ? 'zh' : 'sw');
   };
 
   const activeDriver = useMemo(() => {
@@ -213,20 +224,11 @@ const App: React.FC = () => {
     const found = drivers.find(d => d.id === currentUser.id);
     if (found) return found;
     if (currentUser.role === 'admin') {
-      // Mock driver object for admin needs all required properties to avoid UI crashes
       return { 
-        id: currentUser.id, 
-        name: currentUser.name, 
-        username: currentUser.username, 
-        password: '',
-        phone: 'ADMIN',
-        initialDebt: 0,
-        remainingDebt: 0,
-        dailyFloatingCoins: 0,
+        id: currentUser.id, name: currentUser.name, username: currentUser.username, password: '', phone: 'ADMIN',
+        initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 0,
         vehicleInfo: { model: 'Office', plate: 'ADMIN' },
-        status: 'active',
-        baseSalary: 0,
-        commissionRate: 0
+        status: 'active', baseSalary: 0, commissionRate: 0
       } as Driver;
     }
     return null;
@@ -242,7 +244,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login drivers={drivers} onLogin={setCurrentUser} lang={lang} onSetLang={setLang} />;
+    return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
 
   return (
@@ -267,19 +269,14 @@ const App: React.FC = () => {
                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role} • {currentUser.name}</p>
              </div>
           </div>
-          
           <div className="flex items-center gap-2">
              {transactions.some(t => !t.isSynced) && (
                <button onClick={syncOfflineData} disabled={isSyncing || !isOnline} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all disabled:opacity-30">
                  {isSyncing ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
                </button>
              )}
-             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-slate-100 rounded-xl text-slate-600">
-                <Globe size={18} />
-             </button>
-             <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-50 rounded-xl text-rose-500">
-                <LogOut size={18} />
-             </button>
+             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-slate-100 rounded-xl text-slate-600"><Globe size={18} /></button>
+             <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-50 rounded-xl text-rose-500"><LogOut size={18} /></button>
           </div>
         </div>
       </header>
