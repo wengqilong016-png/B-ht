@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, Notification } from './types';
 import Dashboard from './components/Dashboard';
@@ -9,15 +8,23 @@ import Login from './components/Login';
 import FinancialReports from './components/FinancialReports';
 import AIHub from './components/AIHub';
 import DebtManager from './components/DebtManager';
-import { LayoutDashboard, History, PlusCircle, CreditCard, PieChart, Brain, LogOut, Globe, Loader2, WifiOff, PlusSquare, Bell, X, Check, ArrowRight, Wifi, RefreshCw } from 'lucide-react';
+import { 
+  LayoutDashboard, 
+  PlusCircle, 
+  CreditCard, 
+  PieChart, 
+  Brain, 
+  LogOut, 
+  Globe, 
+  Loader2, 
+  RefreshCw
+} from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
+import { cn } from './lib/utils';
 
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', password: '', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-03', name: 'Driver 3', username: 'driver3', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-04', name: 'Driver 4', username: 'driver4', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-05', name: 'Driver 5', username: 'driver5', password: '', phone: '', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: '---' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
 ];
 
 const App: React.FC = () => {
@@ -76,7 +83,7 @@ const App: React.FC = () => {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'locations' }, payload => handleRealtimeUpdate(setLocations, payload))
       .on('postgres_changes', { event: '*', schema: 'public', table: 'drivers' }, payload => handleRealtimeUpdate(setDrivers, payload))
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, payload => {
-          setNotifications(prev => [payload.new, ...prev]);
+          setNotifications(prev => [payload.new as Notification, ...prev]);
       })
       .subscribe();
 
@@ -248,86 +255,94 @@ const App: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-white border-b border-slate-200 p-4 sticky top-0 z-40 shadow-sm safe-top">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className="bg-indigo-600 text-white p-2 rounded-xl shadow-lg">
-               <PieChart size={20} />
-             </div>
-             <div>
-               <div className="flex items-center gap-2">
-                 <h1 className="text-sm font-black text-slate-900 tracking-tight">BAHATI PRO</h1>
-                 <button 
-                   onClick={() => fetchAllData()}
-                   className={`text-[9px] px-1.5 py-0.5 rounded-full flex items-center gap-1 border transition-all ${isOnline ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-100 text-slate-400 border-slate-200'}`}
-                 >
-                   <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`}></div>
-                   {isOnline ? 'ONLINE' : 'OFFLINE (TAP TO RETRY)'}
-                 </button>
-               </div>
-               <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{currentUser.role} • {currentUser.name}</p>
-             </div>
+    <div className="min-h-screen bg-gray-50 flex flex-col font-sans">
+      <header className="bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between z-40 sticky top-0 shrink-0 shadow-sm">
+        <div className="flex items-center gap-2.5">
+          <div className="w-9 h-9 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg shadow-blue-100">B</div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-black text-gray-900 tracking-tighter">BAHATI</h1>
+              <button 
+                onClick={() => fetchAllData()}
+                className={cn(
+                  "text-[8px] px-1.5 py-0.5 rounded-full font-bold transition-all",
+                  isOnline ? "bg-green-50 text-green-600" : "bg-red-50 text-red-600 underline"
+                )}
+              >
+                {isOnline ? 'ONLINE' : 'OFFLINE (RETRY)'}
+              </button>
+            </div>
+            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{currentUser.role} • {currentUser.name}</p>
           </div>
-          <div className="flex items-center gap-2">
-             {transactions.some(t => !t.isSynced) && (
-               <button onClick={syncOfflineData} disabled={isSyncing || !isOnline} className="p-2 bg-amber-50 text-amber-600 rounded-xl hover:bg-amber-100 transition-all disabled:opacity-30">
-                 {isSyncing ? <Loader2 size={18} className="animate-spin" /> : <RefreshCw size={18} />}
-               </button>
-             )}
-             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-slate-100 rounded-xl text-slate-600"><Globe size={18} /></button>
-             <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-50 rounded-xl text-rose-500"><LogOut size={18} /></button>
-          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {transactions.some(t => !t.isSynced) && (
+            <button onClick={syncOfflineData} className="p-2 bg-orange-50 text-orange-600 rounded-xl">
+              <RefreshCw size={18} className={cn(isSyncing && "animate-spin")} />
+            </button>
+          )}
+          <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-gray-50 text-gray-500 rounded-xl hover:text-blue-600 transition-colors">
+            <Globe size={18} />
+          </button>
+          <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-50 text-rose-500 rounded-xl hover:bg-rose-100 transition-colors">
+            <LogOut size={18} />
+          </button>
         </div>
       </header>
 
-      <main className="flex-1 w-full max-w-7xl mx-auto p-4 lg:p-8 pb-32">
-        {view === 'dashboard' && (
-          <Dashboard 
-            transactions={transactions} 
-            drivers={drivers} 
-            locations={locations} 
-            dailySettlements={dailySettlements} 
-            aiLogs={aiLogs} 
-            currentUser={currentUser} 
-            onUpdateDrivers={handleUpdateDrivers} 
-            onUpdateLocations={handleUpdateLocations} 
-            onUpdateTransaction={(id, upd) => setTransactions(prev => prev.map(t => t.id === id ? {...t, ...upd} : t))}
-            onNewTransaction={handleNewTransaction} 
-            onSaveSettlement={handleSaveSettlement} 
-            onSync={syncOfflineData} 
-            isSyncing={isSyncing} 
-            offlineCount={transactions.filter(t => !t.isSynced).length} 
-            lang={lang}
-            onNavigate={(v) => setView(v)}
-          />
-        )}
-        {view === 'collect' && activeDriver && <CollectionForm locations={locations} currentDriver={activeDriver} onSubmit={handleNewTransaction} lang={lang} onLogAI={handleLogAI} />}
-        {view === 'register' && activeDriver && <MachineRegistrationForm onSubmit={loc => handleUpdateLocations([...locations, loc])} onCancel={() => setView('dashboard')} currentDriver={activeDriver} lang={lang} />}
-        {view === 'history' && <TransactionHistory transactions={transactions} />}
-        {view === 'reports' && <FinancialReports transactions={transactions} drivers={drivers} locations={locations} dailySettlements={dailySettlements} lang={lang} />}
-        {view === 'ai' && <AIHub drivers={drivers} locations={locations} transactions={transactions} onLogAI={handleLogAI} currentUser={currentUser} />}
-        {view === 'debt' && <DebtManager drivers={drivers} locations={locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
+      <main className="flex-1 overflow-y-auto pb-24">
+        <div className="max-w-7xl mx-auto">
+          {view === 'dashboard' && (
+            <Dashboard 
+              transactions={transactions} 
+              drivers={drivers} 
+              locations={locations} 
+              dailySettlements={dailySettlements} 
+              aiLogs={aiLogs} 
+              currentUser={currentUser} 
+              onUpdateDrivers={handleUpdateDrivers} 
+              onUpdateLocations={handleUpdateLocations} 
+              onUpdateTransaction={(id, upd) => setTransactions(prev => prev.map(t => t.id === id ? {...t, ...upd} : t))}
+              onNewTransaction={handleNewTransaction} 
+              onSaveSettlement={handleSaveSettlement} 
+              onSync={syncOfflineData} 
+              isSyncing={isSyncing} 
+              offlineCount={transactions.filter(t => !t.isSynced).length} 
+              lang={lang}
+              onNavigate={(v) => setView(v)}
+            />
+          )}
+          {view === 'collect' && activeDriver && <CollectionForm locations={locations} currentDriver={activeDriver} onSubmit={handleNewTransaction} lang={lang} onLogAI={handleLogAI} />}
+          {view === 'register' && activeDriver && <MachineRegistrationForm onSubmit={loc => handleUpdateLocations([...locations, loc])} onCancel={() => setView('dashboard')} currentDriver={activeDriver} lang={lang} />}
+          {view === 'history' && <TransactionHistory transactions={transactions} />}
+          {view === 'reports' && <FinancialReports transactions={transactions} drivers={drivers} locations={locations} dailySettlements={dailySettlements} lang={lang} />}
+          {view === 'ai' && <AIHub drivers={drivers} locations={locations} transactions={transactions} onLogAI={handleLogAI} currentUser={currentUser} />}
+          {view === 'debt' && <DebtManager drivers={drivers} locations={locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
+        </div>
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg safe-bottom">
-        <div className="max-w-2xl mx-auto flex justify-around items-center">
-           <NavItem icon={<LayoutDashboard size={20}/>} label="Home" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-           <NavItem icon={<PlusCircle size={20}/>} label="Check" active={view === 'collect'} onClick={() => setView('collect')} />
-           <NavItem icon={<PlusSquare size={20}/>} label="New" active={view === 'register'} onClick={() => setView('register')} />
-           <NavItem icon={<CreditCard size={20}/>} label="Debt" active={view === 'debt'} onClick={() => setView('debt')} />
-           {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label="Stats" active={view === 'reports'} onClick={() => setView('reports')} />}
-           <NavItem icon={<Brain size={20}/>} label="AI" active={view === 'ai'} onClick={() => setView('ai')} />
-        </div>
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 grid grid-cols-5 safe-area-pb z-50 px-2 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
+        <NavTab icon={<LayoutDashboard size={20}/>} label={lang === 'zh' ? '概览' : 'Home'} active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+        <NavTab icon={<PlusCircle size={20}/>} label={lang === 'zh' ? '核对' : 'Check'} active={view === 'collect'} onClick={() => setView('collect')} />
+        <NavTab icon={<CreditCard size={20}/>} label={lang === 'zh' ? '欠款' : 'Debt'} active={view === 'debt'} onClick={() => setView('debt')} />
+        <NavTab icon={<Brain size={20}/>} label="AI" active={view === 'ai'} onClick={() => setView('ai')} />
+        <NavTab icon={<PieChart size={20}/>} label={lang === 'zh' ? '统计' : 'Stats'} active={view === 'reports'} onClick={() => setView('reports')} />
       </nav>
     </div>
   );
 };
 
-const NavItem = ({ icon, label, active, onClick }: any) => (
-  <button onClick={onClick} className={`flex flex-col items-center p-3 rounded-2xl transition-all ${active ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}>
-    {icon}
-    <span className="text-[8px] font-black uppercase mt-1">{label}</span>
+const NavTab = ({ icon, label, active, onClick }: any) => (
+  <button
+    onClick={onClick}
+    className={cn(
+      "flex flex-col items-center justify-center py-3 px-1 transition-all duration-200 relative",
+      active ? "text-blue-600" : "text-gray-400 hover:text-blue-400"
+    )}
+  >
+    <div className={cn(active && "scale-110")}>{icon}</div>
+    <span className="text-[10px] mt-1 font-bold tracking-tight">{label}</span>
+    {active && <span className="absolute top-1.5 right-4 w-1.5 h-1.5 bg-blue-600 rounded-full" />}
   </button>
 );
 

@@ -16,7 +16,6 @@
     <meta name="apple-mobile-web-app-title" content="Bahati Pro">
     <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/3135/3135715.png">
 
-    <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
     <style>
         body {
@@ -42,24 +41,11 @@
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
     </style>
-    <script type="importmap">
-{
-  "imports": {
-    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
-    "react/": "https://esm.sh/react@^19.2.4/",
-    "react": "https://esm.sh/react@^19.2.4",
-    "@google/genai": "https://esm.sh/@google/genai@^1.40.0",
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "recharts": "https://esm.sh/recharts@^3.7.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3"
-  }
-}
-</script>
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased overflow-y-auto">
     <div id="root"></div>
     <!-- Entry Point -->
-    <script type="module" src="./index.tsx"></script>
+    <script type="module" src="/src/index.tsx"></script>
     <script>
       // Register Service Worker for PWA capabilities
       if ('serviceWorker' in navigator) {
