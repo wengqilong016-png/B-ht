@@ -110,12 +110,42 @@ const App: React.FC = () => {
     }
   };
 
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations)); }, [locations]);
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers)); }, [drivers]);
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions)); }, [transactions]);
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements)); }, [dailySettlements]);
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs)); }, [aiLogs]);
-  useEffect(() => { localStorage.setItem(CONSTANTS.STORAGE_NOTIFICATIONS_KEY, JSON.stringify(notifications)); }, [notifications]);
+  // Prevent initial empty state from overwriting local storage before data is loaded
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations)); 
+    }
+  }, [locations, isLoading]);
+
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers)); 
+    }
+  }, [drivers, isLoading]);
+
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions)); 
+    }
+  }, [transactions, isLoading]);
+
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements)); 
+    }
+  }, [dailySettlements, isLoading]);
+
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs)); 
+    }
+  }, [aiLogs, isLoading]);
+
+  useEffect(() => { 
+    if (!isLoading) {
+      localStorage.setItem(CONSTANTS.STORAGE_NOTIFICATIONS_KEY, JSON.stringify(notifications)); 
+    }
+  }, [notifications, isLoading]);
 
   const loadFromLocalStorage = () => {
     const getStored = (key: string, fallback: any) => {
