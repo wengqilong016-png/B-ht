@@ -1,8 +1,8 @@
-
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Camera, Send, Loader2, BrainCircuit, X, Sparkles, Layers, Coins, ArrowRight, MapPin, Wand2, ShieldAlert, CheckCircle2, Wallet, AlertTriangle, ScanLine, Scan, Zap, Calculator, Search, HandCoins, Percent, Building2, ChevronRight, Trophy, Fuel, Wrench, Gavel, Banknote, User, Aperture } from 'lucide-react';
+import { Camera, Send, Loader2, BrainCircuit, X, Sparkles, Layers, Coins, ArrowRight, MapPin, Wand2, ShieldAlert, CheckCircle2, Wallet, AlertTriangle, ScanLine, Scan, Zap, Calculator, Search, HandCoins, Percent, Building2, ChevronRight, Trophy, Fuel, Wrench, Gavel, Banknote, User, Aperture, Edit2, RotateCcw, Plus, Satellite } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../types';
+import MachineRegistrationForm from './MachineRegistrationForm';
 
 interface CollectionFormProps {
   locations: Location[];
@@ -10,14 +10,30 @@ interface CollectionFormProps {
   onSubmit: (tx: Transaction) => void;
   lang: 'zh' | 'sw';
   onLogAI: (log: AILog) => void;
+  onRegisterMachine?: (location: Location) => void;
 }
 
-const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI }) => {
+interface AIReviewData {
+  score: string;
+  condition: string; // 'Normal', 'Damaged', 'Unclear'
+  notes: string;
+  image: string;
+}
+
+type SubmissionStatus = 'idle' | 'gps' | 'uploading';
+
+const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine }) => {
   const t = TRANSLATIONS[lang];
   const [step, setStep] = useState<'selection' | 'entry'>('selection');
   const [selectedLocId, setSelectedLocId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   
+  // Registration View State
+  const [isRegistering, setIsRegistering] = useState(false);
+  
+  // Draft Transaction ID for linking AI logs before submission
+  const [draftTxId, setDraftTxId] = useState<string>('');
+
   const [currentScore, setCurrentScore] = useState<string>('');
   
   // Expense States
@@ -29,16 +45,29 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const [ownerRetention, setOwnerRetention] = useState<string>('');
   const [isOwnerRetaining, setIsOwnerRetaining] = useState(true);
   const [photoData, setPhotoData] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
   
+  // New Status State
+  const [status, setStatus] = useState<SubmissionStatus>('idle');
+  const [showGpsSkip, setShowGpsSkip] = useState(false);
+  
+  // Scanner & AI Review States
   const [isScannerOpen, setIsScannerOpen] = useState(false);
-  const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'success'>('idle');
+  const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'review'>('idle');
+  const [aiReviewData, setAiReviewData] = useState<AIReviewData | null>(null);
+  
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
+  const gpsTimeoutRef = useRef<any>(null); // Fixed: Changed NodeJS.Timeout to any for browser compatibility
 
   const selectedLocation = useMemo(() => locations.find(l => l.id === selectedLocId), [selectedLocId, locations]);
+
+  const handleSelectLocation = (locId: string) => {
+    setSelectedLocId(locId);
+    setDraftTxId(`TX-${Date.now()}`); // Generate ID immediately upon selection
+    setStep('entry');
+  };
 
   useEffect(() => {
     if (selectedLocation && currentScore) {
@@ -90,6 +119,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const startScanner = async () => {
     setIsScannerOpen(true);
     setScannerStatus('scanning');
+    setAiReviewData(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } } 
@@ -97,7 +127,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1000); // Slower interval to prevent lag
+        scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1500); // 1.5s interval
       }
     } catch (err) {
       alert(lang === 'zh' ? "无法访问摄像头" : "Kamera imekataliwa");
@@ -112,6 +142,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     }
     setIsScannerOpen(false);
     setScannerStatus('idle');
+    setAiReviewData(null);
     isProcessingRef.current = false;
   };
 
@@ -128,14 +159,22 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     if (ctx) {
       ctx.drawImage(video, 0, 0);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
-      setPhotoData(base64);
-      // Don't set score, let user enter it manually
-      stopScanner();
+      
+      // Go to manual review directly with clear defaults
+      setAiReviewData({
+        score: '',
+        condition: 'Normal',
+        notes: '',
+        image: base64
+      });
+      setScannerStatus('review');
+      if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
     }
   };
 
   const captureAndAnalyze = async () => {
-    if (!videoRef.current || !canvasRef.current || scannerStatus === 'success' || isProcessingRef.current) return;
+    // Stop if we are reviewing or already processing
+    if (!videoRef.current || !canvasRef.current || scannerStatus !== 'scanning' || isProcessingRef.current) return;
     if (videoRef.current.readyState !== 4) return;
 
     isProcessingRef.current = true;
@@ -154,7 +193,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const cropSize = minDim * 0.55; 
     const sx = (vw - cropSize) / 2;
     const sy = (vh - cropSize) / 2;
-    const TARGET_SIZE = 400; 
+    const TARGET_SIZE = 512; 
 
     canvas.width = TARGET_SIZE;
     canvas.height = TARGET_SIZE;
@@ -164,70 +203,109 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
       const modelName = 'gemini-3-flash-preview';
+      
+      // Structured Prompt for JSON
+      const prompt = `
+        Analyze this vending machine counter image.
+        1. Read the red 7-segment LED number.
+        2. Check for screen damage (cracks, black spots) or physical tampering.
+        
+        Return JSON format:
+        {
+          "score": "12345", 
+          "condition": "Normal" | "Damaged" | "Unclear",
+          "notes": "Short observation"
+        }
+      `;
+
       const response = await ai.models.generateContent({
         model: modelName, 
         contents: [{
           parts: [
             { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
-            { text: "Read the red 7-segment LED number. Return digits only." } 
+            { text: prompt } 
           ]
         }],
-        config: { maxOutputTokens: 10, temperature: 0.1 }
+        config: { 
+            responseMimeType: 'application/json',
+            temperature: 0.1 
+        }
       });
 
-      const result = response.text?.trim();
-      const match = result?.match(/\d+/);
-      
-      if (match && !isNaN(Number(match[0]))) {
+      const resultText = response.text?.trim();
+      if (!resultText) throw new Error("Empty AI response");
+
+      const result = JSON.parse(resultText);
+      const detectedScore = result.score?.replace(/\D/g, ''); // Ensure pure digits
+
+      if (detectedScore && detectedScore.length >= 1) {
         const evidenceCanvas = document.createElement('canvas');
         evidenceCanvas.width = 640;
         evidenceCanvas.height = 640 * (vh / vw);
         const evidenceCtx = evidenceCanvas.getContext('2d');
         evidenceCtx?.drawImage(video, 0, 0, evidenceCanvas.width, evidenceCanvas.height);
-        
-        setCurrentScore(match[0]);
         const finalImage = evidenceCanvas.toDataURL('image/jpeg', 0.7);
-        setPhotoData(finalImage); 
-        setScannerStatus('success');
-        
-        // Log to AI Hub
+
+        // Transition to Review State
+        setAiReviewData({
+            score: detectedScore,
+            condition: result.condition || 'Normal',
+            notes: result.notes || '',
+            image: finalImage
+        });
+        setScannerStatus('review');
+        if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+
+        // Log to AI Hub silently
         onLogAI({
           id: `LOG-${Date.now()}`,
           timestamp: new Date().toISOString(),
           driverId: currentDriver.id,
           driverName: currentDriver.name,
-          query: `OCR Scan for ${selectedLocation?.name || 'Unknown'}`,
-          response: `Detected Value: ${match[0]}`,
+          query: `AI Audit: ${selectedLocation?.name}`,
+          response: `Read: ${detectedScore}, Condition: ${result.condition}`,
           imageUrl: finalImage,
           modelUsed: modelName,
-          relatedLocationId: selectedLocation?.id
+          relatedLocationId: selectedLocation?.id,
+          relatedTransactionId: draftTxId // Link the log to the pending transaction
         });
-
-        setTimeout(() => stopScanner(), 500);
       }
     } catch (e) {
-      // Fail silently for loop
+      // Fail silently loop
     } finally {
       isProcessingRef.current = false;
     }
   };
 
-  const handleSubmit = async () => {
-    if (!selectedLocation || isUploading) return;
-    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ 库存不足，是否确认？" : "⚠️ Sarafu hazitoshi, endelea?")) return;
+  const handleConfirmAI = () => {
+     if (aiReviewData) {
+         setCurrentScore(aiReviewData.score);
+         setPhotoData(aiReviewData.image);
+         stopScanner();
+     }
+  };
 
-    setIsUploading(true);
-    navigator.geolocation.getCurrentPosition((pos) => {
+  const handleRetake = () => {
+      setAiReviewData(null);
+      setScannerStatus('scanning');
+      // Restart interval
+      scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1500);
+      isProcessingRef.current = false;
+  };
+
+  const processSubmission = (gpsCoords: {lat: number, lng: number}) => {
+      setStatus('uploading');
+      
       const expenseValue = parseInt(expenses) || 0;
       
       const tx: Transaction = {
-        id: `TX-${Date.now()}`, 
+        id: draftTxId || `TX-${Date.now()}`, // Use the pre-generated ID
         timestamp: new Date().toISOString(), 
-        locationId: selectedLocation.id, 
-        locationName: selectedLocation.name,
+        locationId: selectedLocation!.id, 
+        locationName: selectedLocation!.name,
         driverId: currentDriver.id, 
-        previousScore: selectedLocation.lastScore, 
-        currentScore: parseInt(currentScore) || selectedLocation.lastScore,
+        previousScore: selectedLocation!.lastScore, 
+        currentScore: parseInt(currentScore) || selectedLocation!.lastScore,
         revenue: calculations.revenue, 
         commission: calculations.commission, 
         ownerRetention: parseInt(ownerRetention) || 0,
@@ -241,32 +319,81 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         
         coinExchange: parseInt(coinExchange) || 0, extraIncome: 0,
         netPayable: calculations.netPayable, 
-        gps: { lat: pos.coords.latitude, lng: pos.coords.longitude }, 
+        gps: gpsCoords, 
         photoUrl: photoData || undefined, 
         dataUsageKB: 120, isSynced: false,
-        paymentStatus: 'paid' // Assumes collection is handed over. Expense approval handled separately.
+        paymentStatus: 'paid', // Assumes collection is handed over. Expense approval handled separately.
+        
+        // Add condition and notes from AI Review if available
+        reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
+        notes: aiReviewData?.notes
       };
+      
       onSubmit(tx);
-      setIsUploading(false);
+      
+      // Cleanup
+      setStatus('idle');
+      setShowGpsSkip(false);
       setStep('selection');
       setSearchQuery('');
+      setDraftTxId('');
       setCurrentScore('');
       setPhotoData(null);
       setOwnerRetention('');
       setExpenses('');
       setCoinExchange('');
       setIsOwnerRetaining(true);
-      
-      // Reset expense fields
+      setAiReviewData(null);
       setExpenseType('public');
       setExpenseCategory('fuel');
 
       alert(lang === 'zh' ? '✅ 巡检报告已存档' : '✅ Ripoti imehifadhiwa');
-    }, () => { 
-        alert("GPS Denied"); 
-        setIsUploading(false); 
-    }, { timeout: 8000 });
   };
+
+  const handleSubmit = async () => {
+    if (!selectedLocation || status !== 'idle') return;
+    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ 库存不足，是否确认？" : "⚠️ Sarafu hazitoshi, endelea?")) return;
+
+    setStatus('gps');
+    setShowGpsSkip(false);
+
+    // Set a timer to show Skip button if GPS takes too long
+    gpsTimeoutRef.current = setTimeout(() => {
+        setShowGpsSkip(true);
+    }, 3000); // 3 seconds timeout for UX
+
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
+        processSubmission({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+      }, 
+      (err) => { 
+        console.warn("GPS Error", err);
+        // Don't auto fail, let user click Skip or it will timeout to allow skipping
+        if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
+        setShowGpsSkip(true); // Immediate skip option on error
+      }, 
+      { timeout: 8000, enableHighAccuracy: true }
+    );
+  };
+
+  const handleSkipGps = () => {
+      if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
+      if (confirm(lang === 'zh' ? "确认跳过 GPS 定位？(记录将标记为 GPS 缺失)" : "Ruka GPS?")) {
+          processSubmission({ lat: 0, lng: 0 });
+      }
+  };
+
+  if (isRegistering && onRegisterMachine) {
+    return (
+      <MachineRegistrationForm 
+        onSubmit={(loc) => { onRegisterMachine(loc); setIsRegistering(false); }} 
+        onCancel={() => setIsRegistering(false)} 
+        currentDriver={currentDriver} 
+        lang={lang} 
+      />
+    );
+  }
 
   if (step === 'selection') {
     return (
@@ -282,7 +409,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           </div>
         </div>
 
-        <div className="relative mb-8 group">
+        <div className="relative mb-6 group">
           <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
           <input 
             type="text" 
@@ -293,9 +420,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           />
         </div>
 
+        {/* Merge New Machine Registration Entry */}
+        {onRegisterMachine && (
+          <button 
+            onClick={() => setIsRegistering(true)} 
+            className="w-full mb-6 py-4 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] font-black uppercase text-xs hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+          >
+            <Plus size={16} />
+            {lang === 'zh' ? '新机入网注册 (NEW MACHINE)' : 'Sajili Mashine Mpya'}
+          </button>
+        )}
+
         <div className="space-y-4">
           {filteredLocations.map(loc => (
-            <button key={loc.id} onClick={() => { setSelectedLocId(loc.id); setStep('entry'); }} className="w-full bg-white p-6 rounded-[35px] border border-slate-200 flex justify-between items-center shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98]">
+            <button key={loc.id} onClick={() => handleSelectLocation(loc.id)} className="w-full bg-white p-6 rounded-[35px] border border-slate-200 flex justify-between items-center shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98]">
               <div className="flex items-center gap-5">
                 <div className="w-14 h-14 bg-slate-50 rounded-[20px] flex items-center justify-center text-slate-600 font-black text-[11px] border border-slate-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner uppercase">
                   {loc.machineId}
@@ -342,7 +480,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                 />
                 <button 
                   onClick={startScanner}
-                  className={`flex-1 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-500 text-white' : 'bg-slate-900 text-white'}`}
+                  className={`flex-1 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 text-white' : 'bg-slate-900 text-white'}`}
                 >
                   {currentScore ? <CheckCircle2 size={18} /> : <Scan size={18} />}
                   <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? '重新扫描' : t.scanner}</span>
@@ -436,13 +574,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                    onClick={() => setExpenseType('public')} 
                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'public' ? 'bg-rose-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
                  >
-                   公款报销 (Company)
+                   {lang === 'zh' ? '公款报销 (Company)' : 'Matumizi ya Kampuni'}
                  </button>
                  <button 
                    onClick={() => setExpenseType('private')} 
                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'private' ? 'bg-indigo-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
                  >
-                   个人预支 (Loan)
+                   {lang === 'zh' ? '个人预支 (Loan)' : 'Mkopo Binafsi'}
                  </button>
                </div>
 
@@ -450,20 +588,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                   <select 
                     value={expenseCategory} 
                     onChange={e => setExpenseCategory(e.target.value as any)} 
-                    className="bg-white border border-rose-100 rounded-xl px-2 py-2 text-[10px] font-black text-rose-600 outline-none uppercase"
+                    className="bg-white border border-rose-100 rounded-xl px-2 py-2 text-[10px] font-black text-rose-600 outline-none uppercase w-28"
                   >
                     {expenseType === 'public' ? (
                       <>
-                        <option value="fuel">加油 (Fuel)</option>
-                        <option value="repair">维修 (Repair)</option>
-                        <option value="fine">罚款 (Fine)</option>
-                        <option value="other">其他 (Other)</option>
+                        <option value="fuel">{lang === 'zh' ? '加油 (Fuel)' : 'Mafuta (Fuel)'}</option>
+                        <option value="repair">{lang === 'zh' ? '维修 (Repair)' : 'Matengenezo (Repair)'}</option>
+                        <option value="fine">{lang === 'zh' ? '罚款 (Fine)' : 'Faini (Fine)'}</option>
+                        <option value="other">{lang === 'zh' ? '其他 (Other)' : 'Mengine (Other)'}</option>
                       </>
                     ) : (
                       <>
-                        <option value="allowance">饭补 (Allowance)</option>
-                        <option value="salary_advance">预支工资 (Salary)</option>
-                        <option value="other">借款 (Loan)</option>
+                        <option value="allowance">{lang === 'zh' ? '饭补 (Allowance)' : 'Chakula (Allowance)'}</option>
+                        <option value="salary_advance">{lang === 'zh' ? '预支工资 (Salary)' : 'Mshahara (Advance)'}</option>
+                        <option value="other">{lang === 'zh' ? '借款 (Loan)' : 'Mkopo (Loan)'}</option>
                       </>
                     )}
                   </select>
@@ -481,8 +619,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                
                <p className="text-[9px] font-bold text-rose-400 opacity-80">
                  {expenseType === 'public' 
-                   ? (lang === 'zh' ? '* 公司运营成本，不影响个人欠款' : '* Gharama ya kampuni') 
-                   : (lang === 'zh' ? '* 计入个人借款，需在工资中抵扣' : '* Deni binafsi, litalipwa mshahara')}
+                   ? (lang === 'zh' ? '* 公司运营成本，不影响个人欠款' : '* Gharama ya kampuni, hailipwi na dereva') 
+                   : (lang === 'zh' ? '* 计入个人借款，需在工资中抵扣' : '* Deni binafsi, litalipwa kwenye mshahara')}
                </p>
             </div>
         </div>
@@ -503,14 +641,25 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
              <span className="text-3xl font-black text-slate-900">TZS {calculations.netPayable.toLocaleString()}</span>
         </div>
 
-        <button 
-          onClick={handleSubmit} 
-          disabled={isUploading || !currentScore || !photoData} 
-          className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
-        >
-          {isUploading ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
-          {isUploading ? t.loading : t.confirmSubmit}
-        </button>
+        <div className="space-y-2">
+          <button 
+            onClick={handleSubmit} 
+            disabled={status !== 'idle' || !currentScore || !photoData} 
+            className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
+          >
+            {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
+            {status === 'gps' ? 'Acquiring GPS...' : status === 'uploading' ? 'Saving...' : t.confirmSubmit}
+          </button>
+          
+          {showGpsSkip && status === 'gps' && (
+             <button 
+               onClick={handleSkipGps}
+               className="w-full py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-colors flex items-center justify-center gap-2 animate-in slide-in-from-top-1"
+             >
+                <Satellite size={14} /> GPS Slow? Skip & Submit
+             </button>
+          )}
+        </div>
       </div>
 
       {isScannerOpen && (
@@ -520,63 +669,106 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             <canvas ref={canvasRef} className="hidden" />
             
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <div className={`w-80 h-80 border-2 rounded-[50px] relative transition-all duration-700 ${scannerStatus === 'success' ? 'border-emerald-500 scale-105 shadow-[0_0_80px_#10b981]' : 'border-white/20'}`}>
-                {scannerStatus === 'scanning' && <div className="absolute top-0 left-6 right-6 h-1 bg-red-500 shadow-[0_0_20px_#ef4444] animate-scan-y rounded-full"></div>}
-                
-                <div className="absolute -top-2 -left-2 w-10 h-10 border-t-4 border-l-4 border-emerald-500 rounded-tl-2xl"></div>
-                <div className="absolute -top-2 -right-2 w-10 h-10 border-t-4 border-r-4 border-emerald-500 rounded-tr-2xl"></div>
-                <div className="absolute -bottom-2 -left-2 w-10 h-10 border-b-4 border-l-4 border-emerald-500 rounded-bl-2xl"></div>
-                <div className="absolute -bottom-2 -right-2 w-10 h-10 border-b-4 border-r-4 border-emerald-500 rounded-br-2xl"></div>
+              {/* Review UI Layer */}
+              {scannerStatus === 'review' && aiReviewData ? (
+                <div className="bg-white/90 backdrop-blur-xl w-[90%] max-w-sm rounded-[40px] p-6 shadow-2xl pointer-events-auto animate-in slide-in-from-bottom-10 duration-500 max-h-[85vh] overflow-y-auto">
+                   <div className="flex items-center gap-3 mb-6">
+                      <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
+                         <BrainCircuit size={24} />
+                      </div>
+                      <div>
+                         <h3 className="text-lg font-black text-slate-900 uppercase">AI 识别结果确认</h3>
+                         <p className="text-[10px] font-bold text-slate-400 uppercase">Review & Confirm</p>
+                      </div>
+                   </div>
 
-                {scannerStatus === 'scanning' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white gap-4">
-                    <BrainCircuit size={48} className="animate-pulse opacity-40" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] animate-pulse text-red-400">Locking LED...</p>
-                  </div>
-                )}
-                
-                {scannerStatus === 'success' && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-emerald-500/20 rounded-[50px] animate-in zoom-in-50">
-                    <CheckCircle2 size={72} className="text-emerald-400 mb-2" />
-                    <p className="text-4xl font-black text-white tracking-tighter">{currentScore}</p>
-                    <p className="text-[10px] font-black text-emerald-200 uppercase tracking-widest mt-2">IDHINI</p>
-                  </div>
-                )}
-              </div>
-              
-              <div className="mt-16 text-center text-white/40 px-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">{lang === 'zh' ? '请将摄像头对准机器红色计数屏' : 'Lenga kamera kwenye namba nyekundu'}</p>
-              </div>
+                   <div className="space-y-4 mb-6">
+                      <div className="h-40 rounded-2xl overflow-hidden border-2 border-slate-100 relative group bg-black">
+                         <img src={aiReviewData.image} className="w-full h-full object-contain" alt="Captured" />
+                      </div>
+
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">机器读数 (Counter Score)</label>
+                         <div className="flex items-center gap-3">
+                            <input 
+                              type="number" 
+                              value={aiReviewData.score} 
+                              onChange={e => setAiReviewData({...aiReviewData, score: e.target.value})} 
+                              className="text-3xl font-black text-slate-900 bg-transparent w-full outline-none border-b border-dashed border-slate-300 focus:border-indigo-500 placeholder:text-slate-200"
+                              placeholder="0000"
+                            />
+                            <Edit2 size={16} className="text-slate-400" />
+                         </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-[9px] font-black text-slate-400 uppercase block ml-1">运行状态 (Condition)</label>
+                        <div className="flex gap-2">
+                            <button 
+                                onClick={() => setAiReviewData({...aiReviewData, condition: 'Normal'})}
+                                className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+                            >
+                                <CheckCircle2 size={18} />
+                                <span className="text-[10px] font-black uppercase">正常 Normal</span>
+                            </button>
+                            <button 
+                                onClick={() => setAiReviewData({...aiReviewData, condition: 'Damaged'})}
+                                className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Damaged' ? 'bg-rose-50 border-rose-200 text-rose-600 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+                            >
+                                <AlertTriangle size={18} />
+                                <span className="text-[10px] font-black uppercase">异常 Issue</span>
+                            </button>
+                        </div>
+                      </div>
+
+                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">备注 (Notes)</label>
+                         <textarea 
+                           value={aiReviewData.notes}
+                           onChange={e => setAiReviewData({...aiReviewData, notes: e.target.value})}
+                           className="w-full bg-transparent text-xs font-bold text-slate-700 outline-none resize-none h-16"
+                           placeholder="输入机器状况描述..."
+                         />
+                      </div>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3">
+                      <button onClick={handleRetake} className="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                         <RotateCcw size={14} /> 重拍 Retake
+                      </button>
+                      <button onClick={handleConfirmAI} className="py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2">
+                         <CheckCircle2 size={14} /> 确认并填入
+                      </button>
+                   </div>
+                </div>
+              ) : (
+                // Scanning UI Layer
+                <div className={`w-80 h-80 border-2 rounded-[50px] relative transition-all duration-700 ${scannerStatus === 'scanning' ? 'border-white/20' : 'border-emerald-500 scale-105'}`}>
+                   {scannerStatus === 'scanning' && <div className="absolute top-0 left-6 right-6 h-1 bg-red-500 shadow-[0_0_20px_#ef4444] animate-scan-y rounded-full"></div>}
+                   
+                   <div className="absolute -top-2 -left-2 w-10 h-10 border-t-4 border-l-4 border-emerald-500 rounded-tl-2xl"></div>
+                   <div className="absolute -top-2 -right-2 w-10 h-10 border-t-4 border-r-4 border-emerald-500 rounded-tr-2xl"></div>
+                   <div className="absolute -bottom-2 -left-2 w-10 h-10 border-b-4 border-l-4 border-emerald-500 rounded-bl-2xl"></div>
+                   <div className="absolute -bottom-2 -right-2 w-10 h-10 border-b-4 border-r-4 border-emerald-500 rounded-br-2xl"></div>
+                </div>
+              )}
             </div>
-
-            {/* Manual Photo Button - Crucial Fallback */}
-            <div className="absolute bottom-10 left-0 right-0 flex justify-center pointer-events-auto">
-               <button 
-                 onClick={takeManualPhoto}
-                 className="bg-white text-slate-900 px-6 py-4 rounded-2xl flex items-center gap-3 font-black uppercase text-xs shadow-2xl active:scale-95 transition-transform"
-               >
-                 <Aperture size={20} className="text-indigo-600" />
-                 {lang === 'zh' ? '仅拍照 (手动填数)' : 'Piga Picha Tu (Jaza Namba)'}
-               </button>
-            </div>
-
-            <button onClick={stopScanner} className="absolute top-12 right-8 p-4 bg-white/10 backdrop-blur-3xl rounded-full text-white pointer-events-auto active:scale-90 transition-transform">
-              <X size={28} />
-            </button>
+            
+             <div className="absolute bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none">
+                 <div className="flex items-center gap-6 pointer-events-auto">
+                    <button onClick={stopScanner} className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                       <X size={24} />
+                    </button>
+                    {scannerStatus === 'scanning' && (
+                        <button onClick={takeManualPhoto} className="w-20 h-20 bg-white rounded-full border-4 border-slate-200 flex items-center justify-center shadow-2xl active:scale-95 transition-all">
+                           <div className="w-16 h-16 rounded-full border-2 border-slate-900"></div>
+                        </button>
+                    )}
+                 </div>
+             </div>
           </div>
         </div>
       )}
-      
-      <style>{`
-        @keyframes scan {
-          0% { top: 15%; opacity: 0.2; }
-          50% { top: 85%; opacity: 1; }
-          100% { top: 15%; opacity: 0.2; }
-        }
-        .animate-scan-y {
-          animation: scan 1.8s ease-in-out infinite;
-        }
-      `}</style>
     </div>
   );
 };

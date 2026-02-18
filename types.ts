@@ -16,6 +16,7 @@ export interface Location {
   status: 'active' | 'maintenance' | 'broken';
   lastRevenueDate?: string;
   commissionRate: number;
+  isSynced?: boolean; // Added for offline sync tracking
 }
 
 export interface User {
@@ -47,6 +48,7 @@ export interface AILog {
   modelUsed: string;
   relatedLocationId?: string;
   relatedTransactionId?: string;
+  isSynced?: boolean; // Added for offline sync tracking
 }
 
 export interface Transaction {
@@ -103,24 +105,35 @@ export interface Driver {
   status: 'active' | 'inactive';
   baseSalary: number;
   commissionRate: number;
+  isSynced?: boolean; // Added for offline sync tracking
 }
 
 export interface DailySettlement {
   id: string;
   date: string;
-  adminId: string;
-  adminName: string;
+  // If submitted by driver, adminId is null initially
+  adminId?: string;
+  adminName?: string;
+  driverId?: string; // New: Who submitted it
+  driverName?: string; // New
+  
   totalRevenue: number;
   totalNetPayable: number;
   totalExpenses: number;
   driverFloat: number;
   expectedTotal: number;
+  
   actualCash: number;
   actualCoins: number;
   shortage: number;
+  
   note?: string;
   timestamp: string;
   transferProofUrl?: string;
+  
+  // New: Workflow status
+  status: 'pending' | 'confirmed' | 'rejected';
+  isSynced?: boolean; // Added for offline sync tracking
 }
 
 export const CONSTANTS = {
@@ -149,107 +162,107 @@ export const TRANSLATIONS = {
     password: '密码 Password',
     loginBtn: '立即登录 Login Now',
     dashboard: '管理概览 Dashibodi',
-    collect: '现场巡检 Kazi ya Eneo',
-    register: '新机注册 Sajili Mashine',
-    debt: '财务回收 Madeni',
-    ai: 'AI 审计 Ukaguzi wa AI',
-    history: '审计日志 Historia',
-    reports: '财务报表 Ripoti za Fedha',
-    logout: '退出登录 Ondoka',
-    sync: '立即同步 Tuma Cloud',
-    offline: '待传记录 Kazi za Nje',
-    score: '当前读数 Namba ya Sasa',
-    lastScore: '上次读数 Namba ya Zamani',
-    revenue: '总营收 Mapato Kamili',
-    expenses: '支出项目 Matumizi',
-    net: '应缴现金 Pesa ya Kukabidhi',
-    submit: '提交报告 Tuma Ripoti',
-    scanner: '扫码识别 Skena Namba',
-    retention: '留存分红 Pesa ya Dukani',
-    exchange: '换币金额 Sarafu',
-    loading: '处理中 Inashughulikia...',
-    success: '提交成功 Imefanikiwa',
-    profit: '净利润 Faida Halisi',
-    outstanding: '待收欠款 Madeni ya Nje',
-    export: '导出报表 Pakua Ripoti',
-    selectMachine: '选择机器 Chagua Mashine',
-    enterId: '输入编号 Weka namba',
-    diff: '差值 Tofauti',
-    formula: '营收计算 Hesabu',
-    currentReading: '红色LED读数 Namba ya Nyekundu',
-    confirmSubmit: '提交报告 Tuma Ripoti',
-    photoRequired: '须拍照片 Picha inahitajika',
-    arrears: '我的挂账 Madeni Yangu',
-    dailySettlement: '日终对账 Hesabu ya Siku',
-    totalNet: '净收益 Mapato Halisi',
-    publicExp: '公款支出 Matumizi ya Kazi',
-    cashInHand: '理论应收 Pesa ya Kukabidhi',
-    shortage: '短款 Upungufu',
-    surplus: '长款 Ziada',
-    perfect: '账目吻合 Kamili',
-    uploadProof: '上传凭证 Pakia Picha',
-    inputCash: '实收纸币 Noti',
-    inputCoins: '实收硬币 Sarafu',
-    startupRecovery: '点位押金/启动金 Marejesho ya Mtaji',
-    driverLoan: '个人借款/预支 Mkopo wa Dereva',
-    balance: '未结余额 Salio la Deni',
-    progress: '进度 Hatua',
-    pay: '还款 Lipa',
-    fullyPaid: '已还清 Imelipwa'
+    collect: '现场巡检',
+    register: '新机注册',
+    debt: '财务回收',
+    ai: 'AI 审计',
+    history: '审计日志',
+    reports: '财务报表',
+    logout: '退出登录',
+    sync: '立即同步',
+    offline: '待传记录',
+    score: '当前读数',
+    lastScore: '上次读数',
+    revenue: '总营收',
+    expenses: '支出项目',
+    net: '应缴现金',
+    submit: '提交报告',
+    scanner: '扫码识别',
+    retention: '留存分红',
+    exchange: '换币金额',
+    loading: '处理中...',
+    success: '提交成功',
+    profit: '净利润',
+    outstanding: '待收欠款',
+    export: '导出报表',
+    selectMachine: '选择机器',
+    enterId: '输入编号',
+    diff: '差值',
+    formula: '营收计算',
+    currentReading: '红色LED读数',
+    confirmSubmit: '提交报告',
+    photoRequired: '须拍照片',
+    arrears: '我的挂账',
+    dailySettlement: '日终对账',
+    totalNet: '净收益',
+    publicExp: '公款支出',
+    cashInHand: '理论应收',
+    shortage: '短款',
+    surplus: '长款',
+    perfect: '账目吻合',
+    uploadProof: '上传凭证',
+    inputCash: '实收纸币',
+    inputCoins: '实收硬币',
+    startupRecovery: '点位押金/启动金',
+    driverLoan: '个人借款/预支',
+    balance: '未结余额',
+    progress: '进度',
+    pay: '还款',
+    fullyPaid: '已还清'
   },
   sw: {
-    login: 'Login 账号登录',
-    username: 'Username 用户名',
-    password: 'Password 密码',
-    loginBtn: 'Login Now 立即登录',
-    dashboard: 'Dashibodi 管理概览',
-    collect: 'Kazi ya Eneo 现场巡检',
-    register: 'Sajili Mashine 新机注册',
-    debt: 'Madeni 财务回收',
-    ai: 'Ukaguzi wa AI 审计',
-    history: 'Historia 审计日志',
-    reports: 'Ripoti za Fedha 报表',
-    logout: 'Ondoka 退出',
-    sync: 'Tuma Cloud 同步',
-    offline: 'Kazi za Nje 待传',
-    score: 'Namba ya Sasa 读数',
-    lastScore: 'Namba ya Zamani 上次',
-    revenue: 'Mapato Kamili 营收',
-    expenses: 'Matumizi 支出',
-    net: 'Pesa ya Kukabidhi 应缴',
-    submit: 'Tuma Ripoti 提交',
-    scanner: 'Skena Namba 扫码',
-    retention: 'Pesa ya Dukani 留存',
-    exchange: 'Sarafu 换币',
-    loading: 'Inashughulikia 处理中...',
-    success: 'Imefanikiwa 成功',
-    profit: 'Faida Halisi 利润',
-    outstanding: 'Madeni ya Nje 待收',
-    export: 'Pakua Ripoti 导出',
-    selectMachine: 'Chagua Mashine 选择',
-    enterId: 'Weka namba 输入',
-    diff: 'Tofauti 差值',
-    formula: 'Hesabu 计算',
-    currentReading: 'Namba ya Nyekundu 读数',
-    confirmSubmit: 'Tuma Ripoti 提交',
-    photoRequired: 'Picha inahitajika 须拍照',
-    arrears: 'Madeni Yangu 挂账',
-    dailySettlement: 'Hesabu ya Siku 对账',
-    totalNet: 'Mapato Halisi 净收',
-    publicExp: 'Matumizi ya Kazi 支出',
-    cashInHand: 'Pesa ya Kukabidhi 应收',
-    shortage: 'Upungufu 短款',
-    surplus: 'Ziada 长款',
-    perfect: 'Kamili 吻合',
-    uploadProof: 'Pakia Picha 上传',
-    inputCash: 'Noti 纸币',
-    inputCoins: 'Sarafu 硬币',
-    startupRecovery: 'Marejesho ya Mtaji 启动金',
-    driverLoan: 'Mkopo wa Dereva 借款',
-    balance: 'Salio la Deni 余额',
-    progress: 'Hatua 进度',
-    pay: 'Lipa 还款',
-    fullyPaid: 'Imelipwa 已还清'
+    login: 'Ingia Kwenye Mfumo',
+    username: 'Jina la Mtumiaji',
+    password: 'Nenosiri',
+    loginBtn: 'Ingia Sasa',
+    dashboard: 'Dashibodi',
+    collect: 'Kusanya',
+    register: 'Sajili Mashine',
+    debt: 'Madeni',
+    ai: 'Ukaguzi (AI)',
+    history: 'Historia',
+    reports: 'Ripoti',
+    logout: 'Ondoka',
+    sync: 'Tuma Data',
+    offline: 'Hazijatumwa',
+    score: 'Namba ya Sasa (Counter)',
+    lastScore: 'Namba ya Zamani',
+    revenue: 'Mapato',
+    expenses: 'Matumizi',
+    net: 'Pesa ya Kukabidhi',
+    submit: 'Tuma Ripoti',
+    scanner: 'Skena Namba',
+    retention: 'Gawio la Dukani',
+    exchange: 'Kubadili Sarafu',
+    loading: 'Inashughulikia...',
+    success: 'Imefanikiwa',
+    profit: 'Faida',
+    outstanding: 'Madeni ya Nje',
+    export: 'Pakua Ripoti',
+    selectMachine: 'Chagua Mashine',
+    enterId: 'Weka Namba ya Mashine',
+    diff: 'Tofauti',
+    formula: 'Hesabu',
+    currentReading: 'Soma Namba Nyekundu',
+    confirmSubmit: 'Thibitisha na Tuma',
+    photoRequired: 'Picha Inahitajika',
+    arrears: 'Madeni Yangu',
+    dailySettlement: 'Hesabu ya Siku',
+    totalNet: 'Makusanyo Halisi',
+    publicExp: 'Matumizi ya Kampuni',
+    cashInHand: 'Pesa Mkononi',
+    shortage: 'Upungufu',
+    surplus: 'Ziada',
+    perfect: 'Hesabu Imetimia',
+    uploadProof: 'Pakia Risiti',
+    inputCash: 'Noti (Cash)',
+    inputCoins: 'Sarafu (Coins)',
+    startupRecovery: 'Marejesho ya Mtaji',
+    driverLoan: 'Mkopo wa Dereva',
+    balance: 'Salio',
+    progress: 'Hatua',
+    pay: 'Lipa Sasa',
+    fullyPaid: 'Imelipwa'
   }
 };
 

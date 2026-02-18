@@ -45,8 +45,9 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
         4. 语气专业。
       `;
 
+      // Google Maps tool is only supported on Gemini 2.5 series models.
       const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
+        model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
           tools: [{ googleMaps: {} }],

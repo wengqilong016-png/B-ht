@@ -1,14 +1,14 @@
 
 import React, { useState, useMemo } from 'react';
-// Import Search from lucide-react to fix missing import error
-import { Calendar, MapPin, CheckCircle2, Filter, ChevronDown, Info, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, Banknote, ExternalLink, MapPinned, Search } from 'lucide-react';
+import { Calendar, MapPin, CheckCircle2, Filter, ChevronDown, Info, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, Banknote, ExternalLink, MapPinned, Search, BrainCircuit } from 'lucide-react';
 import { Transaction } from '../types';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
+  onAnalyze: (txId: string) => void;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, onAnalyze }) => {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -110,9 +110,14 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions })
                 <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-300">
                   <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      <div className="flex items-center gap-2">
-                        <Calculator size={16} className="text-indigo-600" />
-                        <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">收益清算明细</h4>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Calculator size={16} className="text-indigo-600" />
+                          <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">收益清算明细</h4>
+                        </div>
+                        <button onClick={() => onAnalyze(tx.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-600 rounded-lg text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
+                           <BrainCircuit size={12} /> AI 审计
+                        </button>
                       </div>
                       
                       <div className="space-y-2">
@@ -209,10 +214,10 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions })
                                <Navigation size={10} /> 导航
                              </a>
                              <button 
-                               onClick={() => setExpandedId(tx.id)}
-                               className="flex-1 bg-slate-100 text-slate-600 p-2 rounded-lg text-[8px] font-black uppercase"
+                               onClick={() => onAnalyze(tx.id)}
+                               className="flex-1 bg-indigo-50 text-indigo-600 p-2 rounded-lg text-[8px] font-black uppercase flex items-center justify-center gap-1"
                              >
-                               详情
+                               <BrainCircuit size={10} /> 审计
                              </button>
                            </div>
                         </div>
