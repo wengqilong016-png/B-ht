@@ -1,4 +1,5 @@
 import os
+import shutil
 import json
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -12,6 +13,9 @@ CORS(app)
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+BYTES_TO_GB = 1024 ** 3
+KB_TO_GB = 1024 ** 2
 
 # --- 环境变量配置 ---
 SUPABASE_URL = os.getenv('SUPABASE_URL')
@@ -29,34 +33,82 @@ else:
         logger.error(f'❌ Failed to initialize Supabase client: {str(e)}')
         SUPABASE_CLIENT = None
 
+def read_bat_file(bat_path, name):
+    """读取电池属性文件"""
+    try:
+        with open(os.path.join(bat_path, name)) as f:
+            return f.read().strip()
+    except Exception:
+        return None
+
+def get_hardware_info():
+    """获取系统硬件信息"""
+    hardware = {}
+    try:
+        disk = shutil.disk_usage('/')
+        hardware['disk_free'] = f'{disk.free / BYTES_TO_GB:.1f} GB'
+    except Exception:
+        hardware['disk_free'] = 'N/A'
+
+    try:
+        with open('/proc/meminfo', 'r') as f:
+            meminfo = {}
+            for line in f:
+                parts = line.split()
+                if len(parts) >= 2:
+                    meminfo[parts[0].rstrip(':')] = int(parts[1])
+        mem_free_kb = meminfo.get('MemAvailable', meminfo.get('MemFree', 0))
+        hardware['mem_free'] = f'{mem_free_kb / KB_TO_GB:.1f} GB'
+    except Exception:
+        hardware['mem_free'] = 'N/A'
+
+    try:
+        battery = {}
+        bat_path = '/sys/class/power_supply/BAT0'
+        if not os.path.exists(bat_path):
+            bat_path = '/sys/class/power_supply/BAT1'
+        if os.path.exists(bat_path):
+            level = read_bat_file(bat_path, 'capacity')
+            status = read_bat_file(bat_path, 'status')
+            try:
+                battery['level'] = int(level) if level is not None else 100
+            except ValueError:
+                battery['level'] = 100
+            battery['status'] = status.upper() if status else 'UNKNOWN'
+            battery['plugged'] = 'AC' if status and status.upper() == 'CHARGING' else 'UNPLUGGED'
+            battery['temperature'] = 0
+            battery['health'] = 'GOOD'
+        else:
+            battery = {'level': 100, 'status': 'UNKNOWN', 'plugged': 'UNPLUGGED', 'temperature': 0, 'health': 'GOOD'}
+        hardware['battery'] = battery
+    except Exception:
+        hardware['battery'] = {'level': 100, 'status': 'UNKNOWN', 'plugged': 'UNPLUGGED', 'temperature': 0, 'health': 'GOOD'}
+
+    return hardware
+
 # --- 健康检查端点 ---
 @app.route('/api/status', methods=['GET'])
 def get_status():
     """检查数据库连接状态"""
-    if not SUPABASE_CLIENT:
-        return jsonify({
-            'status': 'error',
-            'message': 'Supabase client not initialized',
-            'timestamp': datetime.now().isoformat()
-        }), 500
-    
-    try:
-        # 执行简单查询来验证连接
-        response = SUPABASE_CLIENT.table('drivers').select('id').limit(1).execute()
-        logger.info('✅ Database health check passed')
-        return jsonify({
-            'status': 'connected',
-            'message': 'Database is reachable',
-            'timestamp': datetime.now().isoformat(),
-            'url': SUPABASE_URL
-        }), 200
-    except Exception as e:
-        logger.error(f'❌ Database health check failed: {str(e)}')
-        return jsonify({
-            'status': 'error',
-            'message': f'Database connection failed: {str(e)}',
-            'timestamp': datetime.now().isoformat()
-        }), 500
+    hardware = get_hardware_info()
+    db_status = 'offline'
+
+    if SUPABASE_CLIENT:
+        try:
+            SUPABASE_CLIENT.table('drivers').select('id').limit(1).execute()
+            logger.info('✅ Database health check passed')
+            db_status = 'online'
+        except Exception as e:
+            logger.error(f'❌ Database health check failed: {str(e)}')
+
+    return jsonify({
+        'services': {
+            'database': db_status,
+            'website': 'online'
+        },
+        'hardware': hardware,
+        'timestamp': datetime.now().isoformat()
+    }), 200
 
 # --- 获取所有司机数据 ---
 @app.route('/api/drivers', methods=['GET'])
