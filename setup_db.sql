@@ -1,3 +1,6 @@
+-- 0. 启用必要的扩展 (防止 gen_random_uuid 报错)
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+
 -- 1. 清理旧表
 DROP TABLE IF EXISTS public.transactions CASCADE;
 DROP TABLE IF EXISTS public.daily_settlements CASCADE;
@@ -131,6 +134,3 @@ ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
-
--- 9. 插入初始管理员和驱动 (可选)
--- INSERT INTO public.drivers (id, name, username, password, status) VALUES ('D-ADMIN', 'Admin', 'admin', '0000', 'active');
