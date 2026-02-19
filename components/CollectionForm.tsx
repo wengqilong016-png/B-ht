@@ -91,8 +91,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const score = parseInt(currentScore) || 0;
     const diff = Math.max(0, score - selectedLocation.lastScore);
     const revenue = diff * CONSTANTS.COIN_VALUE_TZS; 
-    const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
-    const commission = Math.floor(revenue * rate); 
+    const ownerRate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
+    const commission = Math.floor(revenue * ownerRate); // shop owner's commission (owed share)
     
     const expenseVal = parseInt(expenses) || 0;
     const exchangeVal = parseInt(coinExchange) || 0;
@@ -202,7 +202,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     
     try {
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const modelName = 'gemini-3-flash-preview';
+      const modelName = 'gemini-2.0-flash';
       
       // Structured Prompt for JSON
       const prompt = `

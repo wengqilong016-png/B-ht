@@ -95,8 +95,9 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
         // For collection, netPayable is Cash. Profit is different. 
         // Let's stick to the visual: Profit ~ Net Payable for now, but adjusted for expenses.
         // Actually, let's refine:
-        // P&L Profit = Revenue - Commission - Owner Retention - Public Expenses.
-        const cost = tx.commission + tx.ownerRetention + (tx.expenseType === 'public' ? tx.expenses : 0);
+        // P&L Profit = Revenue - Commission (owner's owed share) - Public Expenses.
+        // ownerRetention is the cash-paid portion of commission; using commission (accrual) avoids double-counting.
+        const cost = tx.commission + (tx.expenseType === 'public' ? tx.expenses : 0);
         return acc + (tx.revenue - cost);
     }, 0);
 
@@ -127,8 +128,8 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
       dataMap[key].revenue += tx.revenue;
       dataMap[key].expenses += expenseAmount;
       
-      // Profit Logic
-      const cost = tx.commission + tx.ownerRetention + expenseAmount;
+      // Profit Logic — use commission (accrual) to avoid double-counting ownerRetention
+      const cost = tx.commission + expenseAmount;
       dataMap[key].profit += (tx.revenue - cost);
     });
 
