@@ -11,10 +11,10 @@ import AIHub from './components/AIHub';
 import DebtManager from './components/DebtManager';
 import { 
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain, 
-  LogOut, Globe, Loader2, RefreshCw, CloudOff, 
-  CheckSquare, Crown, ShieldCheck, AlertTriangle, AlertCircle, Database, Settings
+  LogOut, Globe, Loader2, CloudOff, 
+  CheckSquare, Crown, ShieldCheck, AlertTriangle
 } from 'lucide-react';
-import { supabase, checkDbHealth, SUPABASE_URL } from './supabaseClient';
+import { supabase, checkDbHealth } from './supabaseClient';
 
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '123', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
@@ -220,29 +220,6 @@ const App: React.FC = () => {
     setLang(user.role === 'admin' ? 'zh' : 'sw');
     if (user.role === 'driver') setView('collect');
   };
-
-  // Helper to show configuration guidance if env vars are missing
-  if (!SUPABASE_URL && !isLoading) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-center">
-        <div className="w-20 h-20 bg-amber-500/20 text-amber-500 rounded-3xl flex items-center justify-center mb-6 border border-amber-500/30">
-          <Database size={40} />
-        </div>
-        <h1 className="text-white text-2xl font-black mb-4 uppercase tracking-tight">数据库配置未就绪</h1>
-        <p className="text-slate-400 text-sm max-w-sm mb-8 leading-relaxed">
-          应用检测到缺少 Supabase 环境变量。请在 Vercel 部署设置中添加 <code className="text-amber-500">NEXT_PUBLIC_SUPABASE_URL</code> 和 <code className="text-amber-500">NEXT_PUBLIC_SUPABASE_ANON_KEY</code>。
-        </p>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-           <button onClick={() => setIsLoading(true)} className="w-full py-4 bg-white text-slate-900 font-black rounded-2xl flex items-center justify-center gap-2">
-              <RefreshCw size={18}/> 检查配置并刷新
-           </button>
-           <button onClick={() => { (window as any).location.reload() }} className="w-full py-4 bg-white/5 text-white/40 border border-white/10 rounded-2xl flex items-center justify-center gap-2">
-              <Settings size={18}/> 管理环境变量
-           </button>
-        </div>
-      </div>
-    );
-  }
 
   if (isLoading) {
     return (
