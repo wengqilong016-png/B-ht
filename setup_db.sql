@@ -1,7 +1,7 @@
--- 0. 启用必要的扩展 (防止 gen_random_uuid 报错)
-CREATE EXTENSION IF NOT EXISTS "pgcrypto";
+-- 0. 开启 UUID 扩展
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
--- 1. 清理旧表
+-- 1. 彻底清理
 DROP TABLE IF EXISTS public.transactions CASCADE;
 DROP TABLE IF EXISTS public.daily_settlements CASCADE;
 DROP TABLE IF EXISTS public.locations CASCADE;
@@ -9,9 +9,9 @@ DROP TABLE IF EXISTS public.drivers CASCADE;
 DROP TABLE IF EXISTS public.ai_logs CASCADE;
 DROP TABLE IF EXISTS public.notifications CASCADE;
 
--- 2. 创建点位表 (Locations)
+-- 2. 点位表 (使用更兼容的 UUID 生成方式)
 CREATE TABLE public.locations (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     name TEXT NOT NULL,
     area TEXT,
     "machineId" TEXT UNIQUE,
@@ -29,7 +29,7 @@ CREATE TABLE public.locations (
     "createdAt" TIMESTAMPTZ DEFAULT now()
 );
 
--- 3. 创建司机表 (Drivers)
+-- 3. 司机表
 CREATE TABLE public.drivers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -48,7 +48,7 @@ CREATE TABLE public.drivers (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 4. 创建交易流水表 (Transactions)
+-- 4. 交易表
 CREATE TABLE public.transactions (
     id TEXT PRIMARY KEY,
     timestamp TIMESTAMPTZ DEFAULT now(),
@@ -77,7 +77,7 @@ CREATE TABLE public.transactions (
     "expenseDescription" TEXT
 );
 
--- 5. 创建结账表 (Daily Settlements)
+-- 5. 结账表
 CREATE TABLE public.daily_settlements (
     id TEXT PRIMARY KEY,
     date DATE DEFAULT CURRENT_DATE,
@@ -100,9 +100,9 @@ CREATE TABLE public.daily_settlements (
     timestamp TIMESTAMPTZ DEFAULT now()
 );
 
--- 6. 创建 AI 日志表 (AI Logs)
+-- 6. AI 日志
 CREATE TABLE public.ai_logs (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     timestamp TIMESTAMPTZ DEFAULT now(),
     "driverId" TEXT,
     "driverName" TEXT,
@@ -115,22 +115,9 @@ CREATE TABLE public.ai_logs (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 7. 创建通知表 (Notifications)
-CREATE TABLE public.notifications (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    type TEXT,
-    title TEXT,
-    message TEXT,
-    timestamp TIMESTAMPTZ DEFAULT now(),
-    "isRead" BOOLEAN DEFAULT false,
-    "driverId" TEXT,
-    "relatedTransactionId" TEXT
-);
-
--- 8. 关闭 RLS 权限 (开发测试阶段)
+-- 7. 权限全开
 ALTER TABLE public.locations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drivers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
