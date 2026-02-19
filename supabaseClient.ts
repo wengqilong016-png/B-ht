@@ -1,30 +1,25 @@
 // supabaseClient.ts
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
 
-// Load environment variables from a .env file
-dotenv.config();
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? ''; 
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
 
-const SUPABASE_URL = process.env.SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY;
+const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    throw new Error('Missing Supabase environment variables. Make sure SUPABASE_URL and SUPABASE_ANON_KEY are set.');
-}
+export const supabase = hasSupabaseConfig
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const checkDbHealth = async () => {
+  if (!supabase) return false;
+  try {
+    const { error } = await supabase.from('drivers').select('id').limit(1);
+    return !error;
+  } catch (err) {
+    console.error('Supabase health check failed:', err);
+    return false;
+  }
+};
 
 export default supabase;
-
-// Error handling example
-async function fetchData(tableName) {
-    try {
-        const { data, error } = await supabase.from(tableName).select('*');
-        if (error) throw error;
-        return data;
-    } catch (err) {
-        console.error('Error fetching data from Supabase:', err.message);
-        throw new Error('Could not fetch data from Supabase.');
-    }
-}
