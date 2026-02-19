@@ -1,248 +1,154 @@
 import os
 import json
-from datetime import datetime
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from supabase import create_client, Client
+import logging
+from datetime import datetime
 
-# Initialize Flask app
 app = Flask(__name__)
 CORS(app)
 
-# Get Supabase credentials from environment variables
-SUPABASE_URL = os.getenv('NEXT_PUBLIC_SUPABASE_URL', 'https://jhoyqqpuousxawdydlwe.supabase.co')
-SUPABASE_KEY = os.getenv('SUPABASE_KEY') or os.getenv('NEXT_PUBLIC_SUPABASE_ANON_KEY', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Impob3lxcXB1b3VzeGF3ZHlkbHdlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE0Njk1MzAsImV4cCI6MjA4NzA0NTUzMH0.PIwZIxQihCcJ0ReNoZniJq244hWXcjlXGEOHZhKORoY')
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Initialize Supabase client
-try:
-    supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
-    print("✓ Supabase client initialized successfully")
-except Exception as e:
-    print(f"✗ Failed to initialize Supabase client: {e}")
-    supabase = None
+# --- 环境变量配置 ---
+SUPABASE_URL = os.getenv('SUPABASE_URL')
+SUPABASE_KEY = os.getenv('SUPABASE_KEY')
 
-# ===== HEALTH CHECK ENDPOINTS =====
+# 验证环境变量
+if not SUPABASE_URL or not SUPABASE_KEY:
+    logger.error('❌ Missing Supabase credentials! Set SUPABASE_URL and SUPABASE_KEY environment variables.')
+    SUPABASE_CLIENT = None
+else:
+    try:
+        SUPABASE_CLIENT: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+        logger.info('✅ Supabase client initialized successfully')
+    except Exception as e:
+        logger.error(f'❌ Failed to initialize Supabase client: {str(e)}')
+        SUPABASE_CLIENT = None
 
-@app.route('/api/health', methods=['GET'])
-def health_check():
-    """Simple health check endpoint"""
-    return jsonify({
-        'status': 'ok',
-        'timestamp': datetime.utcnow().isoformat(),
-        'database': 'checking...'
-    })
-
-@app.route('/api/db/health', methods=['GET'])
-def db_health_check():
-    """Check Supabase database connectivity"""
-    if not supabase:
+# --- 健康检查端点 ---
+@app.route('/api/status', methods=['GET'])
+def get_status():
+    """检查数据库连接状态"""
+    if not SUPABASE_CLIENT:
         return jsonify({
             'status': 'error',
             'message': 'Supabase client not initialized',
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now().isoformat()
         }), 500
     
     try:
-        # Simple query to verify connection
-        response = supabase.table('drivers').select('id').limit(1).execute()
+        # 执行简单查询来验证连接
+        response = SUPABASE_CLIENT.table('drivers').select('id').limit(1).execute()
+        logger.info('✅ Database health check passed')
         return jsonify({
             'status': 'connected',
-            'message': 'Database connection successful',
-            'timestamp': datetime.utcnow().isoformat(),
-            'data': response.data if response else []
-        })
+            'message': 'Database is reachable',
+            'timestamp': datetime.now().isoformat(),
+            'url': SUPABASE_URL
+        }), 200
     except Exception as e:
+        logger.error(f'❌ Database health check failed: {str(e)}')
         return jsonify({
             'status': 'error',
             'message': f'Database connection failed: {str(e)}',
-            'timestamp': datetime.utcnow().isoformat()
+            'timestamp': datetime.now().isoformat()
         }), 500
 
-# ===== DATA RETRIEVAL ENDPOINTS =====
-
+# --- 获取所有司机数据 ---
 @app.route('/api/drivers', methods=['GET'])
 def get_drivers():
-    """Get all drivers from database"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
+    """获取所有司机信息"""
+    if not SUPABASE_CLIENT:
+        return jsonify({'error': 'Database not available'}), 500
     
     try:
-        response = supabase.table('drivers').select('*').execute()
+        response = SUPABASE_CLIENT.table('drivers').select('*').execute()
         return jsonify({
             'status': 'success',
             'data': response.data,
-            'count': len(response.data) if response.data else 0
-        })
+            'count': len(response.data)
+        }), 200
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        logger.error(f'Error fetching drivers: {str(e)}')
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/locations', methods=['GET'])
-def get_locations():
-    """Get all locations (machines) from database"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
-    
-    try:
-        response = supabase.table('locations').select('*').execute()
-        return jsonify({
-            'status': 'success',
-            'data': response.data,
-            'count': len(response.data) if response.data else 0
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
+# --- 获取所有交易数据 ---
 @app.route('/api/transactions', methods=['GET'])
 def get_transactions():
-    """Get transactions (optionally filtered by date or driver)"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
+    """获取所有交易记录"""
+    if not SUPABASE_CLIENT:
+        return jsonify({'error': 'Database not available'}), 500
     
     try:
-        driver_id = request.args.get('driverId')
-        date_from = request.args.get('dateFrom')
-        
-        query = supabase.table('transactions').select('*')
-        
-        if driver_id:
-            query = query.eq('driverId', driver_id)
-        if date_from:
-            query = query.gte('timestamp', date_from)
-        
-        response = query.order('timestamp', desc=True).execute()
+        limit = request.args.get('limit', 100, type=int)
+        response = SUPABASE_CLIENT.table('transactions').select('*').limit(limit).order('timestamp', desc=True).execute()
         return jsonify({
             'status': 'success',
             'data': response.data,
-            'count': len(response.data) if response.data else 0
-        })
+            'count': len(response.data)
+        }), 200
     except Exception as e:
+        logger.error(f'Error fetching transactions: {str(e)}')
+        return jsonify({'error': str(e)}), 500
+
+# --- 获取所有位置数据 ---
+@app.route('/api/locations', methods=['GET'])
+def get_locations():
+    """获取所有点位信息"""
+    if not SUPABASE_CLIENT:
+        return jsonify({'error': 'Database not available'}), 500
+    
+    try:
+        response = SUPABASE_CLIENT.table('locations').select('*').execute()
         return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+            'status': 'success',
+            'data': response.data,
+            'count': len(response.data)
+        }), 200
+    except Exception as e:
+        logger.error(f'Error fetching locations: {str(e)}')
+        return jsonify({'error': str(e)}), 500
 
-# ===== DATA SYNC ENDPOINTS =====
-
+# --- 数据同步端点 ---
 @app.route('/api/sync/transactions', methods=['POST'])
 def sync_transactions():
-    """Sync transactions from frontend to database"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
+    """同步交易数据"""
+    if not SUPABASE_CLIENT:
+        return jsonify({'error': 'Database not available'}), 500
     
     try:
-        data = request.get_json()
-        transactions = data.get('transactions', [])
+        data = request.json
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
         
-        if not transactions:
-            return jsonify({
-                'status': 'error',
-                'message': 'No transactions provided'
-            }), 400
-        
-        # Upsert transactions (insert or update)
-        for txn in transactions:
-            txn['isSynced'] = True
-            txn['timestamp'] = txn.get('timestamp', datetime.utcnow().isoformat())
-        
-        response = supabase.table('transactions').upsert(transactions).execute()
-        
+        # 批量插入或更新
+        response = SUPABASE_CLIENT.table('transactions').upsert(data).execute()
+        logger.info(f'✅ Synced {len(data)} transactions')
         return jsonify({
             'status': 'success',
-            'message': f'Synced {len(response.data)} transactions',
+            'message': f'Synced {len(data)} transactions',
             'data': response.data
-        })
+        }), 200
     except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
+        logger.error(f'Error syncing transactions: {str(e)}')
+        return jsonify({'error': str(e)}), 500
 
-@app.route('/api/sync/drivers', methods=['POST'])
-def sync_drivers():
-    """Sync driver data from frontend to database"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
-    
-    try:
-        data = request.get_json()
-        drivers = data.get('drivers', [])
-        
-        if not drivers:
-            return jsonify({
-                'status': 'error',
-                'message': 'No drivers provided'
-            }), 400
-        
-        # Upsert drivers
-        for driver in drivers:
-            driver['isSynced'] = True
-        
-        response = supabase.table('drivers').upsert(drivers).execute()
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'Synced {len(response.data)} drivers',
-            'data': response.data
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
-@app.route('/api/sync/locations', methods=['POST'])
-def sync_locations():
-    """Sync location data from frontend to database"""
-    if not supabase:
-        return jsonify({'error': 'Supabase not initialized'}), 500
-    
-    try:
-        data = request.get_json()
-        locations = data.get('locations', [])
-        
-        if not locations:
-            return jsonify({
-                'status': 'error',
-                'message': 'No locations provided'
-            }), 400
-        
-        # Upsert locations
-        for location in locations:
-            location['isSynced'] = True
-        
-        response = supabase.table('locations').upsert(locations).execute()
-        
-        return jsonify({
-            'status': 'success',
-            'message': f'Synced {len(response.data)} locations',
-            'data': response.data
-        })
-    except Exception as e:
-        return jsonify({
-            'status': 'error',
-            'message': str(e)
-        }), 500
-
-# ===== ERROR HANDLERS =====
-
+# --- 错误处理 ---
 @app.errorhandler(404)
-def not_found(error):
+def not_found(e):
     return jsonify({'error': 'Endpoint not found'}), 404
 
 @app.errorhandler(500)
-def internal_error(error):
+def internal_error(e):
+    logger.error(f'Internal server error: {str(e)}')
     return jsonify({'error': 'Internal server error'}), 500
 
-# ===== MAIN =====
-
+# --- 启动应用 ---
 if __name__ == '__main__':
     port = int(os.getenv('PORT', 5000))
-    debug = os.getenv('DEBUG', 'False') == 'True'
-    print(f"Starting API server on port {port} (Debug: {debug})")
+    debug = os.getenv('FLASK_ENV') == 'development'
     app.run(host='0.0.0.0', port=port, debug=debug)
