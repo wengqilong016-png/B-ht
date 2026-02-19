@@ -9,7 +9,7 @@ DROP TABLE IF EXISTS public.drivers CASCADE;
 DROP TABLE IF EXISTS public.ai_logs CASCADE;
 DROP TABLE IF EXISTS public.notifications CASCADE;
 
--- 2. 点位表 (使用更兼容的 UUID 生成方式)
+-- 2. 点位表 (Locations)
 CREATE TABLE public.locations (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     name TEXT NOT NULL,
@@ -26,10 +26,10 @@ CREATE TABLE public.locations (
     "remainingStartupDebt" NUMERIC DEFAULT 0,
     "isNewOffice" BOOLEAN DEFAULT false,
     "isSynced" BOOLEAN DEFAULT true,
-    "createdAt" TIMESTAMPTZ DEFAULT now()
+    "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 3. 司机表
+-- 3. 司机表 (Drivers)
 CREATE TABLE public.drivers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
@@ -48,10 +48,11 @@ CREATE TABLE public.drivers (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 4. 交易表
+-- 4. 交易流水表 (Transactions)
+-- 注意: timestamp 和 date 是保留字，必须加引号
 CREATE TABLE public.transactions (
     id TEXT PRIMARY KEY,
-    timestamp TIMESTAMPTZ DEFAULT now(),
+    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     "locationId" UUID REFERENCES public.locations(id),
     "locationName" TEXT,
     "driverId" TEXT REFERENCES public.drivers(id),
@@ -77,10 +78,10 @@ CREATE TABLE public.transactions (
     "expenseDescription" TEXT
 );
 
--- 5. 结账表
+-- 5. 结账表 (Daily Settlements)
 CREATE TABLE public.daily_settlements (
     id TEXT PRIMARY KEY,
-    date DATE DEFAULT CURRENT_DATE,
+    "date" DATE DEFAULT CURRENT_DATE,
     "adminId" TEXT,
     "adminName" TEXT,
     "driverId" TEXT,
@@ -97,13 +98,13 @@ CREATE TABLE public.daily_settlements (
     "transferProofUrl" TEXT,
     "status" TEXT DEFAULT 'pending',
     "isSynced" BOOLEAN DEFAULT true,
-    timestamp TIMESTAMPTZ DEFAULT now()
+    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
--- 6. AI 日志
+-- 6. AI 日志表 (AI Logs)
 CREATE TABLE public.ai_logs (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    timestamp TIMESTAMPTZ DEFAULT now(),
+    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
     "driverId" TEXT,
     "driverName" TEXT,
     query TEXT,
@@ -115,9 +116,29 @@ CREATE TABLE public.ai_logs (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 7. 权限全开
+-- 7. 通知表 (Notifications)
+CREATE TABLE public.notifications (
+    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
+    type TEXT,
+    title TEXT,
+    message TEXT,
+    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+    "isRead" BOOLEAN DEFAULT false,
+    "driverId" TEXT,
+    "relatedTransactionId" TEXT
+);
+
+-- 8. 索引优化
+CREATE INDEX IF NOT EXISTS idx_locations_machineId ON public.locations("machineId");
+CREATE INDEX IF NOT EXISTS idx_drivers_username ON public.drivers("username");
+CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON public.transactions("timestamp" DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_locationId ON public.transactions("locationId");
+CREATE INDEX IF NOT EXISTS idx_transactions_driverId ON public.transactions("driverId");
+
+-- 9. 关闭 RLS 权限 (开发测试阶段)
 ALTER TABLE public.locations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drivers DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
