@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GoogleGenAI } from '@google/genai';
 import { Sparkles, RefreshCw, AlertCircle, MapPin } from 'lucide-react';
@@ -18,7 +17,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
     setLoading(true);
     setSources([]);
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       let lat = -6.82; 
       let lng = 39.25;
