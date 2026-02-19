@@ -146,7 +146,11 @@ const App: React.FC = () => {
     setDrivers(updatedDrivers);
     if (isOnline && supabase) {
        for (const d of updatedDrivers) {
-          await supabase.from('drivers').upsert({...d, isSynced: true});
+          const { stats, ...driverToSave } = d as any;
+          const { error } = await supabase.from('drivers').upsert({...driverToSave, isSynced: true});
+          if (error) {
+            console.error("Error upserting driver:", error.message, error.details);
+          }
        }
     }
   };

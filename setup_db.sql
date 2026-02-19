@@ -22,6 +22,7 @@ CREATE TABLE public.locations (
     "initialStartupDebt" NUMERIC DEFAULT 0,
     "remainingStartupDebt" NUMERIC DEFAULT 0,
     "isNewOffice" BOOLEAN DEFAULT false,
+    "isSynced" BOOLEAN DEFAULT true,
     "createdAt" TIMESTAMPTZ DEFAULT now()
 );
 
@@ -40,7 +41,8 @@ CREATE TABLE public.drivers (
     "baseSalary" NUMERIC DEFAULT 300000,
     "commissionRate" NUMERIC DEFAULT 0.05,
     "lastActive" TIMESTAMPTZ,
-    "currentGps" JSONB
+    "currentGps" JSONB,
+    "isSynced" BOOLEAN DEFAULT true
 );
 
 -- 4. 创建交易流水表 (Transactions)
@@ -78,6 +80,8 @@ CREATE TABLE public.daily_settlements (
     date DATE DEFAULT CURRENT_DATE,
     "adminId" TEXT,
     "adminName" TEXT,
+    "driverId" TEXT,
+    "driverName" TEXT,
     "totalRevenue" NUMERIC,
     "totalNetPayable" NUMERIC,
     "totalExpenses" NUMERIC,
@@ -88,6 +92,8 @@ CREATE TABLE public.daily_settlements (
     shortage NUMERIC,
     "note" TEXT,
     "transferProofUrl" TEXT,
+    "status" TEXT DEFAULT 'pending',
+    "isSynced" BOOLEAN DEFAULT true,
     timestamp TIMESTAMPTZ DEFAULT now()
 );
 
@@ -102,7 +108,8 @@ CREATE TABLE public.ai_logs (
     "imageUrl" TEXT,
     "modelUsed" TEXT,
     "relatedLocationId" TEXT,
-    "relatedTransactionId" TEXT
+    "relatedTransactionId" TEXT,
+    "isSynced" BOOLEAN DEFAULT true
 );
 
 -- 7. 创建通知表 (Notifications)
@@ -124,3 +131,6 @@ ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+
+-- 9. 插入初始管理员和驱动 (可选)
+-- INSERT INTO public.drivers (id, name, username, password, status) VALUES ('D-ADMIN', 'Admin', 'admin', '0000', 'active');
