@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Battery, Signal, Database, Globe, RefreshCcw, Cpu } from 'lucide-react';
 
+const STATUS_API_BASE = import.meta.env.VITE_STATUS_API_BASE ?? 'http://localhost:5000';
+const STATUS_API_URL = `${STATUS_API_BASE.replace(/\/$/, '')}/api/status`;
+
 const SystemStatus: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -9,13 +12,12 @@ const SystemStatus: React.FC = () => {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      // Fetching from the local Flask API we just set up
-      const res = await fetch('http://localhost:18790/status');
+      const res = await fetch(STATUS_API_URL);
       const data = await res.json();
       setStatus(data);
       setError(false);
     } catch (err) {
-      console.error("Local Status API unreachable", err);
+      console.error('Local Status API unreachable', err);
       setError(true);
     } finally {
       setLoading(false);
@@ -24,7 +26,7 @@ const SystemStatus: React.FC = () => {
 
   useEffect(() => {
     fetchStatus();
-    const timer = setInterval(fetchStatus, 30000); // Auto refresh every 30s
+    const timer = setInterval(fetchStatus, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -58,14 +60,13 @@ const SystemStatus: React.FC = () => {
   }
 
   const battery = status?.hardware?.battery || {};
-  const isCharging = battery.status === "CHARGING" || battery.plugged !== "UNPLUGGED";
+  const isCharging = battery.status === 'CHARGING' || battery.plugged !== 'UNPLUGGED';
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-      {/* Battery Card */}
       <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm flex items-center justify-between group hover:border-indigo-200 transition-all">
         <div className="flex items-center gap-4">
-          <div className={`p-3 rounded-2xl ${battery.level < 20 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}>
+          <div className={`p-3 rounded-2xl ${battery.level < 20 ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-600'}`}> 
             <Battery size={20} />
           </div>
           <div>
@@ -82,7 +83,6 @@ const SystemStatus: React.FC = () => {
         </div>
       </div>
 
-      {/* Services Status Card */}
       <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm group hover:border-indigo-200 transition-all">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
