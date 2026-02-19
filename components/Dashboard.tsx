@@ -5,6 +5,7 @@ import { Coins, MapPin, Radio, Search, ExternalLink, Map as MapIcon, Truck, Wall
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
+import SystemStatus from './SystemStatus';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -387,6 +388,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
       {activeTab === 'overview' && isAdmin && (
         <div className="space-y-6 animate-in fade-in">
+           <SystemStatus />
            {/* Expense Approvals Section */}
            {pendingExpenses.length > 0 && (
              <div className="bg-white p-5 rounded-[28px] border-2 border-amber-100 shadow-sm mb-4 relative overflow-hidden">
