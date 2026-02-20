@@ -78,11 +78,59 @@ const App: React.FC = () => {
           supabase.from('ai_logs').select('*').order('timestamp', { ascending: false }).limit(50)
         ]);
 
-        if (resLoc.data) setLocations(resLoc.data);
-        if (resDrivers.data) setDrivers(resDrivers.data);
-        if (resTx.data) setTransactions(resTx.data.map(t => ({...t, isSynced: true})));
-        if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})));
-        if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})));
+        // Drivers: if Supabase is empty, seed from localStorage or INITIAL_DRIVERS
+        if (resDrivers.data && resDrivers.data.length > 0) {
+          setDrivers(resDrivers.data);
+        } else {
+          const localDrvsRaw = localStorage.getItem(CONSTANTS.STORAGE_DRIVERS_KEY);
+          const driversToSeed: Driver[] = localDrvsRaw ? JSON.parse(localDrvsRaw) : INITIAL_DRIVERS;
+          const seedList = driversToSeed.length > 0 ? driversToSeed : INITIAL_DRIVERS;
+          setDrivers(seedList);
+          await Promise.all(seedList.map(d => {
+            const { stats, ...driverToSave } = d as any;
+            return supabase!.from('drivers').upsert(driverToSave);
+          }));
+        }
+
+        // Locations: merge unsynced local items with Supabase data
+        const localLocsRaw = localStorage.getItem(CONSTANTS.STORAGE_LOCATIONS_KEY);
+        const localLocs: Location[] = localLocsRaw ? JSON.parse(localLocsRaw) : [];
+        const unsyncedLocalLocs = localLocs.filter(l => !l.isSynced);
+        if (resLoc.data) {
+          const remoteLocIds = new Set(resLoc.data.map((l: any) => l.id));
+          const trulyUnsyncedLocs = unsyncedLocalLocs.filter(l => !remoteLocIds.has(l.id));
+          setLocations([...trulyUnsyncedLocs, ...resLoc.data]);
+        }
+
+        // Transactions: merge unsynced local items with Supabase data
+        const localTxRaw = localStorage.getItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY);
+        const localTxs: Transaction[] = localTxRaw ? JSON.parse(localTxRaw) : [];
+        const unsyncedLocalTxs = localTxs.filter(t => !t.isSynced);
+        if (resTx.data) {
+          const remoteTxIds = new Set(resTx.data.map((t: any) => t.id));
+          const trulyUnsyncedTxs = unsyncedLocalTxs.filter(t => !remoteTxIds.has(t.id));
+          setTransactions([...trulyUnsyncedTxs, ...resTx.data.map((t: any) => ({...t, isSynced: true}))]);
+        }
+
+        // Settlements: merge unsynced local items with Supabase data
+        const localStlRaw = localStorage.getItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY);
+        const localStls: DailySettlement[] = localStlRaw ? JSON.parse(localStlRaw) : [];
+        const unsyncedLocalStls = localStls.filter(s => !s.isSynced);
+        if (resSettlement.data) {
+          const remoteStlIds = new Set(resSettlement.data.map((s: any) => s.id));
+          const trulyUnsyncedStls = unsyncedLocalStls.filter(s => !remoteStlIds.has(s.id));
+          setDailySettlements([...trulyUnsyncedStls, ...resSettlement.data.map((s: any) => ({...s, isSynced: true}))]);
+        }
+
+        // AI Logs: merge unsynced local items with Supabase data
+        const localLogsRaw = localStorage.getItem(CONSTANTS.STORAGE_AI_LOGS_KEY);
+        const localLogs: AILog[] = localLogsRaw ? JSON.parse(localLogsRaw) : [];
+        const unsyncedLocalLogs = localLogs.filter(l => !l.isSynced);
+        if (resLogs.data) {
+          const remoteLogIds = new Set(resLogs.data.map((l: any) => l.id));
+          const trulyUnsyncedLogs = unsyncedLocalLogs.filter(l => !remoteLogIds.has(l.id));
+          setAiLogs([...trulyUnsyncedLogs, ...resLogs.data.map((l: any) => ({...l, isSynced: true}))]);
+        }
       } catch (err) {
         console.error("Supabase fetch failed, using local backup", err);
         loadFromLocalStorage();

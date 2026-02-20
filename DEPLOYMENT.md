@@ -12,6 +12,8 @@ All frontend variables **must** be prefixed with `VITE_` so that Vite exposes th
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key | Yes |
 | `VITE_GEMINI_API_KEY` | Google Gemini API key | Yes |
 | `VITE_STATUS_API_BASE` | Base URL for the status API (e.g. `https://your-status-api.example.com`) | Optional |
+| `SUPABASE_URL` | Your Supabase project URL for the backend status API (`status_api.py`) | Yes (backend) |
+| `SUPABASE_KEY` | Supabase service role key for the backend status API (`status_api.py`) | Yes (backend) |
 
 > **Security note:** `SUPABASE_KEY` (service role key) grants admin-level access to your database and **must never be placed in frontend code or any `VITE_` variable**. Keep it only in server-side/backend environments.
 
