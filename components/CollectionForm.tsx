@@ -201,7 +201,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
     
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       const modelName = 'gemini-3-flash-preview';
       
       // Structured Prompt for JSON
