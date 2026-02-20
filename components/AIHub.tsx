@@ -92,7 +92,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
         await audioContextRef.current.resume();
       }
 
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       let promptPrefix = '';
       switch (ttsConfig.lang) {
@@ -161,7 +161,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
     setGeneratedImage(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: {
@@ -269,7 +269,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
     const modelName = useOCR ? 'gemini-3-pro-preview' : (useDeepThink ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
       
       const parts: any[] = [];
       if (userImg) {
