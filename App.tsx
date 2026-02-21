@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS } from './types';
 import Dashboard from './components/Dashboard';
@@ -24,10 +23,14 @@ const INITIAL_DRIVERS: Driver[] = [
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'collect' | 'register' | 'history' | 'reports' | 'ai' | 'debt' | 'settlement'>('dashboard');
   
-  // SESSION PERSISTENCE
+  // SESSION PERSISTENCE WITH ERROR PROTECTION
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem('bht_session');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('bht_session');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [lang, setLang] = useState<'zh' | 'sw'>('zh');
@@ -59,13 +62,13 @@ const App: React.FC = () => {
   const filteredLocations = useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.role === 'admin') return locations;
-    return locations.filter(l => l.assignedDriverId === currentUser.id);
+    return (locations || []).filter(l => l.assignedDriverId === currentUser.id);
   }, [locations, currentUser]);
 
   const filteredTransactions = useMemo(() => {
     if (!currentUser) return [];
     if (currentUser.role === 'admin') return transactions;
-    return transactions.filter(t => t.driverId === currentUser.id);
+    return (transactions || []).filter(t => t.driverId === currentUser.id);
   }, [transactions, currentUser]);
 
   const loadFromLocalStorage = () => {
@@ -102,7 +105,7 @@ const App: React.FC = () => {
         if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})));
         if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})));
       } catch (err) {
-        console.error("Supabase fetch failed, using local backup", err);
+        console.error("Supabase fetch failed", err);
         loadFromLocalStorage();
       }
     } else {
@@ -118,13 +121,12 @@ const App: React.FC = () => {
       setIsOnline(online);
       if (online && !isSyncingRef.current) syncOfflineData();
       
-      // Heartbeat Tracking
       if (online && supabase && currentUser?.role === 'driver') {
         navigator.geolocation.getCurrentPosition((pos) => {
           supabase.from('drivers').update({ 
             lastActive: new Date().toISOString(),
             currentGps: { lat: pos.coords.latitude, lng: pos.coords.longitude }
-          }).eq('id', currentUser.id);
+          }).eq('id', currentUser.id).then();
         }, undefined, { enableHighAccuracy: false });
       }
     }, 20000);
@@ -132,8 +134,8 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
-    localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
+    if (locations.length > 0) localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
+    if (drivers.length > 0) localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
     localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions));
     localStorage.setItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements));
     localStorage.setItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs));
@@ -145,12 +147,10 @@ const App: React.FC = () => {
     try {
         const offlineTx = transactionsRef.current.filter(t => !t.isSynced);
         for (const item of offlineTx) {
-            const { error } = await supabase.from('transactions').upsert({ ...item, isSynced: true });
-            if (!error) setTransactions(prev => prev.map(t => t.id === item.id ? { ...t, isSynced: true } : t));
+            await supabase.from('transactions').upsert({ ...item, isSynced: true });
         }
-        // ... (other sync loops remain similar)
     } catch (err) {
-        console.error("Batch sync process failed", err);
+        console.error("Sync failed", err);
     } finally {
         setIsSyncing(false);
     }
@@ -180,8 +180,7 @@ const App: React.FC = () => {
     if (isOnline && supabase) {
         const tx = transactionsRef.current.find(t => t.id === txId);
         if (tx) {
-            const { error } = await supabase.from('transactions').upsert({...tx, ...updates, isSynced: true});
-            if (!error) setTransactions(prev => prev.map(t => t.id === txId ? { ...t, ...updates, isSynced: true } : t));
+            await supabase.from('transactions').upsert({...tx, ...updates, isSynced: true});
         }
     }
   };
@@ -209,8 +208,7 @@ const App: React.FC = () => {
     const stlToSave = { ...settlement, isSynced: false };
     setDailySettlements(prev => [stlToSave, ...prev]);
     if (isOnline && supabase) {
-       const { error } = await supabase.from('daily_settlements').upsert({...settlement, isSynced: true});
-       if (!error) setDailySettlements(prev => prev.map(s => s.id === settlement.id ? { ...settlement, isSynced: true } : s));
+       await supabase.from('daily_settlements').upsert({...settlement, isSynced: true});
     }
   };
 
@@ -218,8 +216,7 @@ const App: React.FC = () => {
     const logToSave = { ...log, isSynced: false };
     setAiLogs(prev => [logToSave, ...prev]);
     if (isOnline && supabase) {
-      const { error } = await supabase.from('ai_logs').insert({ ...log, isSynced: true });
-      if (!error) setAiLogs(prev => prev.map(l => l.id === log.id ? { ...l, isSynced: true } : l));
+      await supabase.from('ai_logs').insert({ ...log, isSynced: true });
     }
   };
 
@@ -237,9 +234,9 @@ const App: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900 text-white">
         <Loader2 size={48} className="text-amber-400 animate-spin mb-4" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/50">Bahati Engine Initializing...</p>
+        <p className="text-xs font-bold uppercase tracking-widest">Bahati Engine Initializing...</p>
       </div>
     );
   }
@@ -252,69 +249,45 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-slate-900 border-b border-white/10 p-4 sticky top-0 z-40 shadow-xl safe-top">
+      <header className="bg-slate-900 border-b border-white/10 p-4 sticky top-0 z-40 shadow-xl">
         <div className="max-w-7xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
-             <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-2 rounded-xl">
-               <Crown size={20} fill="currentColor" />
-             </div>
+             <div className="bg-amber-500 text-slate-900 p-2 rounded-xl"><Crown size={20} /></div>
              <div>
-               <div className="flex items-center gap-2">
-                 <h1 className="text-sm font-black text-white">BAHATI JACKPOTS</h1>
-                 <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[8px] font-black ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
-                   {isOnline ? 'ONLINE' : 'LOCAL'}
-                 </div>
-               </div>
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{currentUser.role} • {currentUser.name}</p>
+               <h1 className="text-sm font-black text-white leading-tight">BAHATI JACKPOTS</h1>
+               <p className="text-[10px] font-bold text-slate-400 uppercase">{currentUser.role} • {currentUser.name}</p>
              </div>
           </div>
           
           <div className="flex items-center gap-2">
-             <button onClick={syncOfflineData} disabled={isSyncing || !isOnline} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all shadow-lg border ${isSyncing ? 'bg-slate-800 text-indigo-400' : !isOnline ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : unsyncedCount > 0 ? 'bg-amber-50 text-slate-900 border-amber-600 animate-pulse' : 'bg-emerald-50/10 text-emerald-400 border-emerald-500/20'}`}>
-                {isSyncing ? <Loader2 size={16} className="animate-spin" /> : !isOnline ? <CloudOff size={16} /> : unsyncedCount > 0 ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
-                <span className="hidden sm:inline text-[10px] font-black uppercase">{isSyncing ? 'Syncing...' : !isOnline ? 'Offline' : unsyncedCount > 0 ? 'Pending' : 'Synced'}</span>
-             </button>
-             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20"><Globe size={18} /></button>
+             <div className={`flex items-center gap-1.5 px-2 py-1 rounded-full border text-[8px] font-black ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
+                {isOnline ? 'ONLINE' : 'LOCAL'}
+             </div>
+             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-white/10 rounded-xl text-white"><Globe size={18} /></button>
              <button onClick={handleLogout} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={18} /></button>
           </div>
         </div>
       </header>
 
       <main className="flex-1 w-full max-w-7xl mx-auto p-4 lg:p-8 pb-32">
-        {(view === 'dashboard' || view === 'settlement') && (
+        {view === 'dashboard' && (
           <Dashboard 
-            transactions={filteredTransactions} 
-            drivers={drivers} 
-            locations={filteredLocations} 
-            dailySettlements={dailySettlements} 
-            aiLogs={aiLogs} 
-            currentUser={currentUser} 
-            onUpdateDrivers={handleUpdateDrivers} 
-            onUpdateLocations={handleUpdateLocations} 
-            onUpdateTransaction={handleUpdateTransaction}
-            onNewTransaction={handleNewTransaction} 
-            onSaveSettlement={handleSaveSettlement} 
-            onSync={syncOfflineData} 
-            isSyncing={isSyncing} 
-            offlineCount={unsyncedCount} 
-            lang={lang}
-            onNavigate={(v) => setView(v)}
+            transactions={filteredTransactions} drivers={drivers} locations={filteredLocations} 
+            dailySettlements={dailySettlements} aiLogs={aiLogs} currentUser={currentUser} 
+            onUpdateDrivers={handleUpdateDrivers} onUpdateLocations={handleUpdateLocations} 
+            onUpdateTransaction={handleUpdateTransaction} onNewTransaction={handleNewTransaction} 
+            onSaveSettlement={handleSaveSettlement} onSync={syncOfflineData} 
+            isSyncing={isSyncing} offlineCount={unsyncedCount} lang={lang} onNavigate={setView}
           />
         )}
         {view === 'collect' && (
           <CollectionForm 
-            locations={filteredLocations} 
-            currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]} 
-            onSubmit={handleNewTransaction} 
-            lang={lang} 
-            onLogAI={handleLogAI}
+            locations={filteredLocations} currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]} 
+            onSubmit={handleNewTransaction} lang={lang} onLogAI={handleLogAI}
             onRegisterMachine={async (loc) => { 
                 const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
                 setLocations([...locations, newLoc]); 
-                if (isOnline && supabase) {
-                   await supabase.from('locations').insert({...newLoc, isSynced: true});
-                   setLocations(prev => prev.map(l => l.id === newLoc.id ? {...l, isSynced: true} : l));
-                }
+                if (isOnline && supabase) await supabase.from('locations').insert({...newLoc, isSynced: true});
             }}
           />
         )}
@@ -324,7 +297,7 @@ const App: React.FC = () => {
         {view === 'debt' && <DebtManager drivers={drivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
       </main>
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg safe-bottom">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg">
         <div className="max-w-2xl mx-auto flex justify-around items-center">
            {currentUser.role === 'admin' && <NavItem icon={<LayoutDashboard size={20}/>} label="Admin" active={view === 'dashboard'} onClick={() => setView('dashboard')} />}
            <NavItem icon={<PlusCircle size={20}/>} label={t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
