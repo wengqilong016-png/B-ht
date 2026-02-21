@@ -82,7 +82,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
     const commValue = (parseFloat(commissionRate) || 15) / 100;
 
     const newLocation: Location = {
-        id: `LOC-${Date.now()}`,
+        id: crypto.randomUUID(),
         name: shopName,
         ownerName: ownerName,
         area: area,
