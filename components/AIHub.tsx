@@ -227,7 +227,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
 
     // Log the confirmed data
     const newLog: AILog = {
-      id: `LOG-${Date.now()}`,
+      id: crypto.randomUUID(),
       timestamp: new Date().toISOString(),
       driverId: currentUser.id,
       driverName: currentUser.name,
@@ -362,7 +362,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
           setChat(prev => [...prev, { role: 'bot', content: resultText, sources: sources }]);
           
           onLogAI({
-            id: `LOG-${Date.now()}`,
+            id: crypto.randomUUID(),
             timestamp: new Date().toISOString(),
             driverId: currentUser.id,
             driverName: currentUser.name,

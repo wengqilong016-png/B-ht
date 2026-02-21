@@ -146,7 +146,10 @@ const App: React.FC = () => {
     const timer = setInterval(async () => {
       const online = await checkDbHealth();
       setIsOnline(online);
-      if (online && !isSyncingRef.current) syncOfflineData();
+      if (online && !isSyncingRef.current) {
+        await syncOfflineData();
+        refreshRemoteData();
+      }
     }, 20000);
     return () => clearInterval(timer);
   }, []);
@@ -187,6 +190,42 @@ const App: React.FC = () => {
         console.error("Batch sync process failed", err);
     } finally {
         setIsSyncing(false);
+    }
+  };
+
+  const refreshRemoteData = async () => {
+    if (!supabase) return;
+    try {
+      const [resLoc, resDrivers, resTx, resSettlement, resLogs] = await Promise.all([
+        supabase.from('locations').select('*'),
+        supabase.from('drivers').select('*'),
+        supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200),
+        supabase.from('daily_settlements').select('*').order('timestamp', { ascending: false }).limit(30),
+        supabase.from('ai_logs').select('*').order('timestamp', { ascending: false }).limit(50)
+      ]);
+      if (resDrivers.data && resDrivers.data.length > 0) setDrivers(resDrivers.data);
+      if (resLoc.data) {
+        const unsyncedLocs = locationsRef.current.filter(l => !l.isSynced);
+        const remoteIds = new Set(resLoc.data.map((l: any) => l.id));
+        setLocations([...unsyncedLocs.filter(l => !remoteIds.has(l.id)), ...resLoc.data]);
+      }
+      if (resTx.data) {
+        const unsyncedTxs = transactionsRef.current.filter(t => !t.isSynced);
+        const remoteIds = new Set(resTx.data.map((t: any) => t.id));
+        setTransactions([...unsyncedTxs.filter(t => !remoteIds.has(t.id)), ...resTx.data.map((t: any) => ({...t, isSynced: true}))]);
+      }
+      if (resSettlement.data) {
+        const unsyncedStls = dailySettlementsRef.current.filter(s => !s.isSynced);
+        const remoteIds = new Set(resSettlement.data.map((s: any) => s.id));
+        setDailySettlements([...unsyncedStls.filter(s => !remoteIds.has(s.id)), ...resSettlement.data.map((s: any) => ({...s, isSynced: true}))]);
+      }
+      if (resLogs.data) {
+        const unsyncedLogs = aiLogsRef.current.filter(l => !l.isSynced);
+        const remoteIds = new Set(resLogs.data.map((l: any) => l.id));
+        setAiLogs([...unsyncedLogs.filter(l => !remoteIds.has(l.id)), ...resLogs.data.map((l: any) => ({...l, isSynced: true}))]);
+      }
+    } catch (err) {
+      console.error("Remote data refresh failed", err);
     }
   };
 
@@ -348,8 +387,8 @@ const App: React.FC = () => {
                 const newLoc = { ...loc, isSynced: false };
                 setLocations([...locations, newLoc]); 
                 if (isOnline && supabase) {
-                   await supabase.from('locations').insert({...newLoc, isSynced: true});
-                   setLocations(prev => prev.map(l => l.id === newLoc.id ? {...l, isSynced: true} : l));
+                   const { error } = await supabase.from('locations').insert({...newLoc, isSynced: true});
+                   if (!error) setLocations(prev => prev.map(l => l.id === newLoc.id ? {...l, isSynced: true} : l));
                 }
             }}
           />
