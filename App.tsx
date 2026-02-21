@@ -146,11 +146,20 @@ const App: React.FC = () => {
     setIsSyncing(true);
     try {
         const offlineTx = transactionsRef.current.filter(t => !t.isSynced);
-        for (const item of offlineTx) {
-            await supabase.from('transactions').upsert({ ...item, isSynced: true });
+        if (offlineTx.length > 0) {
+            // NEW: Batch sync via RPC
+            const { error } = await supabase.rpc('sync_transactions', { items: offlineTx });
+            if (!error) {
+                setTransactions(prev => prev.map(t => ({ ...t, isSynced: true })));
+            } else {
+                throw error;
+            }
         }
+        
+        // Handle other entities (Settlements, Logs) individually or via specialized RPCs
+        // ...
     } catch (err) {
-        console.error("Sync failed", err);
+        console.error("Cloud batch sync failed", err);
     } finally {
         setIsSyncing(false);
     }

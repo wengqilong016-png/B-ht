@@ -23,6 +23,7 @@ CREATE TABLE public.locations (
     "ownerName" TEXT,
     "shopOwnerPhone" TEXT,
     "ownerPhotoUrl" TEXT,
+    "machinePhotoUrl" TEXT,
     "initialStartupDebt" NUMERIC DEFAULT 0,
     "remainingStartupDebt" NUMERIC DEFAULT 0,
     "isNewOffice" BOOLEAN DEFAULT false,
@@ -50,7 +51,6 @@ CREATE TABLE public.drivers (
 );
 
 -- 4. 交易流水表 (Transactions)
--- 注意: timestamp 和 date 是保留字，必须加引号
 CREATE TABLE public.transactions (
     id TEXT PRIMARY KEY,
     "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -122,29 +122,67 @@ CREATE TABLE public.ai_logs (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 7. 通知表 (Notifications)
-CREATE TABLE public.notifications (
-    id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
-    type TEXT,
-    title TEXT,
-    message TEXT,
-    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
-    "isRead" BOOLEAN DEFAULT false,
-    "driverId" TEXT,
-    "relatedTransactionId" TEXT
-);
-
--- 8. 索引优化
-CREATE INDEX IF NOT EXISTS idx_locations_machineId ON public.locations("machineId");
-CREATE INDEX IF NOT EXISTS idx_drivers_username ON public.drivers("username");
-CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON public.transactions("timestamp" DESC);
-CREATE INDEX IF NOT EXISTS idx_transactions_locationId ON public.transactions("locationId");
+-- 7. 索引优化
+CREATE INDEX IF NOT EXISTS idx_locations_assignedDriverId ON public.locations("assignedDriverId");
 CREATE INDEX IF NOT EXISTS idx_transactions_driverId ON public.transactions("driverId");
+CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON public.transactions("timestamp" DESC);
 
--- 9. 关闭 RLS 权限 (开发测试阶段)
-ALTER TABLE public.locations DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.drivers DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
-ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+-- 8. 开启 RLS
+ALTER TABLE public.locations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.drivers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.daily_settlements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ai_logs ENABLE ROW LEVEL SECURITY;
+
+-- 9. 定义安全策略 (Policy)
+-- 注意: 由于我们目前使用 ANON KEY + 前端手动过滤角色，我们采用简化的策略。
+-- 未来如果接入 Supabase Auth，可以使用 auth.uid()。
+
+-- 允许匿名访问进行开发测试，但在生产环境建议通过 API 密钥权限控制。
+CREATE POLICY "Enable all for anon" ON public.locations FOR ALL USING (true);
+CREATE POLICY "Enable all for anon" ON public.drivers FOR ALL USING (true);
+CREATE POLICY "Enable all for anon" ON public.transactions FOR ALL USING (true);
+CREATE POLICY "Enable all for anon" ON public.daily_settlements FOR ALL USING (true);
+CREATE POLICY "Enable all for anon" ON public.ai_logs FOR ALL USING (true);
+
+-- 10. 创建批量同步函数 (RPC)
+CREATE OR REPLACE FUNCTION public.sync_transactions(items jsonb)
+RETURNS void AS $$
+BEGIN
+    INSERT INTO public.transactions (
+        id, timestamp, "locationId", "locationName", "driverId", "driverName",
+        "previousScore", "currentScore", revenue, commission, "ownerRetention",
+        "debtDeduction", "startupDebtDeduction", expenses, "coinExchange", "netPayable",
+        "paymentStatus", gps, "photoUrl", type, "expenseType", "expenseCategory", "expenseStatus"
+    )
+    SELECT 
+        (value->>'id'), 
+        (value->>'timestamp')::timestamptz,
+        (value->>'locationId')::uuid,
+        (value->>'locationName'),
+        (value->>'driverId'),
+        (value->>'driverName'),
+        (value->>'previousScore')::bigint,
+        (value->>'currentScore')::bigint,
+        (value->>'revenue')::numeric,
+        (value->>'commission')::numeric,
+        (value->>'ownerRetention')::numeric,
+        (value->>'debtDeduction')::numeric,
+        (value->>'startupDebtDeduction')::numeric,
+        (value->>'expenses')::numeric,
+        (value->>'coinExchange')::numeric,
+        (value->>'netPayable')::numeric,
+        (value->>'paymentStatus'),
+        (value->'gps'),
+        (value->>'photoUrl'),
+        (value->>'type'),
+        (value->>'expenseType'),
+        (value->>'expenseCategory'),
+        (value->>'expenseStatus')
+    FROM jsonb_array_elements(items)
+    ON CONFLICT (id) DO UPDATE SET
+        "paymentStatus" = EXCLUDED."paymentStatus",
+        "expenseStatus" = EXCLUDED."expenseStatus",
+        "isSynced" = true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
