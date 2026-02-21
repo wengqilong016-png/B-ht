@@ -58,6 +58,7 @@ export interface Transaction {
   locationId: string;
   locationName: string;
   driverId: string;
+  driverName?: string;
   previousScore: number;
   currentScore: number;
   revenue: number;

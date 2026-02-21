@@ -304,6 +304,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         locationId: selectedLocation!.id, 
         locationName: selectedLocation!.name,
         driverId: currentDriver.id, 
+        driverName: currentDriver.name,
         previousScore: selectedLocation!.lastScore, 
         currentScore: parseInt(currentScore) || selectedLocation!.lastScore,
         revenue: calculations.revenue, 

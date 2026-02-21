@@ -243,10 +243,15 @@ const App: React.FC = () => {
   };
 
   const handleUpdateLocations = async (updatedLocations: Location[]) => {
-    setLocations(updatedLocations);
+    setLocations(updatedLocations.map(l => ({ ...l, isSynced: false })));
     if (isOnline && supabase) {
-       for (const l of updatedLocations) {
-          await supabase.from('locations').upsert({...l, isSynced: true});
+       const syncedIds = new Set<string>();
+       await Promise.all(updatedLocations.map(async (l) => {
+          const { error } = await supabase!.from('locations').upsert({...l, isSynced: true});
+          if (!error) syncedIds.add(l.id);
+       }));
+       if (syncedIds.size > 0) {
+          setLocations(prev => prev.map(loc => syncedIds.has(loc.id) ? {...loc, isSynced: true} : loc));
        }
     }
   };
