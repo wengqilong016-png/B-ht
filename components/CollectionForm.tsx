@@ -64,8 +64,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const selectedLocation = useMemo(() => locations.find(l => l.id === selectedLocId), [selectedLocId, locations]);
 
   const handleSelectLocation = (locId: string) => {
+    const loc = locations.find(l => l.id === locId);
+    if (loc && (loc.area === 'TO BE SET' || loc.ownerName === 'PENDING')) {
+      if (confirm(lang === 'zh' ? '检测到这是预设点位，请先完善实地入网资料（合影与定位）。' : 'Hii ni mashine mpya iliyopangwa. Tafadhali kamilisha usajili wa eneo kwanza.')) {
+        // Prepare data for MachineRegistrationForm
+        // We will pass the existing ID and MachineID to avoid duplicates
+        setIsRegistering(true);
+        return;
+      }
+    }
     setSelectedLocId(locId);
-    setDraftTxId(`TX-${Date.now()}`); // Generate ID immediately upon selection
+    setDraftTxId(`TX-${Date.now()}`); 
     setStep('entry');
   };
 
