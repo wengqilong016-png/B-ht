@@ -96,13 +96,20 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
         if (editingId) {
           onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData } : d));
         } else {
+          const newDriverId = `D-${form.name.toUpperCase()}-${Date.now().toString().slice(-4)}`;
           const newDriver: Driver = {
-            id: `D-${Date.now()}`,
+            id: newDriverId,
             ...driverData,
             remainingDebt: driverData.initialDebt,
             status: 'active'
           };
+          
+          // Trigger machine slot generation logic (passed through props or handle locally)
           onUpdateDrivers([...drivers, newDriver]);
+          
+          // Note: Machine slots will be created by the parent component or via a side effect
+          // to ensure transactional integrity with Supabase.
+          alert(`✅ 司机 ${form.name} 已注册。系统将自动为其分配 20 个机器出口。`);
         }
         resetForm();
         setIsSaving(false);

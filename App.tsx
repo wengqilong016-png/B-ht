@@ -166,11 +166,39 @@ const App: React.FC = () => {
   };
 
   const handleUpdateDrivers = async (updatedDrivers: Driver[]) => {
+    // Check if a new driver was added
+    const newDrivers = updatedDrivers.filter(nd => !drivers.find(od => od.id === nd.id));
+    
     setDrivers(updatedDrivers);
     if (isOnline && supabase) {
        for (const d of updatedDrivers) {
-          const { stats, ...driverToSave } = d as any;
+          const { stats, isOnline, ...driverToSave } = d as any;
           await supabase.from('drivers').upsert({...driverToSave, isSynced: true});
+       }
+       
+       // NEW: Auto-generate 20 slots for each new driver
+       if (newDrivers.length > 0) {
+         for (const nd of newDrivers) {
+           const prefix = nd.name.slice(0, 2).toUpperCase();
+           const newSlots = Array.from({ length: 20 }, (_, i) => ({
+             id: crypto.randomUUID(),
+             name: `New Site (${prefix}-${(i+1).toString().padStart(3, '0')})`,
+             machineId: `${prefix}-${(i+1).toString().padStart(3, '0')}`,
+             area: 'TO BE SET',
+             assignedDriverId: nd.id,
+             status: 'maintenance',
+             lastScore: 0,
+             commissionRate: 0.15,
+             initialStartupDebt: 0,
+             remainingStartupDebt: 0,
+             isSynced: true,
+             ownerName: 'PENDING'
+           }));
+           await supabase.from('locations').insert(newSlots);
+         }
+         // Refresh locations after insertion
+         const { data: freshLocs } = await supabase.from('locations').select('*');
+         if (freshLocs) setLocations(freshLocs);
        }
     }
   };
