@@ -20,9 +20,11 @@ jobs:
       - name: Install Dependencies
         run: pip install requests
 
-      - name: Run AI Analyst
+      - name: Run AI Analyst & Watchdog
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-        run: python scripts/cloud_analyst.py
+        run: |
+          python scripts/cloud_analyst.py
+          python scripts/watchdog/guardian.py
