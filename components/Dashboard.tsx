@@ -445,25 +445,74 @@ const Dashboard: React.FC<DashboardProps> = ({
         </div>
       )}
 
-      {/* Site Editing Modal */}
+      {/* Site Editing Modal - ENHANCED */}
       {editingLoc && (
-        <div className="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6">
-           <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-[150] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in">
+           <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
               <div className="bg-slate-900 p-8 text-white relative">
                  <button onClick={() => setEditingLoc(null)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full"><X size={18} /></button>
-                 <h3 className="text-xl font-black uppercase">配置修改</h3>
+                 <h3 className="text-xl font-black uppercase">点位档案管理 INFO</h3>
+                 <p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{editingLoc.machineId} • {editingLoc.name}</p>
               </div>
-              <div className="p-8 space-y-4">
-                 <input type="text" value={locEditForm.name} onChange={e => setLocEditForm({...locEditForm, name: e.target.value})} className="w-full bg-slate-50 border border-xl px-4 py-3 text-sm font-black text-slate-900 outline-none" />
+              
+              <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                 {/* Proof Images Section */}
                  <div className="grid grid-cols-2 gap-4">
-                    <input type="number" value={locEditForm.commissionRate} onChange={e => setLocEditForm({...locEditForm, commissionRate: e.target.value})} className="w-full bg-indigo-50 border border-xl px-4 py-3 text-sm font-black text-indigo-600 outline-none" />
-                    <input type="number" value={locEditForm.lastScore} onChange={e => setLocEditForm({...locEditForm, lastScore: e.target.value})} className="w-full bg-slate-50 border border-xl px-4 py-3 text-sm font-black text-slate-900 outline-none" />
+                    <div className="space-y-2">
+                       <label className="text-[9px] font-black text-slate-400 uppercase">机器照 Machine</label>
+                       <div className="h-32 rounded-2xl bg-slate-100 overflow-hidden border border-slate-200">
+                          {editingLoc.machinePhotoUrl ? <img src={editingLoc.machinePhotoUrl} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-slate-300"><ImageIcon size={32}/></div>}
+                       </div>
+                    </div>
+                    <div className="space-y-2">
+                       <label className="text-[9px] font-black text-slate-400 uppercase">老板合影 Boss</label>
+                       <div className="h-32 rounded-2xl bg-slate-100 overflow-hidden border border-slate-200">
+                          {editingLoc.ownerPhotoUrl ? <img src={editingLoc.ownerPhotoUrl} className="w-full h-full object-cover" /> : <div className="h-full flex items-center justify-center text-slate-300"><User size={32}/></div>}
+                       </div>
+                    </div>
                  </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                       <label className="text-[9px] font-black text-slate-400 uppercase">点位名称</label>
+                       <input type="text" value={locEditForm.name} onChange={e => setLocEditForm({...locEditForm, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-black" />
+                    </div>
+                    <div className="space-y-1">
+                       <label className="text-[9px] font-black text-slate-400 uppercase">当前读数</label>
+                       <input type="number" value={locEditForm.lastScore} onChange={e => setLocEditForm({...locEditForm, lastScore: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-black" />
+                    </div>
+                 </div>
+
+                 <div className="space-y-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase">归属司机 Assigned Driver</label>
+                    <select 
+                      value={editingLoc.assignedDriverId} 
+                      onChange={e => {
+                        const updated = locations.map(l => l.id === editingLoc.id ? { ...l, assignedDriverId: e.target.value } : l);
+                        onUpdateLocations(updated);
+                      }}
+                      className="w-full bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-xl px-4 py-3 text-sm font-black outline-none"
+                    >
+                       {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                 </div>
+
+                 {editingLoc.coords && (
+                   <button 
+                     onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${editingLoc.coords?.lat},${editingLoc.coords?.lng}`, '_blank')}
+                     className="w-full py-4 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-2xl text-[10px] font-black uppercase flex items-center justify-center gap-2"
+                   >
+                      <MapPin size={14}/> 查看实地 GPS 位置
+                   </button>
+                 )}
+              </div>
+
+              <div className="p-6 bg-slate-50 border-t border-slate-100">
                  <button onClick={() => {
                     const updated = locations.map(l => l.id === editingLoc.id ? { ...l, name: locEditForm.name, commissionRate: (parseFloat(locEditForm.commissionRate)||15)/100, lastScore: parseInt(locEditForm.lastScore)||0 } : l);
                     onUpdateLocations(updated);
                     setEditingLoc(null);
-                 }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">保存配置 SAVE</button>
+                 }} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs active:scale-95 transition-all shadow-xl">保存并应用更正 SAVE</button>
               </div>
            </div>
         </div>

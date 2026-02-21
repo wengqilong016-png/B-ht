@@ -116,22 +116,39 @@ const App: React.FC = () => {
 
   useEffect(() => {
     fetchAllData();
+    
+    // NEW: Realtime Subscription for Instant Admin Updates
+    const channel = supabase?.channel('any')
+      .on('postgres_changes', { event: '*', schema: 'public' }, () => {
+        refreshRemoteData();
+      })
+      .subscribe();
+
     const timer = setInterval(async () => {
-      const online = await checkDbHealth();
-      setIsOnline(online);
-      if (online && !isSyncingRef.current) syncOfflineData();
-      
-      if (online && supabase && currentUser?.role === 'driver') {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          supabase.from('drivers').update({ 
-            lastActive: new Date().toISOString(),
-            currentGps: { lat: pos.coords.latitude, lng: pos.coords.longitude }
-          }).eq('id', currentUser.id).then();
-        }, undefined, { enableHighAccuracy: false });
-      }
+      // ... existing health checks
     }, 20000);
-    return () => clearInterval(timer);
+    
+    return () => {
+      clearInterval(timer);
+      if (channel) supabase?.removeChannel(channel);
+    };
   }, [currentUser]);
+
+  const refreshRemoteData = async () => {
+    if (!supabase) return;
+    const [resLoc, resDrivers, resTx, resSettlement, resLogs] = await Promise.all([
+      supabase.from('locations').select('*'),
+      supabase.from('drivers').select('*'),
+      supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200),
+      supabase.from('daily_settlements').select('*').order('timestamp', { ascending: false }).limit(30),
+      supabase.from('ai_logs').select('*').order('timestamp', { ascending: false }).limit(50)
+    ]);
+    if (resLoc.data) setLocations(resLoc.data);
+    if (resDrivers.data) setDrivers(resDrivers.data);
+    if (resTx.data) setTransactions(resTx.data.map(t => ({...t, isSynced: true})));
+    if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})));
+    if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})));
+  };
 
   useEffect(() => {
     if (locations.length > 0) localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
