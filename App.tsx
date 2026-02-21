@@ -341,6 +341,17 @@ const App: React.FC = () => {
             onRegisterMachine={async (loc) => { 
                 const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
                 setLocations([...locations, newLoc]); 
+                
+                // NEW: Deduct startup debt from driver's coin balance
+                if (newLoc.initialStartupDebt > 0) {
+                  const updatedDrivers = drivers.map(d => 
+                    d.id === currentUser.id 
+                      ? { ...d, dailyFloatingCoins: Math.max(0, d.dailyFloatingCoins - newLoc.initialStartupDebt) }
+                      : d
+                  );
+                  handleUpdateDrivers(updatedDrivers);
+                }
+
                 if (isOnline && supabase) await supabase.from('locations').insert({...newLoc, isSynced: true});
             }}
           />

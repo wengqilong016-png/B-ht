@@ -67,6 +67,12 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
   const [locationFilter, setLocationFilter] = useState<string>('all');
   const [groupBy, setGroupBy] = useState<'day' | 'week' | 'month'>('day');
 
+  // NEW: Cascading location filter based on selected driver
+  const availableLocations = useMemo(() => {
+    if (driverFilter === 'all') return locations;
+    return locations.filter(l => l.assignedDriverId === driverFilter);
+  }, [locations, driverFilter]);
+
   const filteredTransactions = useMemo(() => {
     return transactions.filter(tx => {
       const txDate = tx.timestamp.split('T')[0];
@@ -77,7 +83,15 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
     });
   }, [transactions, startDate, endDate, driverFilter, locationFilter]);
 
+  // Reset location filter if it's no longer in the available list
+  useEffect(() => {
+    if (locationFilter !== 'all' && !availableLocations.find(l => l.id === locationFilter)) {
+      setLocationFilter('all');
+    }
+  }, [availableLocations, locationFilter]);
+
   const stats = useMemo(() => {
+// ... (rest of the calculation)
     const revenue = filteredTransactions.reduce((acc, tx) => acc + tx.revenue, 0);
     // Only count Public expenses as actual Company Expenses. Private are just transfers.
     const expenses = filteredTransactions
@@ -241,7 +255,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
            <MapPin size={16} className="text-slate-400" />
            <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="bg-transparent text-xs font-black text-slate-700 outline-none w-full uppercase">
              <option value="all">所有点位 (All Locations)</option>
-             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+             {availableLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
            </select>
         </div>
         <div className="flex bg-slate-100 p-1 rounded-xl">
