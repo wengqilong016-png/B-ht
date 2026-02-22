@@ -15,7 +15,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 22 # 升级至 Node 22 以匹配最新 Capacitor 要求
+          node-version: 22
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
@@ -27,11 +27,11 @@ jobs:
       - name: Build Web Project
         run: npx vite build
 
-      - name: Setup Java & Android
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21' # Upgrade to Java 21 to match source release requirements
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
