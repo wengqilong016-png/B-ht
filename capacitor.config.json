@@ -1,0 +1,22 @@
+{
+  "appId": "com.bahati.jackpots",
+  "appName": "BAHATI PRO",
+  "webDir": "B-ht/dist",
+  "bundledWebRuntime": false,
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "launchAutoHide": true,
+      "backgroundColor": "#0f172a",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": true,
+      "androidSpinnerStyle": "large",
+      "spinnerColor": "#4f46e5"
+    },
+    "StatusBar": {
+      "style": "DARK",
+      "backgroundColor": "#0f172a",
+      "overlaysWebView": false
+    }
+  }
+}
