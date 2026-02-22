@@ -1,7 +1,7 @@
 {
   "appId": "com.bahati.jackpots",
   "appName": "BAHATI PRO",
-  "webDir": "B-ht/dist",
+  "webDir": "dist",
   "bundledWebRuntime": false,
   "plugins": {
     "SplashScreen": {
