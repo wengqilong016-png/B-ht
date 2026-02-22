@@ -34,14 +34,14 @@
 </head>
 <body class="bg-slate-50 text-slate-900 antialiased overflow-y-auto">
     <div id="root"></div>
-    <!-- Vite Entry Point -->
-    <script type="module" src="/index.tsx"></script>
+    <!-- Vite Entry: Must be relative to root for build process to pick up -->
+    <script type="module" src="./index.tsx"></script>
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
             .then(reg => console.log('SW registered'))
-            .catch(err => console.log('SW failed', err));
+            .catch(err => console.error('SW failed', err));
         });
       }
     </script>
