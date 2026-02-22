@@ -71,30 +71,29 @@ const Dashboard: React.FC<DashboardProps> = ({
   // Aggregated Daily Total for Admin
   const companyDailyTotal = useMemo(() => {
     const today = new Date().toISOString().split('T')[0];
-    const todaysTx = transactions.filter(t => t.timestamp.startsWith(today));
-    const totalRevenue = todaysTx.reduce((sum, t) => sum + t.revenue, 0);
+    const todaysTx = (transactions || []).filter(t => t && t.timestamp && t.timestamp.startsWith(today));
+    const totalRevenue = todaysTx.reduce((sum, t) => sum + (t.revenue || 0), 0);
     const totalExpenses = todaysTx.reduce((sum, t) => sum + (t.expenses || 0), 0);
-    const totalNet = todaysTx.reduce((sum, t) => sum + t.netPayable, 0);
+    const totalNet = todaysTx.reduce((sum, t) => sum + (t.netPayable || 0), 0);
     return { totalRevenue, totalExpenses, totalNet };
   }, [transactions]);
 
   const companyMonthlyTotal = useMemo(() => {
     const now = new Date();
     const currentMonth = now.toISOString().slice(0, 7); 
-    const confirmedSettlements = dailySettlements.filter(s => s.date.startsWith(currentMonth) && s.status === 'confirmed');
-    const totalCash = confirmedSettlements.reduce((sum, s) => sum + s.actualCash, 0);
-    const totalCoins = confirmedSettlements.reduce((sum, s) => sum + s.actualCoins, 0);
-    const totalRevenue = confirmedSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
+    const confirmedSettlements = (dailySettlements || []).filter(s => s && s.date && s.date.startsWith(currentMonth) && s.status === 'confirmed');
+    const totalCash = confirmedSettlements.reduce((sum, s) => sum + (s.actualCash || 0), 0);
+    const totalCoins = confirmedSettlements.reduce((sum, s) => sum + (s.actualCoins || 0), 0);
+    const totalRevenue = confirmedSettlements.reduce((sum, s) => sum + (s.totalRevenue || 0), 0);
     return { totalCash, totalCoins, totalRevenue, count: confirmedSettlements.length };
   }, [dailySettlements]);
 
   // NEW: Machine Performance Analysis Engine
   const siteAnalytics = useMemo(() => {
-    return locations.map(loc => {
-      const locTx = transactions.filter(tx => tx.locationId === loc.id);
-      const totalRev = locTx.reduce((sum, tx) => sum + tx.revenue, 0);
+    return (locations || []).map(loc => {
+      const locTx = (transactions || []).filter(tx => tx && tx.locationId === loc.id);
+      const totalRev = locTx.reduce((sum, tx) => sum + (tx.revenue || 0), 0);
       const avgRev = locTx.length > 0 ? totalRev / locTx.length : 0;
-      const lastTx = locTx[0]; // Sorted by desc
       return {
         ...loc,
         totalRev,
@@ -339,57 +338,28 @@ const Dashboard: React.FC<DashboardProps> = ({
               <SystemStatus />
            </div>
 
-           {(pendingSettlements.length > 0 || pendingExpenses.length > 0) && (
-             <div className="bg-white p-6 rounded-[35px] border-2 border-indigo-100 shadow-lg space-y-4">
-                <div className="flex items-center gap-2">
-                   <div className="p-2 bg-indigo-600 text-white rounded-xl"><BellRing size={18} /></div>
-                   <h3 className="text-base font-black text-slate-900 uppercase">待处理审批事项</h3>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                   {pendingSettlements.map(s => (
-                     <button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full flex justify-between items-center bg-emerald-50 p-4 rounded-2xl border border-emerald-100 hover:bg-emerald-100 transition-all">
-                        <span className="text-xs font-black text-slate-900">{s.driverName} (待确认日结算)</span>
-                        <ArrowRight size={16} className="text-emerald-400" />
-                     </button>
-                   ))}
-                   {pendingExpenses.map(tx => (
-                     <div key={tx.id} className="flex justify-between items-center bg-rose-50 p-4 rounded-2xl border border-rose-100">
-                        <span className="text-xs font-black text-slate-900">{tx.driverName}: {tx.expenseCategory} (TZS {tx.expenses})</span>
-                        <div className="flex gap-2">
-                           <button onClick={() => handleExpenseAction(tx, 'approve')} className="p-1.5 bg-emerald-500 text-white rounded-lg"><ThumbsUp size={14}/></button>
-                           <button onClick={() => handleExpenseAction(tx, 'reject')} className="p-1.5 bg-rose-500 text-white rounded-lg"><ThumbsDown size={14}/></button>
-                        </div>
-                     </div>
-                   ))}
-                </div>
-             </div>
-           )}
-
-           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <RouteTracking routes={driverRoutes} onOpenMap={() => setShowAssetMap(true)} />
-              <SystemStatus />
-           </div>
-
+           {/* MONTHLY PERFORMANCE SUMMARY */}
            <div className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-[35px] p-8 shadow-xl flex flex-col md:flex-row justify-between items-center group">
               <div className="mb-4 md:mb-0">
-                 <h3 className="text-xl font-black uppercase mb-2">经营分析与结算 (MONTHLY INSIGHTS)</h3>
-                 <p className="text-xs font-bold text-white/60 uppercase tracking-widest">当前确认天数: {companyMonthlyTotal.count} 天</p>
+                 <h3 className="text-xl font-black uppercase mb-2">经营分析报告 (MONTHLY INSIGHTS)</h3>
+                 <p className="text-xs font-bold text-white/60 uppercase tracking-widest">已确认结算天数: {companyMonthlyTotal.count} 天</p>
               </div>
               <button 
-                onClick={() => alert("本月经营分析报告生成中...\n总营收: TZS " + companyMonthlyTotal.totalRevenue.toLocaleString() + "\n实收纸币: TZS " + companyMonthlyTotal.totalCash.toLocaleString())}
+                onClick={() => alert("本月月报生成中...\n总营收: TZS " + (companyMonthlyTotal.totalRevenue || 0).toLocaleString())}
                 className="py-4 px-8 bg-white text-indigo-600 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all flex items-center gap-3"
               >
-                 <FileText size={18} /> 生成本月度汇总报告
+                 <FileText size={18} /> 下载月度报告
               </button>
            </div>
 
+           {/* SITE PERFORMANCE RANKING */}
            <div className="space-y-4">
               <div className="flex items-center gap-3 ml-2">
                  <div className="p-2 bg-amber-500 rounded-xl text-slate-900"><TrendingUp size={18} /></div>
-                 <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">机器经营效能排名 (SITE RANKING)</h3>
+                 <h3 className="text-base font-black text-slate-900 uppercase">机器效能排行 (SITE RANKING)</h3>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                 {siteAnalytics.slice(0, 4).sort((a,b) => b.avgRev - a.avgRev).map(loc => (
+                 {(siteAnalytics || []).slice(0, 4).sort((a,b) => b.avgRev - a.avgRev).map(loc => (
                    <div key={loc.id} className="bg-white p-5 rounded-[30px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                       <div className="flex justify-between items-start mb-4">
                          <span className="text-[9px] font-black text-slate-400 uppercase">{loc.machineId}</span>
@@ -399,16 +369,17 @@ const Dashboard: React.FC<DashboardProps> = ({
                       <div className="space-y-2 mt-3">
                          <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
                             <span>日均 (AVG)</span>
-                            <span className="text-slate-900 font-bold">TZS {Math.floor(loc.avgRev).toLocaleString()}</span>
+                            <span className="text-slate-900 font-bold">TZS {Math.floor(loc.avgRev || 0).toLocaleString()}</span>
                          </div>
-                         <div className="w-full h-1 bg-slate-50 rounded-full overflow-hidden">
-                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, (loc.avgRev / 50000) * 100)}%` }}></div>
+                         <div className="w-full h-1 bg-slate-100 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, ((loc.avgRev || 0) / 50000) * 100)}%` }}></div>
                          </div>
                       </div>
                    </div>
                  ))}
               </div>
            </div>
+
            <SmartInsights transactions={transactions} locations={locations} />
 
            <SiteMonitoring locations={locations} siteSearch={siteSearch} onSetSiteSearch={setSiteSearch} onEdit={setEditingLoc} />

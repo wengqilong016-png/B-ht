@@ -362,14 +362,22 @@ const App: React.FC = () => {
         {view === 'ai' && <AIHub drivers={drivers} locations={filteredLocations} transactions={filteredTransactions} onLogAI={handleLogAI} currentUser={currentUser} initialContextId={aiContextId} onClearContext={() => setAiContextId('')} />}
         {view === 'support' && <SupportTicketSystem />}
         {view === 'clearance' && (
-          <ClearanceForm 
-            locations={filteredLocations} 
-            currentDriver={drivers.find(d => d.id === currentUser.id)!}
-            onSubmit={handleNewTransaction} 
-            lang={lang} 
-            onLogAI={handleLogAI} 
-            onCancel={() => setView('dashboard')} 
-          />
+          drivers.find(d => d.id === currentUser.id) ? (
+            <ClearanceForm 
+              locations={filteredLocations} 
+              currentDriver={drivers.find(d => d.id === currentUser.id)!}
+              onSubmit={handleNewTransaction} 
+              lang={lang} 
+              onLogAI={handleLogAI} 
+              onCancel={() => setView('dashboard')} 
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center p-12 bg-white rounded-[40px] shadow-xl">
+               <AlertTriangle size={48} className="text-amber-500 mb-4" />
+               <p className="text-sm font-black text-slate-900 uppercase">仅限承包司机进行清分操作</p>
+               <button onClick={() => setView('dashboard')} className="mt-6 px-8 py-3 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">返回面板</button>
+            </div>
+          )
         )}
         {view === 'reports' && <FinancialReports transactions={filteredTransactions} drivers={drivers} locations={filteredLocations} dailySettlements={dailySettlements} lang={lang} />}
         {view === 'debt' && <DebtManager drivers={drivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
