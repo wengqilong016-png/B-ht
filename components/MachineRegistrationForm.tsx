@@ -19,7 +19,12 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const [initialScore, setInitialScore] = useState('');
   const [startupDebt, setStartupDebt] = useState('');
   const [commissionRate, setCommissionRate] = useState((CONSTANTS.DEFAULT_PROFIT_SHARE * 100).toString());
-  const [machinePhoto, setMachinePhoto] = useState<string | null>(null);
+  
+  // Three Photos Requirement
+  const [ownerMachinePhoto, setOwnerMachinePhoto] = useState<string | null>(null);
+  const [machineOnlyPhoto, setMachineOnlyPhoto] = useState<string | null>(null);
+  const [idPhoto, setIdPhoto] = useState<string | null>(null);
+  
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   
@@ -28,7 +33,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const [isSuccess, setIsSuccess] = useState(false);
   const [lastRegisteredMachine, setLastRegisteredMachine] = useState<Location | null>(null);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const photoRefs = {
+    owner: useRef<HTMLInputElement>(null),
+    machine: useRef<HTMLInputElement>(null),
+    id: useRef<HTMLInputElement>(null),
+  };
 
   const fetchGps = () => {
     setIsGpsLoading(true);
@@ -38,14 +47,14 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         setIsGpsLoading(false); 
       },
       (err) => { 
-        alert(lang === 'zh' ? "GPS 获取失败，请检查定位权限。" : "GPS imeshindwa"); 
+        alert(lang === 'zh' ? "GPS 获取失败，必须获取定位才能注册。" : "GPS imeshindwa, ni lazima kupata eneo"); 
         setIsGpsLoading(false); 
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
   };
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>, type: 'owner' | 'machine' | 'id') => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
@@ -59,7 +68,10 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
           canvas.height = img.height * scale;
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          setMachinePhoto(canvas.toDataURL('image/jpeg', 0.6));
+          const base64 = canvas.toDataURL('image/jpeg', 0.6);
+          if (type === 'owner') setOwnerMachinePhoto(base64);
+          else if (type === 'machine') setMachineOnlyPhoto(base64);
+          else setIdPhoto(base64);
         };
         img.src = ev.target?.result as string;
       };
@@ -68,14 +80,12 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   };
 
   const handleSubmit = async () => {
-    if (!machineId || !shopName || !area || !gps || !ownerName) {
-      alert(lang === 'zh' ? "请填写所有带 * 的必填项，并获取 GPS 定位。" : "Tafadhali jaza nafasi zote na washa GPS");
+    if (!machineId || !shopName || !area || !gps || !ownerName || !ownerPhone || !ownerMachinePhoto) {
+      alert(lang === 'zh' ? "请填写所有必填项 (*)，且必须拍摄合影与获取 GPS。" : "Jaza nafasi zote, piga picha ya pamoja na washa GPS");
       return;
     }
 
     setIsSubmitting(true);
-
-    // Simulate a small delay for better UX
     await new Promise(resolve => setTimeout(resolve, 800));
 
     const debtValue = parseInt(startupDebt) || 0;
@@ -95,8 +105,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         coords: gps,
         status: 'active',
         commissionRate: commValue,
-        ownerPhotoUrl: machinePhoto || undefined,
-        assignedDriverId: currentDriver.id
+        ownerPhotoUrl: ownerMachinePhoto || undefined,
+        machinePhotoUrl: machineOnlyPhoto || undefined,
+        idPhotoUrl: idPhoto || undefined,
+        assignedDriverId: currentDriver.id,
+        merchantBalance: 0
     };
 
     onSubmit(newLocation);
@@ -106,18 +119,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   };
 
   const handleReset = () => {
-    setMachineId(''); 
-    setShopName(''); 
-    setOwnerName(''); 
-    setArea(''); 
-    setOwnerPhone('');
-    setInitialScore(''); 
-    setStartupDebt(''); 
-    setMachinePhoto(null); 
-    setGps(null); 
-    setCommissionRate('15');
-    setIsSuccess(false);
-    setLastRegisteredMachine(null);
+    setMachineId(''); setShopName(''); setOwnerName(''); setArea(''); setOwnerPhone('');
+    setInitialScore(''); setStartupDebt(''); 
+    setOwnerMachinePhoto(null); setMachineOnlyPhoto(null); setIdPhoto(null);
+    setGps(null); setCommissionRate('15');
+    setIsSuccess(false); setLastRegisteredMachine(null);
   };
 
   if (isSuccess && lastRegisteredMachine) {
@@ -185,71 +191,96 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
            <div className="w-10"></div>
         </div>
 
-        {/* Photo Upload */}
-        <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{lang === 'zh' ? '现场存证 (机器 + 老板合影) *' : 'Picha ya Eneo *'}</label>
-          <div 
-            onClick={() => fileInputRef.current?.click()}
-            className={`relative h-48 rounded-[30px] border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all active:scale-98 ${machinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300'}`}
-          >
-             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoCapture} className="hidden" />
-             {machinePhoto ? (
-               <>
-                 <img src={machinePhoto} className="w-full h-full object-cover grayscale" alt="Site Proof" />
-                 <div className="absolute inset-0 bg-black/20 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                    <Camera size={32} className="text-white drop-shadow-lg" />
-                 </div>
-               </>
-             ) : (
-               <div className="text-center space-y-2">
-                 <ImagePlus size={32} className="text-slate-300 mx-auto" />
-                 <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'zh' ? '点击拍照' : 'Piga Picha'}</p>
-               </div>
-             )}
-          </div>
+        {/* Triple Photo Upload Section */}
+        <div className="space-y-4">
+           <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{lang === 'zh' ? '现场存证 (多选照片) *' : 'Picha za Ushahidi *'}</label>
+           
+           <div className="grid grid-cols-3 gap-3">
+              {/* Photo 1: Owner + Machine */}
+              <div 
+                onClick={() => photoRefs.owner.current?.click()}
+                className={`relative h-32 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all ${ownerMachinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50'}`}
+              >
+                 <input type="file" accept="image/*" capture="environment" ref={photoRefs.owner} onChange={(e) => handlePhotoCapture(e, 'owner')} className="hidden" />
+                 {ownerMachinePhoto ? <img src={ownerMachinePhoto} className="w-full h-full object-cover grayscale" /> : (
+                   <div className="text-center px-2">
+                     <User size={18} className="text-slate-300 mx-auto mb-1" />
+                     <p className="text-[8px] font-black text-slate-400 uppercase leading-tight">{lang === 'zh' ? '老板合影*' : 'Picha ya Pamoja*'}</p>
+                   </div>
+                 )}
+              </div>
+
+              {/* Photo 2: Machine Only */}
+              <div 
+                onClick={() => photoRefs.machine.current?.click()}
+                className={`relative h-32 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all ${machineOnlyPhoto ? 'border-indigo-400 bg-indigo-50' : 'border-slate-300 bg-slate-50'}`}
+              >
+                 <input type="file" accept="image/*" capture="environment" ref={photoRefs.machine} onChange={(e) => handlePhotoCapture(e, 'machine')} className="hidden" />
+                 {machineOnlyPhoto ? <img src={machineOnlyPhoto} className="w-full h-full object-cover grayscale" /> : (
+                   <div className="text-center px-2">
+                     <Aperture size={18} className="text-slate-300 mx-auto mb-1" />
+                     <p className="text-[8px] font-black text-slate-400 uppercase leading-tight">{lang === 'zh' ? '单拍机器' : 'Mashine'}</p>
+                   </div>
+                 )}
+              </div>
+
+              {/* Photo 3: ID Card */}
+              <div 
+                onClick={() => photoRefs.id.current?.click()}
+                className={`relative h-32 rounded-3xl border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all ${idPhoto ? 'border-amber-400 bg-amber-50' : 'border-slate-300 bg-slate-50'}`}
+              >
+                 <input type="file" accept="image/*" capture="environment" ref={photoRefs.id} onChange={(e) => handlePhotoCapture(e, 'id')} className="hidden" />
+                 {idPhoto ? <img src={idPhoto} className="w-full h-full object-cover grayscale" /> : (
+                   <div className="text-center px-2">
+                     <ShieldCheck size={18} className="text-slate-300 mx-auto mb-1" />
+                     <p className="text-[8px] font-black text-slate-400 uppercase leading-tight">{lang === 'zh' ? '证件照' : 'ID Picha'}</p>
+                   </div>
+                 )}
+              </div>
+           </div>
         </div>
 
-        {/* Machine ID & Score */}
-        <div className="grid grid-cols-2 gap-4">
-           <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '机器编号 *' : 'ID ya Mashine *'}</label>
-             <input type="text" value={machineId} onChange={e => setMachineId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 uppercase outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="M-00X" />
+        {/* Basic Info Section */}
+        <div className="space-y-4 bg-slate-50/50 p-6 rounded-[40px] border border-slate-100">
+           <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '办公室编号 *' : 'ID ya Mashine *'}</label>
+                <input type="text" value={machineId} onChange={e => setMachineId(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl p-4 font-black text-slate-900 uppercase outline-none focus:border-indigo-500 transition-all" placeholder="OFFICE-001" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '初始读数' : 'Namba ya Mwanzo'}</label>
+                <input type="number" value={initialScore} onChange={e => setInitialScore(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none" placeholder="0" />
+              </div>
            </div>
-           <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '初始读数' : 'Namba ya Mwanzo'}</label>
-             <input type="number" value={initialScore} onChange={e => setInitialScore(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="0" />
-           </div>
-        </div>
 
-        {/* Shop Name */}
-        <div className="space-y-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店铺/点位名称 *' : 'Jina la Duka *'}</label>
-          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center gap-3 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-50 transition-all">
-             <Building2 size={16} className="text-slate-400" />
-             <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} className="w-full bg-transparent font-black text-slate-900 outline-none placeholder:text-slate-300" placeholder="Shop Name" />
-          </div>
-        </div>
-
-        {/* Owner & Commission */}
-        <div className="grid grid-cols-2 gap-4">
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店主姓名 *' : 'Jina la Tajiri *'}</label>
-             <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="Owner Name" />
-           </div>
-           <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '分红比例 (%) *' : 'Komisheni % *'}</label>
-             <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-center gap-2 focus-within:border-indigo-400 transition-all">
-                <Percent size={14} className="text-indigo-400" />
-                <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="w-full bg-transparent font-black text-indigo-600 outline-none placeholder:text-indigo-300" placeholder="15" />
+             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '商铺名称 *' : 'Jina la Duka *'}</label>
+             <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center gap-3">
+                <Building2 size={16} className="text-slate-400" />
+                <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} className="w-full bg-transparent font-black text-slate-900 outline-none" placeholder="Shop/Store Name" />
              </div>
            </div>
+
+           <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '老板姓名 *' : 'Jina la Tajiri *'}</label>
+                <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} className="w-full bg-white border border-slate-200 rounded-2xl p-4 font-black text-slate-900" placeholder="Owner Name" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '老板电话 *' : 'Simu ya Tajiri *'}</label>
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center gap-2">
+                   <Phone size={14} className="text-slate-400" />
+                   <input type="tel" value={ownerPhone} onChange={e => setOwnerPhone(e.target.value)} className="w-full bg-transparent font-black text-slate-900 text-sm outline-none" placeholder="06XXXXXXXX" />
+                </div>
+              </div>
+           </div>
         </div>
 
-        {/* Area & GPS */}
+        {/* Area & GPS Mandatory */}
         <div className="grid grid-cols-2 gap-4 items-end">
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '区域 Area *' : 'Eneo *'}</label>
-             <input type="text" value={area} onChange={e => setArea(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="Kariakoo" />
+             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '所属区域 *' : 'Eneo *'}</label>
+             <input type="text" value={area} onChange={e => setArea(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900" placeholder="Kariakoo" />
            </div>
            <button 
              onClick={fetchGps} 
@@ -257,7 +288,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
              className={`h-[58px] rounded-2xl border flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${gps ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
            >
               {isGpsLoading ? <Loader2 size={18} className="animate-spin" /> : (gps ? <CheckCircle2 size={18} /> : <MapPinned size={18} />)}
-              <span className="text-[10px] font-black uppercase">{gps ? 'GPS OK' : 'Get GPS'}</span>
+              <span className="text-[10px] font-black uppercase">{gps ? 'GPS OK' : '强制定位 GET GPS'}</span>
            </button>
         </div>
 

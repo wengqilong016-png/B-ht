@@ -66,6 +66,43 @@ const Dashboard: React.FC<DashboardProps> = ({
   const myTransactions = useMemo(() => isAdmin ? transactions : transactions.filter(t => t.driverId === currentUser.id), [transactions, currentUser, isAdmin]);
   const pendingExpenses = useMemo(() => transactions.filter(tx => tx.expenses > 0 && tx.expenseStatus === 'pending'), [transactions]);
   const pendingSettlements = useMemo(() => dailySettlements.filter(s => s.status === 'pending'), [dailySettlements]);
+  const aiDiscrepancies = useMemo(() => transactions.filter(tx => tx.aiScore !== undefined && tx.aiScore !== tx.currentScore), [transactions]);
+
+  // Aggregated Daily Total for Admin
+  const companyDailyTotal = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const todaysTx = transactions.filter(t => t.timestamp.startsWith(today));
+    const totalRevenue = todaysTx.reduce((sum, t) => sum + t.revenue, 0);
+    const totalExpenses = todaysTx.reduce((sum, t) => sum + (t.expenses || 0), 0);
+    const totalNet = todaysTx.reduce((sum, t) => sum + t.netPayable, 0);
+    return { totalRevenue, totalExpenses, totalNet };
+  }, [transactions]);
+
+  const companyMonthlyTotal = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.toISOString().slice(0, 7); 
+    const confirmedSettlements = dailySettlements.filter(s => s.date.startsWith(currentMonth) && s.status === 'confirmed');
+    const totalCash = confirmedSettlements.reduce((sum, s) => sum + s.actualCash, 0);
+    const totalCoins = confirmedSettlements.reduce((sum, s) => sum + s.actualCoins, 0);
+    const totalRevenue = confirmedSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
+    return { totalCash, totalCoins, totalRevenue, count: confirmedSettlements.length };
+  }, [dailySettlements]);
+
+  // NEW: Machine Performance Analysis Engine
+  const siteAnalytics = useMemo(() => {
+    return locations.map(loc => {
+      const locTx = transactions.filter(tx => tx.locationId === loc.id);
+      const totalRev = locTx.reduce((sum, tx) => sum + tx.revenue, 0);
+      const avgRev = locTx.length > 0 ? totalRev / locTx.length : 0;
+      const lastTx = locTx[0]; // Sorted by desc
+      return {
+        ...loc,
+        totalRev,
+        avgRev,
+        statusLabel: loc.status === 'active' ? 'Running' : 'Alert'
+      };
+    });
+  }, [locations, transactions]);
 
   // Today's Activity Feed
   const activityFeed = useMemo(() => {
@@ -227,11 +264,17 @@ const Dashboard: React.FC<DashboardProps> = ({
            </div>
 
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* ACTIVITY FEED (TODAY'S MONITORING) */}
+              {/* ACTIVITY FEED (TODAY'S MONITORING) ... */}
               <div className="bg-white p-6 rounded-[35px] border border-slate-200 shadow-sm space-y-4">
-                 <div className="flex items-center gap-3">
-                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Zap size={20} /></div>
-                    <h3 className="text-lg font-black text-slate-900 uppercase">今日动态监测 FEED</h3>
+                 {/* Existing Activity Feed Header */}
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Zap size={20} /></div>
+                       <h3 className="text-lg font-black text-slate-900 uppercase">今日动态 FEED</h3>
+                    </div>
+                    <div className="flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase">
+                       <Calendar size={12} /> {new Date().toLocaleDateString()}
+                    </div>
                  </div>
                  <div className="space-y-3">
                     {activityFeed.map(tx => (
@@ -253,96 +296,347 @@ const Dashboard: React.FC<DashboardProps> = ({
                  </div>
               </div>
 
-              {/* ROUTE TRACKING PREVIEW */}
-              <RouteTracking routes={driverRoutes} onOpenMap={() => setShowAssetMap(true)} />
+              {/* MONTHLY CONSOLIDATION PREVIEW */}
+              <div className="bg-slate-900 text-white rounded-[35px] p-8 shadow-xl flex flex-col justify-between relative overflow-hidden group">
+                 <div className="absolute -right-4 -bottom-4 opacity-5 group-hover:scale-110 transition-transform">
+                    <CalendarRange size={160} />
+                 </div>
+                 <div className="flex items-center justify-between mb-8">
+                    <div className="flex items-center gap-3">
+                       <div className="p-2.5 bg-white/10 rounded-xl text-emerald-400 border border-white/5"><FileClock size={20} /></div>
+                       <h3 className="text-lg font-black uppercase">本月累计预收 (MONTHLY AGGREGATE)</h3>
+                    </div>
+                    <div className="px-3 py-1 bg-emerald-500 text-slate-900 rounded-full text-[10px] font-black">
+                       {companyMonthlyTotal.count} DAYS SETTLED
+                    </div>
+                 </div>
+
+                 <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                       <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">累计纸币现金 (TOTAL CASH)</p>
+                          <p className="text-2xl font-black">TZS {companyMonthlyTotal.totalCash.toLocaleString()}</p>
+                       </div>
+                       <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase mb-1">累计硬币资产 (TOTAL COINS)</p>
+                          <p className="text-2xl font-black text-amber-400">{companyMonthlyTotal.totalCoins.toLocaleString()}</p>
+                       </div>
+                    </div>
+                    
+                    <div className="pt-6 border-t border-white/10">
+                       <div className="flex justify-between items-baseline">
+                          <p className="text-[10px] font-black text-slate-400 uppercase">本月确认总营收 (MONTHLY REVENUE)</p>
+                          <p className="text-3xl font-black text-white">TZS {companyMonthlyTotal.totalRevenue.toLocaleString()}</p>
+                       </div>
+                       <p className="text-[8px] font-bold text-slate-500 uppercase mt-2 italic">此数据来源于所有已确认的日终对账单</p>
+                    </div>
+                 </div>
+              </div>
            </div>
 
-           {/* SYSTEM & APPROVALS */}
            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RouteTracking routes={driverRoutes} onOpenMap={() => setShowAssetMap(true)} />
               <SystemStatus />
-              {(pendingSettlements.length > 0 || pendingExpenses.length > 0) && (
-                <div className="bg-white p-6 rounded-[35px] border-2 border-indigo-100 shadow-lg space-y-4">
-                   <div className="flex items-center gap-2">
-                      <div className="p-2 bg-indigo-600 text-white rounded-xl"><BellRing size={18} /></div>
-                      <h3 className="text-base font-black text-slate-900 uppercase">审批指挥台</h3>
-                   </div>
-                   <div className="space-y-2">
-                      {pendingSettlements.map(s => (
-                        <button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full flex justify-between items-center bg-emerald-50 p-4 rounded-2xl border border-emerald-100 hover:bg-emerald-100 transition-all">
-                           <span className="text-xs font-black text-slate-900">{s.driverName} (待对账)</span>
-                           <ArrowRight size={16} className="text-emerald-400" />
-                        </button>
-                      ))}
-                   </div>
-                </div>
-              )}
            </div>
 
+           {(pendingSettlements.length > 0 || pendingExpenses.length > 0) && (
+             <div className="bg-white p-6 rounded-[35px] border-2 border-indigo-100 shadow-lg space-y-4">
+                <div className="flex items-center gap-2">
+                   <div className="p-2 bg-indigo-600 text-white rounded-xl"><BellRing size={18} /></div>
+                   <h3 className="text-base font-black text-slate-900 uppercase">待处理审批事项</h3>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                   {pendingSettlements.map(s => (
+                     <button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full flex justify-between items-center bg-emerald-50 p-4 rounded-2xl border border-emerald-100 hover:bg-emerald-100 transition-all">
+                        <span className="text-xs font-black text-slate-900">{s.driverName} (待确认日结算)</span>
+                        <ArrowRight size={16} className="text-emerald-400" />
+                     </button>
+                   ))}
+                   {pendingExpenses.map(tx => (
+                     <div key={tx.id} className="flex justify-between items-center bg-rose-50 p-4 rounded-2xl border border-rose-100">
+                        <span className="text-xs font-black text-slate-900">{tx.driverName}: {tx.expenseCategory} (TZS {tx.expenses})</span>
+                        <div className="flex gap-2">
+                           <button onClick={() => handleExpenseAction(tx, 'approve')} className="p-1.5 bg-emerald-500 text-white rounded-lg"><ThumbsUp size={14}/></button>
+                           <button onClick={() => handleExpenseAction(tx, 'reject')} className="p-1.5 bg-rose-500 text-white rounded-lg"><ThumbsDown size={14}/></button>
+                        </div>
+                     </div>
+                   ))}
+                </div>
+             </div>
+           )}
+
+           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <RouteTracking routes={driverRoutes} onOpenMap={() => setShowAssetMap(true)} />
+              <SystemStatus />
+           </div>
+
+           <div className="bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-[35px] p-8 shadow-xl flex flex-col md:flex-row justify-between items-center group">
+              <div className="mb-4 md:mb-0">
+                 <h3 className="text-xl font-black uppercase mb-2">经营分析与结算 (MONTHLY INSIGHTS)</h3>
+                 <p className="text-xs font-bold text-white/60 uppercase tracking-widest">当前确认天数: {companyMonthlyTotal.count} 天</p>
+              </div>
+              <button 
+                onClick={() => alert("本月经营分析报告生成中...\n总营收: TZS " + companyMonthlyTotal.totalRevenue.toLocaleString() + "\n实收纸币: TZS " + companyMonthlyTotal.totalCash.toLocaleString())}
+                className="py-4 px-8 bg-white text-indigo-600 rounded-2xl font-black uppercase text-xs shadow-lg active:scale-95 transition-all flex items-center gap-3"
+              >
+                 <FileText size={18} /> 生成本月度汇总报告
+              </button>
+           </div>
+
+           <div className="space-y-4">
+              <div className="flex items-center gap-3 ml-2">
+                 <div className="p-2 bg-amber-500 rounded-xl text-slate-900"><TrendingUp size={18} /></div>
+                 <h3 className="text-base font-black text-slate-900 uppercase tracking-tight">机器经营效能排名 (SITE RANKING)</h3>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                 {siteAnalytics.slice(0, 4).sort((a,b) => b.avgRev - a.avgRev).map(loc => (
+                   <div key={loc.id} className="bg-white p-5 rounded-[30px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+                      <div className="flex justify-between items-start mb-4">
+                         <span className="text-[9px] font-black text-slate-400 uppercase">{loc.machineId}</span>
+                         <div className={`w-2 h-2 rounded-full ${loc.status === "active" ? "bg-emerald-500" : "bg-rose-500"}`}></div>
+                      </div>
+                      <p className="text-xs font-black text-slate-900 truncate mb-1">{loc.name}</p>
+                      <div className="space-y-2 mt-3">
+                         <div className="flex justify-between text-[8px] font-black uppercase text-slate-400">
+                            <span>日均 (AVG)</span>
+                            <span className="text-slate-900 font-bold">TZS {Math.floor(loc.avgRev).toLocaleString()}</span>
+                         </div>
+                         <div className="w-full h-1 bg-slate-50 rounded-full overflow-hidden">
+                            <div className="h-full bg-indigo-500 rounded-full" style={{ width: `${Math.min(100, (loc.avgRev / 50000) * 100)}%` }}></div>
+                         </div>
+                      </div>
+                   </div>
+                 ))}
+              </div>
+           </div>
            <SmartInsights transactions={transactions} locations={locations} />
 
            <SiteMonitoring locations={locations} siteSearch={siteSearch} onSetSiteSearch={setSiteSearch} onEdit={setEditingLoc} />
         </div>
       )}
 
-      {/* DRIVER DETAIL MODAL (FIXED POSITION & INFO) */}
-      {selectedDriverForLocation && (
-        <div className="fixed inset-0 z-[130] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6 animate-in fade-in">
-           <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden relative">
-              <div className="bg-slate-900 p-8 text-white">
-                 <button onClick={() => setSelectedDriverForLocation(null)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={18} /></button>
-                 <div className="flex items-center gap-4 mb-4">
-                    <div className="w-16 h-16 bg-emerald-500 rounded-[20px] flex items-center justify-center text-2xl font-black text-white shadow-lg">
-                       {selectedDriverForLocation.name.charAt(0)}
-                    </div>
-                    <div>
-                       <h3 className="text-xl font-black uppercase">{selectedDriverForLocation.name}</h3>
-                       <div className="flex items-center gap-1.5">
-                          <span className={`w-2 h-2 rounded-full ${bossStats.activeDriversList.find(d => d.id === selectedDriverForLocation.id) ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}`}></span>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase">
-                             {bossStats.activeDriversList.find(d => d.id === selectedDriverForLocation.id) ? '在线 Online' : '离线 Offline'}
-                          </p>
-                       </div>
-                    </div>
+      {activeTab === 'settlement' && (
+        <div className="space-y-6 animate-in fade-in">
+           {isAdmin && (
+             <div className="bg-slate-900 text-white rounded-[32px] p-8 shadow-2xl space-y-6">
+                <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                   <div className="flex items-center gap-3">
+                      <div className="p-2.5 bg-indigo-500 rounded-xl text-white"><LayoutList size={20} /></div>
+                      <h3 className="text-xl font-black uppercase">公司日终对账中心 (COMPANY SETTLEMENT)</h3>
+                   </div>
+                   <div className="flex items-center gap-2 px-3 py-1.5 bg-white/10 rounded-full text-[10px] font-black text-emerald-400">
+                      <Clock size={14} /> TODAY: {new Date().toLocaleDateString()}
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                   <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">今日总营收 TOTAL REVENUE</p>
+                      <p className="text-2xl font-black">TZS {companyDailyTotal.totalRevenue.toLocaleString()}</p>
+                   </div>
+                   <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+                      <p className="text-[10px] font-black text-slate-400 uppercase mb-1">今日总扣费 TOTAL EXPENSES</p>
+                      <p className="text-2xl font-black text-rose-400">TZS {companyDailyTotal.totalExpenses.toLocaleString()}</p>
+                   </div>
+                   <div className="bg-indigo-500/20 p-4 rounded-2xl border border-indigo-500/30">
+                      <p className="text-[10px] font-black text-indigo-400 uppercase mb-1">今日总应收 TOTAL NET</p>
+                      <p className="text-2xl font-black text-indigo-100">TZS {companyDailyTotal.totalNet.toLocaleString()}</p>
+                   </div>
+                </div>
+             </div>
+           )}
+
+           {isAdmin && aiDiscrepancies.length > 0 && (
+              <div className="bg-rose-50 border-2 border-rose-100 rounded-[35px] p-6 space-y-4">
+                 <div className="flex items-center gap-2">
+                    <ShieldCheck className="text-rose-500" size={20} />
+                    <h3 className="text-sm font-black text-rose-900 uppercase">AI 抄表差异审计 (DISCREPANCY AUDIT)</h3>
                  </div>
-                 <div className="flex items-center gap-2 text-slate-400 border-t border-white/5 pt-4">
-                    <Clock size={14} />
-                    <span className="text-[10px] font-bold uppercase">最后活跃: {selectedDriverForLocation.lastActive ? new Date(selectedDriverForLocation.lastActive).toLocaleString() : '暂无数据'}</span>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {aiDiscrepancies.map(tx => (
+                      <div key={tx.id} className="bg-white p-4 rounded-2xl border border-rose-200 flex justify-between items-center shadow-sm">
+                         <div>
+                            <p className="text-[10px] font-black text-slate-400 uppercase">{tx.locationName} ({tx.driverName})</p>
+                            <div className="flex items-center gap-3 mt-1">
+                               <span className="text-xs font-black text-slate-900">手动: {tx.currentScore}</span>
+                               <span className="text-xs font-black text-rose-500">AI: {tx.aiScore}</span>
+                            </div>
+                         </div>
+                         <button onClick={() => onUpdateTransaction(tx.id, { aiScore: tx.currentScore })} className="px-3 py-1.5 bg-rose-500 text-white rounded-lg text-[10px] font-black uppercase">忽略并过审</button>
+                      </div>
+                    ))}
                  </div>
               </div>
-              <div className="p-8 space-y-6">
-                 {selectedDriverForLocation.currentGps ? (
-                   <div className="space-y-4">
-                      <div className="bg-slate-50 p-5 rounded-[32px] border border-slate-100">
-                         <div className="flex items-center gap-3 mb-3">
-                            <MapPin className="text-indigo-600" size={20} />
-                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">实地定位实况</p>
-                         </div>
-                         <p className="text-xs font-black text-slate-900 mb-1">经纬度: {selectedDriverForLocation.currentGps.lat.toFixed(5)}, {selectedDriverForLocation.currentGps.lng.toFixed(5)}</p>
-                         <p className="text-[9px] text-slate-400">坐标最后更新于: {new Date(selectedDriverForLocation.lastActive || "").toLocaleTimeString()}</p>
+           )}
+
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {isAdmin ? (
+                drivers.map(driver => {
+                   const today = new Date().toISOString().split('T')[0];
+                   const settlement = dailySettlements.find(s => s.driverId === driver.id && s.date === today);
+                   const todaysTx = transactions.filter(t => t.driverId === driver.id && t.timestamp.startsWith(today));
+                   const expectedNet = todaysTx.reduce((sum, t) => sum + t.netPayable, 0);
+
+                   return (
+                     <div key={driver.id} className={`bg-white rounded-[35px] border p-6 shadow-sm transition-all hover:shadow-md ${settlement?.status === 'confirmed' ? 'border-emerald-200 bg-emerald-50/20' : 'border-slate-200'}`}>
+                        <div className="flex justify-between items-start mb-6">
+                           <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg">
+                                 {driver.name.charAt(0)}
+                              </div>
+                              <div>
+                                 <h4 className="text-sm font-black text-slate-900 uppercase">{driver.name}</h4>
+                                 <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${settlement ? 'bg-emerald-500 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                    {settlement ? (settlement.status === 'confirmed' ? '已确认 SETTLED' : '待确认 PENDING') : '未提交 NO DATA'}
+                                 </span>
+                              </div>
+                           </div>
+                           <button onClick={() => { if (settlement) selectSettlementForReview(settlement); }} className={`p-2 rounded-xl border transition-all ${settlement ? 'bg-indigo-50 border-indigo-100 text-indigo-600' : 'bg-slate-50 border-slate-100 text-slate-300 opacity-50 cursor-not-allowed'}`}>
+                              <ChevronRight size={18} />
+                           </button>
+                        </div>
+
+                        <div className="space-y-3">
+                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                              <span>理论应收 (EXPECTED)</span>
+                              <span className="text-slate-900">TZS {expectedNet.toLocaleString()}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                              <span>实收纸币 (CASH)</span>
+                              <span className="text-emerald-600">TZS {settlement?.actualCash.toLocaleString() || 0}</span>
+                           </div>
+                           <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase">
+                              <span>短/长款 (DIFF)</span>
+                              <span className={`${(settlement?.shortage || 0) < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
+                                 {(settlement?.shortage || 0).toLocaleString()} TZS
+                              </span>
+                           </div>
+                        </div>
+                     </div>
+                   );
+                })
+              ) : (
+                <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-8 animate-in slide-in-from-bottom-8 col-span-full">
+                   <div className="text-center space-y-2">
+                      <div className="w-20 h-20 bg-emerald-500 rounded-[30px] flex items-center justify-center mx-auto text-white shadow-xl shadow-emerald-100 mb-4 animate-bounce">
+                         <Receipt size={40} />
                       </div>
-                      <button 
-                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${selectedDriverForLocation.currentGps?.lat},${selectedDriverForLocation.currentGps?.lng}`, '_blank')}
-                        className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black uppercase text-sm shadow-xl shadow-indigo-100 flex items-center justify-center gap-3"
-                      >
-                        <Navigation size={20} /> 在地图中查看
-                      </button>
+                      <h2 className="text-2xl font-black text-slate-900 uppercase">日终对账结算 (DAILY SETTLEMENT)</h2>
+                      <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">请确认今日所有巡检工作已提交后再进行结算</p>
                    </div>
-                 ) : (
-                   <div className="py-10 text-center space-y-3">
-                      <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300"><Signal size={32} /></div>
-                      <p className="text-xs font-black text-slate-400 uppercase leading-relaxed">该司机目前没有上报位置信息<br/>请确保司机已开启手机定位</p>
+                   
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-100 shadow-inner">
+                         <p className="text-[10px] font-black text-slate-400 uppercase mb-4 tracking-widest">今日理论应交 (EXPECTED NET)</p>
+                         <p className="text-4xl font-black text-slate-900">TZS {dailyStats.expectedTotal.toLocaleString()}</p>
+                      </div>
+
+                      <div className="space-y-4">
+                         <div className="bg-white p-6 rounded-[35px] border-2 border-indigo-100 shadow-xl">
+                            <label className="text-[10px] font-black text-indigo-600 uppercase block mb-4 tracking-widest">实缴纸币 (INPUT CASH)</label>
+                            <input type="number" value={actualCash} onChange={e => setActualCash(e.target.value)} className="w-full text-3xl font-black bg-transparent outline-none text-slate-900" placeholder="0" />
+                         </div>
+                         <div className="bg-white p-6 rounded-[35px] border-2 border-emerald-100 shadow-xl">
+                            <label className="text-[10px] font-black text-emerald-600 uppercase block mb-4 tracking-widest">实缴硬币 (INPUT COINS)</label>
+                            <input type="number" value={actualCoins} onChange={e => setActualCoins(e.target.value)} className="w-full text-3xl font-black bg-transparent outline-none text-slate-900" placeholder="0" />
+                         </div>
+                      </div>
                    </div>
-                 )}
-                 <div className="grid grid-cols-2 gap-3">
-                    <a href={`tel:${selectedDriverForLocation.phone}`} className="py-4 bg-slate-100 text-slate-600 rounded-2xl font-black uppercase text-[10px] flex items-center justify-center gap-2 hover:bg-slate-200 transition-all">
-                       <Phone size={14} /> 呼叫司机
-                    </a>
-                    <button onClick={() => setSelectedDriverForLocation(null)} className="py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-[10px]">返回面板</button>
+
+                   <button 
+                     onClick={() => {
+                        const newSettlement: DailySettlement = {
+                           id: `STL-${Date.now()}`,
+                           date: new Date().toISOString().split('T')[0],
+                           driverId: currentUser.id,
+                           driverName: currentUser.name,
+                           totalRevenue: dailyStats.expectedTotal,
+                           totalNetPayable: dailyStats.expectedTotal,
+                           totalExpenses: 0,
+                           driverFloat: drivers.find(d => d.id === currentUser.id)?.dailyFloatingCoins || 0,
+                           expectedTotal: dailyStats.expectedTotal,
+                           actualCash: parseInt(actualCash) || 0,
+                           actualCoins: parseInt(actualCoins) || 0,
+                           shortage: shortage,
+                           status: 'pending',
+                           timestamp: new Date().toISOString(),
+                           isSynced: false
+                        };
+                        onSaveSettlement(newSettlement);
+                        alert("对账单已提交，等待管理员确认结算。");
+                     }}
+                     disabled={!actualCash || !actualCoins || dailyStats.isSettled}
+                     className="w-full py-6 bg-slate-900 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4"
+                   >
+                     {dailyStats.isSettled ? "今日账目已结算 SETTLED" : "提交对账报告 SUBMIT REPORT"}
+                   </button>
+                </div>
+              )}
+           </div>
+        </div>
+      )}
+
+      {/* DRIVER DETAIL MODAL */}
+      {selectedDriverForLocation && (
+        <div className="fixed inset-0 z-[130] bg-slate-900/90 backdrop-blur-xl flex items-center justify-center p-6">
+           <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden relative p-8">
+              <button onClick={() => setSelectedDriverForLocation(null)} className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full"><X size={18} /></button>
+              <h3 className="text-xl font-black uppercase mb-4">{selectedDriverForLocation.name}</h3>
+              <div className="space-y-4">
+                 <div className="bg-slate-50 p-4 rounded-2xl">
+                    <p className="text-[10px] font-black text-slate-400 uppercase">状态</p>
+                    <p className="text-sm font-bold">{bossStats.activeDriversList.find(d => d.id === selectedDriverForLocation.id) ? '在线 Online' : '离线 Offline'}</p>
                  </div>
+                 <button onClick={() => setSelectedDriverForLocation(null)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase">返回</button>
               </div>
            </div>
         </div>
       )}
 
-      {/* REMAINDING MODALS (Success, Review, Editing) - KEEP AS UPDATED BEFORE */}
-      {/* ... (Success Receipt, Review, and Enhanced Editing Modal codes remain from previous stable write) */}
+      {/* REVIEW SETTLEMENT MODAL */}
+      {reviewingSettlement && (
+        <div className="fixed inset-0 z-[140] bg-slate-900/90 backdrop-blur-md flex items-center justify-center p-4">
+           <div className="bg-white w-full max-w-md rounded-[40px] p-8 space-y-6 shadow-2xl">
+              <div className="flex justify-between items-center mb-4">
+                 <h3 className="text-xl font-black text-slate-900 uppercase">审核对账单: {reviewingSettlement.driverName}</h3>
+                 <button onClick={() => setReviewingSettlement(null)}><X size={24}/></button>
+              </div>
+              <div className="space-y-4">
+                 <div className="bg-slate-50 p-4 rounded-2xl flex justify-between">
+                    <span className="text-xs font-bold text-slate-500">理论应收</span>
+                    <span className="text-xs font-black">TZS {reviewingSettlement.expectedTotal.toLocaleString()}</span>
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-white border p-4 rounded-2xl">
+                       <label className="text-[10px] font-black text-slate-400 block mb-2 uppercase">确认纸币 (CASH)</label>
+                       <input type="number" value={actualCash} onChange={e => setActualCash(e.target.value)} className="w-full text-lg font-black outline-none" />
+                    </div>
+                    <div className="bg-white border p-4 rounded-2xl">
+                       <label className="text-[10px] font-black text-slate-400 block mb-2 uppercase">确认硬币 (COINS)</label>
+                       <input type="number" value={actualCoins} onChange={e => setActualCoins(e.target.value)} className="w-full text-lg font-black outline-none" />
+                    </div>
+                 </div>
+                 <div className={`p-4 rounded-2xl text-white font-black text-center ${shortage >= 0 ? 'bg-emerald-500' : 'bg-rose-500'}`}>
+                    差异 DIFF: TZS {shortage.toLocaleString()}
+                 </div>
+              </div>
+              <button onClick={handleAdminConfirmSettlement} className="w-full py-5 bg-indigo-600 text-white rounded-3xl font-black uppercase">确认并结算</button>
+           </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div className="fixed inset-0 z-[200] bg-white flex flex-col items-center justify-center p-8 animate-in zoom-in">
+           <div className="w-24 h-24 bg-emerald-500 rounded-full flex items-center justify-center text-white mb-6 shadow-2xl shadow-emerald-200">
+              <CheckCircle2 size={48} />
+           </div>
+           <h2 className="text-3xl font-black text-slate-900 uppercase mb-2">结算成功</h2>
+           <p className="text-slate-400 font-bold uppercase tracking-widest mb-8">Settlement Confirmed</p>
+           <button onClick={() => setShowSuccessModal(false)} className="px-12 py-5 bg-slate-900 text-white rounded-[24px] font-black uppercase">返回面板</button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Dashboard;

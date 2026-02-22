@@ -1,0 +1,252 @@
+[
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Angry",
+    "input": "WTF! Your machine just stole my 1983 TZS! Give it back NOW!",
+    "output": "{\n  \"ticket_id\": \"SK-20260200\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_100\",\n  \"amount_lost\": 1983,\n  \"timestamp\": \"2026-02-21T23:11:45.324Z\",\n  \"user_tone\": \"Angry\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Furious",
+    "input": "This is robbery! I paid for Money deducted but no credits shown on machine and got nothing! I want my money back immediately!",
+    "output": "{\n  \"ticket_id\": \"SK-20260201\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_101\",\n  \"amount_lost\": 5339,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Furious\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Raging",
+    "input": "I am tired of this broken app! 4068 TZS gone for nothing! Fix your App crashed during transaction processing!",
+    "output": "{\n  \"ticket_id\": \"SK-20260202\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_102\",\n  \"amount_lost\": 4068,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Raging\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Impatient",
+    "input": "Hurry up and fix this. I paid and the machine is stuck on Duplicate charge for a single session. My time is money!",
+    "output": "{\n  \"ticket_id\": \"SK-20260203\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_103\",\n  \"amount_lost\": 2260,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Impatient\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Demanding",
+    "input": "Refund my 1246 TZS immediately. The Wrong amount deducted from wallet failed and I won't wait.",
+    "output": "{\n  \"ticket_id\": \"SK-20260204\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_104\",\n  \"amount_lost\": 1246,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Demanding\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Polite",
+    "input": "Excuse me, I encountered an issue with Network timeout after payment confirmation. Could you please check my transaction?",
+    "output": "{\n  \"ticket_id\": \"SK-20260205\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_105\",\n  \"amount_lost\": 3119,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Polite\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Respectful",
+    "input": "Dear Support, I believe there was an error during my payment of 2913 TZS. Thank you for your help.",
+    "output": "{\n  \"ticket_id\": \"SK-20260206\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_106\",\n  \"amount_lost\": 2913,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Respectful\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Patient",
+    "input": "Hello, I'm waiting at the kiosk and it seems No receipt generated after successful payment happened. No rush, but please look into it.",
+    "output": "{\n  \"ticket_id\": \"SK-20260207\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_107\",\n  \"amount_lost\": 786,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Patient\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Grateful",
+    "input": "Thanks for the app, but Coin slot jammed during credit update just occurred. I'm sure you can fix it. 3321 TZS was deducted.",
+    "output": "{\n  \"ticket_id\": \"SK-20260208\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_108\",\n  \"amount_lost\": 3321,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Grateful\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Apologetic",
+    "input": "Sorry to bother, I might have done something wrong but the Connection lost between app and kiosk failed after payment.",
+    "output": "{\n  \"ticket_id\": \"SK-20260209\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_109\",\n  \"amount_lost\": 4150,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Apologetic\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Technical",
+    "input": "Observed a 408 Timeout during QR code scan timeout. Transaction state is 'pending' but debit confirmed.",
+    "output": "{\n  \"ticket_id\": \"SK-20260210\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_100\",\n  \"amount_lost\": 517,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Technical\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Analytical",
+    "input": "The logs indicate Money deducted but no credits shown on machine at 14:00. Sync failed between Supabase and the local machine.",
+    "output": "{\n  \"ticket_id\": \"SK-20260211\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_101\",\n  \"amount_lost\": 753,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Analytical\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Precise",
+    "input": "Transaction ID SK-12 failed. Amount: 755. Reason: App crashed during transaction processing. Lat/Long confirmed.",
+    "output": "{\n  \"ticket_id\": \"SK-20260212\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_102\",\n  \"amount_lost\": 755,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Precise\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Formal",
+    "input": "I am writing to report a discrepancy regarding Duplicate charge for a single session. Please find the attached details.",
+    "output": "{\n  \"ticket_id\": \"SK-20260213\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_103\",\n  \"amount_lost\": 3389,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Formal\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Professional",
+    "input": "A payment failure was detected at Location 14. Issue: Wrong amount deducted from wallet. Please escalate.",
+    "output": "{\n  \"ticket_id\": \"SK-20260214\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_104\",\n  \"amount_lost\": 4247,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Professional\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Confused",
+    "input": "I'm not sure what happened... I paid but the machine says Network timeout after payment confirmation? What do I do?",
+    "output": "{\n  \"ticket_id\": \"SK-20260215\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_105\",\n  \"amount_lost\": 4659,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Confused\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Puzzled",
+    "input": "Wait, the money is gone but the screen is blank? Is Payment successful but machine didn't unlock a common thing?",
+    "output": "{\n  \"ticket_id\": \"SK-20260216\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_106\",\n  \"amount_lost\": 4686,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Puzzled\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Uncertain",
+    "input": "Maybe I scanned it wrong? It says No receipt generated after successful payment but my bank says paid. Help?",
+    "output": "{\n  \"ticket_id\": \"SK-20260217\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_107\",\n  \"amount_lost\": 975,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Uncertain\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Lost",
+    "input": "I'm stuck here. Paid 4521 and it just shows Coin slot jammed during credit update. Is anyone there?",
+    "output": "{\n  \"ticket_id\": \"SK-20260218\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_108\",\n  \"amount_lost\": 4521,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Lost\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Vague",
+    "input": "It didn't work. Something about Connection lost between app and kiosk. Sort it out.",
+    "output": "{\n  \"ticket_id\": \"SK-20260219\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_109\",\n  \"amount_lost\": 3740,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Vague\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Urgent",
+    "input": "CRITICAL: Payment failed during QR code scan timeout! I need this machine working NOW!",
+    "output": "{\n  \"ticket_id\": \"SK-20260220\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_100\",\n  \"amount_lost\": 5122,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Urgent\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Panicked",
+    "input": "Oh no! My last 4412 TZS is gone and the machine is broken! Please help me!",
+    "output": "{\n  \"ticket_id\": \"SK-20260221\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_101\",\n  \"amount_lost\": 4412,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Panicked\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Immediate",
+    "input": "Process this refund NOW. App crashed during transaction processing blocked my transaction.",
+    "output": "{\n  \"ticket_id\": \"SK-20260222\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_102\",\n  \"amount_lost\": 4064,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Immediate\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Desperate",
+    "input": "I really need those credits. Paid 5381 but Duplicate charge for a single session happened. Please, I'm begging.",
+    "output": "{\n  \"ticket_id\": \"SK-20260223\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_103\",\n  \"amount_lost\": 5381,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Desperate\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Alarmed",
+    "input": "Wait! Why did it charge me twice for Wrong amount deducted from wallet?! Stop the payment!",
+    "output": "{\n  \"ticket_id\": \"SK-20260224\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_104\",\n  \"amount_lost\": 1240,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Alarmed\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Sarcastic",
+    "input": "Wow, great job. Stole my money and gave me Network timeout after payment confirmation instead of credits. Amazing.",
+    "output": "{\n  \"ticket_id\": \"SK-20260225\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_105\",\n  \"amount_lost\": 4565,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Sarcastic\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Cynical",
+    "input": "Another day, another Payment successful but machine didn't unlock. I guess this is how you make your profit?",
+    "output": "{\n  \"ticket_id\": \"SK-20260226\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_106\",\n  \"amount_lost\": 1887,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Cynical\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Mocking",
+    "input": "Is this a \"Smart\" kiosk or a \"Stupid\" one? Because No receipt generated after successful payment isn't very smart.",
+    "output": "{\n  \"ticket_id\": \"SK-20260227\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_107\",\n  \"amount_lost\": 3540,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Mocking\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Ironical",
+    "input": "How ironic. The \"Reliable\" app just failed with Coin slot jammed during credit update on my first try.",
+    "output": "{\n  \"ticket_id\": \"SK-20260228\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_108\",\n  \"amount_lost\": 3628,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Ironical\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Passive-Aggressive",
+    "input": "It's fine, I didn't need that 1186 TZS anyway. I'm sure Connection lost between app and kiosk is a feature.",
+    "output": "{\n  \"ticket_id\": \"SK-20260229\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_109\",\n  \"amount_lost\": 1186,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Passive-Aggressive\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Frustrated",
+    "input": "Ugh! Not again! QR code scan timeout is ruining my day. Just fix it!",
+    "output": "{\n  \"ticket_id\": \"SK-20260230\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_100\",\n  \"amount_lost\": 2677,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Frustrated\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Annoyed",
+    "input": "This is so annoying. Every time I use this, Money deducted but no credits shown on machine happens.",
+    "output": "{\n  \"ticket_id\": \"SK-20260231\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_101\",\n  \"amount_lost\": 1748,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Annoyed\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Disappointed",
+    "input": "I expected better. Paid 4643 and was met with App crashed during transaction processing. Sad.",
+    "output": "{\n  \"ticket_id\": \"SK-20260232\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_102\",\n  \"amount_lost\": 4643,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Disappointed\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Exhausted",
+    "input": "I'm tired of calling support for Duplicate charge for a single session. Just make the app work.",
+    "output": "{\n  \"ticket_id\": \"SK-20260233\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_103\",\n  \"amount_lost\": 2995,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Exhausted\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Fed up",
+    "input": "I'm done with this. Wrong amount deducted from wallet every single time. Give me my money back.",
+    "output": "{\n  \"ticket_id\": \"SK-20260234\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_104\",\n  \"amount_lost\": 986,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Fed up\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Brief",
+    "input": "Paid 981. Network timeout after payment confirmation. Refund.",
+    "output": "{\n  \"ticket_id\": \"SK-20260235\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_105\",\n  \"amount_lost\": 981,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Brief\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Concise",
+    "input": "Payment failed at Payment successful but machine didn't unlock. Transaction SK-20260236. Fix.",
+    "output": "{\n  \"ticket_id\": \"SK-20260236\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_106\",\n  \"amount_lost\": 4771,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Concise\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Short",
+    "input": "No receipt generated after successful payment error. Money gone. Help.",
+    "output": "{\n  \"ticket_id\": \"SK-20260237\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_107\",\n  \"amount_lost\": 3312,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Short\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Direct",
+    "input": "My payment of 1119 failed due to Coin slot jammed during credit update. Refund required.",
+    "output": "{\n  \"ticket_id\": \"SK-20260238\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_108\",\n  \"amount_lost\": 1119,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Direct\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Minimalist",
+    "input": "Connection lost between app and kiosk. Fail. 3934.",
+    "output": "{\n  \"ticket_id\": \"SK-20260239\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_109\",\n  \"amount_lost\": 3934,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Minimalist\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Descriptive",
+    "input": "I arrived at the kiosk, scanned the code, confirmed the 1572 TZS payment on my phone, but then the screen just hung on QR code scan timeout.",
+    "output": "{\n  \"ticket_id\": \"SK-20260240\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_100\",\n  \"amount_lost\": 1572,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Descriptive\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Elaborate",
+    "input": "After a long day, I tried to use the machine. The QR code loaded slowly, I paid, and then instead of credits, a Money deducted but no credits shown on machine message appeared.",
+    "output": "{\n  \"ticket_id\": \"SK-20260241\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_101\",\n  \"amount_lost\": 3930,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Elaborate\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Detailed",
+    "input": "Location: Dar Central. Time: 15:30. Amount: 4082. Issue: App crashed during transaction processing after M-Pesa confirmation.",
+    "output": "{\n  \"ticket_id\": \"SK-20260242\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_102\",\n  \"amount_lost\": 4082,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Detailed\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Narrative",
+    "input": "So I was standing there, the sun was hot, and I just wanted to use the machine. I paid, but then Duplicate charge for a single session happened and now I'm here.",
+    "output": "{\n  \"ticket_id\": \"SK-20260243\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_103\",\n  \"amount_lost\": 4917,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Narrative\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Circumstantial",
+    "input": "Given the low signal at this spot, it seems Wrong amount deducted from wallet occurred during the callback phase of my 3267 payment.",
+    "output": "{\n  \"ticket_id\": \"SK-20260244\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_104\",\n  \"amount_lost\": 3267,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Circumstantial\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Threatening",
+    "input": "Refund me now or I'm taking this to the police. This is fraud. Network timeout after payment confirmation is a lie.",
+    "output": "{\n  \"ticket_id\": \"SK-20260245\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_001\",\n  \"location_id\": \"LOC_105\",\n  \"amount_lost\": 4918,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Threatening\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"auto_refund\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Legalistic",
+    "input": "Pursuant to the consumer rights act, I demand an immediate reversal of the 3781 TZS charged during Payment successful but machine didn't unlock.",
+    "output": "{\n  \"ticket_id\": \"SK-20260246\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_002\",\n  \"location_id\": \"LOC_106\",\n  \"amount_lost\": 3781,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Legalistic\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Intimidating",
+    "input": "You don't want to mess with me. Give me my credits or my money. No receipt generated after successful payment is your problem, not mine.",
+    "output": "{\n  \"ticket_id\": \"SK-20260247\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_003\",\n  \"location_id\": \"LOC_107\",\n  \"amount_lost\": 5091,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Intimidating\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Stern",
+    "input": "This failure is unacceptable. Coin slot jammed during credit update must be resolved immediately. No excuses.",
+    "output": "{\n  \"ticket_id\": \"SK-20260248\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_004\",\n  \"location_id\": \"LOC_108\",\n  \"amount_lost\": 3533,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Stern\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  },
+  {
+    "instruction": "Analyze the SmartKiosk user complaint and generate a structured support ticket. Tone: Aggressive",
+    "input": "Fix this Connection lost between app and kiosk SHIT right now or I'll break the machine!",
+    "output": "{\n  \"ticket_id\": \"SK-20260249\",\n  \"status\": \"failed\",\n  \"error_code\": \"SK_PAY_ERR_005\",\n  \"location_id\": \"LOC_109\",\n  \"amount_lost\": 4550,\n  \"timestamp\": \"2026-02-21T23:11:45.338Z\",\n  \"user_tone\": \"Aggressive\",\n  \"ai_audit_status\": \"flagged\",\n  \"recommended_action\": \"manual_review\"\n}"
+  }
+]

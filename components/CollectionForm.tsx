@@ -3,6 +3,7 @@ import { Camera, Send, Loader2, BrainCircuit, X, Sparkles, Layers, Coins, ArrowR
 import { GoogleGenAI } from '@google/genai';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../types';
 import MachineRegistrationForm from './MachineRegistrationForm';
+import { validateDataQuality } from '../src/dataQualityGuard';
 
 interface CollectionFormProps {
   locations: Location[];
@@ -35,6 +36,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const [draftTxId, setDraftTxId] = useState<string>('');
 
   const [currentScore, setCurrentScore] = useState<string>('');
+  
+  // Deduction States (The 'Question Mark')
+  const [tips, setTips] = useState<string>('');
+  const [driverLoan, setDriverLoan] = useState<string>('');
+  const [isMerchantDeposit, setIsMerchantDeposit] = useState(false);
   
   // Expense States
   const [expenses, setExpenses] = useState<string>('');
@@ -104,16 +110,28 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const commission = Math.floor(revenue * rate); 
     
     const expenseVal = parseInt(expenses) || 0;
-    const exchangeVal = parseInt(coinExchange) || 0;
+    const tipVal = parseInt(tips) || 0;
+    const loanVal = parseInt(driverLoan) || 0;
+    
+    // 灵活逻辑：商家给司机的纸币（用于换走机器里的硬币）
+    // 默认建议：如果全额换币，这里就是 revenue
+    const exchangeVal = parseInt(coinExchange) || 0; 
+    
+    // 灵活逻辑：司机现场给商家的钱（可能是纸币分红，也可能是其他）
     const retentionVal = parseInt(ownerRetention) || 0;
 
-    // Logic: Expenses (whether public or private) are deducted from the cash handed over today
-    const netPayable = revenue - retentionVal - expenseVal;
+    // 最终上缴现金 = (换币拿到的现金) - (现场给商家的分红/支出) - (小费/借款/报销)
+    const netPayable = exchangeVal - retentionVal - tipVal - loanVal - expenseVal;
+    
     const initialFloat = currentDriver?.dailyFloatingCoins || 0;
-    const remainingCoins = initialFloat + revenue - retentionVal - expenseVal - exchangeVal;
+    
+    // 硬币变化 = (机器产出的硬币) - (被商家用现金换走的硬币)
+    // 注意：如果商家分红也拿的是硬币，这部分逻辑由 retentionVal 控制（假设分红是纸币，换币是硬币）
+    const coinsExchangedCount = Math.floor(exchangeVal / CONSTANTS.COIN_VALUE_TZS);
+    const remainingCoins = initialFloat + diff - coinsExchangedCount;
     
     return { diff, revenue, commission, netPayable, remainingCoins, isCoinStockNegative: remainingCoins < 0 };
-  }, [selectedLocation, currentScore, coinExchange, expenses, ownerRetention, currentDriver?.dailyFloatingCoins]);
+  }, [selectedLocation, currentScore, tips, driverLoan, expenses, ownerRetention, coinExchange, currentDriver?.dailyFloatingCoins]);
 
   const filteredLocations = useMemo(() => {
     if (!searchQuery) return locations;
@@ -306,6 +324,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       setStatus('uploading');
       
       const expenseValue = parseInt(expenses) || 0;
+      const tipValue = parseInt(tips) || 0;
+      const loanValue = parseInt(driverLoan) || 0;
       
       const tx: Transaction = {
         id: draftTxId || `TX-${Date.now()}`, // Use the pre-generated ID
@@ -316,9 +336,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         driverName: currentDriver.name,
         previousScore: selectedLocation!.lastScore, 
         currentScore: parseInt(currentScore) || selectedLocation!.lastScore,
+        aiScore: aiReviewData ? parseInt(aiReviewData.score) : undefined,
+        aiConfidence: aiReviewData ? 0.95 : undefined, // Placeholder for AI confidence
         revenue: calculations.revenue, 
         commission: calculations.commission, 
         ownerRetention: parseInt(ownerRetention) || 0,
+        isMerchantDeposit: isMerchantDeposit,
+        tips: tipValue,
+        driverLoan: loanValue,
         debtDeduction: 0, startupDebtDeduction: 0,
         
         // Expense Logic
@@ -351,6 +376,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       setPhotoData(null);
       setOwnerRetention('');
       setExpenses('');
+      setTips('');
+      setDriverLoan('');
+      setIsMerchantDeposit(false);
       setCoinExchange('');
       setIsOwnerRetaining(true);
       setAiReviewData(null);
@@ -362,6 +390,23 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   const handleSubmit = async () => {
     if (!selectedLocation || status !== 'idle') return;
+
+    // DATA-CENTRIC AI QUALITY GUARD
+    const qualityResult = validateDataQuality({
+      previousScore: selectedLocation.lastScore,
+      currentScore: parseInt(currentScore) || 0,
+      gpsDeviation: 0, // Calculated later during GPS acquisition
+      revenue: calculations.revenue
+    });
+
+    if (!qualityResult.isValid) {
+      const warningMsg = lang === 'zh' 
+        ? `⚠️ 数据质量异常 (质量分: ${qualityResult.qualityScore}):\n- ${qualityResult.issues.join('\n- ')}\n\n是否确认数据无误并强制提交？`
+        : `⚠️ Data Quality Issues (Score: ${qualityResult.qualityScore}):\n- ${qualityResult.issues.join('\n- ')}\n\nAre you sure you want to force submit?`;
+      
+      if (!confirm(warningMsg)) return;
+    }
+
     if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ 库存不足，是否确认？" : "⚠️ Sarafu hazitoshi, endelea?")) return;
 
     setStatus('gps');
@@ -508,10 +553,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
         {currentScore && (
           <div className={`p-6 rounded-[35px] shadow-2xl text-white space-y-4 animate-in slide-in-from-top-4 transition-colors ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-900'}`}>
+             {/* Revenue Header ... */}
              <div className="flex items-center justify-between mb-2">
                <div className="flex items-center gap-2">
                   <div className="p-1.5 bg-white/20 rounded-lg"><Calculator size={14} className="text-white" /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{t.formula}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">营收详情 (REVENUE)</span>
                </div>
                {calculations.revenue > 50000 && (
                  <div className="px-2 py-0.5 bg-yellow-400 text-yellow-900 rounded-md text-[9px] font-black uppercase flex items-center gap-1 animate-pulse">
@@ -519,19 +565,47 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                  </div>
                )}
              </div>
-             <div className="flex justify-between items-center text-[10px] font-black opacity-50 uppercase border-b border-white/10 pb-2">
-               <span>({currentScore} - {selectedLocation?.lastScore})</span>
-               <span>{t.diff} {calculations.diff}</span>
-             </div>
-             <div className="flex justify-between items-center pt-1">
-               <span className="text-sm font-black opacity-80">{calculations.diff} × 200 TZS</span>
-               <div className="text-right">
-                  <p className="text-2xl font-black text-white">TZS {calculations.revenue.toLocaleString()}</p>
-                  <p className="text-[8px] font-bold opacity-60 uppercase">Jumla ya Mapato</p>
-               </div>
+
+             <div className="grid grid-cols-2 gap-4">
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                   <p className="text-[8px] font-black text-white/50 uppercase mb-1">机器产出硬币 (TOTAL COINS)</p>
+                   <p className="text-xl font-black">{calculations.diff} <span className="text-[10px] font-medium opacity-60">Pcs</span></p>
+                </div>
+                <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
+                   <p className="text-[8px] font-black text-white/50 uppercase mb-1">总价值 (TOTAL VALUE)</p>
+                   <p className="text-xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
+                </div>
              </div>
           </div>
         )}
+
+        {/* 灵活换币系统 (Flexible Asset Swap) */}
+        <div className="bg-white rounded-[35px] border-2 border-indigo-100 p-6 shadow-sm space-y-5">
+           <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 bg-indigo-600 rounded-lg text-white"><RotateCcw size={14} /></div>
+              <span className="text-[10px] font-black uppercase text-indigo-600 tracking-widest">资产兑换 (ASSET SWAP)</span>
+           </div>
+
+           <div className="space-y-4">
+              <div className="bg-indigo-50/50 p-4 rounded-2xl border border-indigo-100">
+                <div className="flex justify-between items-center mb-2">
+                  <label className="text-[10px] font-black text-indigo-600 uppercase">换出硬币，拿回现金 (COIN TO CASH)</label>
+                  <button onClick={() => setCoinExchange(calculations.revenue.toString())} className="text-[8px] font-black bg-indigo-600 text-white px-2 py-1 rounded">全额兑换</button>
+                </div>
+                <div className="flex items-baseline gap-1">
+                   <span className="text-xs font-black text-indigo-300">TZS</span>
+                   <input 
+                     type="number" 
+                     value={coinExchange} 
+                     onChange={e => setCoinExchange(e.target.value)} 
+                     className="w-full text-2xl font-black bg-transparent outline-none text-indigo-900" 
+                     placeholder="0" 
+                   />
+                </div>
+                <p className="text-[8px] font-bold text-indigo-400 uppercase mt-1">司机增加现金，减少 {Math.floor((parseInt(coinExchange)||0)/200)} 个硬币</p>
+              </div>
+           </div>
+        </div>
           
         <div className="grid grid-cols-1 gap-4">
             {/* Retention Toggle */}
@@ -566,6 +640,44 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* NEW: The "Question Mark" Deductions - Tips and Loans */}
+            <div className="bg-slate-900 p-6 rounded-[35px] border border-slate-800 shadow-xl space-y-4">
+               <div className="flex items-center gap-2 mb-2">
+                  <div className="p-1.5 bg-amber-500 rounded-lg text-slate-900"><Gavel size={14} /></div>
+                  <span className="text-[10px] font-black uppercase text-white tracking-widest">其他扣款 (DEDUCTIONS)</span>
+               </div>
+               
+               <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <label className="text-[8px] font-black text-slate-400 uppercase block mb-2">{t.driverLoan}</label>
+                    <div className="flex items-baseline gap-1">
+                       <span className="text-[10px] font-black text-amber-500">TZS</span>
+                       <input 
+                         type="number" 
+                         value={driverLoan} 
+                         onChange={e => setDriverLoan(e.target.value)} 
+                         className="w-full text-lg font-black bg-transparent outline-none text-white placeholder:text-white/10" 
+                         placeholder="0" 
+                       />
+                    </div>
+                  </div>
+                  <div className="bg-white/5 p-4 rounded-2xl border border-white/10">
+                    <label className="text-[8px] font-black text-slate-400 uppercase block mb-2">客户小费 (TIPS)</label>
+                    <div className="flex items-baseline gap-1">
+                       <span className="text-[10px] font-black text-emerald-500">TZS</span>
+                       <input 
+                         type="number" 
+                         value={tips} 
+                         onChange={e => setTips(e.target.value)} 
+                         className="w-full text-lg font-black bg-transparent outline-none text-white placeholder:text-white/10" 
+                         placeholder="0" 
+                       />
+                    </div>
+                  </div>
+               </div>
+               <p className="text-[8px] font-bold text-slate-500 uppercase text-center italic">* 这些金额将直接从今日上缴现金中扣除</p>
             </div>
 
             {/* Enhanced Expense Section */}

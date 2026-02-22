@@ -7,11 +7,13 @@ import TransactionHistory from './components/TransactionHistory';
 import Login from './components/Login';
 import FinancialReports from './components/FinancialReports';
 import AIHub from './components/AIHub';
+import SupportTicketSystem from './components/SupportTicketSystem';
 import DebtManager from './components/DebtManager';
+import ClearanceForm from './components/ClearanceForm';
 import { 
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain, 
   LogOut, Globe, Loader2, CloudOff, 
-  CheckSquare, Crown, ShieldCheck, AlertTriangle
+  CheckSquare, Crown, ShieldCheck, AlertTriangle, MessageSquare, RefreshCw
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 
@@ -21,7 +23,7 @@ const INITIAL_DRIVERS: Driver[] = [
 ];
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'dashboard' | 'collect' | 'register' | 'history' | 'reports' | 'ai' | 'debt' | 'settlement'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'collect' | 'register' | 'history' | 'reports' | 'ai' | 'debt' | 'settlement' | 'support' | 'clearance'>('dashboard');
   
   // SESSION PERSISTENCE WITH ERROR PROTECTION
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
@@ -358,6 +360,17 @@ const App: React.FC = () => {
         )}
         {view === 'history' && <TransactionHistory transactions={filteredTransactions} onAnalyze={(id) => { setAiContextId(id); setView('ai'); }} />}
         {view === 'ai' && <AIHub drivers={drivers} locations={filteredLocations} transactions={filteredTransactions} onLogAI={handleLogAI} currentUser={currentUser} initialContextId={aiContextId} onClearContext={() => setAiContextId('')} />}
+        {view === 'support' && <SupportTicketSystem />}
+        {view === 'clearance' && (
+          <ClearanceForm 
+            locations={filteredLocations} 
+            currentDriver={drivers.find(d => d.id === currentUser.id)!}
+            onSubmit={handleNewTransaction} 
+            lang={lang} 
+            onLogAI={handleLogAI} 
+            onCancel={() => setView('dashboard')} 
+          />
+        )}
         {view === 'reports' && <FinancialReports transactions={filteredTransactions} drivers={drivers} locations={filteredLocations} dailySettlements={dailySettlements} lang={lang} />}
         {view === 'debt' && <DebtManager drivers={drivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
       </main>
@@ -366,10 +379,12 @@ const App: React.FC = () => {
         <div className="max-w-2xl mx-auto flex justify-around items-center">
            {currentUser.role === 'admin' && <NavItem icon={<LayoutDashboard size={20}/>} label="Admin" active={view === 'dashboard'} onClick={() => setView('dashboard')} />}
            <NavItem icon={<PlusCircle size={20}/>} label={t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
+           {currentUser.role === 'driver' && <NavItem icon={<RefreshCw size={20}/>} label="清分 Reset" active={view === 'clearance'} onClick={() => setView('clearance')} />}
            <NavItem icon={<CheckSquare size={20}/>} label={t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
            <NavItem icon={<CreditCard size={20}/>} label={t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
            {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label={t.reports} active={view === 'reports'} onClick={() => setView('reports')} />}
            {currentUser.role === 'admin' && <NavItem icon={<Brain size={20}/>} label="AI" active={view === 'ai'} onClick={() => setView('ai')} />}
+           {currentUser.role === 'admin' && <NavItem icon={<MessageSquare size={20}/>} label="Support" active={view === 'support'} onClick={() => setView('support')} />}
         </div>
       </nav>
     </div>
