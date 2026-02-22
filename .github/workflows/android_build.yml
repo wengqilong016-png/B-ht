@@ -24,6 +24,10 @@ jobs:
           npm install react-is @capacitor/cli @capacitor/core @capacitor/android
 
       - name: Build Web Project
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         run: npx vite build
 
       - name: Setup Java 21
