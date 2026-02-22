@@ -20,14 +20,15 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
-        run: npm install --legacy-peer-deps
-
-      - name: Build Web Project (Ignore TS Errors)
         run: |
-          # 即使有 TS 错误也强制继续编译，确保能先拿到 APK 测试逻辑
-          npx vite build
+          npm install --legacy-peer-deps
+          # 显式安装全局工具防止 npx 找不到路径
+          npm install @capacitor/cli @capacitor/core @capacitor/android
 
-      - name: Setup Java
+      - name: Build Web Project
+        run: npx vite build
+
+      - name: Setup Java & Android
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
@@ -38,11 +39,10 @@ jobs:
 
       - name: Sync Capacitor
         run: |
-          # 打印目录结构以防路径错误
-          ls -R
-          npx cap sync android
+          # 确保同步命令使用本地安装的 cli
+          ./node_modules/.bin/cap sync android
 
-      - name: Build APK with Gradle
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
