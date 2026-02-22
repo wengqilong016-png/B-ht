@@ -42,6 +42,9 @@ const App: React.FC = () => {
   const [aiContextId, setAiContextId] = useState<string>('');
   const t = TRANSLATIONS[lang];
 
+  // ENV VALIDATION
+  const isEnvMissing = !import.meta.env.VITE_SUPABASE_URL || !import.meta.env.VITE_SUPABASE_ANON_KEY;
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
   const [locations, setLocations] = useState<Location[]>([]);
@@ -287,6 +290,23 @@ const App: React.FC = () => {
     setCurrentUser(null);
     localStorage.removeItem('bht_session');
   };
+
+  if (isEnvMissing) {
+    return (
+      <div className="min-h-screen bg-slate-900 text-white flex flex-col items-center justify-center p-8 text-center">
+        <div className="w-20 h-20 bg-rose-500/20 text-rose-500 rounded-3xl flex items-center justify-center mb-6">
+          <AlertTriangle size={40} />
+        </div>
+        <h1 className="text-xl font-black uppercase mb-2 text-rose-400">环境变量缺失 (ENV MISSING)</h1>
+        <p className="text-xs text-slate-400 font-bold mb-8 uppercase tracking-widest leading-relaxed">
+          云端构建需要配置 Supabase URL 和 Key。<br/>
+          请在 GitHub Repo -&gt; Settings -&gt; Secrets 中添加。<br/>
+          Build Success but Connect Failed.
+        </p>
+        <button onClick={() => window.location.reload()} className="px-8 py-4 bg-white/10 rounded-2xl text-[10px] font-black uppercase">刷新检查</button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
