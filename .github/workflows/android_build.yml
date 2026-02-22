@@ -15,14 +15,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22 # 升级至 Node 22 以匹配最新 Capacitor 要求
           cache: 'npm'
           cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          # 显式安装全局工具防止 npx 找不到路径
           npm install @capacitor/cli @capacitor/core @capacitor/android
 
       - name: Build Web Project
@@ -39,7 +38,6 @@ jobs:
 
       - name: Sync Capacitor
         run: |
-          # 确保同步命令使用本地安装的 cli
           ./node_modules/.bin/cap sync android
 
       - name: Build APK
