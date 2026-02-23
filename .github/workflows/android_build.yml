@@ -2,7 +2,7 @@ name: Build Android APK
 
 on:
   push:
-    branches: [ master ]
+    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -12,37 +12,35 @@ jobs:
       - name: Checkout Source
         uses: actions/checkout@v4
 
-      - name: Setup Node.js 22
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: 'npm'
+          cache-dependency-path: package-lock.json
 
       - name: Install Dependencies
         run: |
           npm install --legacy-peer-deps
-          npm install react-is @capacitor/cli @capacitor/core @capacitor/android
+          npm install @capacitor/cli @capacitor/core @capacitor/android
 
       - name: Build Web Project
-        env:
-          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
         run: npx vite build
 
-      - name: Setup Java 21
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '21' # Upgrade to Java 21 to match source release requirements
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Sync Capacitor
-        run: ./node_modules/.bin/cap sync android
+        run: |
+          ./node_modules/.bin/cap sync android
 
-      - name: Build APK with Gradle
+      - name: Build APK
         run: |
           cd android
           chmod +x gradlew
