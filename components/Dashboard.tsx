@@ -29,12 +29,13 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate }) => {
   const t = TRANSLATIONS[lang];
   const isAdmin = currentUser.role === 'admin';
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs'>(isAdmin ? 'overview' : 'settlement');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking'>(isAdmin ? 'overview' : 'settlement');
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [selectedDriverFilter, setSelectedDriverFilter] = useState<string | null>(null);
 
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
+  const [driverFloatInput, setDriverFloatInput] = useState<string>('');
   const [settlementProof, setSettlementProof] = useState<string | null>(null);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastSettlement, setLastSettlement] = useState<DailySettlement | null>(null);
@@ -95,6 +96,34 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   const pendingSettlements = useMemo(() => {
       return dailySettlements.filter(s => s.status === 'pending');
   }, [dailySettlements]);
+
+  // --- Monthly Settlement Summary ---
+  const monthlySummary = useMemo(() => {
+    const confirmed = dailySettlements.filter(s => s.status === 'confirmed');
+    const monthMap: Record<string, { month: string; totalRevenue: number; totalCash: number; totalCoins: number; totalShortage: number; count: number }> = {};
+    confirmed.forEach(s => {
+      const month = s.date.substring(0, 7); // YYYY-MM
+      if (!monthMap[month]) monthMap[month] = { month, totalRevenue: 0, totalCash: 0, totalCoins: 0, totalShortage: 0, count: 0 };
+      monthMap[month].totalRevenue += s.totalRevenue;
+      monthMap[month].totalCash += s.actualCash;
+      monthMap[month].totalCoins += s.actualCoins;
+      monthMap[month].totalShortage += s.shortage;
+      monthMap[month].count += 1;
+    });
+    return Object.values(monthMap).sort((a, b) => b.month.localeCompare(a.month));
+  }, [dailySettlements]);
+
+  // --- Driver Tracking Data ---
+  const ACTIVE_THRESHOLD_MS = 30 * 60 * 1000;
+  const activeDrivers = useMemo(() => {
+    const driverLastTx = new Map<string, typeof transactions[0]>();
+    transactions.forEach(t => {
+      if (!driverLastTx.has(t.driverId)) driverLastTx.set(t.driverId, t);
+    });
+    return drivers.filter(d => d.status === 'active').map(d => ({
+      ...d, lastTransaction: driverLastTx.get(d.id)
+    }));
+  }, [drivers, transactions]);
 
   // --- Sites Logic (Filtered & Sorted) ---
   const allAreas = useMemo(() => Array.from(new Set(locations.map(l => l.area))).sort(), [locations]);
@@ -228,7 +257,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       .reduce((acc, tx) => acc + tx.expenses, 0);
       
     const totalNetPayable = todaysCollections.reduce((acc, tx) => acc + tx.netPayable, 0);
-    const float = isAdmin ? drivers.reduce((sum, d) => sum + (d.status === 'active' ? d.dailyFloatingCoins : 0), 0) : (myProfile?.dailyFloatingCoins || 0);
+    // Driver uploads their daily floating coins; use input if available, else fallback to profile value
+    const driverFloatVal = parseInt(driverFloatInput) || 0;
+    const float = isAdmin 
+      ? drivers.reduce((sum, d) => sum + (d.status === 'active' ? d.dailyFloatingCoins : 0), 0) 
+      : (driverFloatVal > 0 ? driverFloatVal : (myProfile?.dailyFloatingCoins || 0));
     const expectedTotal = totalNetPayable + float;
     
     const todaySettlement = dailySettlements.find(s => 
@@ -237,7 +270,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
     );
 
     return { totalRev, totalPublicExp, totalNetPayable, expectedTotal, float, todaysTx: todaysCollections, isSettled: !!todaySettlement && todaySettlement.status === 'confirmed', todaySettlement };
-  }, [myTransactions, myProfile, dailySettlements, drivers, isAdmin, currentUser.id]);
+  }, [myTransactions, myProfile, dailySettlements, drivers, isAdmin, currentUser.id, driverFloatInput]);
 
   const shortage = useMemo(() => {
     const totalActual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
@@ -305,23 +338,52 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
     onSaveSettlement(settlementData);
     setLastSettlement(settlementData);
     setShowSuccessModal(true);
-    setActualCash(''); setActualCoins(''); setSettlementProof(null);
+    setActualCash(''); setActualCoins(''); setSettlementProof(null); setDriverFloatInput('');
   };
 
   const handleAdminConfirmSettlement = () => {
     if (!reviewingSettlement) return;
+    const confirmedCash = parseInt(actualCash) || reviewingSettlement.actualCash;
+    const confirmedCoins = parseInt(actualCoins) || reviewingSettlement.actualCoins;
+    const confirmedTotal = confirmedCash + confirmedCoins;
+    const confirmedShortage = confirmedTotal - reviewingSettlement.expectedTotal;
     const updated: DailySettlement = {
         ...reviewingSettlement,
         adminId: currentUser.id,
         adminName: currentUser.name,
         status: 'confirmed', 
-        actualCash: parseInt(actualCash) || reviewingSettlement.actualCash,
-        actualCoins: parseInt(actualCoins) || reviewingSettlement.actualCoins,
-        shortage: shortage 
+        actualCash: confirmedCash,
+        actualCoins: confirmedCoins,
+        shortage: confirmedShortage 
     };
     onSaveSettlement(updated);
     setLastSettlement(updated);
     setShowSuccessModal(true);
+
+    // Coin rollback: if accounts match, auto-rollback actualCoins to driver's dailyFloatingCoins
+    if (confirmedShortage === 0 && reviewingSettlement.driverId) {
+      const updatedDrivers = drivers.map(d => 
+        d.id === reviewingSettlement.driverId 
+          ? { ...d, dailyFloatingCoins: confirmedCoins } 
+          : d
+      );
+      onUpdateDrivers(updatedDrivers);
+    }
+
+    setReviewingSettlement(null);
+    setActualCash(''); setActualCoins(''); setSettlementProof(null); setDriverFloatInput('');
+  };
+
+  const handleAdminRejectSettlement = () => {
+    if (!reviewingSettlement) return;
+    const updated: DailySettlement = {
+        ...reviewingSettlement,
+        adminId: currentUser.id,
+        adminName: currentUser.name,
+        status: 'rejected',
+        note: lang === 'zh' ? '管理员驳回，请重新提交' : 'Imekataliwa na Admin, tafadhali tuma tena',
+    };
+    onSaveSettlement(updated);
     setReviewingSettlement(null);
     setActualCash(''); setActualCoins(''); setSettlementProof(null);
   };
@@ -412,6 +474,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>{t.dailySettlement} {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
         {!isAdmin && <button onClick={() => setActiveTab('arrears')} className={`pb-2 text-[11px] font-black uppercase relative transition-all flex items-center gap-2 whitespace-nowrap ${activeTab === 'arrears' ? 'text-indigo-600' : 'text-slate-400'}`}>{t.arrears} {activeTab === 'arrears' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>车队 FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all flex items-center gap-1 whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}><Navigation size={14}/> 司机定位 TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('ai-logs')} className={`pb-2 text-[11px] font-black uppercase relative transition-all flex items-center gap-1 whitespace-nowrap ${activeTab === 'ai-logs' ? 'text-indigo-600' : 'text-slate-400'}`}><BrainCircuit size={14}/> AI LOGS {activeTab === 'ai-logs' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
       </div>
 
@@ -553,10 +616,93 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       {/* Asset Map, Edit Modal, Settlement Modal... (Existing Code) */}
       {showAssetMap && (<div className="fixed inset-0 z-[60] bg-slate-900 flex flex-col animate-in fade-in"><div className="absolute top-6 left-6 right-6 z-20 flex justify-between items-start pointer-events-none"><button onClick={() => setShowAssetMap(false)} className="pointer-events-auto p-3 bg-white text-slate-900 rounded-full shadow-xl active:scale-90 transition-transform"><X size={20} /></button></div><div className="flex-1 relative bg-slate-800"><div className="absolute inset-0 flex items-center justify-center text-white">Map View</div></div></div>)}
       {editingLoc && (<div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-6 animate-in fade-in"><div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95 max-h-[90vh] overflow-y-auto"><div className="bg-slate-900 p-8 text-white relative"><button onClick={() => setEditingLoc(null)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full"><X size={18} /></button><h3 className="text-xl font-black uppercase">配置修改 CONFIG</h3><p className="text-[10px] font-bold text-slate-400 uppercase mt-1 tracking-widest">{editingLoc.machineId} • {editingLoc.name}</p></div><div className="p-8 space-y-5"><div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">现场照片 SITE PHOTO</label><input type="file" accept="image/*" capture="environment" ref={locEditPhotoRef} onChange={handleLocEditPhotoCapture} className="hidden" /><div onClick={() => locEditPhotoRef.current?.click()} className={`relative h-36 rounded-2xl overflow-hidden border-2 border-dashed cursor-pointer flex items-center justify-center transition-all ${locEditForm.ownerPhotoUrl ? 'border-emerald-300 bg-emerald-50' : 'border-slate-200 bg-slate-50 hover:border-indigo-300'}`}>{locEditForm.ownerPhotoUrl ? (<><img src={locEditForm.ownerPhotoUrl} className="w-full h-full object-cover" alt="Site Photo" /><div className="absolute inset-0 bg-black/30 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity"><Camera size={24} className="text-white" /></div></>) : (<div className="flex flex-col items-center gap-2 text-slate-400"><Camera size={24} /><span className="text-[9px] font-black uppercase">{lang === 'zh' ? '点击更新照片' : 'Bonyeza Kubadilisha Picha'}</span></div>)}</div></div><div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">点位名称 SITE NAME</label><input type="text" value={locEditForm.name} onChange={e => setLocEditForm({...locEditForm, name: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-black text-slate-900 outline-none" /></div><div className="grid grid-cols-2 gap-4"><div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">分红比例 COMM%</label><div className="flex items-center bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-3"><Percent size={14} className="text-indigo-400 mr-2" /><input type="number" value={locEditForm.commissionRate} onChange={e => setLocEditForm({...locEditForm, commissionRate: e.target.value})} className="bg-transparent w-full text-sm font-black text-indigo-600 outline-none" /></div></div><div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">当前读数 SCORE</label><input type="number" value={locEditForm.lastScore} onChange={e => setLocEditForm({...locEditForm, lastScore: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm font-black text-slate-900 outline-none" /></div></div><div className="space-y-1"><label className="text-[9px] font-black text-slate-400 uppercase">运行状态 STATUS</label><div className="flex gap-2">{(['active', 'maintenance', 'broken'] as const).map(s => (<button key={s} onClick={() => setLocEditForm({...locEditForm, status: s})} className={`flex-1 py-2 rounded-lg text-[9px] font-black uppercase border transition-all ${locEditForm.status === s ? 'bg-slate-900 text-white border-slate-900 shadow-md' : 'bg-white text-slate-400 border-slate-200'}`}>{s === 'active' ? '在线' : s === 'maintenance' ? '维护' : '报废'}</button>))}</div></div><button onClick={saveLocEdit} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 active:scale-95 transition-all"><Save size={16} /> 保存修改 SAVE</button></div></div></div>)}
-      {activeTab === 'settlement' && (<div className="max-w-4xl mx-auto space-y-6">{isAdmin && pendingSettlements.length > 0 && (<div className="bg-white p-6 rounded-[32px] border-2 border-amber-200 shadow-lg animate-in slide-in-from-top-4"><div className="flex items-center gap-3 mb-4"><div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl animate-pulse"><AlertCircle size={20} /></div><div><h3 className="text-base font-black text-slate-900 uppercase">待审核结算请求</h3><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Pending Driver Submissions</p></div></div><div className="space-y-3">{pendingSettlements.map(s => (<button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full text-left bg-amber-50 p-4 rounded-2xl border border-amber-100 flex justify-between items-center hover:bg-amber-100 transition-colors"><div><p className="text-xs font-black text-slate-900">{s.driverName || 'Driver'}</p><p className="text-[10px] font-bold text-amber-600 mt-1">Cash: TZS {s.actualCash.toLocaleString()}</p></div><div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-700">Review <ArrowRight size={12} /></div></button>))}</div></div>)}{dailyStats.isSettled && (<div className="bg-emerald-50 border border-emerald-100 p-5 rounded-[28px] flex items-center justify-between shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-emerald-500 text-white rounded-2xl"><CheckCircle2 size={24} /></div><div><h3 className="text-base font-black text-emerald-900">今日已结账 KAMILI</h3><p className="text-[10px] text-emerald-600 font-bold uppercase">Hesabu ya Leo Imekamilika</p></div></div><button onClick={() => { setLastSettlement(dailyStats.todaySettlement || null); setShowSuccessModal(true); }} className="px-6 py-2.5 bg-white rounded-2xl text-[11px] font-black text-emerald-600 uppercase border border-emerald-200">查看回执</button></div>)}{(!dailyStats.isSettled || reviewingSettlement) && (<div className={`bg-white p-8 rounded-[48px] border border-slate-200 shadow-2xl space-y-8 ${dailyStats.isSettled && !reviewingSettlement ? 'opacity-80 grayscale-[0.2]' : ''}`}><div className="flex justify-between items-center"><div className="flex items-center gap-4"><div className="bg-indigo-600 p-4 rounded-[22px] text-white shadow-xl shadow-indigo-100"><Calculator size={28} /></div><div><h2 className="text-2xl font-black text-slate-900">{t.dailySettlement}</h2><p className="text-xs text-slate-400 font-bold uppercase">{new Date().toDateString()} • {reviewingSettlement ? `Reviewing: ${reviewingSettlement.driverName}` : myProfile?.name}</p></div></div>{reviewingSettlement && (<button onClick={() => setReviewingSettlement(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-black text-slate-500 hover:text-rose-500">Cancel Review</button>)}</div><div className="bg-slate-900 rounded-[40px] p-8 text-white grid grid-cols-1 md:grid-cols-2 gap-10"><div className="space-y-5"><div className="flex justify-between items-center text-slate-400"><span className="text-[11px] font-black uppercase">{t.totalNet}</span><span>TZS {(reviewingSettlement ? reviewingSettlement.totalNetPayable : dailyStats.totalNetPayable).toLocaleString()}</span></div><div className="flex justify-between items-center text-slate-400"><span className="text-[11px] font-black uppercase">Float (Sarafu)</span><span className="text-emerald-400">TZS {(reviewingSettlement ? reviewingSettlement.driverFloat : dailyStats.float).toLocaleString()}</span></div><div className="h-px bg-white/10"></div><div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-indigo-400">{t.cashInHand}</span><span className="text-2xl font-black text-indigo-400">TZS {(reviewingSettlement ? reviewingSettlement.expectedTotal : dailyStats.expectedTotal).toLocaleString()}</span></div></div><div className="space-y-4"><input type="number" placeholder={t.inputCash} value={actualCash} onChange={e => setActualCash(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none focus:border-indigo-500 transition-all" /><input type="number" placeholder={t.inputCoins} value={actualCoins} onChange={e => setActualCoins(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none focus:border-indigo-500 transition-all" /><div><input type="file" accept="image/*" capture="environment" ref={settlementFileInputRef} onChange={handleSettlementProofCapture} className="hidden" />{settlementProof ? (<div className="relative h-40 rounded-2xl overflow-hidden border border-white/20 group bg-black/50"><img src={settlementProof} className="w-full h-full object-contain" alt="Proof" />{!reviewingSettlement && (<div className="absolute inset-0 flex items-center justify-center bg-black/40 gap-4 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setSettlementProof(null)} className="p-3 bg-rose-500 rounded-full text-white hover:bg-rose-600 transition-colors"><Trash2 size={18} /></button></div>)}{reviewingSettlement && (<div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 text-white text-[9px] font-bold rounded">Driver Upload</div>)}</div>) : (<button onClick={() => !reviewingSettlement && settlementFileInputRef.current?.click()} disabled={!!reviewingSettlement} className="w-full h-16 border border-dashed border-white/20 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"><ImagePlus size={20} /><span className="text-[10px] font-black uppercase">{lang === 'zh' ? '上传汇款/转账凭证' : 'Pakia Picha ya Malipo (Risiti)'}</span></button>)}</div></div></div><div className={`p-8 rounded-[40px] border-2 border-dashed ${shortage === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}><div className="flex items-center gap-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${shortage === 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>{shortage === 0 ? <CheckCircle2 size={32} /> : <AlertTriangle size={32} />}</div><div><h4 className={`text-xl font-black uppercase ${shortage === 0 ? 'text-emerald-900' : 'text-rose-900'}`}>{shortage === 0 ? t.perfect : `${t.shortage}: TZS ${Math.abs(shortage).toLocaleString()}`}</h4></div></div></div>{reviewingSettlement ? (<div className="flex gap-4"><button onClick={handleAdminConfirmSettlement} className="flex-1 py-6 bg-indigo-600 text-white rounded-[28px] font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-4 transition-all hover:bg-indigo-700 active:scale-95"><CheckCircle2 size={20} /> 确认收款并结账 CONFIRM</button></div>) : (<button onClick={handleDriverSubmitSettlement} disabled={isSyncing || dailyStats.isSettled || !actualCash || !settlementProof} className="w-full py-6 bg-slate-900 text-white rounded-[28px] font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-4 transition-all disabled:bg-slate-200 active:scale-95"><Send size={20} /> {dailyStats.todaySettlement?.status === 'pending' ? '等待管理员审核 PENDING APPROVAL' : '提交日结账单 SUBMIT CLOSING'}</button>)}</div>)}</div>)}
+      {activeTab === 'settlement' && (<div className="max-w-4xl mx-auto space-y-6">{isAdmin && pendingSettlements.length > 0 && (<div className="bg-white p-6 rounded-[32px] border-2 border-amber-200 shadow-lg animate-in slide-in-from-top-4"><div className="flex items-center gap-3 mb-4"><div className="p-2.5 bg-amber-100 text-amber-600 rounded-xl animate-pulse"><AlertCircle size={20} /></div><div><h3 className="text-base font-black text-slate-900 uppercase">待审核结算请求</h3><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Pending Driver Submissions</p></div></div><div className="space-y-3">{pendingSettlements.map(s => (<button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full text-left bg-amber-50 p-4 rounded-2xl border border-amber-100 flex justify-between items-center hover:bg-amber-100 transition-colors"><div><p className="text-xs font-black text-slate-900">{s.driverName || 'Driver'}</p><p className="text-[10px] font-bold text-amber-600 mt-1">Cash: TZS {s.actualCash.toLocaleString()} | Coins: TZS {s.actualCoins.toLocaleString()} | Float: TZS {s.driverFloat.toLocaleString()}</p></div><div className="flex items-center gap-2 text-[10px] font-black uppercase text-amber-700">Review <ArrowRight size={12} /></div></button>))}</div></div>)}{dailyStats.isSettled && (<div className="bg-emerald-50 border border-emerald-100 p-5 rounded-[28px] flex items-center justify-between shadow-sm"><div className="flex items-center gap-4"><div className="p-3 bg-emerald-500 text-white rounded-2xl"><CheckCircle2 size={24} /></div><div><h3 className="text-base font-black text-emerald-900">今日已结账 KAMILI</h3><p className="text-[10px] text-emerald-600 font-bold uppercase">Hesabu ya Leo Imekamilika</p></div></div><button onClick={() => { setLastSettlement(dailyStats.todaySettlement || null); setShowSuccessModal(true); }} className="px-6 py-2.5 bg-white rounded-2xl text-[11px] font-black text-emerald-600 uppercase border border-emerald-200">查看回执</button></div>)}{(!dailyStats.isSettled || reviewingSettlement) && (<div className={`bg-white p-8 rounded-[48px] border border-slate-200 shadow-2xl space-y-8 ${dailyStats.isSettled && !reviewingSettlement ? 'opacity-80 grayscale-[0.2]' : ''}`}><div className="flex justify-between items-center"><div className="flex items-center gap-4"><div className="bg-indigo-600 p-4 rounded-[22px] text-white shadow-xl shadow-indigo-100"><Calculator size={28} /></div><div><h2 className="text-2xl font-black text-slate-900">{t.dailySettlement}</h2><p className="text-xs text-slate-400 font-bold uppercase">{new Date().toDateString()} • {reviewingSettlement ? `Reviewing: ${reviewingSettlement.driverName}` : myProfile?.name}</p></div></div>{reviewingSettlement && (<button onClick={() => setReviewingSettlement(null)} className="px-4 py-2 bg-slate-100 rounded-xl text-xs font-black text-slate-500 hover:text-rose-500">Cancel Review</button>)}</div><div className="bg-slate-900 rounded-[40px] p-8 text-white grid grid-cols-1 md:grid-cols-2 gap-10"><div className="space-y-5"><div className="flex justify-between items-center text-slate-400"><span className="text-[11px] font-black uppercase">{t.totalNet}</span><span>TZS {(reviewingSettlement ? reviewingSettlement.totalNetPayable : dailyStats.totalNetPayable).toLocaleString()}</span></div><div className="flex justify-between items-center text-slate-400"><span className="text-[11px] font-black uppercase">Float (Sarafu)</span><span className="text-emerald-400">TZS {(reviewingSettlement ? reviewingSettlement.driverFloat : dailyStats.float).toLocaleString()}</span></div><div className="h-px bg-white/10"></div><div className="flex justify-between items-center"><span className="text-xs font-black uppercase text-indigo-400">{t.cashInHand}</span><span className="text-2xl font-black text-indigo-400">TZS {(reviewingSettlement ? reviewingSettlement.expectedTotal : dailyStats.expectedTotal).toLocaleString()}</span></div></div><div className="space-y-4">{!isAdmin && !reviewingSettlement && (<div><label className="text-[10px] font-black text-amber-400 uppercase block mb-1">{lang === 'zh' ? '今日流动硬币 (司机填写)' : 'Sarafu za Leo (Driver Input)'}</label><input type="number" placeholder={lang === 'zh' ? '输入今日流动硬币金额' : 'Weka kiasi cha sarafu za leo'} value={driverFloatInput} onChange={e => setDriverFloatInput(e.target.value)} className="bg-amber-500/20 border border-amber-500/30 rounded-2xl py-4 px-4 text-amber-300 font-black text-lg w-full outline-none focus:border-amber-400 transition-all placeholder-amber-500/50" /></div>)}<input type="number" placeholder={t.inputCash} value={actualCash} onChange={e => setActualCash(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none focus:border-indigo-500 transition-all" /><input type="number" placeholder={t.inputCoins} value={actualCoins} onChange={e => setActualCoins(e.target.value)} className="bg-black/40 border border-white/5 rounded-2xl py-4 px-4 text-white font-black text-lg w-full outline-none focus:border-indigo-500 transition-all" /><div><input type="file" accept="image/*" capture="environment" ref={settlementFileInputRef} onChange={handleSettlementProofCapture} className="hidden" />{settlementProof ? (<div className="relative h-40 rounded-2xl overflow-hidden border border-white/20 group bg-black/50"><img src={settlementProof} className="w-full h-full object-contain" alt="Proof" />{!reviewingSettlement && (<div className="absolute inset-0 flex items-center justify-center bg-black/40 gap-4 opacity-0 group-hover:opacity-100 transition-opacity"><button onClick={() => setSettlementProof(null)} className="p-3 bg-rose-500 rounded-full text-white hover:bg-rose-600 transition-colors"><Trash2 size={18} /></button></div>)}{reviewingSettlement && (<div className="absolute bottom-2 right-2 px-2 py-1 bg-black/60 text-white text-[9px] font-bold rounded">Driver Upload</div>)}</div>) : (<button onClick={() => !reviewingSettlement && settlementFileInputRef.current?.click()} disabled={!!reviewingSettlement} className="w-full h-16 border border-dashed border-white/20 rounded-2xl flex items-center justify-center gap-2 text-slate-400 hover:text-white hover:border-white/40 hover:bg-white/5 transition-all disabled:opacity-50 disabled:cursor-not-allowed"><ImagePlus size={20} /><span className="text-[10px] font-black uppercase">{lang === 'zh' ? '上传汇款/转账凭证' : 'Pakia Picha ya Malipo (Risiti)'}</span></button>)}</div></div></div><div className={`p-8 rounded-[40px] border-2 border-dashed ${shortage === 0 ? 'bg-emerald-50 border-emerald-200' : 'bg-rose-50 border-rose-200'}`}><div className="flex items-center gap-6"><div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${shortage === 0 ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>{shortage === 0 ? <CheckCircle2 size={32} /> : <AlertTriangle size={32} />}</div><div><h4 className={`text-xl font-black uppercase ${shortage === 0 ? 'text-emerald-900' : 'text-rose-900'}`}>{shortage === 0 ? t.perfect : `${t.shortage}: TZS ${Math.abs(shortage).toLocaleString()}`}</h4>{shortage === 0 && reviewingSettlement && (<p className="text-[10px] font-bold text-emerald-600 mt-1">{lang === 'zh' ? `确认后硬币 TZS ${(parseInt(actualCoins) || reviewingSettlement.actualCoins).toLocaleString()} 将自动回滚至司机账户` : `Sarafu TZS ${(parseInt(actualCoins) || reviewingSettlement.actualCoins).toLocaleString()} zitarudishwa kwa dereva`}</p>)}</div></div></div>{reviewingSettlement ? (<div className="flex gap-4"><button onClick={handleAdminConfirmSettlement} className="flex-1 py-6 bg-indigo-600 text-white rounded-[28px] font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-4 transition-all hover:bg-indigo-700 active:scale-95"><CheckCircle2 size={20} /> 确认收款并结账 CONFIRM</button><button onClick={handleAdminRejectSettlement} className="py-6 px-8 bg-rose-500 text-white rounded-[28px] font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-4 transition-all hover:bg-rose-600 active:scale-95"><ThumbsDown size={20} /> 驳回 REJECT</button></div>) : (<button onClick={handleDriverSubmitSettlement} disabled={isSyncing || dailyStats.isSettled || !actualCash || !settlementProof} className="w-full py-6 bg-slate-900 text-white rounded-[28px] font-black uppercase text-sm shadow-2xl flex items-center justify-center gap-4 transition-all disabled:bg-slate-200 active:scale-95"><Send size={20} /> {dailyStats.todaySettlement?.status === 'pending' ? '等待管理员审核 PENDING APPROVAL' : '提交日结账单 SUBMIT CLOSING'}</button>)}</div>)}{/* Monthly Settlement Summary */}{isAdmin && monthlySummary.length > 0 && (<div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm"><div className="flex items-center gap-3 mb-4"><div className="p-2.5 bg-indigo-100 text-indigo-600 rounded-xl"><CalendarRange size={20} /></div><div><h3 className="text-base font-black text-slate-900 uppercase">{lang === 'zh' ? '月度账单汇总' : 'Muhtasari wa Mwezi'}</h3><p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Monthly Settlement Summary (Auto-aggregated)</p></div></div><div className="overflow-x-auto"><table className="w-full text-left"><thead className="bg-slate-50 border-b border-slate-100"><tr><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase">月份 Month</th><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase text-right">结算天数 Days</th><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase text-right">总营收 Revenue</th><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase text-right">总现金 Cash</th><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase text-right">总硬币 Coins</th><th className="px-4 py-3 text-[9px] font-black text-slate-400 uppercase text-right">总差额 Shortage</th></tr></thead><tbody className="divide-y divide-slate-50">{monthlySummary.map(m => (<tr key={m.month} className="hover:bg-slate-50/50 transition-colors"><td className="px-4 py-3 text-xs font-black text-slate-900">{m.month}</td><td className="px-4 py-3 text-xs font-bold text-slate-700 text-right">{m.count}</td><td className="px-4 py-3 text-xs font-black text-indigo-600 text-right">TZS {m.totalRevenue.toLocaleString()}</td><td className="px-4 py-3 text-xs font-bold text-emerald-600 text-right">TZS {m.totalCash.toLocaleString()}</td><td className="px-4 py-3 text-xs font-bold text-amber-600 text-right">TZS {m.totalCoins.toLocaleString()}</td><td className={`px-4 py-3 text-xs font-black text-right ${m.totalShortage === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {m.totalShortage.toLocaleString()}</td></tr>))}</tbody></table></div></div>)}</div>)}
       
       {activeTab === 'arrears' && !isAdmin && (<div className="max-w-4xl mx-auto space-y-6"><div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm flex items-center justify-between"><div className="flex items-center gap-5"><div className="p-4 bg-rose-50 text-rose-600 rounded-[28px] border border-rose-100"><Wallet size={32} /></div><div><h2 className="text-2xl font-black text-slate-900">{t.arrears}</h2><p className="text-xs text-slate-400 font-bold uppercase">Madeni ya Kukabidhi</p></div></div><div className="text-right"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">TOTAL DEBT</p><p className="text-3xl font-black text-rose-600">TZS {totalArrears.toLocaleString()}</p></div></div><div className="grid grid-cols-1 gap-4">{myArrears.map(tx => (<div key={tx.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm flex justify-between items-center group transition-all"><div className="flex items-center gap-5"><div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-600 font-black border border-rose-100">{tx.locationName.charAt(0)}</div><div><h4 className="font-black text-slate-900 text-base">{tx.locationName}</h4><p className="text-[10px] font-bold text-slate-400 uppercase mt-1">{new Date(tx.timestamp).toLocaleString()}</p></div></div><div className="text-right"><p className="text-[9px] font-black text-slate-400 uppercase">Kiasi 挂账</p><p className="text-lg font-black text-rose-600">TZS {tx.netPayable.toLocaleString()}</p></div></div>))}</div></div>)}
       {activeTab === 'team' && isAdmin && <DriverManagement drivers={drivers} transactions={transactions} onUpdateDrivers={onUpdateDrivers} />}
+
+      {/* Driver Tracking Tab */}
+      {activeTab === 'tracking' && isAdmin && (
+        <div className="space-y-6 animate-in fade-in">
+          <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
+            <div className="flex items-center gap-4 mb-2">
+              <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg"><Navigation size={24} /></div>
+              <div>
+                <h2 className="text-lg font-black text-slate-900 uppercase">司机实时定位 Driver Tracking</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Real-time GPS Positions & Activity</p>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {activeDrivers.map(d => {
+              const hasGps = d.currentGps && d.currentGps.lat && d.currentGps.lng;
+              const lastActiveStr = d.lastActive ? new Date(d.lastActive).toLocaleString() : 'N/A';
+              const isRecentlyActive = d.lastActive ? (Date.now() - new Date(d.lastActive).getTime()) < ACTIVE_THRESHOLD_MS : false;
+              return (
+                <div key={d.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-lg transition-all">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-3">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-lg font-black ${isRecentlyActive ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                        {d.name.charAt(0)}
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-black text-slate-900">{d.name}</h4>
+                        <p className="text-[10px] font-bold text-slate-400">{d.vehicleInfo?.plate || 'N/A'}</p>
+                      </div>
+                    </div>
+                    <div className={`px-2.5 py-1 rounded-lg text-[9px] font-black uppercase ${isRecentlyActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
+                      {isRecentlyActive ? '在线 ONLINE' : '离线 OFFLINE'}
+                    </div>
+                  </div>
+                  <div className="space-y-3">
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">最后活跃 Last Active</p>
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={12} className="text-slate-400" />
+                        <p className="text-xs font-bold text-slate-700">{lastActiveStr}</p>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">GPS 坐标 Coordinates</p>
+                      {hasGps ? (
+                        <p className="text-xs font-bold text-indigo-600">{d.currentGps!.lat.toFixed(5)}, {d.currentGps!.lng.toFixed(5)}</p>
+                      ) : (
+                        <p className="text-xs font-bold text-slate-400">暂无定位数据 No GPS Data</p>
+                      )}
+                    </div>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1">流动硬币 Float Coins</p>
+                      <p className="text-xs font-black text-amber-600">TZS {d.dailyFloatingCoins.toLocaleString()}</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-2 mt-4">
+                    <button
+                      onClick={() => hasGps && window.open(`https://www.google.com/maps?q=${d.currentGps!.lat},${d.currentGps!.lng}`, '_blank')}
+                      disabled={!hasGps}
+                      className="flex-1 py-3 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-1.5 active:scale-95 shadow-md disabled:bg-slate-200 disabled:text-slate-400 transition-all"
+                    >
+                      <MapIcon size={12} /> 查看地图 VIEW MAP
+                    </button>
+                    <button
+                      onClick={() => hasGps && window.open(`https://www.google.com/maps/dir/?api=1&destination=${d.currentGps!.lat},${d.currentGps!.lng}`, '_blank')}
+                      disabled={!hasGps}
+                      className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-1.5 active:scale-95 shadow-md disabled:bg-slate-200 disabled:text-slate-400 transition-all"
+                    >
+                      <Navigation size={12} /> 导航前往 NAVIGATE
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+            {activeDrivers.length === 0 && (
+              <div className="col-span-full text-center py-20 bg-white rounded-[32px] border border-dashed border-slate-200">
+                <Truck size={48} className="mx-auto text-slate-200 mb-4" />
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest">暂无活跃司机数据</p>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {activeTab === 'ai-logs' && isAdmin && (
         <div className="space-y-6 animate-in fade-in">
