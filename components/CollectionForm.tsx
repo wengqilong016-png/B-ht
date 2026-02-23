@@ -107,10 +107,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   }, [selectedLocation, currentScore, coinExchange, expenses, ownerRetention, currentDriver?.dailyFloatingCoins]);
 
   // Only show locations assigned to this driver; if none assigned, show all (to avoid empty state for existing data)
-  const assignedLocations = useMemo(() => {
-    const driverSpecific = locations.filter(l => l.assignedDriverId === currentDriver.id);
-    return driverSpecific.length > 0 ? driverSpecific : locations;
-  }, [locations, currentDriver.id]);
+  const driverSpecificLocations = useMemo(() => locations.filter(l => l.assignedDriverId === currentDriver.id), [locations, currentDriver.id]);
+  const isShowingAllLocations = driverSpecificLocations.length === 0 && locations.length > 0;
+  const assignedLocations = isShowingAllLocations ? locations : driverSpecificLocations;
 
   const filteredLocations = useMemo(() => {
     if (!searchQuery) return assignedLocations;
@@ -439,6 +438,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         )}
 
         <div className="space-y-4">
+          {isShowingAllLocations && (
+            <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
+              <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+              <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
+                {lang === 'zh' ? '显示全部点位 (未分配专属点位)' : 'Inaonyesha mashine zote (hakuna zilizopewa)'}
+              </p>
+            </div>
+          )}
           {filteredLocations.length === 0 && (
             <div className="py-16 text-center bg-white rounded-[35px] border border-dashed border-slate-200">
               <Layers size={40} className="mx-auto text-slate-200 mb-3" />
