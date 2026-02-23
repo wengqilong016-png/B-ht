@@ -10,7 +10,6 @@ export interface Location {
   shopOwnerPhone?: string;
   ownerPhotoUrl?: string;
   machinePhotoUrl?: string;
-  idPhotoUrl?: string; // New: ID Card photo for registration
   initialStartupDebt: number; 
   remainingStartupDebt: number;
   isNewOffice?: boolean;
@@ -18,7 +17,6 @@ export interface Location {
   status: 'active' | 'maintenance' | 'broken';
   lastRevenueDate?: string;
   commissionRate: number;
-  merchantBalance: number; // New: Unpaid commissions for monthly settlement
   isSynced?: boolean; // Added for offline sync tracking
 }
 
@@ -64,14 +62,9 @@ export interface Transaction {
   driverName?: string;
   previousScore: number;
   currentScore: number;
-  aiScore?: number; // New: Score detected by AI for verification
-  aiConfidence?: number; // New: AI confidence level (0-1)
   revenue: number;
   commission: number;
   ownerRetention: number;
-  isMerchantDeposit?: boolean; // New: If commission is saved for monthly settlement
-  tips?: number; // New: Tips given to customers (Question mark #1)
-  driverLoan?: number; // New: Driver personal loan deduction (Question mark #2)
   debtDeduction: number;
   startupDebtDeduction: number;
   expenses: number;
@@ -80,8 +73,7 @@ export interface Transaction {
   netPayable: number;
   gps: { lat: number; lng: number };
   gpsDeviation?: number;
-  photoUrl?: string; // Before photo (High score)
-  clearancePhotoUrl?: string; // New: After photo (Zero score)
+  photoUrl?: string;
   dataUsageKB: number; 
   notes?: string;
   isClearance?: boolean;
@@ -225,54 +217,54 @@ export const TRANSLATIONS = {
     username: 'Jina la Mtumiaji',
     password: 'Nenosiri',
     loginBtn: 'Ingia Sasa',
-    dashboard: 'Dashibodi ya Udhibiti',
-    collect: 'Ukaguzi wa Nyanjani',
-    register: 'Usajili wa Mashine',
-    debt: 'Udhibiti wa Madeni',
-    ai: 'Ukaguzi wa AI',
-    history: 'Kumbukumbu',
-    reports: 'Ripoti za Fedha',
+    dashboard: 'Dashibodi',
+    collect: 'Kusanya',
+    register: 'Sajili Mashine',
+    debt: 'Madeni',
+    ai: 'Ukaguzi (AI)',
+    history: 'Historia',
+    reports: 'Ripoti',
     logout: 'Ondoka',
-    sync: 'Tuma Data Sasa',
-    offline: 'Kazi za Ndani',
-    score: 'Namba ya Counter',
+    sync: 'Tuma Data',
+    offline: 'Hazijatumwa',
+    score: 'Namba ya Sasa (Counter)',
     lastScore: 'Namba ya Zamani',
-    revenue: 'Mapato Ghafi',
-    expenses: 'Matumizi/Gharama',
+    revenue: 'Mapato',
+    expenses: 'Matumizi',
     net: 'Pesa ya Kukabidhi',
     submit: 'Tuma Ripoti',
-    scanner: 'Skena Counter',
-    retention: 'Gawio la Duka',
-    exchange: 'Badilisha Sarafu',
+    scanner: 'Skena Namba',
+    retention: 'Gawio la Dukani',
+    exchange: 'Kubadili Sarafu',
     loading: 'Inashughulikia...',
     success: 'Imefanikiwa',
-    profit: 'Faida Halisi',
+    profit: 'Faida',
     outstanding: 'Madeni ya Nje',
     export: 'Pakua Ripoti',
     selectMachine: 'Chagua Mashine',
-    enterId: 'Weka ID ya Mashine',
+    enterId: 'Weka Namba ya Mashine',
     diff: 'Tofauti',
-    formula: 'Hesabu ya Mapato',
-    currentReading: 'Soma Namba ya LED',
+    formula: 'Hesabu',
+    currentReading: 'Soma Namba Nyekundu',
     confirmSubmit: 'Thibitisha na Tuma',
     photoRequired: 'Picha Inahitajika',
     arrears: 'Madeni Yangu',
     dailySettlement: 'Hesabu ya Siku',
     totalNet: 'Makusanyo Halisi',
-    publicExp: 'Gharama za Kampuni',
-    cashInHand: 'Pesa Inayotarajiwa',
-    shortage: 'Pesa Iliyopungua',
-    surplus: 'Pesa Iliyozidi',
-    perfect: 'Hesabu Imekamilika',
+    publicExp: 'Matumizi ya Kampuni',
+    cashInHand: 'Pesa Mkononi',
+    shortage: 'Upungufu',
+    surplus: 'Ziada',
+    perfect: 'Hesabu Imetimia',
     uploadProof: 'Pakia Risiti',
     inputCash: 'Noti (Cash)',
     inputCoins: 'Sarafu (Coins)',
     startupRecovery: 'Marejesho ya Mtaji',
     driverLoan: 'Mkopo wa Dereva',
-    balance: 'Salio la Deni',
-    progress: 'Hatua za Marejesho',
-    pay: 'Lipa Deni',
-    fullyPaid: 'Imelipwa Kamili'
+    balance: 'Salio',
+    progress: 'Hatua',
+    pay: 'Lipa Sasa',
+    fullyPaid: 'Imelipwa'
   }
 };
 
