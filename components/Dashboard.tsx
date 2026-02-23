@@ -186,30 +186,33 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
   const bossStats = useMemo(() => {
     const now = new Date();
+    const nowMs = now.getTime();
     const todayStr = now.toISOString().split('T')[0];
     const yesterday = new Date(now);
     yesterday.setDate(yesterday.getDate() - 1);
     const yesterdayStr = yesterday.toISOString().split('T')[0];
+    const staleThresholdMs = 7 * 24 * 60 * 60 * 1000;
 
-    const lastTxDateMap: Record<string, string> = {};
+    const lastTxMsMap: Record<string, number> = {};
+    let todayRev = 0;
+    let yesterdayRev = 0;
     transactions.forEach(t => {
-      if (!lastTxDateMap[t.locationId] || t.timestamp > lastTxDateMap[t.locationId]) {
-        lastTxDateMap[t.locationId] = t.timestamp;
+      const tsMs = new Date(t.timestamp).getTime();
+      if (!lastTxMsMap[t.locationId] || tsMs > lastTxMsMap[t.locationId]) {
+        lastTxMsMap[t.locationId] = tsMs;
       }
+      if (t.timestamp.startsWith(todayStr)) todayRev += t.revenue;
+      else if (t.timestamp.startsWith(yesterdayStr)) yesterdayRev += t.revenue;
     });
 
     const stagnantMachines = locations.filter(l => {
-       const lastDate = lastTxDateMap[l.id];
-       if (!lastDate) return true;
-       const diffTime = Math.abs(now.getTime() - new Date(lastDate).getTime());
-       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-       return diffDays > 7;
+       const lastMs = lastTxMsMap[l.id];
+       if (!lastMs) return true;
+       return (nowMs - lastMs) > staleThresholdMs;
     });
 
     const riskyDrivers = drivers.filter(d => d.remainingDebt > 100000);
 
-    const todayRev = transactions.filter(t => t.timestamp.startsWith(todayStr)).reduce((sum, t) => sum + t.revenue, 0);
-    const yesterdayRev = transactions.filter(t => t.timestamp.startsWith(yesterdayStr)).reduce((sum, t) => sum + t.revenue, 0);
     const trend = yesterdayRev === 0 ? 100 : ((todayRev - yesterdayRev) / yesterdayRev) * 100;
 
     return { stagnantMachines, riskyDrivers, todayRev, trend };
