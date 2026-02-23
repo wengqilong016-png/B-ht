@@ -114,11 +114,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   }, [dailySettlements]);
 
   // --- Driver Tracking Data ---
+  const ACTIVE_THRESHOLD_MS = 30 * 60 * 1000;
   const activeDrivers = useMemo(() => {
-    return drivers.filter(d => d.status === 'active').map(d => {
-      const lastTx = transactions.find(t => t.driverId === d.id);
-      return { ...d, lastTransaction: lastTx };
+    const driverLastTx = new Map<string, typeof transactions[0]>();
+    transactions.forEach(t => {
+      if (!driverLastTx.has(t.driverId)) driverLastTx.set(t.driverId, t);
     });
+    return drivers.filter(d => d.status === 'active').map(d => ({
+      ...d, lastTransaction: driverLastTx.get(d.id)
+    }));
   }, [drivers, transactions]);
 
   // --- Sites Logic (Filtered & Sorted) ---
@@ -633,7 +637,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
             {activeDrivers.map(d => {
               const hasGps = d.currentGps && d.currentGps.lat && d.currentGps.lng;
               const lastActiveStr = d.lastActive ? new Date(d.lastActive).toLocaleString() : 'N/A';
-              const isRecentlyActive = d.lastActive ? (Date.now() - new Date(d.lastActive).getTime()) < 30 * 60 * 1000 : false;
+              const isRecentlyActive = d.lastActive ? (Date.now() - new Date(d.lastActive).getTime()) < ACTIVE_THRESHOLD_MS : false;
               return (
                 <div key={d.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-lg transition-all">
                   <div className="flex items-center justify-between mb-4">
