@@ -579,12 +579,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       {/* Locations Tab (Enhanced with Sorting) */}
       {activeTab === 'locations' && isAdmin && (
         <div className="space-y-6 animate-in fade-in">
-           {/* Summary Cards */}
-           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm flex flex-col justify-between"><div className="flex items-center gap-3 text-slate-400 mb-2"><Store size={18} /><span className="text-[9px] font-black uppercase tracking-widest">总机器数 Total</span></div><p className="text-3xl font-black text-slate-900">{siteStats.total}</p></div>
-              <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm flex flex-col justify-between"><div className="flex items-center gap-3 text-emerald-500 mb-2"><Signal size={18} /><span className="text-[9px] font-black uppercase tracking-widest">在线 Active</span></div><div className="flex items-baseline gap-2"><p className="text-3xl font-black text-emerald-600">{siteStats.active}</p><span className="text-[10px] font-bold text-emerald-400">{siteStats.activeRate.toFixed(0)}% Rate</span></div></div>
-              <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm flex flex-col justify-between"><div className="flex items-center gap-3 text-amber-500 mb-2"><Wrench size={18} /><span className="text-[9px] font-black uppercase tracking-widest">维护 Maintenance</span></div><p className="text-3xl font-black text-amber-600">{siteStats.maintenance}</p></div>
-              <div className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm flex flex-col justify-between"><div className="flex items-center gap-3 text-rose-500 mb-2"><AlertTriangle size={18} /><span className="text-[9px] font-black uppercase tracking-widest">故障 Broken</span></div><p className="text-3xl font-black text-rose-600">{siteStats.broken}</p></div>
+           {/* Summary Bar - compact */}
+           <div className="flex items-center gap-3 bg-white p-4 rounded-[24px] border border-slate-200 shadow-sm overflow-x-auto">
+              <div className="flex items-center gap-2 flex-shrink-0 pr-3 border-r border-slate-100"><Store size={16} className="text-slate-400" /><div><p className="text-[8px] font-black text-slate-400 uppercase">Total</p><p className="text-lg font-black text-slate-900">{siteStats.total}</p></div></div>
+              <div className="flex items-center gap-2 flex-shrink-0 pr-3 border-r border-slate-100"><Signal size={16} className="text-emerald-500" /><div><p className="text-[8px] font-black text-slate-400 uppercase">Active</p><p className="text-lg font-black text-emerald-600">{siteStats.active} <span className="text-[10px] font-bold text-emerald-400">{siteStats.activeRate.toFixed(0)}%</span></p></div></div>
+              <div className="flex items-center gap-2 flex-shrink-0 pr-3 border-r border-slate-100"><Wrench size={16} className="text-amber-500" /><div><p className="text-[8px] font-black text-slate-400 uppercase">Maint.</p><p className="text-lg font-black text-amber-600">{siteStats.maintenance}</p></div></div>
+              <div className="flex items-center gap-2 flex-shrink-0"><AlertTriangle size={16} className="text-rose-500" /><div><p className="text-[8px] font-black text-slate-400 uppercase">Broken</p><p className="text-lg font-black text-rose-600">{siteStats.broken}</p></div></div>
            </div>
            {/* Filter Toolbar */}
            <div className="bg-white p-4 rounded-[28px] border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 items-center justify-between">
@@ -870,6 +870,44 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                </div>
              )}
            </div>
+        </div>
+      )}
+
+      {/* Settlement Success Modal */}
+      {showSuccessModal && lastSettlement && (
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[40px] shadow-2xl overflow-hidden animate-in slide-in-from-bottom-4 sm:zoom-in-95">
+            <div className={`p-8 text-white relative ${lastSettlement.status === 'confirmed' ? 'bg-emerald-600' : 'bg-indigo-600'}`}>
+              <div className="flex items-center gap-4 mb-4">
+                <div className="p-3 bg-white/20 rounded-2xl"><CheckCircle2 size={28} /></div>
+                <div>
+                  <h3 className="text-xl font-black uppercase tracking-tight">
+                    {lastSettlement.status === 'confirmed' ? t.settlementConfirmed : t.settlementSubmitted}
+                  </h3>
+                  <p className="text-[10px] font-bold text-white/70 uppercase tracking-widest">{lastSettlement.date}</p>
+                </div>
+              </div>
+              <div className="bg-white/10 rounded-2xl p-4 space-y-2">
+                {lastSettlement.driverName && (
+                  <div className="flex justify-between text-sm"><span className="text-white/70 font-bold uppercase text-[10px]">Dereva / Driver</span><span className="font-black">{lastSettlement.driverName}</span></div>
+                )}
+                <div className="flex justify-between text-sm"><span className="text-white/70 font-bold uppercase text-[10px]">{t.inputCash}</span><span className="font-black">TZS {lastSettlement.actualCash.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-white/70 font-bold uppercase text-[10px]">{t.inputCoins}</span><span className="font-black">TZS {lastSettlement.actualCoins.toLocaleString()}</span></div>
+                <div className="flex justify-between text-sm border-t border-white/20 pt-2 mt-2"><span className="text-white/70 font-bold uppercase text-[10px]">{lastSettlement.shortage >= 0 ? t.surplus : t.shortage}</span><span className={`font-black text-base ${lastSettlement.shortage >= 0 ? 'text-white' : 'text-rose-300'}`}>TZS {Math.abs(lastSettlement.shortage).toLocaleString()}</span></div>
+              </div>
+            </div>
+            <div className="p-6 space-y-3">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest text-center">{new Date(lastSettlement.timestamp).toLocaleString()}</p>
+              {onNavigate && (
+                <button onClick={() => { setShowSuccessModal(false); onNavigate('history'); }} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                  <FileClock size={16} /> {t.viewHistory}
+                </button>
+              )}
+              <button onClick={() => setShowSuccessModal(false)} className="w-full py-4 bg-slate-50 text-slate-600 border border-slate-200 rounded-2xl font-black uppercase text-xs hover:bg-slate-100 transition-all flex items-center justify-center gap-2 active:scale-95">
+                <ArrowRight size={14} className="rotate-180" /> {t.backToSettlement}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
