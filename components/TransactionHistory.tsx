@@ -19,7 +19,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, o
     let result = [...transactions];
     if (selectedLocation !== 'all') result = result.filter(tx => tx.locationName === selectedLocation);
     if (showUnsyncedOnly) result = result.filter(tx => !tx.isSynced);
-    return result.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    return result.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
   }, [transactions, selectedLocation, showUnsyncedOnly]);
 
   const unsyncedCount = transactions.filter(t => !t.isSynced).length;

@@ -115,35 +115,55 @@ const App: React.FC = () => {
 
   useEffect(() => {
     localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
+  }, [locations]);
+  useEffect(() => {
     localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
+  }, [drivers]);
+  useEffect(() => {
     localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions));
+  }, [transactions]);
+  useEffect(() => {
     localStorage.setItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements));
+  }, [dailySettlements]);
+  useEffect(() => {
     localStorage.setItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs));
-  }, [locations, drivers, transactions, dailySettlements, aiLogs]);
+  }, [aiLogs]);
 
   const syncOfflineData = async () => {
     if (isSyncingRef.current || !supabase) return;
     setIsSyncing(true);
     try {
         const offlineTx = transactionsRef.current.filter(t => !t.isSynced);
-        for (const item of offlineTx) {
-            const { error } = await supabase.from('transactions').upsert({ ...item, isSynced: true });
-            if (!error) setTransactions(prev => prev.map(t => t.id === item.id ? { ...t, isSynced: true } : t));
+        if (offlineTx.length > 0) {
+            const { error } = await supabase.from('transactions').upsert(offlineTx.map(item => ({ ...item, isSynced: true })));
+            if (!error) {
+                const syncedIds = new Set(offlineTx.map(t => t.id));
+                setTransactions(prev => prev.map(t => syncedIds.has(t.id) ? { ...t, isSynced: true } : t));
+            }
         }
         const offlineSettlements = dailySettlementsRef.current.filter(s => !s.isSynced);
-        for (const item of offlineSettlements) {
-             const { error } = await supabase.from('daily_settlements').upsert({ ...item, isSynced: true });
-             if (!error) setDailySettlements(prev => prev.map(s => s.id === item.id ? { ...s, isSynced: true } : s));
+        if (offlineSettlements.length > 0) {
+            const { error } = await supabase.from('daily_settlements').upsert(offlineSettlements.map(item => ({ ...item, isSynced: true })));
+            if (!error) {
+                const syncedIds = new Set(offlineSettlements.map(s => s.id));
+                setDailySettlements(prev => prev.map(s => syncedIds.has(s.id) ? { ...s, isSynced: true } : s));
+            }
         }
         const offlineLogs = aiLogsRef.current.filter(l => !l.isSynced);
-        for (const item of offlineLogs) {
-             const { error } = await supabase.from('ai_logs').upsert({ ...item, isSynced: true });
-             if (!error) setAiLogs(prev => prev.map(l => l.id === item.id ? { ...l, isSynced: true } : l));
+        if (offlineLogs.length > 0) {
+            const { error } = await supabase.from('ai_logs').upsert(offlineLogs.map(item => ({ ...item, isSynced: true })));
+            if (!error) {
+                const syncedIds = new Set(offlineLogs.map(l => l.id));
+                setAiLogs(prev => prev.map(l => syncedIds.has(l.id) ? { ...l, isSynced: true } : l));
+            }
         }
         const offlineLocs = locationsRef.current.filter(l => l.isSynced === false);
-        for (const item of offlineLocs) {
-             const { error } = await supabase.from('locations').upsert({ ...item, isSynced: true });
-             if (!error) setLocations(prev => prev.map(l => l.id === item.id ? { ...l, isSynced: true } : l));
+        if (offlineLocs.length > 0) {
+            const { error } = await supabase.from('locations').upsert(offlineLocs.map(item => ({ ...item, isSynced: true })));
+            if (!error) {
+                const syncedIds = new Set(offlineLocs.map(l => l.id));
+                setLocations(prev => prev.map(l => syncedIds.has(l.id) ? { ...l, isSynced: true } : l));
+            }
         }
     } catch (err) {
         console.error("Batch sync process failed", err);
@@ -155,22 +175,20 @@ const App: React.FC = () => {
   const handleUpdateDrivers = async (updatedDrivers: Driver[]) => {
     setDrivers(updatedDrivers);
     if (isOnline && supabase) {
-       for (const d of updatedDrivers) {
+       const results = await Promise.all(updatedDrivers.map(d => {
           const { stats, ...driverToSave } = d as any;
-          const { error } = await supabase.from('drivers').upsert({...driverToSave, isSynced: true});
-          if (error) {
-            console.error("Error upserting driver:", error.message, error.details);
-          }
-       }
+          return supabase.from('drivers').upsert({...driverToSave, isSynced: true});
+       }));
+       results.forEach(({ error }) => {
+         if (error) console.error("Error upserting driver:", error.message, error.details);
+       });
     }
   };
 
   const handleUpdateLocations = async (updatedLocations: Location[]) => {
     setLocations(updatedLocations);
     if (isOnline && supabase) {
-       for (const l of updatedLocations) {
-          await supabase.from('locations').upsert({...l, isSynced: true});
-       }
+       await Promise.all(updatedLocations.map(l => supabase.from('locations').upsert({...l, isSynced: true})));
     }
   };
 
