@@ -106,15 +106,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     return { diff, revenue, commission, netPayable, remainingCoins, isCoinStockNegative: remainingCoins < 0 };
   }, [selectedLocation, currentScore, coinExchange, expenses, ownerRetention, currentDriver?.dailyFloatingCoins]);
 
+  // Only show locations assigned to this driver; if none assigned, show all (to avoid empty state for existing data)
+  const driverSpecificLocations = useMemo(() => locations.filter(l => l.assignedDriverId === currentDriver.id), [locations, currentDriver.id]);
+  const isShowingAllLocations = driverSpecificLocations.length === 0 && locations.length > 0;
+  const assignedLocations = isShowingAllLocations ? locations : driverSpecificLocations;
+
   const filteredLocations = useMemo(() => {
-    if (!searchQuery) return locations;
+    if (!searchQuery) return assignedLocations;
     const lower = searchQuery.toLowerCase();
-    return locations.filter(l => 
+    return assignedLocations.filter(l => 
       l.name.toLowerCase().includes(lower) || 
       l.machineId.toLowerCase().includes(lower) ||
       l.area.toLowerCase().includes(lower)
     );
-  }, [locations, searchQuery]);
+  }, [assignedLocations, searchQuery]);
 
   const startScanner = async () => {
     setIsScannerOpen(true);
@@ -428,11 +433,25 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             className="w-full mb-6 py-4 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] font-black uppercase text-xs hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
           >
             <Plus size={16} />
-            {lang === 'zh' ? '新机入网注册 (NEW MACHINE)' : 'Sajili Mashine Mpya'}
+            {lang === 'zh' ? '新机入网注册 (NEW MACHINE)' : t.registerNewMachine}
           </button>
         )}
 
         <div className="space-y-4">
+          {isShowingAllLocations && (
+            <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
+              <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+              <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
+                {lang === 'zh' ? '显示全部点位 (未分配专属点位)' : 'Inaonyesha mashine zote (hakuna zilizopewa)'}
+              </p>
+            </div>
+          )}
+          {filteredLocations.length === 0 && (
+            <div className="py-16 text-center bg-white rounded-[35px] border border-dashed border-slate-200">
+              <Layers size={40} className="mx-auto text-slate-200 mb-3" />
+              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.noMachinesAssigned}</p>
+            </div>
+          )}
           {filteredLocations.map(loc => (
             <button key={loc.id} onClick={() => handleSelectLocation(loc.id)} className="w-full bg-white p-6 rounded-[35px] border border-slate-200 flex justify-between items-center shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98]">
               <div className="flex items-center gap-5">
@@ -484,14 +503,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                   className={`flex-1 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 text-white' : 'bg-slate-900 text-white'}`}
                 >
                   {currentScore ? <CheckCircle2 size={18} /> : <Scan size={18} />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? '重新扫描' : t.scanner}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? t.reScan : t.scanner}</span>
                 </button>
              </div>
              {photoData && !isScannerOpen && (
                <div className="mt-5 h-28 w-full rounded-2xl overflow-hidden border-2 border-white shadow-md relative group">
                  <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity">
-                   Evidence Captured
+                   {t.photoRequired}
                  </div>
                </div>
              )}
@@ -552,7 +571,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                 <div className="p-3 bg-indigo-600 text-white rounded-2xl flex items-center gap-3 animate-in zoom-in-95">
                   <ShieldAlert size={20} />
                   <div className="flex-1">
-                    <p className="text-[10px] font-black uppercase">全额收回 (FULL COLLECT)</p>
+                    <p className="text-[10px] font-black uppercase">{t.fullCollect}</p>
                     <p className="text-[8px] font-bold opacity-80 mt-0.5">Deni TZS {calculations.commission.toLocaleString()} litawekwa.</p>
                   </div>
                 </div>
@@ -649,7 +668,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
           >
             {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
-            {status === 'gps' ? 'Acquiring GPS...' : status === 'uploading' ? 'Saving...' : t.confirmSubmit}
+            {status === 'gps' ? t.acquiringGps : status === 'uploading' ? t.saving : t.confirmSubmit}
           </button>
           
           {showGpsSkip && status === 'gps' && (
@@ -657,7 +676,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                onClick={handleSkipGps}
                className="w-full py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-colors flex items-center justify-center gap-2 animate-in slide-in-from-top-1"
              >
-                <Satellite size={14} /> GPS Slow? Skip & Submit
+                <Satellite size={14} /> {t.skipGps}
              </button>
           )}
         </div>
@@ -678,7 +697,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                          <BrainCircuit size={24} />
                       </div>
                       <div>
-                         <h3 className="text-lg font-black text-slate-900 uppercase">AI 识别结果确认</h3>
+                         <h3 className="text-lg font-black text-slate-900 uppercase">{t.aiReviewTitle}</h3>
                          <p className="text-[10px] font-bold text-slate-400 uppercase">Review & Confirm</p>
                       </div>
                    </div>
@@ -689,7 +708,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                       </div>
 
                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">机器读数 (Counter Score)</label>
+                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.counterScore}</label>
                          <div className="flex items-center gap-3">
                             <input 
                               type="number" 
@@ -703,7 +722,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-[9px] font-black text-slate-400 uppercase block ml-1">运行状态 (Condition)</label>
+                        <label className="text-[9px] font-black text-slate-400 uppercase block ml-1">{t.machineCondition}</label>
                         <div className="flex gap-2">
                             <button 
                                 onClick={() => setAiReviewData({...aiReviewData, condition: 'Normal'})}
@@ -723,22 +742,22 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                       </div>
 
                       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">备注 (Notes)</label>
+                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.notes}</label>
                          <textarea 
                            value={aiReviewData.notes}
                            onChange={e => setAiReviewData({...aiReviewData, notes: e.target.value})}
                            className="w-full bg-transparent text-xs font-bold text-slate-700 outline-none resize-none h-16"
-                           placeholder="输入机器状况描述..."
+                           placeholder={t.notesPlaceholder}
                          />
                       </div>
                    </div>
 
                    <div className="grid grid-cols-2 gap-3">
                       <button onClick={handleRetake} className="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
-                         <RotateCcw size={14} /> 重拍 Retake
+                         <RotateCcw size={14} /> {t.retake}
                       </button>
                       <button onClick={handleConfirmAI} className="py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2">
-                         <CheckCircle2 size={14} /> 确认并填入
+                         <CheckCircle2 size={14} /> {t.confirmFill}
                       </button>
                    </div>
                 </div>

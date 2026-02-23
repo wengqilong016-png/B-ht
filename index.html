@@ -41,6 +41,9 @@
         /* 适配刘海屏 */
         .safe-top { padding-top: env(safe-area-inset-top); }
         .safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+        /* Prevent horizontal overflow on all screen sizes */
+        * { box-sizing: border-box; }
+        #root { max-width: 100vw; overflow-x: hidden; }
     </style>
     <script type="importmap">
 {
@@ -56,7 +59,7 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900 antialiased overflow-y-auto">
+<body class="bg-slate-50 text-slate-900 antialiased overflow-y-auto overflow-x-hidden">
     <div id="root"></div>
     <!-- Entry Point -->
     <script type="module" src="./index.tsx"></script>
