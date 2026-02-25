@@ -2,7 +2,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { BrainCircuit, Send, Loader2, User, Bot, Sparkles, AlertCircle, Volume2, Search, Brain, Globe, Camera, X, ImageIcon, ShieldCheck, Activity, ScanLine, Link, Palette, Download, Wand2, Settings, Languages, Mic, Check, Edit3, AlertTriangle, RotateCcw } from 'lucide-react';
-import { Driver, Location, Transaction, User as UserType, AILog } from '../types';
+import { Driver, Location, Transaction, User as UserType, AILog, safeRandomUUID } from '../types';
 
 interface AIHubProps {
   drivers: Driver[];
@@ -227,7 +227,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
 
     // Log the confirmed data
     const newLog: AILog = {
-      id: crypto.randomUUID(),
+      id: safeRandomUUID(),
       timestamp: new Date().toISOString(),
       driverId: currentUser.id,
       driverName: currentUser.name,
@@ -362,7 +362,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
           setChat(prev => [...prev, { role: 'bot', content: resultText, sources: sources }]);
           
           onLogAI({
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             timestamp: new Date().toISOString(),
             driverId: currentUser.id,
             driverName: currentUser.name,
