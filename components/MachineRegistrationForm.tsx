@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
-import { Location, Driver, CONSTANTS } from '../types';
+import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => void;
@@ -82,7 +82,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
     const commValue = (parseFloat(commissionRate) || 15) / 100;
 
     const newLocation: Location = {
-        id: crypto.randomUUID(),
+        id: safeRandomUUID(),
         name: shopName,
         ownerName: ownerName,
         area: area,
