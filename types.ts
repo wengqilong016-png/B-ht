@@ -140,6 +140,22 @@ export interface DailySettlement {
   isSynced?: boolean; // Added for offline sync tracking
 }
 
+/**
+ * iOS-safe UUID generator: falls back to a timestamp+random string on iOS < 15.4
+ * where crypto.randomUUID() is not available.
+ */
+export const safeRandomUUID = (): string => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Polyfill for older iOS Safari
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
+
 export const CONSTANTS = {
   COIN_VALUE_TZS: 200,
   DEFAULT_PROFIT_SHARE: 0.15,

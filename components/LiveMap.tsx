@@ -4,34 +4,39 @@ import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { Driver, Location, Transaction } from '../types';
-import { Truck, MapPin, Navigation, Clock, ShieldCheck, AlertTriangle, Route } from 'lucide-react';
-import { renderToString } from 'react-dom/server';
+import { Navigation, Clock, ShieldCheck, Route } from 'lucide-react';
+
+// Use plain SVG strings to avoid react-dom/server renderToString at module level
+// (which crashes on iOS Safari before React is mounted)
+const truckSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3"/><rect x="9" y="11" width="14" height="10" rx="1"/><circle cx="12" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>`;
+const mapPinSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`;
+const alertSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
 
 // 修复 Leaflet 默认图标在 Vite 中的路径问题
 const driverIcon = L.divIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #4f46e5; padding: 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${renderToString(<Truck size={18} />)}</div>`,
+  html: `<div style="background-color: #4f46e5; padding: 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${truckSvg}</div>`,
   iconSize: [36, 36],
   iconAnchor: [18, 18],
 });
 
 const inactiveDriverIcon = L.divIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #94a3b8; padding: 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${renderToString(<Truck size={18} />)}</div>`,
+  html: `<div style="background-color: #94a3b8; padding: 8px; border-radius: 12px; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${truckSvg}</div>`,
   iconSize: [36, 36],
   iconAnchor: [18, 18],
 });
 
 const locationIcon = L.divIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #06b6d4; padding: 6px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${renderToString(<MapPin size={14} />)}</div>`,
+  html: `<div style="background-color: #06b6d4; padding: 6px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${mapPinSvg}</div>`,
   iconSize: [28, 28],
   iconAnchor: [14, 14],
 });
 
 const brokenLocationIcon = L.divIcon({
   className: 'custom-div-icon',
-  html: `<div style="background-color: #ef4444; padding: 6px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${renderToString(<AlertTriangle size={14} />)}</div>`,
+  html: `<div style="background-color: #ef4444; padding: 6px; border-radius: 50%; border: 2px solid white; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); color: white;">${alertSvg}</div>`,
   iconSize: [28, 28],
   iconAnchor: [14, 14],
 });

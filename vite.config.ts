@@ -12,5 +12,9 @@ export default defineConfig({
       alias: {
         '@': path.resolve(__dirname, '.'),
       }
+    },
+    build: {
+      // Target Safari 13+ (iOS 13+) to ensure broad iOS compatibility
+      target: ['es2015', 'safari13'],
     }
 });
