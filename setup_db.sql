@@ -110,7 +110,15 @@ CREATE TABLE public.daily_settlements (
     "transferProofUrl" TEXT,
     "status" TEXT DEFAULT 'pending',
     "isSynced" BOOLEAN DEFAULT true,
-    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+
+    -- 签到/签退 (用于每日路线与考勤)
+    "checkInAt" TIMESTAMPTZ,
+    "checkOutAt" TIMESTAMPTZ,
+    "checkInGps" JSONB,
+    "checkOutGps" JSONB,
+    "hasCheckedIn" BOOLEAN DEFAULT false,
+    "hasCheckedOut" BOOLEAN DEFAULT false
 );
 
 -- 6. AI 日志表 (AI Logs)
@@ -147,6 +155,15 @@ CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON public.transactions("ti
 CREATE INDEX IF NOT EXISTS idx_transactions_locationId ON public.transactions("locationId");
 CREATE INDEX IF NOT EXISTS idx_transactions_driverId ON public.transactions("driverId");
 
+-- 路线/时间线性能优化
+CREATE INDEX IF NOT EXISTS idx_transactions_driver_timestamp
+  ON public.transactions ("driverId", "timestamp" ASC);
+CREATE INDEX IF NOT EXISTS idx_transactions_driver_date
+  ON public.transactions ("driverId", (DATE("timestamp")));
+
+CREATE INDEX IF NOT EXISTS idx_daily_settlements_driver_date
+  ON public.daily_settlements ("driverId", "date");
+
 -- 9. 关闭 RLS 权限 (开发测试阶段)
 ALTER TABLE public.locations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drivers DISABLE ROW LEVEL SECURITY;
@@ -155,12 +172,74 @@ ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
 
--- 10. 增量迁移 (Incremental Migration)
--- 如果数据库已存在，请运行以下语句补充新字段，无需重建表。
+-- 10. 约束 (可选)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'transactions_type_check'
+  ) THEN
+    ALTER TABLE public.transactions
+    ADD CONSTRAINT transactions_type_check
+    CHECK (type IN (
+      'collection',
+      'expense',
+      'debt',
+      'startup_debt',
+      'check_in',
+      'check_out'
+    ));
+  END IF;
+END $$;
+
+-- 11. 增量迁移 (Incremental Migration)
+-- 如果数据库已存在，请运行以下语句补充新字段/索引/约束，无需重建表。
 -- Run these if upgrading an existing database instead of doing a full rebuild.
+
+-- Locations
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "machinePhotoUrl" TEXT;
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "lastRevenueDate" TEXT;
+
+-- Transactions
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "uploadTimestamp" TIMESTAMPTZ;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "aiScore" NUMERIC;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "isAnomaly" BOOLEAN DEFAULT false;
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "isClearance" BOOLEAN DEFAULT false;
+
+-- Daily settlements (签到/签退)
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "checkInAt" TIMESTAMPTZ;
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "checkOutAt" TIMESTAMPTZ;
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "checkInGps" JSONB;
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "checkOutGps" JSONB;
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "hasCheckedIn" BOOLEAN DEFAULT false;
+ALTER TABLE public.daily_settlements ADD COLUMN IF NOT EXISTS "hasCheckedOut" BOOLEAN DEFAULT false;
+
+-- Indexes (safe to run repeatedly)
+CREATE INDEX IF NOT EXISTS idx_transactions_driver_timestamp
+  ON public.transactions ("driverId", "timestamp" ASC);
+CREATE INDEX IF NOT EXISTS idx_transactions_driver_date
+  ON public.transactions ("driverId", (DATE("timestamp")));
+CREATE INDEX IF NOT EXISTS idx_daily_settlements_driver_date
+  ON public.daily_settlements ("driverId", "date");
+
+-- Constraint (safe-ish)
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'transactions_type_check'
+  ) THEN
+    ALTER TABLE public.transactions
+    ADD CONSTRAINT transactions_type_check
+    CHECK (type IN (
+      'collection',
+      'expense',
+      'debt',
+      'startup_debt',
+      'check_in',
+      'check_out'
+    ));
+  END IF;
+END $$;
