@@ -16,14 +16,16 @@ The admin panel is primarily in Chinese (zh); the driver interface is in Swahili
 | Layer | Technology |
 |---|---|
 | Frontend | React 19, TypeScript, Vite 6 |
-| UI components | Lucide React icons, Recharts (charts), Tailwind CSS |
+| UI components | Lucide React icons, Recharts (charts), Tailwind CSS (CDN) |
 | Backend / DB | Supabase (PostgreSQL) |
 | AI | Google Gemini via `@google/genai` |
 | Offline support | localStorage queue + 20-second sync loop |
-| Maps (planned) | Google Maps JavaScript API (see Roadmap below) |
+| Maps | Leaflet + react-leaflet (OpenStreetMap tiles) |
+| Photo metadata | exif-js (EXIF extraction from uploaded photos) |
+| Status API | Python Flask (`status_api.py`) |
 
-Build: `npm run build` (Vite).  
-Dev server: `npm run dev`.  
+Build: `npm run build` (Vite).
+Dev server: `npm run dev`.
 No test suite exists; validate changes manually.
 
 ---
@@ -32,18 +34,26 @@ No test suite exists; validate changes manually.
 
 ### File layout
 ```
-App.tsx                  – Root component, routing, data fetching, sync loop
-types.ts                 – All shared TypeScript interfaces and constants
-supabaseClient.ts        – Supabase client + health-check helper
+App.tsx                          – Root component, routing, data fetching, sync loop
+types.ts                         – All shared TypeScript interfaces and constants
+supabaseClient.ts                – Supabase client + health-check helper
+index.html                       – HTML entry point, Tailwind CDN, import maps
+index.tsx                        – React DOM entry point
+status_api.py                    – Python Flask status API (companion service)
+setup_db.sql                     – Supabase schema + incremental migrations
 components/
-  Dashboard.tsx          – Admin overview, driver cards, map panel
-  CollectionForm.tsx     – Driver data-entry form (GPS, photo, score)
-  TransactionHistory.tsx – Audit log
-  FinancialReports.tsx   – Revenue/expense charts
-  AIHub.tsx              – Gemini-powered audit queries
-  DebtManager.tsx        – Startup-debt and driver-loan tracking
-  DriverManagement.tsx   – CRUD for driver accounts
-  Login.tsx              – Shared login screen
+  Dashboard.tsx                  – Admin overview, driver cards, map panel
+  CollectionForm.tsx             – Driver data-entry form (GPS, photo, score)
+  LiveMap.tsx                    – Leaflet-based live map (driver & machine markers, route polylines)
+  MachineRegistrationForm.tsx    – Driver form for registering new machines
+  TransactionHistory.tsx         – Audit log
+  FinancialReports.tsx           – Revenue/expense charts
+  AIHub.tsx                      – Gemini-powered audit queries
+  SmartInsights.tsx              – Gemini-powered smart insights panel
+  DebtManager.tsx                – Startup-debt and driver-loan tracking
+  DriverManagement.tsx           – CRUD for driver accounts
+  SystemStatus.tsx               – System health monitoring panel
+  Login.tsx                      – Shared login screen
 ```
 
 ### State & sync pattern
@@ -62,36 +72,35 @@ components/
 - `Transaction.gps` records where the driver was when they submitted a collection.
 - `getDistance()` in `types.ts` implements the Haversine formula (returns meters).
 
+### Maps (Leaflet)
+- The `LiveMap.tsx` component uses `react-leaflet` with OpenStreetMap tiles.
+- Machine locations are shown as markers; driver positions update in real time.
+- Daily route polylines connect each transaction's GPS coordinate in submission order.
+- Use `L.divIcon` for custom markers (SVG-based icons for drivers and machines).
+- Use `safeRandomUUID()` from `types.ts` instead of `crypto.randomUUID()` for iOS < 15.4 compatibility.
+
 ---
 
 ## Desired Feature Roadmap
 
 The following features are planned and should be implemented following the conventions above.
 
-### 1. Google Maps Integration (Admin Panel)
-- Embed the **Google Maps JavaScript API** in the Dashboard using the admin's personal API key (stored in env var `VITE_GOOGLE_MAPS_API_KEY`).
-- Show all active `Location` markers (machines) on the map using their `coords` field.
-- Show live driver positions using `Driver.currentGps`, refreshed in real time.
-- Clicking a location marker should open an info-window with: machine name, last score, assigned driver, debt status.
-- Clicking a driver marker should open an info-window with: driver name, last active time, today's collection count.
-- Implement a `MapView` component in `components/MapView.tsx`; load the Maps API script dynamically (avoid SSR issues).
-
-### 2. Driver Daily Route Timeline
+### 1. Driver Daily Route Timeline
 - For each driver, aggregate their `transactions` for a selected date into a chronological timeline.
 - On the map, **draw a polyline** connecting each transaction's `gps` coordinate in submission order, forming the day's route.
 - In the admin panel, provide a **timeline sidebar** listing each stop: time, location name, revenue, and GPS deviation.
-- Export the route as a downloadable PNG using the Google Maps Static API, or as a PDF by printing the timeline page view.
+- Export the route as a downloadable PNG or PDF by printing the timeline page view.
 
-### 3. Daily Work Check-in
+### 2. Daily Work Check-in
 - Drivers should "check in" at the start of their shift. Capture GPS at check-in time and store it as a `check_in` transaction type (or a dedicated field on `DailySettlement`).
 - Show a check-in / check-out timestamp on the driver's daily settlement card in the admin panel.
 - Display a timeline widget per driver showing: check-in → each collection stop → check-out.
 
-### 4. Admin Map Dashboard Optimisations
+### 3. Admin Map Dashboard Optimisations
 - Add a **date picker** to the admin map panel so the admin can replay any past day's routes.
-- Add a **heatmap layer** (Google Maps Visualization library) showing machine revenue density.
+- Add a **heatmap layer** showing machine revenue density.
 - Add a **filter bar** to show/hide drivers, areas, or machine statuses on the map.
-- Use clustering (MarkerClusterer) when more than 20 machine markers are visible.
+- Use marker clustering when more than 20 machine markers are visible.
 
 ---
 
@@ -100,8 +109,11 @@ The following features are planned and should be implemented following the conve
 ```
 VITE_SUPABASE_URL=         # Supabase project URL
 VITE_SUPABASE_ANON_KEY=    # Supabase anon/public key
+SUPABASE_URL=              # Supabase URL (server-side / status API)
+SUPABASE_KEY=              # Supabase service role key (server-side)
 VITE_GEMINI_API_KEY=       # Google Gemini API key
-VITE_GOOGLE_MAPS_API_KEY=  # Google Maps JavaScript API key (admin map)
+VITE_STATUS_API_BASE=      # Base URL for the Python status API
+VITE_INTERNAL_API_KEY=     # Internal API key for status endpoint auth
 ```
 
 ---
@@ -115,3 +127,5 @@ VITE_GOOGLE_MAPS_API_KEY=  # Google Maps JavaScript API key (admin map)
 - For new Supabase tables, add the SQL in `setup_db.sql`.
 - All user-facing strings for admin should have a `zh` entry and for drivers a `sw` entry in `TRANSLATIONS` inside `types.ts`.
 - Follow the offline-first pattern: save locally first (`isSynced: false`), then upsert to Supabase.
+- Use `safeRandomUUID()` from `types.ts` instead of `crypto.randomUUID()` for iOS < 15.4 compatibility.
+- Driver collection forms filter locations by `assignedDriverId`, with fallback to all locations when none are assigned.
