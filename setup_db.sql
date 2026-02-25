@@ -23,9 +23,11 @@ CREATE TABLE public.locations (
     "ownerName" TEXT,
     "shopOwnerPhone" TEXT,
     "ownerPhotoUrl" TEXT,
+    "machinePhotoUrl" TEXT,
     "initialStartupDebt" NUMERIC DEFAULT 0,
     "remainingStartupDebt" NUMERIC DEFAULT 0,
     "isNewOffice" BOOLEAN DEFAULT false,
+    "lastRevenueDate" TEXT,
     "isSynced" BOOLEAN DEFAULT true,
     "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,6 +74,10 @@ CREATE TABLE public.transactions (
     gps JSONB,
     "gpsDeviation" NUMERIC,
     "photoUrl" TEXT,
+    "uploadTimestamp" TIMESTAMPTZ,
+    "aiScore" NUMERIC,
+    "isAnomaly" BOOLEAN DEFAULT false,
+    "isClearance" BOOLEAN DEFAULT false,
     "isSynced" BOOLEAN DEFAULT true,
     type TEXT DEFAULT 'collection',
     "extraIncome" NUMERIC DEFAULT 0,
@@ -148,3 +154,13 @@ ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
+
+-- 10. 增量迁移 (Incremental Migration)
+-- 如果数据库已存在，请运行以下语句补充新字段，无需重建表。
+-- Run these if upgrading an existing database instead of doing a full rebuild.
+ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "machinePhotoUrl" TEXT;
+ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "lastRevenueDate" TEXT;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "uploadTimestamp" TIMESTAMPTZ;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "aiScore" NUMERIC;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "isAnomaly" BOOLEAN DEFAULT false;
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "isClearance" BOOLEAN DEFAULT false;
