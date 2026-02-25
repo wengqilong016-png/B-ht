@@ -12,7 +12,16 @@ const SystemStatus: React.FC = () => {
   const fetchStatus = async () => {
     try {
       setLoading(true);
-      const res = await fetch(STATUS_API_URL);
+      const res = await fetch(STATUS_API_URL, {
+        headers: {
+          'X-API-KEY': import.meta.env.VITE_INTERNAL_API_KEY ?? 'TuqO3FwGIftnvs7PIVhfZcxH6nColM_OJXzEqzU9k3E'
+        }
+      });
+      
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
+      
       const data = await res.json();
       setStatus(data);
       setError(false);

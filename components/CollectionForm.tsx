@@ -69,42 +69,58 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     setStep('entry');
   };
 
+  // 1. 核心计算逻辑：单一事实来源 (Single Source of Truth)
+  const calculations = useMemo(() => {
+    if (!selectedLocation) return { diff: 0, revenue: 0, commission: 0, netPayable: 0, remainingCoins: 0, isCoinStockNegative: false };
+    
+    // A. 基础收入计算
+    const score = parseInt(currentScore) || 0;
+    const diff = Math.max(0, score - selectedLocation.lastScore);
+    const revenue = diff * CONSTANTS.COIN_VALUE_TZS; 
+    
+    // B. 佣金逻辑 (Commission vs Retention)
+    const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
+    const autoCommission = Math.floor(revenue * rate); 
+    
+    // C. 店主留存逻辑：如果开启开关且用户未手动修改，则等于自动计算的佣金
+    let finalRetention = 0;
+    if (isOwnerRetaining) {
+      // 如果 ownerRetention 有值（且不等于0），说明用户可能手动修改过
+      finalRetention = ownerRetention !== '' ? parseInt(ownerRetention) : autoCommission;
+    }
+
+    // D. 净支付额计算 (Net Payable)
+    // 公式：总收入 - 留在店里的钱 - 今天的报销支出
+    const expenseVal = parseInt(expenses) || 0;
+    const netPayable = Math.max(0, revenue - finalRetention - expenseVal);
+
+    // E. 硬币库存追踪 (Float Tracking)
+    const exchangeVal = parseInt(coinExchange) || 0;
+    const initialFloat = currentDriver?.dailyFloatingCoins || 0;
+    // 逻辑：包里的硬币 = 初始 + 净收入 - 换出的币
+    const remainingCoins = initialFloat + netPayable - exchangeVal;
+    
+    return { 
+      diff, 
+      revenue, 
+      commission: autoCommission, 
+      finalRetention,
+      netPayable, 
+      remainingCoins, 
+      isCoinStockNegative: remainingCoins < 0 
+    };
+  }, [selectedLocation, currentScore, coinExchange, expenses, ownerRetention, isOwnerRetaining, currentDriver?.dailyFloatingCoins]);
+
+  // 当选择新地点或读数改变时，根据开关状态初始化留存金额
   useEffect(() => {
-    if (selectedLocation && currentScore) {
+    if (selectedLocation && currentScore && isOwnerRetaining && ownerRetention === '') {
       const score = parseInt(currentScore) || 0;
       const diff = Math.max(0, score - selectedLocation.lastScore);
       const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
       const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
-      
-      if (isOwnerRetaining) {
-        const calculatedCommission = Math.floor(revenue * rate);
-        setOwnerRetention(calculatedCommission.toString());
-      } else {
-        setOwnerRetention('0');
-      }
+      setOwnerRetention(Math.floor(revenue * rate).toString());
     }
   }, [selectedLocation, currentScore, isOwnerRetaining]);
-
-  const calculations = useMemo(() => {
-    if (!selectedLocation) return { diff: 0, revenue: 0, commission: 0, netPayable: 0, remainingCoins: 0, isCoinStockNegative: false };
-    
-    const score = parseInt(currentScore) || 0;
-    const diff = Math.max(0, score - selectedLocation.lastScore);
-    const revenue = diff * CONSTANTS.COIN_VALUE_TZS; 
-    const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
-    const commission = Math.floor(revenue * rate); 
-    
-    const expenseVal = parseInt(expenses) || 0;
-    const exchangeVal = parseInt(coinExchange) || 0;
-    const retentionVal = parseInt(ownerRetention) || 0;
-
-    // Logic: Expenses (whether public or private) are deducted from the cash handed over today
-    const netPayable = revenue - retentionVal - expenseVal;
-    const initialFloat = currentDriver?.dailyFloatingCoins || 0;
-    const remainingCoins = initialFloat + revenue - retentionVal - expenseVal - exchangeVal;
-    
-    return { diff, revenue, commission, netPayable, remainingCoins, isCoinStockNegative: remainingCoins < 0 };
-  }, [selectedLocation, currentScore, coinExchange, expenses, ownerRetention, currentDriver?.dailyFloatingCoins]);
 
   // Only show locations assigned to this driver; if none assigned, show all (to avoid empty state for existing data)
   const driverSpecificLocations = useMemo(() => locations.filter(l => l.assignedDriverId === currentDriver.id), [locations, currentDriver.id]);
@@ -284,17 +300,21 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   const handleConfirmAI = () => {
      if (aiReviewData) {
+         // 将 AI 识别结果填入，但保留司机的修改权
          setCurrentScore(aiReviewData.score);
          setPhotoData(aiReviewData.image);
+         
+         // 标记为“已通过 AI 审核”
+         setAiReviewData(null); 
          stopScanner();
+         alert(lang === 'zh' ? '✅ AI 读数已填入，请核对' : '✅ Hesabu ya AI imejazwa, tafadhali hakiki');
      }
   };
 
   const handleRetake = () => {
       setAiReviewData(null);
       setScannerStatus('scanning');
-      // Restart interval
-      scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1500);
+      scanIntervalRef.current = window.setInterval(captureAndAnalyze, 2000); // 降低采样频率至 2s
       isProcessingRef.current = false;
   };
 
@@ -304,7 +324,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       const expenseValue = parseInt(expenses) || 0;
       
       const tx: Transaction = {
-        id: draftTxId || `TX-${Date.now()}`, // Use the pre-generated ID
+        id: draftTxId || `TX-${Date.now()}`,
         timestamp: new Date().toISOString(), 
         locationId: selectedLocation!.id, 
         locationName: selectedLocation!.name,
@@ -314,23 +334,21 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         currentScore: parseInt(currentScore) || selectedLocation!.lastScore,
         revenue: calculations.revenue, 
         commission: calculations.commission, 
-        ownerRetention: parseInt(ownerRetention) || 0,
+        ownerRetention: calculations.finalRetention, // 使用 calculations 的最终值
         debtDeduction: 0, startupDebtDeduction: 0,
         
-        // Expense Logic
         expenses: expenseValue, 
         expenseType: expenseValue > 0 ? expenseType : undefined,
         expenseCategory: expenseValue > 0 ? expenseCategory : undefined,
-        expenseStatus: expenseValue > 0 ? 'pending' : undefined, // All expenses require approval
+        expenseStatus: expenseValue > 0 ? 'pending' : undefined,
         
         coinExchange: parseInt(coinExchange) || 0, extraIncome: 0,
-        netPayable: calculations.netPayable, 
+        netPayable: calculations.netPayable, // 使用 calculations 的最终值
         gps: gpsCoords, 
         photoUrl: photoData || undefined, 
         dataUsageKB: 120, isSynced: false,
-        paymentStatus: 'paid', // Assumes collection is handed over. Expense approval handled separately.
+        paymentStatus: 'paid',
         
-        // Add condition and notes from AI Review if available
         reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
         notes: aiReviewData?.notes
       };

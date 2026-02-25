@@ -50,17 +50,36 @@ const App: React.FC = () => {
   useEffect(() => { isSyncingRef.current = isSyncing; }, [isSyncing]);
 
   const loadFromLocalStorage = () => {
-    const locs = localStorage.getItem(CONSTANTS.STORAGE_LOCATIONS_KEY);
-    const drvs = localStorage.getItem(CONSTANTS.STORAGE_DRIVERS_KEY);
-    const txs = localStorage.getItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY);
-    const stl = localStorage.getItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY);
-    const logs = localStorage.getItem(CONSTANTS.STORAGE_AI_LOGS_KEY);
+    try {
+      const locs = localStorage.getItem(CONSTANTS.STORAGE_LOCATIONS_KEY);
+      const drvs = localStorage.getItem(CONSTANTS.STORAGE_DRIVERS_KEY);
+      const txs = localStorage.getItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY);
+      const stl = localStorage.getItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY);
+      const logs = localStorage.getItem(CONSTANTS.STORAGE_AI_LOGS_KEY);
 
-    if (locs) setLocations(JSON.parse(locs));
-    if (drvs) setDrivers(JSON.parse(drvs));
-    if (txs) setTransactions(JSON.parse(txs));
-    if (stl) setDailySettlements(JSON.parse(stl));
-    if (logs) setAiLogs(JSON.parse(logs));
+      if (locs) {
+        const p = JSON.parse(locs);
+        if (Array.isArray(p)) setLocations(p);
+      }
+      if (drvs) {
+        const p = JSON.parse(drvs);
+        if (Array.isArray(p)) setDrivers(p);
+      }
+      if (txs) {
+        const p = JSON.parse(txs);
+        if (Array.isArray(p)) setTransactions(p);
+      }
+      if (stl) {
+        const p = JSON.parse(stl);
+        if (Array.isArray(p)) setDailySettlements(p);
+      }
+      if (logs) {
+        const p = JSON.parse(logs);
+        if (Array.isArray(p)) setAiLogs(p);
+      }
+    } catch (e) {
+      console.error("Local storage load failed", e);
+    }
   };
 
   const fetchAllData = async () => {
@@ -138,7 +157,14 @@ const App: React.FC = () => {
             const { error } = await supabase.from('transactions').upsert(offlineTx.map(item => ({ ...item, isSynced: true })));
             if (!error) {
                 const syncedIds = new Set(offlineTx.map(t => t.id));
-                setTransactions(prev => prev.map(t => syncedIds.has(t.id) ? { ...t, isSynced: true } : t));
+                setTransactions(prev => prev.map(t => {
+                    if (syncedIds.has(t.id)) {
+                        // 同步成功后清理本地图片的 Base64 数据，防止 localStorage 溢出
+                        const { photoUrl, ...rest } = t;
+                        return { ...rest, isSynced: true };
+                    }
+                    return t;
+                }));
             }
         }
         const offlineSettlements = dailySettlementsRef.current.filter(s => !s.isSynced);
@@ -154,7 +180,14 @@ const App: React.FC = () => {
             const { error } = await supabase.from('ai_logs').upsert(offlineLogs.map(item => ({ ...item, isSynced: true })));
             if (!error) {
                 const syncedIds = new Set(offlineLogs.map(l => l.id));
-                setAiLogs(prev => prev.map(l => syncedIds.has(l.id) ? { ...l, isSynced: true } : l));
+                setAiLogs(prev => prev.map(l => {
+                    if (syncedIds.has(l.id)) {
+                        // 同步成功后清理 AI 日志的图片数据
+                        const { imageUrl, ...rest } = l;
+                        return { ...rest, isSynced: true };
+                    }
+                    return l;
+                }));
             }
         }
         const offlineLocs = locationsRef.current.filter(l => l.isSynced === false);
@@ -248,11 +281,26 @@ const App: React.FC = () => {
       return [stlToSave, ...prev];
     });
 
+    // 逻辑修正：明天的起始硬币 = 今天的实际硬币余数 (Roll Over Balance)
+    const nextDayStartingCoins = settlement.actualCoins || 0;
+
+    const updateDriverCoinBalance = (driverId: string, balance: number) => {
+      setDrivers(prev => prev.map(d => 
+        d.id === driverId ? { ...d, dailyFloatingCoins: balance, isSynced: false } : d
+      ));
+    };
+
     if (isOnline && supabase) {
        const { error } = await supabase.from('daily_settlements').upsert({...settlement, isSynced: true});
        if (!error) {
           setDailySettlements(prev => prev.map(s => s.id === settlement.id ? { ...settlement, isSynced: true } : s));
+          
+          // 更新司机明天的起始余额到远程数据库
+          await supabase.from('drivers').update({ dailyFloatingCoins: nextDayStartingCoins }).eq('id', settlement.driverId);
+          updateDriverCoinBalance(settlement.driverId, nextDayStartingCoins);
        }
+    } else {
+       updateDriverCoinBalance(settlement.driverId, nextDayStartingCoins);
     }
   };
 
@@ -271,6 +319,29 @@ const App: React.FC = () => {
     if (user.role === 'driver') setView('collect');
   };
 
+  // 1. 数据过滤逻辑：必须放在所有 return 之前 (React Hooks Rule)
+  const filteredData = useMemo(() => {
+    const isAdmin = currentUser?.role === 'admin';
+    const userId = currentUser?.id;
+    
+    // 加强防崩溃保护 (Null/Undefined Safety)
+    const l = Array.isArray(locations) ? locations : [];
+    const t = Array.isArray(transactions) ? transactions : [];
+    const s = Array.isArray(dailySettlements) ? dailySettlements : [];
+    const d = Array.isArray(drivers) ? drivers : [];
+
+    return {
+      locations: isAdmin ? l : l.filter(item => item.assignedDriverId === userId),
+      transactions: isAdmin ? t : t.filter(item => item.driverId === userId),
+      dailySettlements: isAdmin ? s : s.filter(item => item.driverId === userId),
+      drivers: isAdmin ? d : d.filter(item => item.id === userId),
+    };
+  }, [currentUser, locations, transactions, dailySettlements, drivers]);
+
+  const unsyncedCount = (Array.isArray(transactions) ? transactions.filter(t => !t.isSynced).length : 0) + 
+                       (Array.isArray(dailySettlements) ? dailySettlements.filter(s => !s.isSynced).length : 0) + 
+                       (Array.isArray(aiLogs) ? aiLogs.filter(l => !l.isSynced).length : 0);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
@@ -283,8 +354,6 @@ const App: React.FC = () => {
   if (!currentUser) {
     return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
-
-  const unsyncedCount = transactions.filter(t => !t.isSynced).length + dailySettlements.filter(s => !s.isSynced).length + aiLogs.filter(l => !l.isSynced).length;
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -321,10 +390,10 @@ const App: React.FC = () => {
       <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-8 pb-32 overflow-x-hidden">
         {(view === 'dashboard' || view === 'settlement') && (
           <Dashboard 
-            transactions={transactions} 
-            drivers={drivers} 
-            locations={locations} 
-            dailySettlements={dailySettlements} 
+            transactions={filteredData.transactions} 
+            drivers={filteredData.drivers} 
+            locations={filteredData.locations} 
+            dailySettlements={filteredData.dailySettlements} 
             aiLogs={aiLogs} 
             currentUser={currentUser} 
             onUpdateDrivers={handleUpdateDrivers} 
@@ -341,13 +410,13 @@ const App: React.FC = () => {
         )}
         {view === 'collect' && (
           <CollectionForm 
-            locations={locations} 
+            locations={filteredData.locations} 
             currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]} 
             onSubmit={handleNewTransaction} 
             lang={lang} 
             onLogAI={handleLogAI}
             onRegisterMachine={async (loc) => { 
-                const newLoc = { ...loc, isSynced: false };
+                const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
                 setLocations([...locations, newLoc]); 
                 if (isOnline && supabase) {
                    const { error } = await supabase.from('locations').insert({...newLoc, isSynced: true});
@@ -356,10 +425,10 @@ const App: React.FC = () => {
             }}
           />
         )}
-        {view === 'history' && <TransactionHistory transactions={transactions} onAnalyze={(id) => { setAiContextId(id); setView('ai'); }} />}
-        {view === 'ai' && <AIHub drivers={drivers} locations={locations} transactions={transactions} onLogAI={handleLogAI} currentUser={currentUser} initialContextId={aiContextId} onClearContext={() => setAiContextId('')} />}
-        {view === 'reports' && <FinancialReports transactions={transactions} drivers={drivers} locations={locations} dailySettlements={dailySettlements} lang={lang} />}
-        {view === 'debt' && <DebtManager drivers={drivers} locations={locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
+        {view === 'history' && <TransactionHistory transactions={filteredData.transactions} onAnalyze={(id) => { setAiContextId(id); setView('ai'); }} />}
+        {view === 'ai' && <AIHub drivers={filteredData.drivers} locations={filteredData.locations} transactions={filteredData.transactions} onLogAI={handleLogAI} currentUser={currentUser} initialContextId={aiContextId} onClearContext={() => setAiContextId('')} />}
+        {view === 'reports' && <FinancialReports transactions={filteredData.transactions} drivers={filteredData.drivers} locations={filteredData.locations} dailySettlements={filteredData.dailySettlements} lang={lang} />}
+        {view === 'debt' && <DebtManager drivers={filteredData.drivers} locations={filteredData.locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg safe-bottom">
