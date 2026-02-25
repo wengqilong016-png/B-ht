@@ -5,6 +5,7 @@ import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettle
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
 import SystemStatus from './SystemStatus';
+import LiveMap from './LiveMap';
 
 interface DashboardProps {
   transactions: Transaction[];
@@ -23,12 +24,20 @@ interface DashboardProps {
   offlineCount: number;
   lang: 'zh' | 'sw';
   onNavigate?: (view: any) => void;
+  initialTab?: 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' | 'payroll';
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate, initialTab }) => {
   const t = TRANSLATIONS[lang];
   const isAdmin = currentUser.role === 'admin';
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' | 'payroll'>(isAdmin ? 'overview' : 'settlement');
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' | 'payroll'>(initialTab || (isAdmin ? 'overview' : 'settlement'));
+  
+  // Sync activeTab when initialTab prop changes from parent
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
   const [mapSearchQuery, setMapSearchQuery] = useState('');
   const [selectedDriverFilter, setSelectedDriverFilter] = useState<string | null>(null);
 
@@ -147,6 +156,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>结算 SETTLE {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
         {isAdmin && <button onClick={() => setActiveTab('payroll')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'payroll' ? 'text-indigo-600' : 'text-slate-400'}`}>工资单 PAYROLL {activeTab === 'payroll' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>车队 FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}>追踪 TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('ai-logs')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'ai-logs' ? 'text-indigo-600' : 'text-slate-400'}`}>审计 AI LOGS {activeTab === 'ai-logs' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
       </div>
 
@@ -168,6 +178,26 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
               </div>
            </div>
            <SmartInsights transactions={transactions} locations={locations} />
+        </div>
+      )}
+
+      {activeTab === 'tracking' && isAdmin && (
+        <div className="space-y-6 animate-in fade-in">
+           <div className="flex justify-between items-center bg-white p-6 rounded-[32px] border border-slate-200">
+              <div>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">车队实时地图追踪</h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
+                   <Radio size={12} className="text-indigo-600 animate-pulse" /> Live Fleet Telemetry
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-200">
+                    <span className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
+                    <span className="text-[10px] font-black uppercase">Realtime</span>
+                 </div>
+              </div>
+           </div>
+           <LiveMap drivers={drivers} locations={locations} transactions={transactions} />
         </div>
       )}
 
@@ -255,24 +285,149 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       {activeTab === 'team' && isAdmin && <DriverManagement drivers={drivers} transactions={transactions} onUpdateDrivers={onUpdateDrivers} />}
       
       {activeTab === 'settlement' && (
-        <div className="space-y-6">
-           {isAdmin && pendingSettlements.length > 0 && (
-             <div className="bg-amber-50 p-6 rounded-[32px] border-2 border-amber-200">
-                <h3 className="text-sm font-black text-amber-900 uppercase mb-4">待审核结算 ({pendingSettlements.length})</h3>
-                <div className="space-y-2">
-                   {pendingSettlements.map(s => (
-                     <button key={s.id} onClick={() => selectSettlementForReview(s)} className="w-full bg-white p-4 rounded-2xl border border-amber-100 flex justify-between items-center">
-                        <span className="text-xs font-black text-slate-900">{s.driverName}</span>
-                        <span className="text-[10px] font-bold text-amber-600">TZS {s.actualCash.toLocaleString()} <ArrowRight size={12} className="inline ml-1"/></span>
-                     </button>
-                   ))}
+        <div className="space-y-6 animate-in slide-in-from-right-4">
+           {isAdmin ? (
+             // 管理员视图：审核司机的结算申请
+             <div className="space-y-4">
+                <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm flex justify-between items-center">
+                   <div>
+                     <h3 className="text-lg font-black text-slate-900 uppercase">结算审批中心</h3>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pending Reviews ({pendingSettlements.length})</p>
+                   </div>
+                   <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
                 </div>
+                
+                {pendingSettlements.length === 0 ? (
+                  <div className="py-20 text-center bg-white rounded-[40px] border border-dashed border-slate-200">
+                     <CheckCircle2 size={40} className="mx-auto text-emerald-200 mb-3" />
+                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">所有结算已处理完毕</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {pendingSettlements.map(s => (
+                       <div key={s.id} className="bg-white p-6 rounded-[32px] border-2 border-amber-100 shadow-xl relative overflow-hidden">
+                          <div className="flex justify-between items-start mb-4">
+                             <div>
+                                <p className="text-sm font-black text-slate-900 uppercase">{s.driverName}</p>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase">{new Date(s.timestamp).toLocaleString()}</p>
+                             </div>
+                             <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[8px] font-black uppercase">待审核</div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3 mb-4">
+                             <div className="bg-slate-50 p-3 rounded-xl">
+                                <p className="text-[8px] font-black text-slate-400 uppercase">理论应收</p>
+                                <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
+                             </div>
+                             <div className="bg-slate-50 p-3 rounded-xl">
+                                <p className="text-[8px] font-black text-slate-400 uppercase">实际提交</p>
+                                <p className="text-xs font-black text-indigo-600">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
+                             </div>
+                          </div>
+                          {s.shortage !== 0 && (
+                             <div className={`p-3 rounded-xl mb-4 flex items-center justify-between ${s.shortage < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? '短款 (Shortage)' : '长款 (Surplus)'}</span>
+                                <span className="text-xs font-black">TZS {Math.abs(s.shortage).toLocaleString()}</span>
+                             </div>
+                          )}
+                          <div className="flex gap-2">
+                             <button onClick={() => onSaveSettlement({...s, status: 'confirmed'})} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">准予入库</button>
+                             <button onClick={() => onSaveSettlement({...s, status: 'rejected'})} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">驳回修改</button>
+                          </div>
+                       </div>
+                     ))}
+                  </div>
+                )}
+             </div>
+           ) : (
+             // 司机视图：发起每日结算流程
+             <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-2xl space-y-8 animate-in zoom-in-95">
+                <div className="text-center">
+                   <div className="w-16 h-16 bg-indigo-600 rounded-[24px] flex items-center justify-center text-white mx-auto mb-4 shadow-xl shadow-indigo-100">
+                      <Banknote size={32} />
+                   </div>
+                   <h2 className="text-xl font-black text-slate-900 uppercase">{t.dailySettlement}</h2>
+                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Daily Reconciliation Flow</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="bg-slate-50 p-5 rounded-[28px] border border-slate-100">
+                      <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{t.revenue}</p>
+                      <p className="text-lg font-black text-slate-900">TZS {myTransactions.reduce((sum, t) => sum + t.revenue, 0).toLocaleString()}</p>
+                   </div>
+                   <div className="bg-indigo-50 p-5 rounded-[28px] border border-indigo-100">
+                      <p className="text-[9px] font-black text-indigo-400 uppercase mb-1 tracking-widest">{t.cashInHand}</p>
+                      <p className="text-lg font-black text-indigo-600">TZS {myTransactions.reduce((sum, t) => sum + t.netPayable, 0).toLocaleString()}</p>
+                   </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-slate-50">
+                   <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-200">
+                      <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCash} (Note)</label>
+                      <input 
+                        type="number" 
+                        value={actualCash} 
+                        onChange={e => setActualCash(e.target.value)} 
+                        className="w-full text-4xl font-black bg-transparent text-center outline-none text-slate-900 placeholder:text-slate-200" 
+                        placeholder="0" 
+                      />
+                   </div>
+                   <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-200">
+                      <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCoins} (Coin)</label>
+                      <input 
+                        type="number" 
+                        value={actualCoins} 
+                        onChange={e => setActualCoins(e.target.value)} 
+                        className="w-full text-4xl font-black bg-transparent text-center outline-none text-slate-900 placeholder:text-slate-200" 
+                        placeholder="0" 
+                      />
+                   </div>
+                </div>
+
+                {actualCash && (
+                  <div className={`p-6 rounded-[35px] flex justify-between items-center animate-in slide-in-from-top-4 ${parseInt(actualCash) + parseInt(actualCoins) === myTransactions.reduce((sum, t) => sum + t.netPayable, 0) ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                     <div>
+                        <p className="text-[10px] font-black uppercase opacity-60">差额差异 (Variance)</p>
+                        <p className="text-xl font-black">TZS {(parseInt(actualCash) + parseInt(actualCoins) - myTransactions.reduce((sum, t) => sum + t.netPayable, 0)).toLocaleString()}</p>
+                     </div>
+                     <div className="p-3 bg-white/20 rounded-2xl">
+                        {parseInt(actualCash) + parseInt(actualCoins) === myTransactions.reduce((sum, t) => sum + t.netPayable, 0) ? <ThumbsUp size={24}/> : <AlertTriangle size={24}/>}
+                     </div>
+                  </div>
+                )}
+
+                <button 
+                  disabled={!actualCash || !actualCoins}
+                  onClick={() => {
+                     const totalNet = myTransactions.reduce((sum, t) => sum + t.netPayable, 0);
+                     const actual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
+                     const settlement: DailySettlement = {
+                        id: `STL-${Date.now()}`,
+                        date: new Date().toISOString().split('T')[0],
+                        driverId: currentUser.id,
+                        driverName: currentUser.name,
+                        totalRevenue: myTransactions.reduce((sum, t) => sum + t.revenue, 0),
+                        totalNetPayable: totalNet,
+                        totalExpenses: myTransactions.reduce((sum, t) => sum + t.expenses, 0),
+                        driverFloat: myProfile?.dailyFloatingCoins || 0,
+                        expectedTotal: totalNet,
+                        actualCash: parseInt(actualCash) || 0,
+                        actualCoins: parseInt(actualCoins) || 0,
+                        shortage: actual - totalNet,
+                        status: 'pending',
+                        timestamp: new Date().toISOString(),
+                        isSynced: false
+                     };
+                     onSaveSettlement(settlement);
+                     alert('结算请求已提交，请等待审批！');
+                     setActualCash('');
+                     setActualCoins('');
+                  }}
+                  className="w-full py-6 bg-slate-900 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl active:scale-95 transition-all disabled:opacity-30"
+                >
+                   确认并提交结算 (SUBMIT)
+                </button>
              </div>
            )}
-           <div className="bg-white p-8 rounded-[40px] border border-slate-200 text-center">
-              <Calculator size={48} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-xs font-black text-slate-400 uppercase tracking-widest">请在移动端执行每日结算操作</p>
-           </div>
         </div>
       )}
 

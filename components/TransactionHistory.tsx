@@ -1,14 +1,15 @@
 
 import React, { useState, useMemo } from 'react';
-import { Calendar, MapPin, CheckCircle2, Filter, ChevronDown, Info, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, Banknote, ExternalLink, MapPinned, Search, BrainCircuit } from 'lucide-react';
-import { Transaction } from '../types';
+import { Calendar, MapPin, CheckCircle2, Filter, ChevronDown, Info, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, Banknote, ExternalLink, MapPinned, Search, BrainCircuit, ShieldAlert, ArrowRight, Target } from 'lucide-react';
+import { Transaction, Location, getDistance } from '../types';
 
 interface TransactionHistoryProps {
   transactions: Transaction[];
+  locations: Location[];
   onAnalyze: (txId: string) => void;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, onAnalyze }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, locations, onAnalyze }) => {
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
@@ -115,11 +116,32 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, o
                           <Calculator size={16} className="text-indigo-600" />
                           <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">收益清算明细</h4>
                         </div>
-                        <button onClick={() => onAnalyze(tx.id)} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-600 rounded-lg text-[9px] font-black uppercase hover:bg-indigo-600 hover:text-white transition-all shadow-sm">
-                           <BrainCircuit size={12} /> AI 审计
-                        </button>
+                        {tx.aiScore && (
+                           <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 animate-in zoom-in-95">
+                              <Sparkles size={12} className="text-indigo-600" />
+                              <span className="text-[9px] font-black text-indigo-700 uppercase">AI 审计已确认</span>
+                           </div>
+                        )}
                       </div>
                       
+                      {tx.aiScore && (
+                        <div className="p-4 bg-white border-2 border-indigo-100 rounded-2xl space-y-3 shadow-lg shadow-indigo-50">
+                           <div className="flex justify-between items-center border-b border-indigo-50 pb-2">
+                              <span className="text-[10px] font-black text-slate-400 uppercase">AI 识别读数</span>
+                              <span className="text-base font-black text-indigo-600">{tx.aiScore}</span>
+                           </div>
+                           <div className="flex justify-between items-center">
+                              <span className="text-[10px] font-black text-slate-400 uppercase">数据吻合度</span>
+                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${tx.isAnomaly ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                 {tx.isAnomaly ? '⚠ 存在读数差异' : '✅ 读数完全吻合'}
+                              </span>
+                           </div>
+                           <div className="p-2 bg-slate-50 rounded-lg">
+                              <p className="text-[9px] font-bold text-slate-500 leading-relaxed italic">“ {tx.notes || '现场情况正常，建议入库。'} ”</p>
+                           </div>
+                        </div>
+                      )}
+
                       <div className="space-y-2">
                         <div className="flex justify-between text-[11px] font-bold text-slate-500"><span>总收入 (Coins Value)</span><span>TZS {tx.revenue.toLocaleString()}</span></div>
                         <div className="flex justify-between text-[11px] font-bold text-emerald-600"><span>分红佣金 (+)</span><span>+ {tx.commission.toLocaleString()}</span></div>
@@ -130,13 +152,36 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, o
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 pt-2">
-                         <div className="bg-white p-3 rounded-xl border border-slate-200">
-                           <p className="text-[8px] font-black text-slate-400 uppercase">GPS 精度</p>
-                           <p className="text-[10px] font-black text-indigo-600">{tx.gpsDeviation ? `${Math.round(tx.gpsDeviation)}M` : '精准'}</p>
-                         </div>
-                         <div className="bg-white p-3 rounded-xl border border-slate-200">
-                           <p className="text-[8px] font-black text-slate-400 uppercase">状态</p>
-                           <p className="text-[10px] font-black text-emerald-600">正常运行</p>
+                         {(() => {
+                            const loc = locations.find(l => l.id === tx.locationId);
+                            const dist = (loc?.coords && tx.gps.lat !== 0) ? getDistance(tx.gps.lat, tx.gps.lng, loc.coords.lat, loc.coords.lng) : null;
+                            const isFar = dist !== null && dist > 200;
+                            const isMedium = dist !== null && dist > 50 && dist <= 200;
+
+                            return (
+                              <div className={`p-3 rounded-xl border flex flex-col justify-between transition-colors ${isFar ? 'bg-rose-50 border-rose-200' : isMedium ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
+                                <div className="flex justify-between items-start">
+                                   <p className="text-[8px] font-black text-slate-400 uppercase">地理偏移量</p>
+                                   {isFar && <ShieldAlert size={12} className="text-rose-500 animate-pulse" />}
+                                </div>
+                                <div className="flex items-baseline gap-1 mt-1">
+                                   <p className={`text-xs font-black ${isFar ? 'text-rose-600' : isMedium ? 'text-amber-600' : 'text-indigo-600'}`}>
+                                      {dist !== null ? `${Math.round(dist)} 米` : '无坐标数据'}
+                                   </p>
+                                   <p className="text-[7px] font-bold text-slate-400 uppercase">Offset</p>
+                                </div>
+                                {isFar && (
+                                   <p className="text-[7px] font-bold text-rose-400 uppercase mt-1 leading-tight">⚠ 疑似远程填报 (Remote Check-in)</p>
+                                )}
+                              </div>
+                            );
+                         })()}
+                         <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between">
+                           <p className="text-[8px] font-black text-slate-400 uppercase">审计状态</p>
+                           <div className="flex items-center gap-2 mt-1">
+                              <Target size={12} className="text-emerald-500" />
+                              <p className="text-[10px] font-black text-emerald-600 uppercase">Verified</p>
+                           </div>
                          </div>
                       </div>
                     </div>

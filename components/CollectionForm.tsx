@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Camera, Send, Loader2, BrainCircuit, X, Sparkles, Layers, Coins, ArrowRight, MapPin, Wand2, ShieldAlert, CheckCircle2, Wallet, AlertTriangle, ScanLine, Scan, Zap, Calculator, Search, HandCoins, Percent, Building2, ChevronRight, Trophy, Fuel, Wrench, Gavel, Banknote, User, Aperture, Edit2, RotateCcw, Plus, Satellite } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
+import EXIF from 'exif-js';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../types';
 import MachineRegistrationForm from './MachineRegistrationForm';
 
@@ -46,6 +47,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const [isOwnerRetaining, setIsOwnerRetaining] = useState(true);
   const [photoData, setPhotoData] = useState<string | null>(null);
   
+  // GPS Persistence & Permission States
+  const [gpsCoords, setGpsCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [gpsPermission, setGpsPermission] = useState<'prompt' | 'granted' | 'denied'>('prompt');
+  
   // New Status State
   const [status, setStatus] = useState<SubmissionStatus>('idle');
   const [showGpsSkip, setShowGpsSkip] = useState(false);
@@ -60,6 +65,32 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const scanIntervalRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
   const gpsTimeoutRef = useRef<any>(null); // Fixed: Changed NodeJS.Timeout to any for browser compatibility
+
+  const requestGps = () => {
+    if (!navigator.geolocation) return;
+    
+    setGpsPermission('prompt');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsPermission('granted');
+      },
+      (err) => {
+        if (err.code === err.PERMISSION_DENIED) {
+          setGpsPermission('denied');
+        }
+        console.warn("GPS Request failed", err.message);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  };
+
+  // Request GPS as soon as an entry starts
+  useEffect(() => {
+    if (step === 'entry') {
+      requestGps();
+    }
+  }, [step]);
 
   const selectedLocation = useMemo(() => locations.find(l => l.id === selectedLocId), [selectedLocId, locations]);
 
@@ -222,8 +253,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
     
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
-      const modelName = 'gemini-3-flash-preview';
+      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
+      if (!apiKey || apiKey === 'YOUR_KEY') {
+        throw new Error("Missing API Key");
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const modelName = 'gemini-1.5-flash';
       
       // Structured Prompt for JSON
       const prompt = `
@@ -291,8 +327,12 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           relatedTransactionId: draftTxId // Link the log to the pending transaction
         });
       }
-    } catch (e) {
-      // Fail silently loop
+    } catch (e: any) {
+      console.error("AI Analysis failed:", e.message);
+      if (e.message.includes("API Key") || e.message.includes("403")) {
+        alert(lang === 'zh' ? "AI 审计密钥配置无效，已切换至手动模式。" : "AI Haifanyi kazi, tumia picha ya kawaida.");
+        takeManualPhoto();
+      }
     } finally {
       isProcessingRef.current = false;
     }
@@ -384,29 +424,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   const handleSubmit = async () => {
     if (!selectedLocation || status !== 'idle') return;
+    
+    // Hard Lock: No GPS = No Submit
+    if (!gpsCoords) {
+      alert(lang === 'zh' ? '❌ 无法获取位置！请开启 GPS 权限并重试。' : '❌ HAKUNA GPS! Tafadhali washa eneo lako uendelee.');
+      requestGps(); // Re-trigger request
+      return;
+    }
+
     if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ 库存不足，是否确认？" : "⚠️ Sarafu hazitoshi, endelea?")) return;
 
-    setStatus('gps');
-    setShowGpsSkip(false);
-
-    // Set a timer to show Skip button if GPS takes too long
-    gpsTimeoutRef.current = setTimeout(() => {
-        setShowGpsSkip(true);
-    }, 3000); // 3 seconds timeout for UX
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
-        processSubmission({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-      }, 
-      (err) => { 
-        console.warn("GPS Error", err);
-        // Don't auto fail, let user click Skip or it will timeout to allow skipping
-        if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
-        setShowGpsSkip(true); // Immediate skip option on error
-      }, 
-      { timeout: 8000, enableHighAccuracy: true }
-    );
+    processSubmission(gpsCoords);
   };
 
   const handleSkipGps = () => {
@@ -687,24 +715,43 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
              <span className="text-3xl font-black text-slate-900">TZS {calculations.netPayable.toLocaleString()}</span>
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-4">
+          {/* GPS Status Dashboard */}
+          <div className={`p-5 rounded-[32px] border transition-all ${gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' : gpsCoords ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+            <div className="flex justify-between items-center mb-2">
+               <div className="flex items-center gap-2">
+                  <div className={`p-2 rounded-xl ${gpsPermission === 'denied' ? 'bg-rose-500 text-white animate-pulse' : gpsCoords ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'}`}>
+                    <Satellite size={16} />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS 地理位置验证</span>
+                    <span className={`text-[8px] font-bold uppercase ${gpsPermission === 'denied' ? 'text-rose-600' : gpsCoords ? 'text-emerald-600' : 'text-slate-400'}`}>
+                      {gpsPermission === 'denied' ? '权限已禁用 (PERMISSION DENIED)' : gpsCoords ? '已锁定位置 (LOCATION LOCKED)' : '正在定位 (ACQUIRING...)'}
+                    </span>
+                  </div>
+               </div>
+               {!gpsCoords && (
+                 <button onClick={requestGps} className="p-2 bg-white rounded-lg shadow-sm text-indigo-600"><RotateCcw size={14} /></button>
+               )}
+            </div>
+            
+            {gpsPermission === 'denied' && (
+              <div className="mt-3 p-3 bg-white/60 rounded-xl border border-rose-100">
+                <p className="text-[9px] font-bold text-rose-800 leading-relaxed">
+                  ⚠️ {lang === 'zh' ? '您拒绝了定位权限。请在手机浏览器设置中找到“位置”，将其修改为“允许”，然后点击上方刷新。' : 'Umekataa ruhusa ya GPS. Tafadhali nenda kwenye mipangilio ya kivinjari chako, ruhusu eneo (Location), kisha gusa kitufe cha kupakia upya hapo juu.'}
+                </p>
+              </div>
+            )}
+          </div>
+
           <button 
             onClick={handleSubmit} 
-            disabled={status !== 'idle' || !currentScore || !photoData} 
+            disabled={status !== 'idle' || !currentScore || !photoData || !gpsCoords} 
             className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
           >
             {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
-            {status === 'gps' ? t.acquiringGps : status === 'uploading' ? t.saving : t.confirmSubmit}
+            {!gpsCoords && gpsPermission !== 'denied' ? t.acquiringGps : status === 'uploading' ? t.saving : t.confirmSubmit}
           </button>
-          
-          {showGpsSkip && status === 'gps' && (
-             <button 
-               onClick={handleSkipGps}
-               className="w-full py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl font-bold uppercase text-[10px] hover:bg-rose-50 hover:text-rose-600 hover:border-rose-100 transition-colors flex items-center justify-center gap-2 animate-in slide-in-from-top-1"
-             >
-                <Satellite size={14} /> {t.skipGps}
-             </button>
-          )}
         </div>
       </div>
 

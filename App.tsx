@@ -118,15 +118,19 @@ const App: React.FC = () => {
       setIsOnline(online);
       if (online && !isSyncingRef.current) syncOfflineData();
       
-      // NEW: Heartbeat for Active Drivers
+      // NEW: Heartbeat for Active Drivers (Safari compatibility added)
       if (online && supabase && currentUser?.role === 'driver') {
-        navigator.geolocation.getCurrentPosition((pos) => {
-          const { latitude, longitude } = pos.coords;
-          supabase.from('drivers').update({ 
-            lastActive: new Date().toISOString(),
-            currentGps: { lat: latitude, lng: longitude }
-          }).eq('id', currentUser.id);
-        }, undefined, { enableHighAccuracy: false });
+        if ('geolocation' in navigator) {
+           navigator.geolocation.getCurrentPosition((pos) => {
+              const { latitude, longitude } = pos.coords;
+              supabase.from('drivers').update({ 
+                lastActive: new Date().toISOString(),
+                currentGps: { lat: latitude, lng: longitude }
+              }).eq('id', currentUser.id);
+           }, (err) => {
+              console.warn("GPS Heartbeat failed (Silent)", err.message);
+           }, { enableHighAccuracy: false, timeout: 5000 });
+        }
       }
     }, 20000);
     return () => clearInterval(timer);
@@ -351,10 +355,10 @@ const App: React.FC = () => {
   // 1. 数据过滤逻辑：仅在 currentUser 存在时执行，且放在 return 之后是错误的，
   // 但我们通过在顶层始终定义 Hook，内部判断逻辑来修复。
   const filteredData = {
-    locations: currentUser.role === 'admin' ? locations : locations.filter(l => l.assignedDriverId === currentUser.id),
-    transactions: currentUser.role === 'admin' ? transactions : transactions.filter(t => t.driverId === currentUser.id),
-    dailySettlements: currentUser.role === 'admin' ? dailySettlements : dailySettlements.filter(s => s.driverId === currentUser.id),
-    drivers: currentUser.role === 'admin' ? drivers : drivers.filter(d => d.id === currentUser.id),
+    locations: currentUser.role === 'admin' ? (Array.isArray(locations) ? locations : []) : (Array.isArray(locations) ? locations.filter(l => l.assignedDriverId === currentUser.id) : []),
+    transactions: currentUser.role === 'admin' ? (Array.isArray(transactions) ? transactions : []) : (Array.isArray(transactions) ? transactions.filter(t => t.driverId === currentUser.id) : []),
+    dailySettlements: currentUser.role === 'admin' ? (Array.isArray(dailySettlements) ? dailySettlements : []) : (Array.isArray(dailySettlements) ? dailySettlements.filter(s => s.driverId === currentUser.id) : []),
+    drivers: currentUser.role === 'admin' ? (Array.isArray(drivers) ? drivers : []) : (Array.isArray(drivers) ? drivers.filter(d => d.id === currentUser.id) : []),
   };
 
   return (
@@ -409,6 +413,7 @@ const App: React.FC = () => {
             offlineCount={unsyncedCount} 
             lang={lang}
             onNavigate={(v) => setView(v)}
+            initialTab={view === 'settlement' ? 'settlement' : 'overview'}
           />
         )}
         {view === 'collect' && (
@@ -428,8 +433,7 @@ const App: React.FC = () => {
             }}
           />
         )}
-        {view === 'history' && <TransactionHistory transactions={filteredData.transactions} onAnalyze={(id) => { setAiContextId(id); setView('ai'); }} />}
-        {view === 'ai' && <AIHub drivers={filteredData.drivers} locations={filteredData.locations} transactions={filteredData.transactions} onLogAI={handleLogAI} currentUser={currentUser} initialContextId={aiContextId} onClearContext={() => setAiContextId('')} />}
+        {view === 'history' && <TransactionHistory transactions={filteredData.transactions} locations={locations} onAnalyze={(id) => {}} />}
         {view === 'reports' && <FinancialReports transactions={filteredData.transactions} drivers={filteredData.drivers} locations={filteredData.locations} dailySettlements={filteredData.dailySettlements} lang={lang} />}
         {view === 'debt' && <DebtManager drivers={filteredData.drivers} locations={filteredData.locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
       </main>
@@ -441,7 +445,6 @@ const App: React.FC = () => {
            <NavItem icon={<CheckSquare size={20}/>} label={t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
            <NavItem icon={<CreditCard size={20}/>} label={t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
            {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label={t.reports} active={view === 'reports'} onClick={() => setView('reports')} />}
-           {currentUser.role === 'admin' && <NavItem icon={<Brain size={20}/>} label="AI" active={view === 'ai'} onClick={() => setView('ai')} />}
         </div>
       </nav>
     </div>
