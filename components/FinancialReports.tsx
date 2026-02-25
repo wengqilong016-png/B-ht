@@ -229,27 +229,30 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex-1 min-w-[200px]">
-           <User size={16} className="text-slate-400" />
-           <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)} className="bg-transparent text-xs font-black text-slate-700 outline-none w-full uppercase">
-             <option value="all">所有司机 (All Drivers)</option>
-             {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-           </select>
-        </div>
-        <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 flex-1 min-w-[200px]">
-           <MapPin size={16} className="text-slate-400" />
-           <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="bg-transparent text-xs font-black text-slate-700 outline-none w-full uppercase">
-             <option value="all">所有点位 (All Locations)</option>
-             {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-           </select>
-        </div>
-        <div className="flex bg-slate-100 p-1 rounded-xl">
-           {(['day', 'week', 'month'] as const).map(type => (
-             <button key={type} onClick={() => setGroupBy(type)} className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${groupBy === type ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-               {type === 'day' ? '按日' : type === 'week' ? '按周' : '按月'}
-             </button>
-           ))}
+      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">筛选条件 Filters</p>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
+             <User size={14} className="text-slate-400 shrink-0" />
+             <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)} className="bg-transparent text-[11px] font-black text-slate-700 outline-none w-full uppercase">
+               <option value="all">全部司机</option>
+               {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+             </select>
+          </div>
+          <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
+             <MapPin size={14} className="text-slate-400 shrink-0" />
+             <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="bg-transparent text-[11px] font-black text-slate-700 outline-none w-full uppercase">
+               <option value="all">全部点位</option>
+               {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+             </select>
+          </div>
+          <div className="flex bg-slate-100 p-1 rounded-xl">
+             {(['day', 'week', 'month'] as const).map(type => (
+               <button key={type} onClick={() => setGroupBy(type)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${groupBy === type ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
+                 {type === 'day' ? '按日' : type === 'week' ? '按周' : '按月'}
+               </button>
+             ))}
+          </div>
         </div>
       </div>
 
@@ -324,10 +327,13 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
         </div>
       </div>
 
-      <div className="bg-white rounded-[40px] border border-slate-200 overflow-hidden shadow-sm">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">财务流水明细 (Detailed Ledger)</h3>
-           <span className="text-[9px] font-black bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">{filteredTransactions.length} 条记录</span>
+      <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+           <div>
+             <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">财务流水明细</h3>
+             <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Detailed Transaction Ledger</p>
+           </div>
+           <span className="text-[9px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full">{filteredTransactions.length} 条</span>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left">

@@ -1,10 +1,9 @@
 
 import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Coins, MapPin, Radio, Search, ExternalLink, Map as MapIcon, Truck, Wallet, Calculator, AlertTriangle, CheckCircle2, Banknote, Plus, X, Save, User, Key, Phone, Pencil, Clock, Loader2, CalendarRange, Calendar, FileText, ChevronRight, Receipt, Fuel, Wrench, Gavel, MoreHorizontal, AlertCircle, Building2, HandCoins, Camera, Info, Share2, Printer, Navigation, Download, ShieldCheck, Percent, LayoutList, TrendingUp, TrendingDown, Target, BellRing, Layers, Settings, BrainCircuit, Store, Signal, Smartphone, ThumbsUp, ThumbsDown, ArrowUpDown, ArrowUp, ArrowDown, Link, FileClock, ImagePlus, Trash2, Send, ArrowRight, ImageIcon, Eye, Sparkles, SlidersHorizontal } from 'lucide-react';
+import { Coins, MapPin, Radio, Search, ExternalLink, Map as MapIcon, Truck, Wallet, Calculator, AlertTriangle, CheckCircle2, Banknote, Plus, X, Save, User, Key, Phone, Pencil, Clock, Loader2, CalendarRange, Calendar, FileText, ChevronRight, Receipt, Fuel, Wrench, Gavel, MoreHorizontal, AlertCircle, Building2, HandCoins, Camera, Info, Share2, Printer, Navigation, Download, ShieldCheck, Percent, LayoutList, TrendingUp, TrendingDown, Target, BellRing, Layers, Settings, BrainCircuit, Store, Signal, Smartphone, ThumbsUp, ThumbsDown, ArrowUpDown, ArrowUp, ArrowDown, Link, FileClock, ImagePlus, Trash2, Send, ArrowRight, ImageIcon, Eye, Sparkles } from 'lucide-react';
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
-import SystemStatus from './SystemStatus';
 import LiveMap from './LiveMap';
 
 interface DashboardProps {
@@ -24,13 +23,15 @@ interface DashboardProps {
   offlineCount: number;
   lang: 'zh' | 'sw';
   onNavigate?: (view: any) => void;
-  initialTab?: 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' | 'payroll';
+  initialTab?: 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking';
 }
 
 const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate, initialTab }) => {
   const t = TRANSLATIONS[lang];
   const isAdmin = currentUser.role === 'admin';
-  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' | 'payroll'>(initialTab || (isAdmin ? 'overview' : 'settlement'));
+  const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking'>(initialTab || (isAdmin ? 'overview' : 'settlement'));
+  const [revDrilldown, setRevDrilldown] = useState<'none' | 'drivers' | string>('none'); // revenue drill-down state
+  const [expandedDriverTracking, setExpandedDriverTracking] = useState<string | null>(null); // tracking tab driver expand
   
   // Sync activeTab when initialTab prop changes from parent
   useEffect(() => {
@@ -54,6 +55,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
   const [locEditForm, setLocEditForm] = useState({ name: '', commissionRate: '', lastScore: '', status: 'active' as Location['status'], ownerPhotoUrl: '' });
+  // Tracking tab: editing location commission/status inline
+  const [trackingEditLocId, setTrackingEditLocId] = useState<string | null>(null);
+  const [trackingLocForm, setTrackingLocForm] = useState({ commissionRate: '', status: 'active' as Location['status'] });
 
   const [siteSearch, setSiteSearch] = useState('');
   const [siteFilterArea, setSiteFilterArea] = useState<string>('all');
@@ -153,31 +157,95 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       <div className="flex items-center gap-4 border-b border-slate-200 pb-2 mb-6 overflow-x-auto scrollbar-hide">
         {isAdmin && <button onClick={() => setActiveTab('overview')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'overview' ? 'text-indigo-600' : 'text-slate-400'}`}>总览 OVERVIEW {activeTab === 'overview' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('locations')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'locations' ? 'text-indigo-600' : 'text-slate-400'}`}>点位 SITES {activeTab === 'locations' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>结算 SETTLE {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
-        {isAdmin && <button onClick={() => setActiveTab('payroll')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'payroll' ? 'text-indigo-600' : 'text-slate-400'}`}>工资单 PAYROLL {activeTab === 'payroll' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>车队 FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}>追踪 TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>{isAdmin ? '审批 APPROVE' : '日中对账 SETTLE'} {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
+        {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>车队+工资 FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}>定位 TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
         {isAdmin && <button onClick={() => setActiveTab('ai-logs')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'ai-logs' ? 'text-indigo-600' : 'text-slate-400'}`}>审计 AI LOGS {activeTab === 'ai-logs' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
       </div>
 
       {activeTab === 'overview' && isAdmin && (
         <div className="space-y-6 animate-in fade-in">
-           <SystemStatus />
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="bg-slate-900 text-white p-6 rounded-[32px]">
-                 <p className="text-[10px] font-black uppercase opacity-50">今日营收</p>
-                 <p className="text-2xl font-black">TZS {bossStats.todayRev.toLocaleString()}</p>
-              </div>
-              <div className="bg-white p-6 rounded-[32px] border border-slate-200">
-                 <p className="text-[10px] font-black uppercase text-slate-400">异常点位</p>
-                 <p className="text-2xl font-black text-rose-600">{bossStats.stagnantMachines.length}</p>
-              </div>
-              <div className="bg-white p-6 rounded-[32px] border border-slate-200">
-                 <p className="text-[10px] font-black uppercase text-slate-400">高风险欠款</p>
-                 <p className="text-2xl font-black text-amber-600">{bossStats.riskyDrivers.length}</p>
-              </div>
-           </div>
-           <SmartInsights transactions={transactions} locations={locations} />
+           {revDrilldown === 'none' ? (
+             <>
+               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <button
+                    onClick={() => setRevDrilldown('drivers')}
+                    className="bg-slate-900 text-white p-6 rounded-[32px] text-left hover:bg-indigo-900 transition-colors group"
+                  >
+                     <p className="text-[10px] font-black uppercase opacity-50 group-hover:opacity-80">今日营收 ↗ (点击查看明细)</p>
+                     <p className="text-2xl font-black">TZS {bossStats.todayRev.toLocaleString()}</p>
+                  </button>
+                  <div className="bg-white p-6 rounded-[32px] border border-slate-200">
+                     <p className="text-[10px] font-black uppercase text-slate-400">异常点位</p>
+                     <p className="text-2xl font-black text-rose-600">{bossStats.stagnantMachines.length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-[32px] border border-slate-200">
+                     <p className="text-[10px] font-black uppercase text-slate-400">高风险欠款</p>
+                     <p className="text-2xl font-black text-amber-600">{bossStats.riskyDrivers.length}</p>
+                  </div>
+               </div>
+               <SmartInsights transactions={transactions} locations={locations} />
+             </>
+           ) : revDrilldown === 'drivers' ? (
+             // Revenue drill-down: driver level
+             <div className="space-y-4 animate-in fade-in">
+               <div className="flex items-center gap-3 mb-2">
+                 <button onClick={() => setRevDrilldown('none')} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180"/></button>
+                 <div>
+                   <h3 className="text-sm font-black text-slate-900 uppercase">今日营收明细 — 按司机</h3>
+                   <p className="text-[10px] text-slate-400 font-bold">Today's Revenue by Driver</p>
+                 </div>
+               </div>
+               {drivers.map(driver => {
+                 const todayStr = new Date().toISOString().split('T')[0];
+                 const driverTxs = transactions.filter(t => t.driverId === driver.id && t.timestamp.startsWith(todayStr));
+                 const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
+                 return (
+                   <div key={driver.id} className="bg-white border border-slate-200 rounded-[28px] p-5">
+                     <div className="flex items-center justify-between mb-3">
+                       <div className="flex items-center gap-3">
+                         <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
+                         <div>
+                           <p className="text-sm font-black text-slate-900">{driver.name}</p>
+                           <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone}</p>
+                         </div>
+                       </div>
+                       <div className="text-right">
+                         <p className="text-xs font-black text-indigo-600">TZS {driverRev.toLocaleString()}</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase">{driverTxs.length} 笔收款</p>
+                       </div>
+                     </div>
+                     {driverTxs.length > 0 && (
+                       <div className="space-y-2 mt-3 border-t border-slate-50 pt-3">
+                         {driverTxs.map(tx => {
+                           const loc = locations.find(l => l.id === tx.locationId);
+                           return (
+                             <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
+                               <div className="flex items-center gap-3">
+                                 {loc?.machinePhotoUrl ? (
+                                   <img src={loc.machinePhotoUrl} alt="machine" className="w-8 h-8 rounded-lg object-cover border border-slate-200"/>
+                                 ) : (
+                                   <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={14}/></div>
+                                 )}
+                                 <div>
+                                   <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>
+                                   <p className="text-[8px] font-bold text-slate-400 uppercase">{loc?.shopOwnerPhone || loc?.machineId || '-'}</p>
+                                 </div>
+                               </div>
+                               <div className="text-right">
+                                 <p className="text-[10px] font-black text-slate-900">TZS {tx.revenue.toLocaleString()}</p>
+                                 <p className="text-[8px] font-bold text-emerald-500 uppercase">分红 {(loc?.commissionRate ?? 0) * 100}%</p>
+                               </div>
+                             </div>
+                           );
+                         })}
+                       </div>
+                     )}
+                   </div>
+                 );
+               })}
+             </div>
+           ) : null}
         </div>
       )}
 
@@ -185,19 +253,150 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         <div className="space-y-6 animate-in fade-in">
            <div className="flex justify-between items-center bg-white p-6 rounded-[32px] border border-slate-200">
               <div>
-                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">车队实时地图追踪</h2>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">车队定位管理</h2>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
-                   <Radio size={12} className="text-indigo-600 animate-pulse" /> Live Fleet Telemetry
+                   <Radio size={12} className="text-indigo-600 animate-pulse" /> Driver Location & Point Management
                 </p>
               </div>
-              <div className="flex items-center gap-2">
-                 <div className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full border border-indigo-200">
-                    <span className="w-2 h-2 bg-indigo-600 rounded-full animate-ping"></span>
-                    <span className="text-[10px] font-black uppercase">Realtime</span>
+              <div className="flex items-center gap-3">
+                 <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center">
+                   <span className="text-xl font-black text-indigo-600">{drivers.length}</span>
+                   <span className="text-[7px] font-black text-indigo-400 uppercase leading-none">司机</span>
                  </div>
               </div>
            </div>
-           <LiveMap drivers={drivers} locations={locations} transactions={transactions} />
+
+           <div className="space-y-4">
+             {drivers.map(driver => {
+               const driverLocs = locations.filter(l => l.assignedDriverId === driver.id);
+               const isExpanded = expandedDriverTracking === driver.id;
+               return (
+                 <div key={driver.id} className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
+                   <button
+                     className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
+                     onClick={() => { setExpandedDriverTracking(isExpanded ? null : driver.id); setTrackingEditLocId(null); }}
+                   >
+                     <div className="flex items-center gap-4">
+                       <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md ${driver.status === 'active' ? 'bg-indigo-600' : 'bg-slate-400'}`}>
+                         {driver.name.charAt(0)}
+                       </div>
+                       <div className="text-left">
+                         <p className="text-sm font-black text-slate-900">{driver.name}</p>
+                         <p className="text-[9px] font-bold text-slate-400 uppercase">
+                           {driverLocs.length} 个点位 • {driver.status === 'active' ? (driver.lastActive ? `${Math.floor((Date.now() - new Date(driver.lastActive).getTime()) / 60000)} 分钟前活跃` : '在线') : '离线'}
+                         </p>
+                       </div>
+                     </div>
+                     <div className="flex items-center gap-3">
+                       <span className={`px-2.5 py-1 rounded-lg text-[8px] font-black uppercase ${driver.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>{driver.status}</span>
+                       <ChevronRight size={16} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
+                     </div>
+                   </button>
+
+                   {isExpanded && (
+                     <div className="border-t border-slate-100 p-5 space-y-3 animate-in slide-in-from-top-2">
+                       {driverLocs.length === 0 ? (
+                         <p className="text-center text-[10px] font-black text-slate-300 uppercase py-6">该司机暂无分配点位</p>
+                       ) : (
+                         driverLocs.map(loc => {
+                           const isEditingThis = trackingEditLocId === loc.id;
+                           return (
+                             <div key={loc.id} className="bg-slate-50 rounded-[24px] p-4 border border-slate-100">
+                               <div className="flex items-center justify-between mb-2">
+                                 <div className="flex items-center gap-2">
+                                   <div className={`w-2 h-2 rounded-full ${loc.status === 'active' ? 'bg-emerald-500' : loc.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
+                                   <p className="text-xs font-black text-slate-900">{loc.name}</p>
+                                 </div>
+                                 <button
+                                   onClick={() => {
+                                     if (isEditingThis) {
+                                       setTrackingEditLocId(null);
+                                     } else {
+                                       setTrackingEditLocId(loc.id);
+                                       setTrackingLocForm({ commissionRate: (loc.commissionRate * 100).toFixed(0), status: loc.status });
+                                     }
+                                   }}
+                                   className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                                 >
+                                   <Pencil size={12} />
+                                 </button>
+                               </div>
+                               <div className="grid grid-cols-3 gap-2 text-[9px]">
+                                 <div><span className="text-slate-400 font-bold uppercase block">点位ID</span><span className="font-black text-slate-700">{loc.machineId}</span></div>
+                                 <div><span className="text-slate-400 font-bold uppercase block">上次读数</span><span className="font-black text-slate-700">{loc.lastScore.toLocaleString()}</span></div>
+                                 <div><span className="text-slate-400 font-bold uppercase block">分红比例</span><span className="font-black text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</span></div>
+                               </div>
+                               {isEditingThis && (
+                                 <div className="mt-3 border-t border-slate-200 pt-3 space-y-3 animate-in slide-in-from-top-2">
+                                   <div className="grid grid-cols-2 gap-2">
+                                     <div>
+                                       <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">分红比例 (%)</label>
+                                       <input
+                                         type="number"
+                                         value={trackingLocForm.commissionRate}
+                                         onChange={e => setTrackingLocForm(f => ({ ...f, commissionRate: e.target.value }))}
+                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black outline-none"
+                                         placeholder="15"
+                                       />
+                                     </div>
+                                     <div>
+                                       <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">状态 Status</label>
+                                       <select
+                                         value={trackingLocForm.status}
+                                         onChange={e => setTrackingLocForm(f => ({ ...f, status: e.target.value as Location['status'] }))}
+                                         className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black outline-none"
+                                       >
+                                         <option value="active">运行中</option>
+                                         <option value="maintenance">维护中</option>
+                                         <option value="broken">故障</option>
+                                       </select>
+                                     </div>
+                                   </div>
+                                   <button
+                                     onClick={() => {
+                                       const rate = parseFloat(trackingLocForm.commissionRate) / 100;
+                                       if (!isNaN(rate) && rate >= 0 && rate <= 1) {
+                                         const updated = locations.map(l => l.id === loc.id ? { ...l, commissionRate: rate, status: trackingLocForm.status, isSynced: false } : l);
+                                         onUpdateLocations(updated);
+                                         setTrackingEditLocId(null);
+                                       }
+                                     }}
+                                     className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase"
+                                   >
+                                     保存修改 Save
+                                   </button>
+                                 </div>
+                               )}
+                             </div>
+                           );
+                         })
+                       )}
+                       {driver.currentGps && (
+                         <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase pt-1">
+                           <Navigation size={10} className="text-indigo-500 animate-pulse" />
+                           实时GPS: {driver.currentGps.lat.toFixed(4)}, {driver.currentGps.lng.toFixed(4)}
+                         </div>
+                       )}
+                     </div>
+                   )}
+                 </div>
+               );
+             })}
+           </div>
+
+           <details className="group">
+             <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-5 rounded-[32px] border border-slate-200 shadow-sm select-none">
+               <div className="flex items-center gap-3">
+                 <MapPin size={18} className="text-indigo-500" />
+                 <span className="text-sm font-black text-slate-900 uppercase">实时地图 Live Map</span>
+               </div>
+               <span className="text-[10px] font-black text-slate-400 uppercase group-open:hidden">展开查看 ▼</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase hidden group-open:block">收起 ▲</span>
+             </summary>
+             <div className="mt-4">
+               <LiveMap drivers={drivers} locations={locations} transactions={transactions} />
+             </div>
+           </details>
         </div>
       )}
 
@@ -249,40 +448,48 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         </div>
       )}
 
-      {activeTab === 'payroll' && isAdmin && (
-        <div className="space-y-6 animate-in fade-in">
-           <div className="bg-white p-6 rounded-[32px] border border-slate-200 flex justify-between items-center">
+      {activeTab === 'team' && isAdmin && (
+        <div className="space-y-8 animate-in fade-in">
+          <DriverManagement drivers={drivers} transactions={transactions} onUpdateDrivers={onUpdateDrivers} />
+          {/* Payroll section merged into fleet tab */}
+          <div className="space-y-4 border-t border-slate-100 pt-6">
+            <div className="bg-white p-5 rounded-[28px] border border-slate-200 flex items-center gap-3">
+              <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Receipt size={18}/></div>
               <div>
-                <h2 className="text-lg font-black text-slate-900 uppercase">电子工资单</h2>
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Compensation Reports</p>
+                <h2 className="text-base font-black text-slate-900 uppercase">电子工资单</h2>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Compensation Reports — Electronic Payslip</p>
               </div>
-              <button onClick={() => setActiveTab('team')} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase flex items-center gap-2"><SlidersHorizontal size={14}/> 修改参数</button>
-           </div>
-           <div className="grid grid-cols-1 gap-4">
+            </div>
+            <div className="grid grid-cols-1 gap-4">
               {payrollStats.map(({ driver, monthlyBreakdown }) => (
-                <div key={driver.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm">
-                   <h3 className="font-black text-slate-900 uppercase mb-4">{driver.name}</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {monthlyBreakdown.map((m, i) => (
-                        <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                           <div className="flex justify-between mb-2"><span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span><span className="text-xs font-black text-indigo-600">TZS {m.netPayout.toLocaleString()}</span></div>
-                           <div className="flex gap-2">
-                              <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
-                              <button onClick={() => {
-                                const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nNet: TZS ${m.netPayout.toLocaleString()}`;
-                                window.open(`https://wa.me/${driver.phone?.replace(/\+/g,'')}?text=${encodeURIComponent(msg)}`);
-                              }} className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase">WhatsApp</button>
-                           </div>
+                <div key={driver.id} className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm">
+                  <h3 className="font-black text-slate-900 uppercase mb-3 text-sm">{driver.name}</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {monthlyBreakdown.map((m, i) => (
+                      <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div className="flex justify-between mb-1"><span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span><span className="text-xs font-black text-indigo-600">TZS {m.netPayout.toLocaleString()}</span></div>
+                        <div className="grid grid-cols-3 gap-1 text-[8px] text-slate-400 mb-2">
+                          <span>底薪: {(driver.baseSalary || 0).toLocaleString()}</span>
+                          <span>提成: {m.commission.toLocaleString()}</span>
+                          <span>短款: {m.shortage.toLocaleString()}</span>
                         </div>
-                      ))}
-                   </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
+                          <button onClick={() => {
+                            const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nBase: TZS ${(driver.baseSalary||0).toLocaleString()}\nComm: TZS ${m.commission.toLocaleString()}\nNet: TZS ${m.netPayout.toLocaleString()}`;
+                            window.open(`https://wa.me/${driver.phone?.replace(/\+/g,'')}?text=${encodeURIComponent(msg)}`);
+                          }} className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase">WhatsApp</button>
+                        </div>
+                      </div>
+                    ))}
+                    {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-[10px] text-slate-300 font-black uppercase py-4">暂无工资数据</p>}
+                  </div>
                 </div>
               ))}
-           </div>
+            </div>
+          </div>
         </div>
       )}
-
-      {activeTab === 'team' && isAdmin && <DriverManagement drivers={drivers} transactions={transactions} onUpdateDrivers={onUpdateDrivers} />}
       
       {activeTab === 'settlement' && (
         <div className="space-y-6 animate-in slide-in-from-right-4">

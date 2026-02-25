@@ -483,7 +483,7 @@ const App: React.FC = () => {
         <div className="max-w-2xl mx-auto flex justify-around items-center">
            {currentUser.role === 'admin' && <NavItem icon={<LayoutDashboard size={20}/>} label="Admin" active={view === 'dashboard'} onClick={() => setView('dashboard')} />}
            <NavItem icon={<PlusCircle size={20}/>} label={t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
-           <NavItem icon={<CheckSquare size={20}/>} label={t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
+           <NavItem icon={<CheckSquare size={20}/>} label={currentUser.role === 'admin' ? '结算审批' : t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
            <NavItem icon={<CreditCard size={20}/>} label={t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
            {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label={t.reports} active={view === 'reports'} onClick={() => setView('reports')} />}
         </div>
