@@ -15,6 +15,47 @@ import {
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 
+// Safe localStorage wrapper – iOS Safari private mode throws QuotaExceededError on writes
+const safeSetItem = (key: string, value: string) => {
+  try {
+    localStorage.setItem(key, value);
+  } catch (e) {
+    console.warn('localStorage.setItem failed (private browsing?)', e);
+  }
+};
+
+// Global ErrorBoundary to prevent full white-screen on any render crash
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: string }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: '' };
+  }
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, error: err?.message || String(err) };
+  }
+  componentDidCatch(err: Error, info: React.ErrorInfo) {
+    console.error('ErrorBoundary caught:', err, info);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0f172a', color: '#f8fafc', padding: '2rem', textAlign: 'center' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>⚠️</div>
+          <h1 style={{ fontWeight: 900, fontSize: '1.25rem', marginBottom: '0.5rem' }}>Something went wrong</h1>
+          <p style={{ color: '#94a3b8', fontSize: '0.75rem', maxWidth: '320px', marginBottom: '1.5rem' }}>{this.state.error}</p>
+          <button onClick={() => window.location.reload()} style={{ background: '#f59e0b', color: '#0f172a', fontWeight: 900, padding: '0.75rem 2rem', borderRadius: '0.75rem', border: 'none', cursor: 'pointer' }}>
+            Reload App
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '123', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', password: '123', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
@@ -137,19 +178,19 @@ const App: React.FC = () => {
   }, [currentUser]);
 
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
+    safeSetItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
   }, [locations]);
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
+    safeSetItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
   }, [drivers]);
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions));
+    safeSetItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions));
   }, [transactions]);
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements));
+    safeSetItem(CONSTANTS.STORAGE_SETTLEMENTS_KEY, JSON.stringify(dailySettlements));
   }, [dailySettlements]);
   useEffect(() => {
-    localStorage.setItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs));
+    safeSetItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs));
   }, [aiLogs]);
 
   const syncOfflineData = async () => {
@@ -458,4 +499,10 @@ const NavItem = ({ icon, label, active, onClick }: any) => (
   </button>
 );
 
-export default App;
+const AppWithBoundary: React.FC = () => (
+  <ErrorBoundary>
+    <App />
+  </ErrorBoundary>
+);
+
+export default AppWithBoundary;
