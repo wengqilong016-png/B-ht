@@ -12,6 +12,7 @@
     "@google/genai": "^1.40.0",
     "@supabase/supabase-js": "^2.95.3",
     "@types/leaflet": "^1.9.21",
+    "@vercel/analytics": "^1.6.1",
     "exif-js": "^2.3.0",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.563.0",

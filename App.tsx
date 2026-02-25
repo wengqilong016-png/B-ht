@@ -14,6 +14,7 @@ import {
   CheckSquare, Crown, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
+import { Analytics } from '@vercel/analytics/react';
 
 // Safe localStorage wrapper – iOS Safari private mode throws QuotaExceededError on writes
 const safeSetItem = (key: string, value: string) => {
@@ -488,6 +489,7 @@ const App: React.FC = () => {
            {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label={t.reports} active={view === 'reports'} onClick={() => setView('reports')} />}
         </div>
       </nav>
+      <Analytics />
     </div>
   );
 };
