@@ -304,8 +304,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
          setCurrentScore(aiReviewData.score);
          setPhotoData(aiReviewData.image);
          
-         // 标记为“已通过 AI 审核”
-         setAiReviewData(null); 
+         // 记录 AI 原始分值供比对
+         setAiReviewData({...aiReviewData, confirmed: true} as any); 
          stopScanner();
          alert(lang === 'zh' ? '✅ AI 读数已填入，请核对' : '✅ Hesabu ya AI imejazwa, tafadhali hakiki');
      }
@@ -322,6 +322,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       setStatus('uploading');
       
       const expenseValue = parseInt(expenses) || 0;
+      const userScore = parseInt(currentScore) || (selectedLocation?.lastScore || 0);
+      const recognizedScore = aiReviewData?.score ? parseInt(aiReviewData.score) : undefined;
+      
+      // 比对逻辑：差异超过 50 个单位标记为异常
+      const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
       
       const tx: Transaction = {
         id: draftTxId || `TX-${Date.now()}`,
@@ -331,10 +336,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         driverId: currentDriver.id, 
         driverName: currentDriver.name,
         previousScore: selectedLocation!.lastScore, 
-        currentScore: parseInt(currentScore) || selectedLocation!.lastScore,
+        currentScore: userScore,
         revenue: calculations.revenue, 
         commission: calculations.commission, 
-        ownerRetention: calculations.finalRetention, // 使用 calculations 的最终值
+        ownerRetention: calculations.finalRetention,
         debtDeduction: 0, startupDebtDeduction: 0,
         
         expenses: expenseValue, 
@@ -343,12 +348,15 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         expenseStatus: expenseValue > 0 ? 'pending' : undefined,
         
         coinExchange: parseInt(coinExchange) || 0, extraIncome: 0,
-        netPayable: calculations.netPayable, // 使用 calculations 的最终值
+        netPayable: calculations.netPayable,
         gps: gpsCoords, 
         photoUrl: photoData || undefined, 
         dataUsageKB: 120, isSynced: false,
         paymentStatus: 'paid',
         
+        // AI 审计字段
+        aiScore: recognizedScore,
+        isAnomaly: isAnomaly,
         reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
         notes: aiReviewData?.notes
       };

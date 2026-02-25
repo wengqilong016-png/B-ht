@@ -75,6 +75,8 @@ export interface Transaction {
   gpsDeviation?: number;
   photoUrl?: string;
   dataUsageKB: number; 
+  aiScore?: number;
+  isAnomaly?: boolean;
   notes?: string;
   isClearance?: boolean;
   isSynced: boolean;

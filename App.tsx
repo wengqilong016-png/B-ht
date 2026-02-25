@@ -225,6 +225,18 @@ const App: React.FC = () => {
     }
   };
 
+  const handleDeleteLocations = async (ids: string[]) => {
+    // 1. 本地删除
+    setLocations(prev => prev.filter(l => !ids.includes(l.id)));
+    
+    // 2. 云端物理删除
+    if (isOnline && supabase) {
+      const { error } = await supabase.from('locations').delete().in('id', ids);
+      if (error) console.error("Cloud delete failed:", error.message);
+      else console.log(`Successfully deleted ${ids.length} locations from cloud.`);
+    }
+  };
+
   const handleUpdateTransaction = async (txId: string, updates: Partial<Transaction>) => {
     setTransactions(prev => prev.map(t => t.id === txId ? { ...t, ...updates, isSynced: false } : t));
     if (isOnline && supabase) {
@@ -319,25 +331,6 @@ const App: React.FC = () => {
     if (user.role === 'driver') setView('collect');
   };
 
-  // 1. 数据过滤逻辑：必须放在所有 return 之前 (React Hooks Rule)
-  const filteredData = useMemo(() => {
-    const isAdmin = currentUser?.role === 'admin';
-    const userId = currentUser?.id;
-    
-    // 加强防崩溃保护 (Null/Undefined Safety)
-    const l = Array.isArray(locations) ? locations : [];
-    const t = Array.isArray(transactions) ? transactions : [];
-    const s = Array.isArray(dailySettlements) ? dailySettlements : [];
-    const d = Array.isArray(drivers) ? drivers : [];
-
-    return {
-      locations: isAdmin ? l : l.filter(item => item.assignedDriverId === userId),
-      transactions: isAdmin ? t : t.filter(item => item.driverId === userId),
-      dailySettlements: isAdmin ? s : s.filter(item => item.driverId === userId),
-      drivers: isAdmin ? d : d.filter(item => item.id === userId),
-    };
-  }, [currentUser, locations, transactions, dailySettlements, drivers]);
-
   const unsyncedCount = (Array.isArray(transactions) ? transactions.filter(t => !t.isSynced).length : 0) + 
                        (Array.isArray(dailySettlements) ? dailySettlements.filter(s => !s.isSynced).length : 0) + 
                        (Array.isArray(aiLogs) ? aiLogs.filter(l => !l.isSynced).length : 0);
@@ -354,6 +347,15 @@ const App: React.FC = () => {
   if (!currentUser) {
     return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
+
+  // 1. 数据过滤逻辑：仅在 currentUser 存在时执行，且放在 return 之后是错误的，
+  // 但我们通过在顶层始终定义 Hook，内部判断逻辑来修复。
+  const filteredData = {
+    locations: currentUser.role === 'admin' ? locations : locations.filter(l => l.assignedDriverId === currentUser.id),
+    transactions: currentUser.role === 'admin' ? transactions : transactions.filter(t => t.driverId === currentUser.id),
+    dailySettlements: currentUser.role === 'admin' ? dailySettlements : dailySettlements.filter(s => s.driverId === currentUser.id),
+    drivers: currentUser.role === 'admin' ? drivers : drivers.filter(d => d.id === currentUser.id),
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -398,6 +400,7 @@ const App: React.FC = () => {
             currentUser={currentUser} 
             onUpdateDrivers={handleUpdateDrivers} 
             onUpdateLocations={handleUpdateLocations} 
+            onDeleteLocations={handleDeleteLocations} 
             onUpdateTransaction={handleUpdateTransaction}
             onNewTransaction={handleNewTransaction} 
             onSaveSettlement={handleSaveSettlement} 
