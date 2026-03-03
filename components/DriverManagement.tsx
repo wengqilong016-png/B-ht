@@ -1,12 +1,12 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Truck, User, Phone, Key, Save, X, Plus, Ban, 
-  CheckCircle2, Pencil, Trash2, Banknote, Wallet, 
-  Coins, CreditCard, UserCog, AlertCircle, ShieldCheck,
-  TrendingDown, Percent, CircleDollarSign, Power, Navigation, Clock, MapPin, Loader2,
-  Calendar, Calculator, Receipt, TrendingUp, BarChart3, LayoutGrid, ArrowUpDown, ArrowUp, ArrowDown,
-  Search, Filter, ChevronLeft, ChevronRight, SlidersHorizontal
+  Truck, User, Phone, Key, Save, X, Plus,
+  Pencil, Banknote, Wallet, 
+  UserCog, AlertCircle, ShieldCheck,
+  Percent, Loader2,
+  Calculator, Receipt, TrendingUp, BarChart3, LayoutGrid, ArrowUpDown, ArrowUp, ArrowDown,
+  Search, SlidersHorizontal, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import { Driver, Transaction } from '../types';
 

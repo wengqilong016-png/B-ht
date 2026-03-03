@@ -1,8 +1,8 @@
 
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
-import { BrainCircuit, Send, Loader2, User, Bot, Sparkles, AlertCircle, Volume2, Search, Brain, Globe, Camera, X, ImageIcon, ShieldCheck, Activity, ScanLine, Link, Palette, Download, Wand2, Settings, Languages, Mic, Check, Edit3, AlertTriangle, RotateCcw } from 'lucide-react';
-import { Driver, Location, Transaction, User as UserType, AILog, safeRandomUUID } from '../types';
+import { BrainCircuit, Send, Loader2, User, Bot, Sparkles, Volume2, Brain, Globe, Camera, X, ImageIcon, ShieldCheck, Activity, ScanLine, Link, Palette, Download, Wand2, Settings, Languages, Mic, Check, Edit3, RotateCcw } from 'lucide-react';
+import { Driver, Location, Transaction, User as UserType, AILog, safeRandomUUID, resizeImage } from '../types';
 
 interface AIHubProps {
   drivers: Driver[];
@@ -136,22 +136,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-           const canvas = document.createElement('canvas');
-           const MAX_WIDTH = 800;
-           const scale = Math.min(1, MAX_WIDTH / img.width);
-           canvas.width = img.width * scale;
-           canvas.height = img.height * scale;
-           const ctx = canvas.getContext('2d');
-           ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-           setSelectedImage(canvas.toDataURL('image/jpeg', 0.6));
-        };
-        img.src = ev.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      resizeImage(file).then(setSelectedImage);
     }
   };
 

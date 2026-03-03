@@ -1,6 +1,6 @@
 
-import React, { useMemo, useState, useEffect, useRef } from 'react';
-import { Coins, MapPin, Radio, Search, ExternalLink, Map as MapIcon, Truck, Wallet, Calculator, AlertTriangle, CheckCircle2, Banknote, Plus, X, Save, User, Key, Phone, Pencil, Clock, Loader2, CalendarRange, Calendar, FileText, ChevronRight, Receipt, Fuel, Wrench, Gavel, MoreHorizontal, AlertCircle, Building2, HandCoins, Camera, Info, Share2, Printer, Navigation, Download, ShieldCheck, Percent, LayoutList, TrendingUp, TrendingDown, Target, BellRing, Layers, Settings, BrainCircuit, Store, Signal, Smartphone, ThumbsUp, ThumbsDown, ArrowUpDown, ArrowUp, ArrowDown, Link, FileClock, ImagePlus, Trash2, Send, ArrowRight, ImageIcon, Eye, Sparkles } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight } from 'lucide-react';
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
@@ -39,19 +39,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       setActiveTab(initialTab);
     }
   }, [initialTab]);
-  const [mapSearchQuery, setMapSearchQuery] = useState('');
-  const [selectedDriverFilter, setSelectedDriverFilter] = useState<string | null>(null);
+
 
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
-  const [driverFloatInput, setDriverFloatInput] = useState<string>('');
-  const [settlementProof, setSettlementProof] = useState<string | null>(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [lastSettlement, setLastSettlement] = useState<DailySettlement | null>(null);
-  const [showAssetMap, setShowAssetMap] = useState(false);
-  
-  const [reviewingSettlement, setReviewingSettlement] = useState<DailySettlement | null>(null);
-  const settlementFileInputRef = useRef<HTMLInputElement>(null);
+
 
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
   const [locEditForm, setLocEditForm] = useState({ name: '', commissionRate: '', lastScore: '', status: 'active' as Location['status'], ownerPhotoUrl: '' });
@@ -133,12 +125,6 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
   const handleExpenseAction = (tx: Transaction, action: 'approve' | 'reject') => {
     onUpdateTransaction(tx.id, { expenseStatus: action === 'approve' ? 'approved' : 'rejected' });
-  };
-
-  const selectSettlementForReview = (s: DailySettlement) => {
-    setReviewingSettlement(s);
-    setActualCash(s.actualCash.toString());
-    setActualCoins(s.actualCoins.toString());
   };
 
   const handleEditLocation = (loc: Location) => {

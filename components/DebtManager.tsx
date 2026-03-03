@@ -1,10 +1,10 @@
 
 import React, { useState, useMemo } from 'react';
 import { 
-  ShieldCheck, TrendingDown, Building2, User, Truck, 
-  Info, HandCoins, ArrowRight, Save, Coins, Wallet, 
-  Loader2, CheckCircle2, AlertCircle, TrendingUp,
-  CreditCard, PieChart, ChevronRight, Check, X
+  ShieldCheck, Building2, User,
+  Info, HandCoins, X, Coins, Wallet, 
+  Loader2, CheckCircle2, AlertCircle,
+  CreditCard, PieChart, Check
 } from 'lucide-react';
 import { Driver, Location, User as UserType, TRANSLATIONS } from '../types';
 

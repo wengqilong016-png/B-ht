@@ -10,11 +10,17 @@ const SystemStatus: React.FC = () => {
   const [error, setError] = useState(false);
 
   const fetchStatus = async () => {
+    const apiKey = import.meta.env.VITE_INTERNAL_API_KEY;
+    if (!apiKey) {
+      setError(true);
+      setLoading(false);
+      return;
+    }
     try {
       setLoading(true);
       const res = await fetch(STATUS_API_URL, {
         headers: {
-          'X-API-KEY': import.meta.env.VITE_INTERNAL_API_KEY ?? 'TuqO3FwGIftnvs7PIVhfZcxH6nColM_OJXzEqzU9k3E'
+          'X-API-KEY': apiKey
         }
       });
       

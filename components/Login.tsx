@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { ShieldCheck, User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
-import { Driver, User as UserType, TRANSLATIONS } from '../types';
+import { Driver, User as UserType, TRANSLATIONS, CONSTANTS } from '../types';
 import { checkDbHealth } from '../supabaseClient';
 
 interface LoginProps {
@@ -33,7 +33,9 @@ const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
     const userLower = username.toLowerCase();
     
     // Admin Master Login
-    if ((userLower === '8888' || userLower === 'admin') && password === '0000') {
+    const validUsernames = [CONSTANTS.ADMIN_USERNAME.toLowerCase(), ...CONSTANTS.ADMIN_ALIASES];
+    const validPasswords = [CONSTANTS.ADMIN_PASSWORD, ...CONSTANTS.ADMIN_PASSWORD_ALIASES];
+    if (validUsernames.includes(userLower) && validPasswords.includes(password)) {
       onLogin({ id: 'ADMIN-MASTER', username: userLower, role: 'admin', name: 'Administrator' });
       setIsLoading(false);
       return;

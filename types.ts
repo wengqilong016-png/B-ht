@@ -156,6 +156,39 @@ export const safeRandomUUID = (): string => {
   });
 };
 
+/**
+ * Resize an image file to a max width and return a data URL.
+ * Shared utility to avoid duplicating the canvas-based resize logic across components.
+ */
+export const resizeImage = (
+  file: File,
+  maxWidth: number = 800,
+  quality: number = 0.6,
+): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Failed to read file'));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Failed to load image'));
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        const scale = Math.min(1, maxWidth / img.width);
+        canvas.width = img.width * scale;
+        canvas.height = img.height * scale;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('Failed to get canvas context'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+
 export const CONSTANTS = {
   COIN_VALUE_TZS: 200,
   DEFAULT_PROFIT_SHARE: 0.15,
@@ -172,6 +205,9 @@ export const CONSTANTS = {
   IMAGE_QUALITY: 0.6,
   ADMIN_USERNAME: 'JACK',
   ADMIN_PASSWORD: '0808',
+  // Additional admin login aliases for backward compatibility
+  ADMIN_ALIASES: ['8888', 'admin'] as readonly string[],
+  ADMIN_PASSWORD_ALIASES: ['0000'] as readonly string[],
   STAGNANT_DAYS_THRESHOLD: 7,
 };
 

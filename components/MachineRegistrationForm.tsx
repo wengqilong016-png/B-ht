@@ -1,7 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
-import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
+import { Location, Driver, CONSTANTS, safeRandomUUID, resizeImage } from '../types';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => void;
@@ -48,22 +48,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = (ev) => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          const MAX_WIDTH = 800;
-          const scale = Math.min(1, MAX_WIDTH / img.width);
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, canvas.width, canvas.height);
-          setMachinePhoto(canvas.toDataURL('image/jpeg', 0.6));
-        };
-        img.src = ev.target?.result as string;
-      };
-      reader.readAsDataURL(file);
+      resizeImage(file).then(setMachinePhoto);
     }
   };
 

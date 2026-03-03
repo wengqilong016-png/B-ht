@@ -1,6 +1,6 @@
 
 import React, { useState, useMemo } from 'react';
-import { Calendar, MapPin, CheckCircle2, Filter, ChevronDown, Info, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, Banknote, ExternalLink, MapPinned, Search, BrainCircuit, ShieldAlert, ArrowRight, Target } from 'lucide-react';
+import { CheckCircle2, Filter, ChevronDown, RefreshCw, List, Map as MapIcon, Navigation, WifiOff, AlertTriangle, Clock, Globe, Calculator, MapPinned, Search, BrainCircuit, ShieldAlert, Target, Sparkles } from 'lucide-react';
 import { Transaction, Location, getDistance } from '../types';
 
 interface TransactionHistoryProps {

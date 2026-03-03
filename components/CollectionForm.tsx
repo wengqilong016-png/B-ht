@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Camera, Send, Loader2, BrainCircuit, X, Sparkles, Layers, Coins, ArrowRight, MapPin, Wand2, ShieldAlert, CheckCircle2, Wallet, AlertTriangle, ScanLine, Scan, Zap, Calculator, Search, HandCoins, Percent, Building2, ChevronRight, Trophy, Fuel, Wrench, Gavel, Banknote, User, Aperture, Edit2, RotateCcw, Plus, Satellite } from 'lucide-react';
+import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import EXIF from 'exif-js';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../types';
