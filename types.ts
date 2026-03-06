@@ -17,6 +17,8 @@ export interface Location {
   status: 'active' | 'maintenance' | 'broken';
   lastRevenueDate?: string;
   commissionRate: number;
+  resetLocked?: boolean; // Locked when a 9999 reset request is pending
+  dividendBalance?: number; // Accumulated owner dividend not yet withdrawn
   isSynced?: boolean; // Added for offline sync tracking
 }
 
@@ -82,13 +84,19 @@ export interface Transaction {
   isSynced: boolean;
   reportedStatus?: 'active' | 'maintenance' | 'broken';
   paymentStatus?: 'unpaid' | 'pending' | 'paid' | 'rejected';
-  type?: 'collection' | 'expense';
+  type?: 'collection' | 'expense' | 'reset_request' | 'payout_request';
   
+  // Approval pipeline status (AI auto-approve / admin manual review)
+  approvalStatus?: 'auto-approved' | 'pending' | 'approved' | 'rejected';
+
   // New Fields for Expense Approval
   expenseType?: 'public' | 'private'; // Public = Company Cost, Private = Driver Loan
   expenseCategory?: 'fuel' | 'repair' | 'fine' | 'allowance' | 'salary_advance' | 'other';
   expenseStatus?: 'pending' | 'approved' | 'rejected';
   expenseDescription?: string;
+
+  // Payout request fields (店主分红提现)
+  payoutAmount?: number;
 }
 
 export interface Driver {
@@ -282,7 +290,23 @@ export const TRANSLATIONS = {
     viewHistory: '查看历史账单',
     settlementSubmitted: '账单已提交',
     settlementConfirmed: '账单已确认',
-    backToSettlement: '返回结算'
+    backToSettlement: '返回结算',
+    // New: Reset & Payout & Approval
+    resetRequest: '申请分数重置 (9999)',
+    resetRequestDesc: '机器爆机，申请清零重置',
+    resetLocked: '重置锁定中',
+    payoutRequest: '分红提现申请',
+    payoutRequestDesc: '店主申请提取分红',
+    payoutAmount: '提现金额',
+    approvalCenter: '审批中心',
+    anomalyReview: '异常审查',
+    resetApproval: '重置审批',
+    payoutApproval: '提现审批',
+    approveBtn: '批准',
+    rejectBtn: '驳回',
+    autoApproved: '自动通过',
+    pendingApproval: '待审批',
+    machineLocked: '机器已锁定'
   },
   sw: {
     login: 'Driver Login',
@@ -354,7 +378,23 @@ export const TRANSLATIONS = {
     viewHistory: 'View Collection History',
     settlementSubmitted: 'Settlement Submitted',
     settlementConfirmed: 'Settlement Confirmed',
-    backToSettlement: "Back to Settlement"
+    backToSettlement: "Back to Settlement",
+    // New: Reset & Payout & Approval
+    resetRequest: 'Request Score Reset (9999)',
+    resetRequestDesc: 'Machine overflow, request reset to zero',
+    resetLocked: 'Reset Locked',
+    payoutRequest: 'Dividend Withdrawal Request',
+    payoutRequestDesc: 'Owner requests dividend payout',
+    payoutAmount: 'Payout Amount',
+    approvalCenter: 'Approval Center',
+    anomalyReview: 'Anomaly Review',
+    resetApproval: 'Reset Approval',
+    payoutApproval: 'Payout Approval',
+    approveBtn: 'Approve',
+    rejectBtn: 'Reject',
+    autoApproved: 'Auto-Approved',
+    pendingApproval: 'Pending Approval',
+    machineLocked: 'Machine Locked'
   }
 };
 

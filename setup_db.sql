@@ -28,6 +28,8 @@ CREATE TABLE public.locations (
     "remainingStartupDebt" NUMERIC DEFAULT 0,
     "isNewOffice" BOOLEAN DEFAULT false,
     "lastRevenueDate" TEXT,
+    "resetLocked" BOOLEAN DEFAULT false,
+    "dividendBalance" NUMERIC DEFAULT 0,
     "isSynced" BOOLEAN DEFAULT true,
     "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
@@ -87,7 +89,9 @@ CREATE TABLE public.transactions (
     "expenseType" TEXT,
     "expenseCategory" TEXT,
     "expenseStatus" TEXT DEFAULT 'pending',
-    "expenseDescription" TEXT
+    "expenseDescription" TEXT,
+    "approvalStatus" TEXT DEFAULT 'pending',
+    "payoutAmount" NUMERIC DEFAULT 0
 );
 
 -- 5. 结账表 (Daily Settlements)
@@ -188,7 +192,9 @@ BEGIN
       'debt',
       'startup_debt',
       'check_in',
-      'check_out'
+      'check_out',
+      'reset_request',
+      'payout_request'
     ));
   END IF;
 END $$;
@@ -239,7 +245,42 @@ BEGIN
       'debt',
       'startup_debt',
       'check_in',
-      'check_out'
+      'check_out',
+      'reset_request',
+      'payout_request'
     ));
   END IF;
+END $$;
+
+-- 12. New columns for approval pipeline, reset-lock, and dividend features
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "approvalStatus" TEXT DEFAULT 'pending';
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "payoutAmount" NUMERIC DEFAULT 0;
+
+ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "resetLocked" BOOLEAN DEFAULT false;
+ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "dividendBalance" NUMERIC DEFAULT 0;
+
+-- Update type constraint to include new transaction types (safe re-run)
+DO $$
+BEGIN
+  -- Drop old constraint if it exists, then recreate with expanded values
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conname = 'transactions_type_check'
+  ) THEN
+    ALTER TABLE public.transactions DROP CONSTRAINT transactions_type_check;
+  END IF;
+
+  ALTER TABLE public.transactions
+  ADD CONSTRAINT transactions_type_check
+  CHECK (type IN (
+    'collection',
+    'expense',
+    'debt',
+    'startup_debt',
+    'check_in',
+    'check_out',
+    'reset_request',
+    'payout_request'
+  ));
 END $$;

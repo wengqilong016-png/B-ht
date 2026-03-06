@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight } from 'lucide-react';
+import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight, RefreshCw, Wallet, ShieldAlert, Eye, Camera } from 'lucide-react';
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
@@ -71,6 +71,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   const totalArrears = useMemo(() => myTransactions.filter(tx => tx.paymentStatus === 'unpaid').reduce((sum, tx) => sum + tx.netPayable, 0), [myTransactions]);
   const pendingExpenses = useMemo(() => transactions.filter(tx => tx.expenses > 0 && tx.expenseStatus === 'pending'), [transactions]);
   const pendingSettlements = useMemo(() => dailySettlements.filter(s => s.status === 'pending'), [dailySettlements]);
+
+  // New approval pipeline data
+  const anomalyTransactions = useMemo(() => transactions.filter(tx => tx.isAnomaly === true && tx.approvalStatus !== 'approved' && tx.approvalStatus !== 'rejected'), [transactions]);
+  const pendingResetRequests = useMemo(() => transactions.filter(tx => tx.type === 'reset_request' && tx.approvalStatus === 'pending'), [transactions]);
+  const pendingPayoutRequests = useMemo(() => transactions.filter(tx => tx.type === 'payout_request' && tx.approvalStatus === 'pending'), [transactions]);
 
   // --- Payroll System ---
   const payrollStats = useMemo(() => {
@@ -516,8 +521,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                 {/* Part 1: Settlement Approvals */}
                 <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm flex justify-between items-center">
                    <div>
-                     <h3 className="text-lg font-black text-slate-900 uppercase">Settlement Approval Center</h3>
-                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pending Reviews ({pendingSettlements.length})</p>
+                     <h3 className="text-lg font-black text-slate-900 uppercase">{t.approvalCenter}</h3>
+                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                       {lang === 'zh' ? '结算' : 'Settlements'} ({pendingSettlements.length}) • {t.anomalyReview} ({anomalyTransactions.length}) • {t.resetApproval} ({pendingResetRequests.length}) • {t.payoutApproval} ({pendingPayoutRequests.length})
+                     </p>
                    </div>
                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
                 </div>
@@ -615,6 +622,177 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                             <div className="flex gap-2">
                               <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'approved' })} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ Approve</button>
                               <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'rejected' })} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase">✗ Reject</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Part 3: AI Anomaly Review (异常审查) */}
+                {anomalyTransactions.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="bg-amber-50 p-4 rounded-[24px] border border-amber-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-black text-amber-800 uppercase flex items-center gap-2"><ShieldAlert size={16} /> {t.anomalyReview}</h3>
+                        <p className="text-[9px] font-bold text-amber-500 uppercase">AI flagged discrepancies ({anomalyTransactions.length})</p>
+                      </div>
+                      <div className="bg-amber-200 text-amber-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{anomalyTransactions.length}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {anomalyTransactions.map(tx => {
+                        const driver = drivers.find(d => d.id === tx.driverId);
+                        return (
+                          <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-amber-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center font-black text-xs">{driver?.name?.charAt(0) || '?'}</div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
+                                  <p className="text-[8px] font-bold text-slate-400">{tx.locationName} — {new Date(tx.timestamp).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              <div className="px-2 py-0.5 bg-amber-50 text-amber-600 rounded text-[8px] font-black uppercase">⚠️ Anomaly</div>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 mb-3">
+                              <div className="bg-slate-50 p-2 rounded-xl">
+                                <p className="text-[8px] font-black text-slate-400 uppercase">Driver Input</p>
+                                <p className="text-xs font-black text-slate-900">{tx.currentScore}</p>
+                              </div>
+                              <div className="bg-amber-50 p-2 rounded-xl">
+                                <p className="text-[8px] font-black text-amber-400 uppercase">AI Detected</p>
+                                <p className="text-xs font-black text-amber-700">{tx.aiScore ?? 'N/A'}</p>
+                              </div>
+                            </div>
+                            {tx.photoUrl && (
+                              <div className="mb-3">
+                                <img src={tx.photoUrl} alt="Evidence" className="w-full h-24 object-cover rounded-xl border border-slate-200" />
+                              </div>
+                            )}
+                            <div className="flex gap-2">
+                              <button onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'approved', isAnomaly: false })} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ {t.approveBtn}</button>
+                              <button onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'rejected' })} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase">✗ {t.rejectBtn}</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Part 4: 9999 Reset Approval (重置审批) */}
+                {pendingResetRequests.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="bg-purple-50 p-4 rounded-[24px] border border-purple-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-black text-purple-800 uppercase flex items-center gap-2"><RefreshCw size={16} /> {t.resetApproval}</h3>
+                        <p className="text-[9px] font-bold text-purple-500 uppercase">9999 Overflow Reset Requests ({pendingResetRequests.length})</p>
+                      </div>
+                      <div className="bg-purple-200 text-purple-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingResetRequests.length}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {pendingResetRequests.map(tx => {
+                        const driver = drivers.find(d => d.id === tx.driverId);
+                        const loc = locations.find(l => l.id === tx.locationId);
+                        return (
+                          <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-purple-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center font-black text-xs"><RefreshCw size={14} /></div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
+                                  <p className="text-[8px] font-bold text-slate-400">{tx.locationName} — {loc?.machineId}</p>
+                                </div>
+                              </div>
+                              <div className="px-2 py-0.5 bg-purple-50 text-purple-600 rounded text-[8px] font-black uppercase">RESET</div>
+                            </div>
+                            <div className="bg-slate-50 p-3 rounded-xl mb-3">
+                              <p className="text-[8px] font-black text-slate-400 uppercase">Current Score (Before Reset)</p>
+                              <p className="text-lg font-black text-purple-700">{tx.currentScore}</p>
+                            </div>
+                            {tx.photoUrl && (
+                              <div className="mb-3">
+                                <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Reset Evidence Photo</p>
+                                <img src={tx.photoUrl} alt="Reset proof" className="w-full h-28 object-cover rounded-xl border border-slate-200" />
+                              </div>
+                            )}
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => {
+                                  onUpdateTransaction(tx.id, { approvalStatus: 'approved' });
+                                  // Reset the location score to 0 and unlock
+                                  if (loc) {
+                                    onUpdateLocations(locations.map(l => l.id === loc.id ? { ...l, lastScore: 0, resetLocked: false, isSynced: false } : l));
+                                  }
+                                }} 
+                                className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
+                              >
+                                ✓ {t.approveBtn} & Reset to 0
+                              </button>
+                              <button 
+                                onClick={() => {
+                                  onUpdateTransaction(tx.id, { approvalStatus: 'rejected' });
+                                  // Unlock the machine even on rejection
+                                  if (loc) {
+                                    onUpdateLocations(locations.map(l => l.id === loc.id ? { ...l, resetLocked: false, isSynced: false } : l));
+                                  }
+                                }} 
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
+                              >
+                                ✗ {t.rejectBtn}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Part 5: Payout / Dividend Withdrawal Approval (提现审批) */}
+                {pendingPayoutRequests.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="bg-emerald-50 p-4 rounded-[24px] border border-emerald-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-black text-emerald-800 uppercase flex items-center gap-2"><Wallet size={16} /> {t.payoutApproval}</h3>
+                        <p className="text-[9px] font-bold text-emerald-500 uppercase">Owner Dividend Withdrawal ({pendingPayoutRequests.length})</p>
+                      </div>
+                      <div className="bg-emerald-200 text-emerald-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingPayoutRequests.length}</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {pendingPayoutRequests.map(tx => {
+                        const driver = drivers.find(d => d.id === tx.driverId);
+                        const loc = locations.find(l => l.id === tx.locationId);
+                        return (
+                          <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-emerald-200 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center font-black text-xs"><Wallet size={14} /></div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>
+                                  <p className="text-[8px] font-bold text-slate-400">{lang === 'zh' ? '店主' : 'Owner'}: {loc?.ownerName || 'N/A'} — {lang === 'zh' ? '提交人' : 'By'}: {tx.driverName}</p>
+                                </div>
+                              </div>
+                              <div className="px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded text-[8px] font-black uppercase">PAYOUT</div>
+                            </div>
+                            <div className="bg-emerald-50 p-4 rounded-xl mb-3 text-center">
+                              <p className="text-[8px] font-black text-emerald-400 uppercase">{t.payoutAmount}</p>
+                              <p className="text-2xl font-black text-emerald-700">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'approved' })} 
+                                className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
+                              >
+                                ✓ {t.approveBtn}
+                              </button>
+                              <button 
+                                onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'rejected' })} 
+                                className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
+                              >
+                                ✗ {t.rejectBtn}
+                              </button>
                             </div>
                           </div>
                         );
