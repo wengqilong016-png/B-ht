@@ -46,7 +46,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             <div key={index} className="flex items-center justify-between gap-6">
               <div className="flex items-center gap-2">
                 <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: entry.color }}></div>
-                <span className="text-[11px] font-bold text-slate-300 uppercase">{entry.name === 'revenue' ? '营收' : entry.name === 'expenses' ? '支出' : '利润'}</span>
+                <span className="text-[11px] font-bold text-slate-300 uppercase">{entry.name === 'revenue' ? 'Revenue' : entry.name === 'expenses' ? 'Expenses' : 'Profit'}</span>
               </div>
               <span className="text-[11px] font-black text-white">TZS {entry.value.toLocaleString()}</span>
             </div>
@@ -205,7 +205,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
             <span className="text-[10px] font-bold text-slate-400">TZS</span>
             <span className="text-2xl font-black text-rose-600">{stats.expenses.toLocaleString()}</span>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded-lg w-fit"><ArrowDownRight size={10} /> 仅含公司运营支出</div>
+          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-rose-500 bg-rose-50 px-2 py-1 rounded-lg w-fit"><ArrowDownRight size={10} /> Company expenses only</div>
         </div>
 
         <div className="bg-slate-900 p-6 rounded-[32px] shadow-2xl relative overflow-hidden group">
@@ -215,7 +215,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
             <span className="text-[10px] font-bold text-slate-500">TZS</span>
             <span className="text-2xl font-black text-white">{stats.netProfit.toLocaleString()}</span>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-indigo-400 bg-white/10 px-2 py-1 rounded-lg w-fit"><ArrowUpRight size={10} /> 净利润估算</div>
+          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-indigo-400 bg-white/10 px-2 py-1 rounded-lg w-fit"><ArrowUpRight size={10} /> Est. Net Profit</div>
         </div>
 
         <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm relative overflow-hidden group">
@@ -225,31 +225,31 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
             <span className="text-[10px] font-bold text-slate-400">TZS</span>
             <span className="text-2xl font-black text-amber-600">{stats.outstandingDebt.toLocaleString()}</span>
           </div>
-          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg w-fit"><DollarSign size={10} /> 待收资产</div>
+          <div className="mt-4 flex items-center gap-1 text-[9px] font-black text-amber-600 bg-amber-50 px-2 py-1 rounded-lg w-fit"><DollarSign size={10} /> Outstanding</div>
         </div>
       </div>
 
       <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">筛选条件 Filters</p>
+        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 px-1">Filters</p>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
              <User size={14} className="text-slate-400 shrink-0" />
              <select value={driverFilter} onChange={e => setDriverFilter(e.target.value)} className="bg-transparent text-[11px] font-black text-slate-700 outline-none w-full uppercase">
-               <option value="all">全部司机</option>
+               <option value="all">All Drivers</option>
                {drivers.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
              </select>
           </div>
           <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
              <MapPin size={14} className="text-slate-400 shrink-0" />
              <select value={locationFilter} onChange={e => setLocationFilter(e.target.value)} className="bg-transparent text-[11px] font-black text-slate-700 outline-none w-full uppercase">
-               <option value="all">全部点位</option>
+               <option value="all">All Sites</option>
                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
              </select>
           </div>
           <div className="flex bg-slate-100 p-1 rounded-xl">
              {(['day', 'week', 'month'] as const).map(type => (
                <button key={type} onClick={() => setGroupBy(type)} className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase transition-all ${groupBy === type ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>
-                 {type === 'day' ? '按日' : type === 'week' ? '按周' : '按月'}
+                 {type === 'day' ? 'Daily' : type === 'week' ? 'Weekly' : 'Monthly'}
                </button>
              ))}
           </div>
@@ -259,10 +259,10 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
         <div className="xl:col-span-2 bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
            <div className="flex justify-between items-center mb-8">
-              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">营收趋势对比 (Revenue Trend)</h3>
+              <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Revenue Trend</h3>
               <div className="flex gap-4">
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> 营收</div>
-                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase"><div className="w-2 h-2 bg-rose-500 rounded-full"></div> 支出 (Public)</div>
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase"><div className="w-2 h-2 bg-indigo-500 rounded-full"></div> Revenue</div>
+                <div className="flex items-center gap-1.5 text-[9px] font-bold text-slate-400 uppercase"><div className="w-2 h-2 bg-rose-500 rounded-full"></div> Expenses (Public)</div>
               </div>
            </div>
            <div className="h-[350px]">
@@ -286,7 +286,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
         </div>
 
         <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-sm">
-           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 text-center">支出构成分析 (Public & Private)</h3>
+           <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest mb-8 text-center">Expense Analysis (Public & Private)</h3>
            <div className="h-[350px]">
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
@@ -330,21 +330,21 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
       <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
         <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
            <div>
-             <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">财务流水明细</h3>
+             <h3 className="text-sm font-black text-slate-900 uppercase tracking-wide">Transaction Ledger</h3>
              <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">Detailed Transaction Ledger</p>
            </div>
-           <span className="text-[9px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full">{filteredTransactions.length} 条</span>
+           <span className="text-[9px] font-black bg-indigo-600 text-white px-3 py-1 rounded-full">{filteredTransactions.length} records</span>
         </div>
         <div className="overflow-x-auto custom-scrollbar">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">日期</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">点位/内容</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">司机</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">营收</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">支出</th>
-                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">净收/还款</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">Date</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">Site / Description</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">Driver</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Revenue</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Expenses</th>
+                <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Net / Settlement</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
@@ -356,7 +356,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
                     {tx.expenses > 0 && (
                       <div className="flex items-center gap-1 mt-1">
                         <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase ${tx.expenseType === 'public' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
-                           {tx.expenseType === 'public' ? '公' : '私'}
+                           {tx.expenseType === 'public' ? 'Corp' : 'Priv'}
                         </span>
                         <span className="text-[8px] text-slate-400 font-bold uppercase">{tx.expenseCategory || 'Expense'}</span>
                       </div>
@@ -374,7 +374,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
                 </tr>
               ))}
               {filteredTransactions.length === 0 && (
-                <tr><td colSpan={6} className="px-6 py-20 text-center text-slate-400 text-xs font-black uppercase tracking-widest">所选时间段内暂无匹配财务记录</td></tr>
+                <tr><td colSpan={6} className="px-6 py-20 text-center text-slate-400 text-xs font-black uppercase tracking-widest">No financial records in this period</td></tr>
               )}
             </tbody>
           </table>

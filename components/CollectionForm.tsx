@@ -755,9 +755,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                     <Satellite size={16} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS 地理位置验证</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS Location Verification</span>
                     <span className={`text-[8px] font-bold uppercase ${gpsPermission === 'denied' ? 'text-rose-600' : gpsCoords ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {gpsPermission === 'denied' ? '权限已禁用 (PERMISSION DENIED)' : gpsCoords ? '已锁定位置 (LOCATION LOCKED)' : '正在定位 (ACQUIRING...)'}
+                      {gpsPermission === 'denied' ? 'GPS DENIED' : gpsCoords ? 'LOCATION LOCKED' : 'ACQUIRING...'}
                     </span>
                   </div>
                </div>
@@ -769,7 +769,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             {gpsPermission === 'denied' && (
               <div className="mt-3 p-3 bg-white/60 rounded-xl border border-rose-100">
                 <p className="text-[9px] font-bold text-rose-800 leading-relaxed">
-                  ⚠️ {lang === 'zh' ? '您拒绝了定位权限。请在手机浏览器设置中找到“位置”，将其修改为“允许”，然后点击上方刷新。' : 'Umekataa ruhusa ya GPS. Tafadhali nenda kwenye mipangilio ya kivinjari chako, ruhusu eneo (Location), kisha gusa kitufe cha kupakia upya hapo juu.'}
+                  ⚠️ GPS permission denied. Please open browser settings, find Location permissions, set to Allow, then refresh.
                 </p>
               </div>
             )}
@@ -833,14 +833,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                                 className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
                             >
                                 <CheckCircle2 size={18} />
-                                <span className="text-[10px] font-black uppercase">正常 Normal</span>
+                                <span className="text-[10px] font-black uppercase">Normal</span>
                             </button>
                             <button 
                                 onClick={() => setAiReviewData({...aiReviewData, condition: 'Damaged'})}
                                 className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Damaged' ? 'bg-rose-50 border-rose-200 text-rose-600 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
                             >
                                 <AlertTriangle size={18} />
-                                <span className="text-[10px] font-black uppercase">异常 Issue</span>
+                                <span className="text-[10px] font-black uppercase">Issue</span>
                             </button>
                         </div>
                       </div>

@@ -110,7 +110,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
              <span className="text-[9px] font-black text-slate-400 uppercase">Site Startup Capital</span>
            </div>
            <p className="text-xl font-black text-slate-900">TZS {totals.startup.toLocaleString()}</p>
-           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{totals.activePointsCount}  sites pending recovery</p>
+           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{totals.activePointsCount} sites pending recovery</p>
         </div>
 
         <div className="bg-white rounded-[24px] p-5 border border-slate-200 shadow-sm">
@@ -119,7 +119,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
              <span className="text-[9px] font-black text-slate-400 uppercase">Personal Loans</span>
            </div>
            <p className="text-xl font-black text-slate-900">TZS {totals.driver.toLocaleString()}</p>
-           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{displayedDrivers.length}  drivers with loans</p>
+           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{displayedDrivers.length} drivers with loans</p>
         </div>
       </div>
 
@@ -329,7 +329,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
       {/* Footer Info */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-3 max-w-2xl mx-auto">
          <AlertCircle size={16} className="text-indigo-500 shrink-0 mt-0.5" />
-         <p className="text-[9px] text-slate-500 font-bold leading-relaxed">Site Startup Capital按每次巡检营收自动扣除，手动还款仅限大额结清。所有记录同步至"日终对账"。</p>
+         <p className="text-[9px] text-slate-500 font-bold leading-relaxed">Startup capital is auto-deducted from each collection. Manual repayment for large lump sum settlements only. All records sync to daily settlement.</p>
       </div>
     </div>
   );
