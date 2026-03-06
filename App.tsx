@@ -478,15 +478,27 @@ const App: React.FC = () => {
         {view === 'history' && <TransactionHistory transactions={filteredData.transactions} locations={locations} onAnalyze={(id) => {}} />}
         {view === 'reports' && <FinancialReports transactions={filteredData.transactions} drivers={filteredData.drivers} locations={filteredData.locations} dailySettlements={filteredData.dailySettlements} lang={lang} />}
         {view === 'debt' && <DebtManager drivers={filteredData.drivers} locations={filteredData.locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
+        {view === 'ai' && currentUser.role === 'admin' && (
+          <AIHub
+            drivers={filteredData.drivers}
+            locations={filteredData.locations}
+            transactions={filteredData.transactions}
+            onLogAI={handleLogAI}
+            currentUser={currentUser}
+            initialContextId={aiContextId}
+            onClearContext={() => setAiContextId('')}
+          />
+        )}
       </main>
 
       <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg safe-bottom">
         <div className="max-w-2xl mx-auto flex justify-around items-center">
            {currentUser.role === 'admin' && <NavItem icon={<LayoutDashboard size={20}/>} label="Admin" active={view === 'dashboard'} onClick={() => setView('dashboard')} />}
-           <NavItem icon={<PlusCircle size={20}/>} label={t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
-           <NavItem icon={<CheckSquare size={20}/>} label={currentUser.role === 'admin' ? '结算审批' : t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
-           <NavItem icon={<CreditCard size={20}/>} label={t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
-           {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label={t.reports} active={view === 'reports'} onClick={() => setView('reports')} />}
+           <NavItem icon={<PlusCircle size={20}/>} label={currentUser.role === 'admin' ? 'Collect' : t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
+           <NavItem icon={<CheckSquare size={20}/>} label={currentUser.role === 'admin' ? 'Approve' : t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
+           <NavItem icon={<CreditCard size={20}/>} label={currentUser.role === 'admin' ? 'Finance' : t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
+           {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label="Reports" active={view === 'reports'} onClick={() => setView('reports')} />}
+           {currentUser.role === 'admin' && <NavItem icon={<Brain size={20}/>} label="AI Audit" active={view === 'ai'} onClick={() => setView('ai')} />}
         </div>
       </nav>
       <Analytics />

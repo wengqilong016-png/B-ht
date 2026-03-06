@@ -1,8 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
+import { ShieldCheck, User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown, RefreshCw } from 'lucide-react';
 import { Driver, User as UserType, TRANSLATIONS, CONSTANTS } from '../types';
 import { checkDbHealth } from '../supabaseClient';
+
+const CACHED_CREDENTIALS_KEY = 'bahati_cached_creds';
 
 interface LoginProps {
   drivers: Driver[];
@@ -16,44 +18,104 @@ const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isAutoLogging, setIsAutoLogging] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+  const [cachedName, setCachedName] = useState<string | null>(null);
   const t = TRANSLATIONS[lang];
 
   useEffect(() => {
-     checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
+    checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
+    
+    // Attempt auto-login from cached credentials
+    try {
+      const raw = localStorage.getItem(CACHED_CREDENTIALS_KEY);
+      if (raw) {
+        const cached = JSON.parse(raw) as { username: string; password: string; name: string; role: string };
+        if (cached.username && cached.password) {
+          setCachedName(cached.name || cached.username);
+          // Pre-fill fields so user can see what's cached
+          setUsername(cached.username);
+          setPassword(cached.password);
+          // Auto-login after a brief delay (only for drivers, not admins)
+          if (cached.role === 'driver') {
+            setIsAutoLogging(true);
+          }
+        }
+      }
+    } catch (e) {
+      // ignore
+    }
   }, []);
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+  // Auto-login effect — fires once drivers are available and isAutoLogging = true
+  useEffect(() => {
+    if (!isAutoLogging || drivers.length === 0) return;
+    const raw = localStorage.getItem(CACHED_CREDENTIALS_KEY);
+    if (!raw) { setIsAutoLogging(false); return; }
+    try {
+      const cached = JSON.parse(raw) as { username: string; password: string };
+      attemptLogin(cached.username, cached.password, true);
+    } catch (e) {
+      setIsAutoLogging(false);
+    }
+  }, [isAutoLogging, drivers]);
+
+  const cacheCredentials = (u: string, p: string, name: string, role: string) => {
+    try {
+      localStorage.setItem(CACHED_CREDENTIALS_KEY, JSON.stringify({ username: u, password: p, name, role }));
+    } catch (e) { /* ignore */ }
+  };
+
+  const clearCache = () => {
+    localStorage.removeItem(CACHED_CREDENTIALS_KEY);
+    setCachedName(null);
+    setUsername('');
+    setPassword('');
+    setIsAutoLogging(false);
+  };
+
+  const attemptLogin = async (u: string, p: string, silent = false) => {
+    if (!silent) setError('');
     setIsLoading(true);
 
-    await new Promise(resolve => setTimeout(resolve, 800));
+    if (!silent) await new Promise(resolve => setTimeout(resolve, 600));
 
-    const userLower = username.toLowerCase();
-    
+    const userLower = u.toLowerCase();
+
     // Admin Master Login
     const validUsernames = [CONSTANTS.ADMIN_USERNAME.toLowerCase(), ...CONSTANTS.ADMIN_ALIASES];
     const validPasswords = [CONSTANTS.ADMIN_PASSWORD, ...CONSTANTS.ADMIN_PASSWORD_ALIASES];
-    if (validUsernames.includes(userLower) && validPasswords.includes(password)) {
+    if (validUsernames.includes(userLower) && validPasswords.includes(p)) {
+      cacheCredentials(userLower, p, 'Administrator', 'admin');
       onLogin({ id: 'ADMIN-MASTER', username: userLower, role: 'admin', name: 'Administrator' });
       setIsLoading(false);
+      setIsAutoLogging(false);
       return;
     }
-    
+
     const driver = drivers.find(d => d.username.toLowerCase() === userLower);
     if (driver) {
       if (driver.status === 'inactive') {
-        setError(lang === 'zh' ? '账号已停用' : 'Akaunti imefungwa');
-      } else if (driver.password === password) {
+        setError(lang === 'zh' ? '账号已停用' : 'Account Disabled');
+        clearCache();
+      } else if (driver.password === p) {
+        cacheCredentials(userLower, p, driver.name, 'driver');
         onLogin({ id: driver.id, username: driver.username, role: 'driver', name: driver.name });
       } else {
-        setError(lang === 'zh' ? '密码错误' : 'Nenosiri si sahihi');
+        setError(lang === 'zh' ? '密码错误' : 'Wrong Password');
+        clearCache();
       }
     } else {
-      setError(lang === 'zh' ? '账号不存在' : 'Jina la mtumiaji halipo');
+      if (!silent) setError(lang === 'zh' ? '账号不存在' : 'User Not Found');
+      clearCache();
     }
     setIsLoading(false);
+    setIsAutoLogging(false);
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await attemptLogin(username, password);
   };
 
   return (
@@ -61,7 +123,7 @@ const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
       <div className="absolute top-0 left-0 right-0 p-6 pt-12 flex justify-between items-start z-30">
          <div className="flex gap-2">
             <button onClick={() => onSetLang('zh')} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 transition-all backdrop-blur-md ${lang === 'zh' ? 'bg-amber-500 text-slate-900' : 'bg-white/10 text-white/40 border border-white/10'}`}><Languages size={12}/> 中文</button>
-            <button onClick={() => onSetLang('sw')} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 transition-all backdrop-blur-md ${lang === 'sw' ? 'bg-amber-500 text-slate-900' : 'bg-white/10 text-white/40 border border-white/10'}`}><Languages size={12}/> SW</button>
+            <button onClick={() => onSetLang('sw')} className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase flex items-center gap-1.5 transition-all backdrop-blur-md ${lang === 'sw' ? 'bg-amber-500 text-slate-900' : 'bg-white/10 text-white/40 border border-white/10'}`}><Languages size={12}/> EN</button>
          </div>
          <div className={`px-3 py-1.5 rounded-full text-[8px] font-black uppercase tracking-widest transition-all backdrop-blur-md ${dbStatus === 'online' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'}`}>
             {dbStatus === 'checking' ? 'Connecting...' : dbStatus === 'online' ? 'Cloud Ready' : 'Local Mode'}
@@ -88,6 +150,30 @@ const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
           <h1 className="text-3xl font-black text-white tracking-tight uppercase">BAHATI <span className="text-amber-500">JACKPOTS</span></h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
         </div>
+
+        {/* Auto-login banner */}
+        {(isAutoLogging || isLoading) && cachedName && (
+          <div className="w-full mb-4 p-4 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl flex items-center gap-3 animate-pulse">
+            <Loader2 size={16} className="text-indigo-400 animate-spin" />
+            <div>
+              <p className="text-xs font-black text-indigo-300">Auto-signing in as {cachedName}...</p>
+              <button onClick={clearCache} className="text-[9px] text-indigo-400/70 underline">Use different account</button>
+            </div>
+          </div>
+        )}
+
+        {/* Cached account banner (not auto-logging) */}
+        {cachedName && !isAutoLogging && !isLoading && (
+          <div className="w-full mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <ShieldCheck size={14} className="text-emerald-400" />
+              <span className="text-[10px] font-black text-emerald-300">Saved: {cachedName}</span>
+            </div>
+            <button onClick={clearCache} className="p-1.5 bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors">
+              <RefreshCw size={11} />
+            </button>
+          </div>
+        )}
 
         <div className="bg-slate-800/50 backdrop-blur-xl p-8 rounded-[32px] shadow-2xl border border-white/10 w-full">
           <form onSubmit={handleLogin} className="space-y-5">

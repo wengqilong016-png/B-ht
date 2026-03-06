@@ -98,7 +98,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
       switch (ttsConfig.lang) {
           case 'sw': promptPrefix = 'Soma maandishi haya kwa Kiswahili cha asili na lafudhi nzuri: '; break;
           case 'en': promptPrefix = 'Read this text in a professional English voice: '; break;
-          case 'zh': default: promptPrefix = '用亲切专业的中文播报以下业务内容：'; break;
+          case 'zh': default: promptPrefix = 'Read this business content in a professional voice: '; break;
       }
 
       const response = await ai.models.generateContent({
@@ -301,12 +301,12 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
           responseSchema: useOCR ? ocrSchema : undefined,
           systemInstruction: useOCR 
             ? "You are a precision OCR engine. Extract the main red LED counter reading. Be precise."
-            : `你是 SmartKiosk 首席视觉审计顾问。
-              业务背景：
-              - 现有数据：${locations.length}个点位。
-              - 历史点位详情: ${JSON.stringify(locations.map(l => ({ id: l.machineId, name: l.name, lastScore: l.lastScore, area: l.area })))}
-              - 硬币面值: 1 coin = 200 TZS。
-              回答风格：专业、精炼、战略性。使用中文。`
+            : `You are the SmartKiosk chief audit consultant.
+              Business context:
+              - ${locations.length} machine locations in the network.
+              - Location details: ${JSON.stringify(locations.map(l => ({ id: l.machineId, name: l.name, lastScore: l.lastScore, area: l.area })))}
+              - Coin value: 1 coin = 200 TZS.
+              Answer style: professional, concise, strategic. Use English.`
         }
       });
       
@@ -604,7 +604,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
                      {msg.role === 'bot' && (
                        <div className="mt-4 flex items-center gap-3 border-t border-slate-200/50 pt-3">
                          <button onClick={() => playTTS(msg.content)} className="flex items-center gap-1.5 text-[9px] font-black uppercase text-indigo-600 hover:text-indigo-800 transition-colors">
-                           <Volume2 size={12} /> {ttsConfig.lang === 'zh' ? '播放' : ttsConfig.lang === 'sw' ? 'Soma' : 'Play'}
+                           <Volume2 size={12} /> {ttsConfig.lang === 'zh' ? 'Play' : ttsConfig.lang === 'sw' ? 'Play' : 'Play'}
                          </button>
                          <div className="flex-1"></div>
                          <div className="flex items-center gap-1 text-[8px] font-black text-emerald-600 uppercase">

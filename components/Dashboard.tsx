@@ -43,7 +43,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
 
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
-
+  const [settlementPhotoUrl, setSettlementPhotoUrl] = useState<string | null>(null);
 
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
   const [locEditForm, setLocEditForm] = useState({ name: '', commissionRate: '', lastScore: '', status: 'active' as Location['status'], ownerPhotoUrl: '' });
@@ -65,6 +65,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   }, [isAdmin]);
 
   const myTransactions = useMemo(() => isAdmin ? transactions : transactions.filter(t => t.driverId === currentUser.id), [transactions, currentUser, isAdmin]);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayDriverTxs = useMemo(() => myTransactions.filter(t => t.timestamp.startsWith(todayStr)), [myTransactions, todayStr]);
   const myProfile = useMemo(() => drivers.find(d => d.id === (isAdmin ? drivers[0]?.id : currentUser.id)), [drivers, currentUser, isAdmin]);
   const totalArrears = useMemo(() => myTransactions.filter(tx => tx.paymentStatus === 'unpaid').reduce((sum, tx) => sum + tx.netPayable, 0), [myTransactions]);
   const pendingExpenses = useMemo(() => transactions.filter(tx => tx.expenses > 0 && tx.expenseStatus === 'pending'), [transactions]);
@@ -141,12 +143,12 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-4 border-b border-slate-200 pb-2 mb-6 overflow-x-auto scrollbar-hide">
-        {isAdmin && <button onClick={() => setActiveTab('overview')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'overview' ? 'text-indigo-600' : 'text-slate-400'}`}>总览 OVERVIEW {activeTab === 'overview' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        {isAdmin && <button onClick={() => setActiveTab('locations')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'locations' ? 'text-indigo-600' : 'text-slate-400'}`}>点位 SITES {activeTab === 'locations' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>{isAdmin ? '审批 APPROVE' : '日中对账 SETTLE'} {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
-        {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>车队+工资 FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}>定位 TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
-        {isAdmin && <button onClick={() => setActiveTab('ai-logs')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'ai-logs' ? 'text-indigo-600' : 'text-slate-400'}`}>审计 AI LOGS {activeTab === 'ai-logs' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('overview')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'overview' ? 'text-indigo-600' : 'text-slate-400'}`}>OVERVIEW {activeTab === 'overview' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('locations')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'locations' ? 'text-indigo-600' : 'text-slate-400'}`}>SITES {activeTab === 'locations' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        <button onClick={() => setActiveTab('settlement')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'settlement' ? 'text-indigo-600' : 'text-slate-400'}`}>{isAdmin ? 'APPROVE' : "TODAY'S SETTLEMENT"} {activeTab === 'settlement' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>
+        {isAdmin && <button onClick={() => setActiveTab('team')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'team' ? 'text-indigo-600' : 'text-slate-400'}`}>FLEET {activeTab === 'team' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('tracking')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'tracking' ? 'text-indigo-600' : 'text-slate-400'}`}>TRACKING {activeTab === 'tracking' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
+        {isAdmin && <button onClick={() => setActiveTab('ai-logs')} className={`pb-2 text-[11px] font-black uppercase relative transition-all whitespace-nowrap ${activeTab === 'ai-logs' ? 'text-indigo-600' : 'text-slate-400'}`}>AI LOGS {activeTab === 'ai-logs' && <div className="absolute bottom-[-9px] left-0 right-0 h-1 bg-indigo-600 rounded-t-full"></div>}</button>}
       </div>
 
       {activeTab === 'overview' && isAdmin && (
@@ -158,15 +160,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                     onClick={() => setRevDrilldown('drivers')}
                     className="bg-slate-900 text-white p-6 rounded-[32px] text-left hover:bg-indigo-900 transition-colors group"
                   >
-                     <p className="text-[10px] font-black uppercase opacity-50 group-hover:opacity-80">今日营收 ↗ (点击查看明细)</p>
+                     <p className="text-[10px] font-black uppercase opacity-50 group-hover:opacity-80">Today's Revenue ↗ (click for details)</p>
                      <p className="text-2xl font-black">TZS {bossStats.todayRev.toLocaleString()}</p>
                   </button>
                   <div className="bg-white p-6 rounded-[32px] border border-slate-200">
-                     <p className="text-[10px] font-black uppercase text-slate-400">异常点位</p>
+                     <p className="text-[10px] font-black uppercase text-slate-400">Anomalies</p>
                      <p className="text-2xl font-black text-rose-600">{bossStats.stagnantMachines.length}</p>
                   </div>
                   <div className="bg-white p-6 rounded-[32px] border border-slate-200">
-                     <p className="text-[10px] font-black uppercase text-slate-400">高风险欠款</p>
+                     <p className="text-[10px] font-black uppercase text-slate-400">High-risk Debt</p>
                      <p className="text-2xl font-black text-amber-600">{bossStats.riskyDrivers.length}</p>
                   </div>
                </div>
@@ -178,58 +180,77 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                <div className="flex items-center gap-3 mb-2">
                  <button onClick={() => setRevDrilldown('none')} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180"/></button>
                  <div>
-                   <h3 className="text-sm font-black text-slate-900 uppercase">今日营收明细 — 按司机</h3>
+                   <h3 className="text-sm font-black text-slate-900 uppercase">Today's Revenue — By Driver</h3>
                    <p className="text-[10px] text-slate-400 font-bold">Today's Revenue by Driver</p>
                  </div>
                </div>
                {drivers.map(driver => {
-                 const todayStr = new Date().toISOString().split('T')[0];
-                 const driverTxs = transactions.filter(t => t.driverId === driver.id && t.timestamp.startsWith(todayStr));
-                 const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
-                 return (
-                   <div key={driver.id} className="bg-white border border-slate-200 rounded-[28px] p-5">
-                     <div className="flex items-center justify-between mb-3">
-                       <div className="flex items-center gap-3">
-                         <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
-                         <div>
-                           <p className="text-sm font-black text-slate-900">{driver.name}</p>
-                           <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone}</p>
-                         </div>
-                       </div>
-                       <div className="text-right">
-                         <p className="text-xs font-black text-indigo-600">TZS {driverRev.toLocaleString()}</p>
-                         <p className="text-[9px] font-bold text-slate-400 uppercase">{driverTxs.length} 笔收款</p>
-                       </div>
-                     </div>
-                     {driverTxs.length > 0 && (
-                       <div className="space-y-2 mt-3 border-t border-slate-50 pt-3">
-                         {driverTxs.map(tx => {
-                           const loc = locations.find(l => l.id === tx.locationId);
-                           return (
-                             <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-4 py-2">
-                               <div className="flex items-center gap-3">
-                                 {loc?.machinePhotoUrl ? (
-                                   <img src={loc.machinePhotoUrl} alt="machine" className="w-8 h-8 rounded-lg object-cover border border-slate-200"/>
-                                 ) : (
-                                   <div className="w-8 h-8 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={14}/></div>
-                                 )}
-                                 <div>
-                                   <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>
-                                   <p className="text-[8px] font-bold text-slate-400 uppercase">{loc?.shopOwnerPhone || loc?.machineId || '-'}</p>
-                                 </div>
-                               </div>
-                               <div className="text-right">
-                                 <p className="text-[10px] font-black text-slate-900">TZS {tx.revenue.toLocaleString()}</p>
-                                 <p className="text-[8px] font-bold text-emerald-500 uppercase">分红 {(loc?.commissionRate ?? 0) * 100}%</p>
-                               </div>
-                             </div>
-                           );
-                         })}
-                       </div>
-                     )}
-                   </div>
-                 );
-               })}
+                  const driverDayStr = new Date().toISOString().split('T')[0];
+                  const driverTxs = transactions.filter(t => t.driverId === driver.id && t.timestamp.startsWith(driverDayStr));
+                  const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
+                  const driverCommission = driverTxs.reduce((s, t) => s + t.ownerRetention, 0);
+                  const driverNet = driverTxs.reduce((s, t) => s + t.netPayable, 0);
+                  return (
+                    <div key={driver.id} className="bg-white border border-slate-200 rounded-[28px] p-5">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
+                          <div>
+                            <p className="text-sm font-black text-slate-900">{driver.name}</p>
+                            <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone} • {driverTxs.length} collections</p>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-xs font-black text-indigo-600">TZS {driverRev.toLocaleString()}</p>
+                          <p className="text-[9px] font-bold text-slate-400 uppercase">Total Revenue</p>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mb-3">
+                        <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Revenue</p>
+                          <p className="text-[10px] font-black text-slate-800">TZS {driverRev.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center">
+                          <p className="text-[7px] font-black text-amber-400 uppercase">Owner Div.</p>
+                          <p className="text-[10px] font-black text-amber-700">TZS {driverCommission.toLocaleString()}</p>
+                        </div>
+                        <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-100 text-center">
+                          <p className="text-[7px] font-black text-indigo-400 uppercase">Net Cash</p>
+                          <p className="text-[10px] font-black text-indigo-700">TZS {driverNet.toLocaleString()}</p>
+                        </div>
+                      </div>
+                      {driverTxs.length > 0 && (
+                        <div className="space-y-2 border-t border-slate-50 pt-3">
+                          {driverTxs.map(tx => {
+                            const loc = locations.find(l => l.id === tx.locationId);
+                            return (
+                              <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                                <div className="flex items-center gap-2">
+                                  {loc?.machinePhotoUrl ? (
+                                    <img src={loc.machinePhotoUrl} alt="machine" className="w-7 h-7 rounded-lg object-cover border border-slate-200"/>
+                                  ) : (
+                                    <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={12}/></div>
+                                  )}
+                                  <div>
+                                    <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>
+                                    <p className="text-[8px] font-bold text-slate-400 uppercase">{loc?.machineId || '-'} • {new Date(tx.timestamp).toLocaleTimeString()}</p>
+                                  </div>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-black text-slate-900">TZS {tx.revenue.toLocaleString()}</p>
+                                  <div className="flex gap-1 justify-end mt-0.5">
+                                    <span className="text-[7px] font-bold text-amber-500 bg-amber-50 px-1 py-0.5 rounded">div {tx.ownerRetention.toLocaleString()}</span>
+                                    <span className="text-[7px] font-bold text-indigo-500 bg-indigo-50 px-1 py-0.5 rounded">net {tx.netPayable.toLocaleString()}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
              </div>
            ) : null}
         </div>
@@ -239,7 +260,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         <div className="space-y-6 animate-in fade-in">
            <div className="flex justify-between items-center bg-white p-6 rounded-[32px] border border-slate-200">
               <div>
-                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">车队定位管理</h2>
+                <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Fleet Tracking</h2>
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                    <Radio size={12} className="text-indigo-600 animate-pulse" /> Driver Location & Point Management
                 </p>
@@ -247,7 +268,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
               <div className="flex items-center gap-3">
                  <div className="w-12 h-12 bg-indigo-50 rounded-2xl flex flex-col items-center justify-center">
                    <span className="text-xl font-black text-indigo-600">{drivers.length}</span>
-                   <span className="text-[7px] font-black text-indigo-400 uppercase leading-none">司机</span>
+                   <span className="text-[7px] font-black text-indigo-400 uppercase leading-none">Drivers</span>
                  </div>
               </div>
            </div>
@@ -269,7 +290,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                        <div className="text-left">
                          <p className="text-sm font-black text-slate-900">{driver.name}</p>
                          <p className="text-[9px] font-bold text-slate-400 uppercase">
-                           {driverLocs.length} 个点位 • {driver.status === 'active' ? (driver.lastActive ? `${Math.floor((Date.now() - new Date(driver.lastActive).getTime()) / 60000)} 分钟前活跃` : '在线') : '离线'}
+                           {driverLocs.length} locations • {driver.status === 'active' ? (driver.lastActive ? `${Math.floor((Date.now() - new Date(driver.lastActive).getTime()) / 60000)} min ago` : 'Online') : 'Offline'}
                          </p>
                        </div>
                      </div>
@@ -282,7 +303,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                    {isExpanded && (
                      <div className="border-t border-slate-100 p-5 space-y-3 animate-in slide-in-from-top-2">
                        {driverLocs.length === 0 ? (
-                         <p className="text-center text-[10px] font-black text-slate-300 uppercase py-6">该司机暂无分配点位</p>
+                         <p className="text-center text-[10px] font-black text-slate-300 uppercase py-6">No locations assigned to this driver</p>
                        ) : (
                          driverLocs.map(loc => {
                            const isEditingThis = trackingEditLocId === loc.id;
@@ -308,15 +329,15 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                                  </button>
                                </div>
                                <div className="grid grid-cols-3 gap-2 text-[9px]">
-                                 <div><span className="text-slate-400 font-bold uppercase block">点位ID</span><span className="font-black text-slate-700">{loc.machineId}</span></div>
-                                 <div><span className="text-slate-400 font-bold uppercase block">上次读数</span><span className="font-black text-slate-700">{loc.lastScore.toLocaleString()}</span></div>
-                                 <div><span className="text-slate-400 font-bold uppercase block">分红比例</span><span className="font-black text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</span></div>
+                                 <div><span className="text-slate-400 font-bold uppercase block">Machine ID</span><span className="font-black text-slate-700">{loc.machineId}</span></div>
+                                 <div><span className="text-slate-400 font-bold uppercase block">Last Score</span><span className="font-black text-slate-700">{loc.lastScore.toLocaleString()}</span></div>
+                                 <div><span className="text-slate-400 font-bold uppercase block">Commission</span><span className="font-black text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</span></div>
                                </div>
                                {isEditingThis && (
                                  <div className="mt-3 border-t border-slate-200 pt-3 space-y-3 animate-in slide-in-from-top-2">
                                    <div className="grid grid-cols-2 gap-2">
                                      <div>
-                                       <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">分红比例 (%)</label>
+                                       <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Commission (%)</label>
                                        <input
                                          type="number"
                                          value={trackingLocForm.commissionRate}
@@ -332,9 +353,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                                          onChange={e => setTrackingLocForm(f => ({ ...f, status: e.target.value as Location['status'] }))}
                                          className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-black outline-none"
                                        >
-                                         <option value="active">运行中</option>
-                                         <option value="maintenance">维护中</option>
-                                         <option value="broken">故障</option>
+                                         <option value="active">Active</option>
+                                         <option value="maintenance">Maintenance</option>
+                                         <option value="broken">Broken</option>
                                        </select>
                                      </div>
                                    </div>
@@ -349,7 +370,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                                      }}
                                      className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase"
                                    >
-                                     保存修改 Save
+                                     Save Changes
                                    </button>
                                  </div>
                                )}
@@ -374,10 +395,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
              <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-5 rounded-[32px] border border-slate-200 shadow-sm select-none">
                <div className="flex items-center gap-3">
                  <MapPin size={18} className="text-indigo-500" />
-                 <span className="text-sm font-black text-slate-900 uppercase">实时地图 Live Map</span>
+                 <span className="text-sm font-black text-slate-900 uppercase">Live Map</span>
                </div>
-               <span className="text-[10px] font-black text-slate-400 uppercase group-open:hidden">展开查看 ▼</span>
-               <span className="text-[10px] font-black text-slate-400 uppercase hidden group-open:block">收起 ▲</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase group-open:hidden">Expand ▼</span>
+               <span className="text-[10px] font-black text-slate-400 uppercase hidden group-open:block">Collapse ▲</span>
              </summary>
              <div className="mt-4">
                <LiveMap drivers={drivers} locations={locations} transactions={transactions} />
@@ -391,45 +412,55 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
            <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-[28px] border border-slate-200 shadow-sm">
               <div className="relative flex-1 w-full md:w-64">
                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                 <input type="text" placeholder="搜索点位 Search..." value={siteSearch} onChange={e => setSiteSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold" />
+                 <input type="text" placeholder="Search machines..." value={siteSearch} onChange={e => setSiteSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold" />
               </div>
               <select value={siteFilterArea} onChange={e => setSiteFilterArea(e.target.value)} className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-black uppercase outline-none">
-                 <option value="all">所有区域 ALL AREAS</option>
+                 <option value="all">ALL AREAS</option>
                  {allAreas.map(a => <option key={a} value={a}>{a}</option>)}
               </select>
            </div>
-           <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
-              <div className="overflow-x-auto">
-                <table className="w-full text-left">
-                   <thead className="bg-slate-50 border-b border-slate-100">
-                      <tr>
-                         <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">Machine / Name</th>
-                         <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase">Status</th>
-                         <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Last Score</th>
-                         <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Commission</th>
-                         <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-right">Actions</th>
-                      </tr>
-                   </thead>
-                   <tbody className="divide-y divide-slate-50">
-                      {managedLocations.map(loc => (
-                         <tr key={loc.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-6 py-4">
-                               <p className="text-xs font-black text-slate-900">{loc.name}</p>
-                               <p className="text-[8px] font-bold text-slate-400 uppercase">{loc.machineId} • {loc.area}</p>
-                            </td>
-                            <td className="px-6 py-4">
-                               <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${loc.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>{loc.status}</span>
-                            </td>
-                            <td className="px-6 py-4 text-right text-xs font-bold">{loc.lastScore.toLocaleString()}</td>
-                            <td className="px-6 py-4 text-right text-xs font-bold text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</td>
-                            <td className="px-6 py-4 text-right">
-                               <button onClick={() => handleEditLocation(loc)} className="p-2 text-slate-400 hover:text-indigo-600"><Pencil size={14} /></button>
-                            </td>
-                         </tr>
-                      ))}
-                   </tbody>
-                </table>
-              </div>
+           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {managedLocations.map(loc => (
+                 <div key={loc.id} className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+                    {/* Machine Photo — permanent display */}
+                    <div className="h-36 bg-slate-100 relative overflow-hidden">
+                       {loc.machinePhotoUrl ? (
+                          <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover" />
+                       ) : (
+                          <div className="w-full h-full flex items-center justify-center text-slate-300">
+                             <Store size={36} />
+                          </div>
+                       )}
+                       <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[8px] font-black uppercase backdrop-blur-sm ${loc.status === 'active' ? 'bg-emerald-500/80 text-white' : loc.status === 'maintenance' ? 'bg-amber-500/80 text-white' : 'bg-rose-500/80 text-white'}`}>{loc.status}</div>
+                    </div>
+                    <div className="p-4">
+                       <div className="flex justify-between items-start mb-3">
+                          <div>
+                             <p className="text-sm font-black text-slate-900 leading-tight">{loc.name}</p>
+                             <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{loc.machineId} • {loc.area}</p>
+                          </div>
+                          <button onClick={() => handleEditLocation(loc)} className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded-xl"><Pencil size={13} /></button>
+                       </div>
+                       <div className="grid grid-cols-3 gap-2">
+                          <div className="bg-slate-50 p-2 rounded-xl">
+                             <p className="text-[7px] font-black text-slate-400 uppercase">Last Score</p>
+                             <p className="text-[10px] font-black text-slate-800">{loc.lastScore.toLocaleString()}</p>
+                          </div>
+                          <div className="bg-indigo-50 p-2 rounded-xl">
+                             <p className="text-[7px] font-black text-indigo-400 uppercase">Commission</p>
+                             <p className="text-[10px] font-black text-indigo-700">{(loc.commissionRate * 100).toFixed(0)}%</p>
+                          </div>
+                          <div className="bg-amber-50 p-2 rounded-xl">
+                             <p className="text-[7px] font-black text-amber-400 uppercase">Startup</p>
+                             <p className="text-[10px] font-black text-amber-700">{loc.remainingStartupDebt > 0 ? `${Math.round((1 - loc.remainingStartupDebt / (loc.initialStartupDebt || 1)) * 100)}%` : 'Paid'}</p>
+                          </div>
+                       </div>
+                       {loc.ownerName && (
+                          <p className="text-[8px] font-bold text-slate-400 uppercase mt-2 truncate">Owner: {loc.ownerName}</p>
+                       )}
+                    </div>
+                 </div>
+              ))}
            </div>
         </div>
       )}
@@ -442,7 +473,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
             <div className="bg-white p-5 rounded-[28px] border border-slate-200 flex items-center gap-3">
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Receipt size={18}/></div>
               <div>
-                <h2 className="text-base font-black text-slate-900 uppercase">电子工资单</h2>
+                <h2 className="text-base font-black text-slate-900 uppercase">Payroll</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Compensation Reports — Electronic Payslip</p>
               </div>
             </div>
@@ -455,9 +486,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                       <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                         <div className="flex justify-between mb-1"><span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span><span className="text-xs font-black text-indigo-600">TZS {m.netPayout.toLocaleString()}</span></div>
                         <div className="grid grid-cols-3 gap-1 text-[8px] text-slate-400 mb-2">
-                          <span>底薪: {(driver.baseSalary || 0).toLocaleString()}</span>
-                          <span>提成: {m.commission.toLocaleString()}</span>
-                          <span>短款: {m.shortage.toLocaleString()}</span>
+                          <span>Base: {(driver.baseSalary || 0).toLocaleString()}</span>
+                          <span>Comm: {m.commission.toLocaleString()}</span>
+                          <span>Short: {m.shortage.toLocaleString()}</span>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
@@ -468,7 +499,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                         </div>
                       </div>
                     ))}
-                    {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-[10px] text-slate-300 font-black uppercase py-4">暂无工资数据</p>}
+                    {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-[10px] text-slate-300 font-black uppercase py-4">No payroll data</p>}
                   </div>
                 </div>
               ))}
@@ -480,20 +511,21 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       {activeTab === 'settlement' && (
         <div className="space-y-6 animate-in slide-in-from-right-4">
            {isAdmin ? (
-             // 管理员视图：审核司机的结算申请
-             <div className="space-y-4">
+             // Admin view: Review driver settlements AND expense requests
+             <div className="space-y-6">
+                {/* Part 1: Settlement Approvals */}
                 <div className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm flex justify-between items-center">
                    <div>
-                     <h3 className="text-lg font-black text-slate-900 uppercase">结算审批中心</h3>
+                     <h3 className="text-lg font-black text-slate-900 uppercase">Settlement Approval Center</h3>
                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Pending Reviews ({pendingSettlements.length})</p>
                    </div>
                    <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
                 </div>
                 
                 {pendingSettlements.length === 0 ? (
-                  <div className="py-20 text-center bg-white rounded-[40px] border border-dashed border-slate-200">
+                  <div className="py-12 text-center bg-white rounded-[40px] border border-dashed border-slate-200">
                      <CheckCircle2 size={40} className="mx-auto text-emerald-200 mb-3" />
-                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">所有结算已处理完毕</p>
+                     <p className="text-xs font-black text-slate-400 uppercase tracking-widest">All settlements processed</p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -504,58 +536,118 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                                 <p className="text-sm font-black text-slate-900 uppercase">{s.driverName}</p>
                                 <p className="text-[9px] font-bold text-slate-400 uppercase">{new Date(s.timestamp).toLocaleString()}</p>
                              </div>
-                             <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[8px] font-black uppercase">待审核</div>
+                             <div className="px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-[8px] font-black uppercase">PENDING</div>
                           </div>
                           <div className="grid grid-cols-2 gap-3 mb-4">
                              <div className="bg-slate-50 p-3 rounded-xl">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">理论应收</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase">Expected Total</p>
                                 <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
                              </div>
                              <div className="bg-slate-50 p-3 rounded-xl">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">实际提交</p>
+                                <p className="text-[8px] font-black text-slate-400 uppercase">Actual Submitted</p>
                                 <p className="text-xs font-black text-indigo-600">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
                              </div>
                           </div>
                           {s.shortage !== 0 && (
                              <div className={`p-3 rounded-xl mb-4 flex items-center justify-between ${s.shortage < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? '短款 (Shortage)' : '长款 (Surplus)'}</span>
+                                <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? 'Shortage' : 'Surplus'}</span>
                                 <span className="text-xs font-black">TZS {Math.abs(s.shortage).toLocaleString()}</span>
                              </div>
                           )}
+                          {/* Show proof photo if attached */}
+                          {(s as any).transferProofUrl && (
+                            <div className="mb-4">
+                              <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Settlement Proof</p>
+                              <img src={(s as any).transferProofUrl} alt="Proof" className="w-full h-28 object-cover rounded-xl border border-slate-200" />
+                            </div>
+                          )}
                           <div className="flex gap-2">
-                             <button onClick={() => onSaveSettlement({...s, status: 'confirmed'})} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">准予入库</button>
-                             <button onClick={() => onSaveSettlement({...s, status: 'rejected'})} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">驳回修改</button>
+                             <button onClick={() => onSaveSettlement({...s, status: 'confirmed'})} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">✓ Approve</button>
+                             <button onClick={() => onSaveSettlement({...s, status: 'rejected'})} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">✗ Reject</button>
                           </div>
                        </div>
                      ))}
                   </div>
                 )}
+
+                {/* Part 2: Expense Approval Requests (Loans, Repairs, Fuel) */}
+                {pendingExpenses.length > 0 && (
+                  <div className="space-y-4">
+                    <div className="bg-rose-50 p-4 rounded-[24px] border border-rose-100 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-black text-rose-800 uppercase">Expense Requests</h3>
+                        <p className="text-[9px] font-bold text-rose-500 uppercase">Loans / Repairs / Fuel — Pending Approval ({pendingExpenses.length})</p>
+                      </div>
+                      <div className="bg-rose-200 text-rose-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingExpenses.length} Pending</div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {pendingExpenses.map(tx => {
+                        const driver = drivers.find(d => d.id === tx.driverId);
+                        const categoryLabel = {
+                          fuel: '⛽ Fuel',
+                          repair: '🔧 Repair',
+                          fine: '🚨 Fine',
+                          allowance: '🍽 Allowance',
+                          salary_advance: '💰 Salary Advance',
+                          other: '📋 Other',
+                        }[tx.expenseCategory || 'other'] || '📋 Other';
+                        return (
+                          <div key={tx.id} className="bg-white p-5 rounded-[24px] border border-rose-100 shadow-sm">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className="w-8 h-8 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center font-black text-xs">{driver?.name?.charAt(0) || '?'}</div>
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
+                                  <p className="text-[8px] font-bold text-slate-400">{new Date(tx.timestamp).toLocaleDateString()}</p>
+                                </div>
+                              </div>
+                              <div className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${tx.expenseType === 'private' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                                {tx.expenseType === 'private' ? 'Loan' : 'Company'}
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between mb-3">
+                              <div>
+                                <p className="text-[9px] font-bold text-slate-500">{categoryLabel}</p>
+                                <p className="text-xs font-black text-slate-900">TZS {tx.expenses.toLocaleString()}</p>
+                              </div>
+                              <div className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-xl">{tx.locationName}</div>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'approved' })} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ Approve</button>
+                              <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'rejected' })} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase">✗ Reject</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
              </div>
            ) : (
-             // 司机视图：发起每日结算流程
+              // Driver view: Today's Settlement
              <div className="bg-white p-8 rounded-[40px] border border-slate-200 shadow-2xl space-y-8 animate-in zoom-in-95">
                 <div className="text-center">
                    <div className="w-16 h-16 bg-indigo-600 rounded-[24px] flex items-center justify-center text-white mx-auto mb-4 shadow-xl shadow-indigo-100">
                       <Banknote size={32} />
                    </div>
-                   <h2 className="text-xl font-black text-slate-900 uppercase">{t.dailySettlement}</h2>
-                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Daily Reconciliation Flow</p>
+                    <h2 className="text-xl font-black text-slate-900 uppercase">{t.dailySettlement}</h2>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">{todayStr} — {todayDriverTxs.length} Collections</p>
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                    <div className="bg-slate-50 p-5 rounded-[28px] border border-slate-100">
                       <p className="text-[9px] font-black text-slate-400 uppercase mb-1 tracking-widest">{t.revenue}</p>
-                      <p className="text-lg font-black text-slate-900">TZS {myTransactions.reduce((sum, t) => sum + t.revenue, 0).toLocaleString()}</p>
+                       <p className="text-lg font-black text-slate-900">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0).toLocaleString()}</p>
                    </div>
                    <div className="bg-indigo-50 p-5 rounded-[28px] border border-indigo-100">
                       <p className="text-[9px] font-black text-indigo-400 uppercase mb-1 tracking-widest">{t.cashInHand}</p>
-                      <p className="text-lg font-black text-indigo-600">TZS {myTransactions.reduce((sum, t) => sum + t.netPayable, 0).toLocaleString()}</p>
+                       <p className="text-lg font-black text-indigo-600">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0).toLocaleString()}</p>
                    </div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-slate-50">
                    <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-200">
-                      <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCash} (Note)</label>
+                       <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCash} (TZS Notes)</label>
                       <input 
                         type="number" 
                         value={actualCash} 
@@ -565,7 +657,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                       />
                    </div>
                    <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-200">
-                      <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCoins} (Coin)</label>
+                       <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.inputCoins} (TZS Coins)</label>
                       <input 
                         type="number" 
                         value={actualCoins} 
@@ -577,13 +669,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                 </div>
 
                 {actualCash && (
-                  <div className={`p-6 rounded-[35px] flex justify-between items-center animate-in slide-in-from-top-4 ${parseInt(actualCash) + parseInt(actualCoins) === myTransactions.reduce((sum, t) => sum + t.netPayable, 0) ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
+                  <div className={`p-6 rounded-[35px] flex justify-between items-center animate-in slide-in-from-top-4 ${parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'}`}>
                      <div>
-                        <p className="text-[10px] font-black uppercase opacity-60">差额差异 (Variance)</p>
-                        <p className="text-xl font-black">TZS {(parseInt(actualCash) + parseInt(actualCoins) - myTransactions.reduce((sum, t) => sum + t.netPayable, 0)).toLocaleString()}</p>
+                         <p className="text-[10px] font-black uppercase opacity-60">Variance</p>
+                         <p className="text-xl font-black">TZS {(parseInt(actualCash) + (parseInt(actualCoins) || 0) - todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0)).toLocaleString()}</p>
                      </div>
                      <div className="p-3 bg-white/20 rounded-2xl">
-                        {parseInt(actualCash) + parseInt(actualCoins) === myTransactions.reduce((sum, t) => sum + t.netPayable, 0) ? <ThumbsUp size={24}/> : <AlertTriangle size={24}/>}
+                         {parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? <ThumbsUp size={24}/> : <AlertTriangle size={24}/>}
                      </div>
                   </div>
                 )}
@@ -591,16 +683,16 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                 <button 
                   disabled={!actualCash || !actualCoins}
                   onClick={() => {
-                     const totalNet = myTransactions.reduce((sum, t) => sum + t.netPayable, 0);
+                      const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
                      const actual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
                      const settlement: DailySettlement = {
                         id: `STL-${Date.now()}`,
-                        date: new Date().toISOString().split('T')[0],
+                        date: todayStr,
                         driverId: currentUser.id,
                         driverName: currentUser.name,
-                        totalRevenue: myTransactions.reduce((sum, t) => sum + t.revenue, 0),
+                         totalRevenue: todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0),
                         totalNetPayable: totalNet,
-                        totalExpenses: myTransactions.reduce((sum, t) => sum + t.expenses, 0),
+                         totalExpenses: todayDriverTxs.reduce((sum, tx) => sum + tx.expenses, 0),
                         driverFloat: myProfile?.dailyFloatingCoins || 0,
                         expectedTotal: totalNet,
                         actualCash: parseInt(actualCash) || 0,
@@ -611,13 +703,13 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                         isSynced: false
                      };
                      onSaveSettlement(settlement);
-                     alert('结算请求已提交，请等待审批！');
+                      alert("✅ Settlement submitted! Waiting for approval.");
                      setActualCash('');
                      setActualCoins('');
                   }}
                   className="w-full py-6 bg-slate-900 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl active:scale-95 transition-all disabled:opacity-30"
                 >
-                   确认并提交结算 (SUBMIT)
+                   ✓ Submit Today's Settlement
                 </button>
              </div>
            )}
@@ -627,8 +719,8 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
       {activeTab === 'ai-logs' && isAdmin && (
         <div className="space-y-6 animate-in fade-in">
            <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
-              <button onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>列表</button>
-              <button onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>网格</button>
+              <button onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>LIST</button>
+              <button onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>GRID</button>
            </div>
            <div className={aiLogViewMode === 'grid' ? "grid grid-cols-2 md:grid-cols-4 gap-4" : "space-y-4"}>
               {filteredAiLogs.map(log => (

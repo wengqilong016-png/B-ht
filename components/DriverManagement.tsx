@@ -110,7 +110,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
   };
 
   const toggleStatus = (id: string) => {
-    if (confirm("确定更改该司机状态吗？(Change Status?)")) {
+    if (confirm("Confirm status change?")) {
         onUpdateDrivers(drivers.map(d => d.id === id ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' } : d));
     }
   };
@@ -245,7 +245,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                <button onClick={() => setSalaryId(null)} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={18} /></button>
                <div className="flex items-center gap-3 mb-2">
                  <div className="p-2 bg-indigo-500 rounded-xl"><Calculator size={20} /></div>
-                 <h3 className="text-xl font-black uppercase">薪资结算 (当月)</h3>
+                 <h3 className="text-xl font-black uppercase">Monthly Payroll</h3>
                </div>
                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">{salaryData.driver.name} • {salaryData.month} 周期</p>
              </div>
@@ -299,7 +299,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
            <div className="flex items-center gap-3">
              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><UserCog size={20} /></div>
              <div>
-               <h2 className="text-lg font-black text-slate-900 uppercase">车队管理 FLEET</h2>
+               <h2 className="text-lg font-black text-slate-900 uppercase">Fleet Management</h2>
                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{processedDrivers.length} Drivers Found</p>
              </div>
            </div>
@@ -406,7 +406,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
             ))}
             {paginatedDrivers.length === 0 && (
                 <div className="col-span-full py-12 text-center text-slate-400">
-                    <p className="text-xs font-black uppercase">未找到匹配的司机 No Drivers Found</p>
+                    <p className="text-xs font-black uppercase">No Drivers Found</p>
                 </div>
             )}
          </div>
@@ -418,7 +418,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
             {/* Top Cards (Using full fleetStats) */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                <div className="bg-slate-900 text-white p-6 rounded-[28px] relative overflow-hidden">
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">车队总营收 (Life Time)</p>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Revenue (All Time)</p>
                   <p className="text-2xl font-black text-white">TZS {fleetStats.totalRev.toLocaleString()}</p>
                   <div className="absolute right-4 top-4 p-3 bg-white/10 rounded-full"><TrendingUp size={20} /></div>
                </div>
@@ -488,7 +488,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                   </table>
                   {paginatedDrivers.length === 0 && (
                     <div className="py-12 text-center text-slate-400">
-                        <p className="text-xs font-black uppercase">未找到匹配的司机 No Drivers Found</p>
+                        <p className="text-xs font-black uppercase">No Drivers Found</p>
                     </div>
                   )}
                </div>
@@ -526,7 +526,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
              <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
                <div className="flex items-center gap-3">
                  <div className="p-2 bg-indigo-600 rounded-xl text-white"><User size={20}/></div>
-                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{editingId ? '编辑资料 SETTINGS' : '注册司机 REGISTRATION'}</h3>
+                 <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">{editingId ? 'Edit Driver' : 'New Driver'}</h3>
                </div>
                <button onClick={resetForm} className="p-2 bg-white rounded-full text-slate-400 shadow-sm hover:text-rose-500 transition-colors"><X size={18} /></button>
              </div>
@@ -541,23 +541,23 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                    <InputField label="登录密码 PASSWORD" value={form.password} icon={<Key size={16}/>} onChange={v => setForm({...form, password: v})} type="text" />
                 </div>
                 
-                {/* 车辆与资产配置区块 */}
+                {/* Vehicle & Asset Configuration */}
                 <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">
                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                     <Truck size={14} /> 车辆与资产
+                     <Truck size={14} /> Vehicle & Asset
                    </p>
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">车型型号</label>
+                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Vehicle Model</label>
                          <input type="text" value={form.model} onChange={e => setForm({...form, model: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold" placeholder="Bajaj / TVS" />
                       </div>
                       <div className="space-y-1">
-                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">车牌号码</label>
+                         <label className="text-[8px] font-black text-slate-400 uppercase ml-1">License Plate</label>
                          <input type="text" value={form.plate} onChange={e => setForm({...form, plate: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold uppercase" placeholder="T 000 XXX" />
                       </div>
                    </div>
                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-slate-400 uppercase ml-1">每日滚动硬币 (Float)</label>
+                      <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Daily Coin Float</label>
                       <input type="number" value={form.dailyFloatingCoins} onChange={e => setForm({...form, dailyFloatingCoins: e.target.value})} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold" />
                    </div>
                 </div>
@@ -569,7 +569,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                    </p>
                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-1">
-                         <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">月度底薪 (TZS)</label>
+                         <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">Monthly Base Salary (TZS)</label>
                          <div className="relative">
                             <Banknote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300" />
                             <input type="number" value={form.baseSalary} onChange={e => setForm({...form, baseSalary: e.target.value})} className="w-full bg-white border border-indigo-100 rounded-xl pl-9 pr-4 py-3 text-sm font-black text-indigo-600 outline-none" placeholder="300000" />
@@ -597,7 +597,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                  className="w-full bg-indigo-600 text-white rounded-2xl font-black py-4 uppercase shadow-xl shadow-indigo-100 flex items-center justify-center gap-2 disabled:bg-slate-300 transition-all active:scale-95"
                >
                  {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-                 {isSaving ? '正在保存...' : '保存司机档案 SAVE'}
+                 {isSaving ? 'Saving...' : 'Save Driver Profile'}
                </button>
              </div>
            </div>

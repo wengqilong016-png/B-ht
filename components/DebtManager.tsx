@@ -93,7 +93,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
         <div className="bg-slate-900 rounded-[24px] p-5 text-white">
            <div className="flex items-center gap-2 mb-2">
               <PieChart size={14} className="text-indigo-400"/>
-              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-300">全网待回收总额</span>
+              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-300">Total Outstanding</span>
            </div>
            <p className="text-xl font-black">TZS {totals.combined.toLocaleString()}</p>
            <div className="mt-3 flex items-center gap-2">
@@ -107,23 +107,23 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
         <div className="bg-white rounded-[24px] p-5 border border-slate-200 shadow-sm">
            <div className="flex items-center gap-2 mb-2">
              <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500"><Building2 size={14} /></div>
-             <span className="text-[9px] font-black text-slate-400 uppercase">点位启动金</span>
+             <span className="text-[9px] font-black text-slate-400 uppercase">Site Startup Capital</span>
            </div>
            <p className="text-xl font-black text-slate-900">TZS {totals.startup.toLocaleString()}</p>
-           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{totals.activePointsCount} 个点位待回收</p>
+           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{totals.activePointsCount} sites pending recovery</p>
         </div>
 
         <div className="bg-white rounded-[24px] p-5 border border-slate-200 shadow-sm">
            <div className="flex items-center gap-2 mb-2">
              <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-500"><User size={14} /></div>
-             <span className="text-[9px] font-black text-slate-400 uppercase">个人借款</span>
+             <span className="text-[9px] font-black text-slate-400 uppercase">Personal Loans</span>
            </div>
            <p className="text-xl font-black text-slate-900">TZS {totals.driver.toLocaleString()}</p>
-           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{displayedDrivers.length} 位司机待还款</p>
+           <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">{displayedDrivers.length} drivers with loans</p>
         </div>
       </div>
 
-      {/* 1. 点位启动资金回收 (Startup Recovery) */}
+      {/* 1. Site Startup Capital Recovery */}
       <section className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -133,7 +133,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
               <p className="text-[9px] text-slate-400 font-bold uppercase">Machine Startup Capital Recovery</p>
             </div>
           </div>
-          <span className="hidden sm:block text-[9px] font-black text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg uppercase"><Info size={10} className="inline mr-1"/>按营收比例自动扣除</span>
+          <span className="hidden sm:block text-[9px] font-black text-slate-400 bg-slate-100 px-2.5 py-1 rounded-lg uppercase"><Info size={10} className="inline mr-1"/>Auto-deducted from revenue</span>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -172,7 +172,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                    <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 flex justify-between items-center relative overflow-hidden">
                       {isPulsing && <div className="absolute inset-0 bg-emerald-100/50 animate-pulse"></div>}
                       <div className="relative z-10">
-                        <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">待还余额</p>
+                        <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Balance Due</p>
                         <p className={`text-lg font-black ${isFullyPaid ? 'text-emerald-600' : 'text-slate-900'}`}>TZS {loc.remainingStartupDebt.toLocaleString()}</p>
                       </div>
                       <div className="text-right relative z-10">
@@ -183,9 +183,9 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                    
                    <div className="space-y-1.5">
                      <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
-                        <span>进度 {progress.toFixed(0)}%</span>
+                        <span>Progress {progress.toFixed(0)}%</span>
                         <span className={isFullyPaid ? 'text-emerald-600' : 'text-amber-600'}>
-                          {isFullyPaid ? '已结清' : '回收中'}
+                          {isFullyPaid ? '已结清' : 'Recovering'}
                         </span>
                      </div>
                      <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
@@ -201,7 +201,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                         {recoveringLocId === loc.id ? (
                           <div className="animate-in slide-in-from-top-2 duration-200 space-y-2 bg-slate-900 p-4 rounded-2xl">
                              <div className="flex justify-between items-center">
-                                <p className="text-[9px] font-black text-indigo-400 uppercase">还款金额 (TZS)</p>
+                                <p className="text-[9px] font-black text-indigo-400 uppercase">Payment Amount (TZS)</p>
                                 <button onClick={() => setRecoveringLocId(null)} className="p-1 text-slate-500 hover:text-white">
                                   <X size={14}/>
                                 </button>
@@ -223,7 +223,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                                  {isActionLoading ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
                                </button>
                              </div>
-                             {isActionLoading && <p className="text-[8px] font-black text-indigo-400 uppercase animate-pulse">正在同步...</p>}
+                             {isActionLoading && <p className="text-[8px] font-black text-indigo-400 uppercase animate-pulse">Syncing...</p>}
                           </div>
                         ) : (
                           <button 
@@ -242,15 +242,15 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
             <div className="col-span-full py-12 text-center bg-white rounded-[28px] border border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
                <Building2 size={32} className="text-slate-200" />
                <div>
-                 <p className="text-sm font-black text-slate-400 uppercase">暂无点位待回收资金</p>
-                 <p className="text-[10px] text-slate-300 font-bold uppercase mt-0.5">所有启动金已结清</p>
+                 <p className="text-sm font-black text-slate-400 uppercase">No sites pending recovery</p>
+                 <p className="text-[10px] text-slate-300 font-bold uppercase mt-0.5">All startup capital settled</p>
                </div>
             </div>
           )}
         </div>
       </section>
 
-      {/* 2. 司机借款管理 (Driver Loans) */}
+      {/* 2. Driver Loan Management */}
       <section className="border-t border-slate-100 pt-6">
         <div className="flex items-center gap-2 mb-4">
           <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Wallet size={18} /></div>
@@ -276,7 +276,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                     <h3 className="font-black text-slate-900 text-sm">{driver.name}</h3>
                     <div className="flex items-center gap-1.5 mt-0.5">
                        <span className={`px-1.5 py-0.5 rounded text-[8px] font-black uppercase ${isDebtFree ? 'bg-emerald-50 text-emerald-600' : 'bg-indigo-50 text-indigo-600'}`}>
-                         {isDebtFree ? '已结清' : '待还'}
+                         {isDebtFree ? '已结清' : 'Owing'}
                        </span>
                        <span className="text-[9px] text-slate-400">{driver.phone}</span>
                     </div>
@@ -287,7 +287,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                 <div className="space-y-3">
                    <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 flex justify-between items-center">
                       <div>
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">当前欠款</p>
+                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Current Debt</p>
                          <p className={`text-lg font-black ${isDebtFree ? 'text-emerald-600' : 'text-slate-900'}`}>TZS {driver.remainingDebt.toLocaleString()}</p>
                       </div>
                       <CreditCard size={16} className="text-slate-200" />
@@ -295,7 +295,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
 
                    <div className="space-y-1.5">
                       <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
-                        <span>进度 {progress.toFixed(0)}%</span>
+                        <span>Progress {progress.toFixed(0)}%</span>
                       </div>
                       <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
                         <div 
@@ -307,11 +307,11 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
 
                    <div className="grid grid-cols-2 gap-2">
                       <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">底薪</p>
+                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Base Salary</p>
                          <p className="text-[10px] font-bold text-slate-700">TZS {(driver.baseSalary ?? 300000).toLocaleString()}</p>
                       </div>
                       <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">提成</p>
+                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Commission</p>
                          <p className="text-[10px] font-bold text-slate-700">{((driver.commissionRate ?? 0.05) * 100).toFixed(0)}%</p>
                       </div>
                    </div>
@@ -320,7 +320,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
             );
           }) : (
             <div className="col-span-full py-10 text-center text-slate-300">
-              <p className="text-[10px] font-black uppercase">没有匹配的司机借款记录</p>
+              <p className="text-[10px] font-black uppercase">No driver loans found</p>
             </div>
           )}
         </div>
@@ -329,7 +329,7 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
       {/* Footer Info */}
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 flex items-start gap-3 max-w-2xl mx-auto">
          <AlertCircle size={16} className="text-indigo-500 shrink-0 mt-0.5" />
-         <p className="text-[9px] text-slate-500 font-bold leading-relaxed">点位启动金按每次巡检营收自动扣除，手动还款仅限大额结清。所有记录同步至"日终对账"。</p>
+         <p className="text-[9px] text-slate-500 font-bold leading-relaxed">Startup capital is auto-deducted from each collection. Manual repayment for large lump sum settlements only. All records sync to daily settlement.</p>
       </div>
     </div>
   );

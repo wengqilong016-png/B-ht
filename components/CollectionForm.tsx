@@ -182,7 +182,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1500); // 1.5s interval
       }
     } catch (err) {
-      alert(lang === 'zh' ? "无法访问摄像头" : "Kamera imekataliwa");
+      alert(lang === 'zh' ? "Cannot access camera" : "Camera access denied");
       setIsScannerOpen(false);
     }
   };
@@ -330,7 +330,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     } catch (e: any) {
       console.error("AI Analysis failed:", e.message);
       if (e.message.includes("API Key") || e.message.includes("403")) {
-        alert(lang === 'zh' ? "AI 审计密钥配置无效，已切换至手动模式。" : "AI Haifanyi kazi, tumia picha ya kawaida.");
+        alert(lang === 'zh' ? "AI key invalid, switching to manual mode." : "AI unavailable, using manual photo mode.");
         takeManualPhoto();
       }
     } finally {
@@ -347,7 +347,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
          // 记录 AI 原始分值供比对
          setAiReviewData({...aiReviewData, confirmed: true} as any); 
          stopScanner();
-         alert(lang === 'zh' ? '✅ AI 读数已填入，请核对' : '✅ Hesabu ya AI imejazwa, tafadhali hakiki');
+         alert(lang === 'zh' ? '✅ AI reading filled in, please verify' : '✅ AI reading filled in, please verify');
      }
   };
 
@@ -419,7 +419,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       setExpenseType('public');
       setExpenseCategory('fuel');
 
-      alert(lang === 'zh' ? '✅ 巡检报告已存档' : '✅ Ripoti imehifadhiwa');
+      alert(lang === 'zh' ? '✅ Collection report saved' : '✅ Collection report saved');
   };
 
   const handleSubmit = async () => {
@@ -427,19 +427,19 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     
     // Hard Lock: No GPS = No Submit
     if (!gpsCoords) {
-      alert(lang === 'zh' ? '❌ 无法获取位置！请开启 GPS 权限并重试。' : '❌ HAKUNA GPS! Tafadhali washa eneo lako uendelee.');
+      alert(lang === 'zh' ? '❌ Cannot get location! Please enable GPS permission and retry.' : '❌ GPS required! Please enable location access.');
       requestGps(); // Re-trigger request
       return;
     }
 
-    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ 库存不足，是否确认？" : "⚠️ Sarafu hazitoshi, endelea?")) return;
+    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ Coin stock insufficient, continue?" : "⚠️ Coin stock insufficient, continue?")) return;
 
     processSubmission(gpsCoords);
   };
 
   const handleSkipGps = () => {
       if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
-      if (confirm(lang === 'zh' ? "确认跳过 GPS 定位？(记录将标记为 GPS 缺失)" : "Ruka GPS?")) {
+      if (confirm(lang === 'zh' ? "Skip GPS? (Record will be marked as GPS missing)" : "Skip GPS location?")) {
           processSubmission({ lat: 0, lng: 0 });
       }
   };
@@ -487,7 +487,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             className="w-full mb-6 py-4 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] font-black uppercase text-xs hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
           >
             <Plus size={16} />
-            {lang === 'zh' ? '新机入网注册 (NEW MACHINE)' : t.registerNewMachine}
+            {lang === 'zh' ? 'Register New Machine' : t.registerNewMachine}
           </button>
         )}
 
@@ -496,7 +496,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
               <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
               <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
-                {lang === 'zh' ? '显示全部点位 (未分配专属点位)' : 'Inaonyesha mashine zote (hakuna zilizopewa)'}
+                {lang === 'zh' ? 'Showing all machines (none assigned)' : 'Showing all machines (none assigned)'}
               </p>
             </div>
           )}
@@ -506,24 +506,55 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.noMachinesAssigned}</p>
             </div>
           )}
-          {filteredLocations.map(loc => (
-            <button key={loc.id} onClick={() => handleSelectLocation(loc.id)} className="w-full bg-white p-6 rounded-[35px] border border-slate-200 flex justify-between items-center shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98]">
-              <div className="flex items-center gap-5">
-                <div className="w-14 h-14 bg-slate-50 rounded-[20px] flex items-center justify-center text-slate-600 font-black text-[11px] border border-slate-100 group-hover:bg-indigo-600 group-hover:text-white transition-all shadow-inner uppercase">
-                  {loc.machineId}
-                </div>
-                <div className="text-left">
-                  <span className="text-slate-900 block text-base font-black leading-tight">{loc.name}</span>
-                  <div className="flex flex-wrap items-center gap-2 text-[9px] text-slate-400 font-black uppercase mt-1 tracking-widest">
-                    <span className="bg-slate-100 px-1.5 py-0.5 rounded">{loc.area}</span>
-                    <span className="text-indigo-500">L: {loc.lastScore}</span>
-                    <span className="text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">{(loc.commissionRate * 100).toFixed(0)}%</span>
+          {filteredLocations.map(loc => {
+            // Compute days since last activity for this location
+            const daysSinceActive = loc.lastRevenueDate
+              ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
+              : null;
+            const machineShortId = loc.machineId ? loc.machineId.substring(0, 6).toUpperCase() : '---';
+            return (
+              <button key={loc.id} onClick={() => handleSelectLocation(loc.id)} className="w-full bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98] overflow-hidden">
+                <div className="flex items-stretch">
+                  {/* Machine photo or ID badge */}
+                  <div className="relative w-20 shrink-0 bg-slate-900 flex flex-col items-center justify-center p-3 rounded-l-[28px] group-hover:bg-indigo-700 transition-colors">
+                    {loc.machinePhotoUrl ? (
+                      <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover absolute inset-0 opacity-40 rounded-l-[28px]" />
+                    ) : null}
+                    <span className="relative z-10 text-white font-black text-[10px] text-center leading-tight">{machineShortId}</span>
+                    <div className={`relative z-10 mt-1 w-2 h-2 rounded-full ${loc.status === 'active' ? 'bg-emerald-400' : loc.status === 'maintenance' ? 'bg-amber-400' : 'bg-rose-400'}`}></div>
+                  </div>
+                  {/* Machine details */}
+                  <div className="flex-1 p-4 text-left">
+                    <div className="flex justify-between items-start mb-2">
+                      <span className="text-slate-900 text-sm font-black leading-tight">{loc.name}</span>
+                      <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 mt-0.5 transition-all shrink-0" />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2">
+                      <div>
+                        <p className="text-[7px] font-black text-slate-400 uppercase">Last Reading</p>
+                        <p className="text-[10px] font-black text-indigo-600">{loc.lastScore.toLocaleString()}</p>
+                      </div>
+                      <div>
+                        <p className="text-[7px] font-black text-slate-400 uppercase">Commission</p>
+                        <p className="text-[10px] font-black text-emerald-600">{(loc.commissionRate * 100).toFixed(0)}%</p>
+                      </div>
+                      <div>
+                        <p className="text-[7px] font-black text-slate-400 uppercase">Last Active</p>
+                        <p className="text-[10px] font-black text-slate-700">
+                          {daysSinceActive === null ? 'N/A' : daysSinceActive === 0 ? 'Today' : `${daysSinceActive}d ago`}
+                        </p>
+                      </div>
+                    </div>
+                    {loc.area && (
+                      <div className="mt-2">
+                        <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
-              <ChevronRight size={20} className="text-slate-300 group-hover:text-indigo-500 group-hover:translate-x-1 transition-all" />
-            </button>
-          ))}
+              </button>
+            );
+          })}
         </div>
       </div>
     );
@@ -591,7 +622,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                <span className="text-sm font-black opacity-80">{calculations.diff} × 200 TZS</span>
                <div className="text-right">
                   <p className="text-2xl font-black text-white">TZS {calculations.revenue.toLocaleString()}</p>
-                  <p className="text-[8px] font-bold opacity-60 uppercase">Jumla ya Mapato</p>
+                  <p className="text-[8px] font-bold opacity-60 uppercase">Total Revenue</p>
                </div>
              </div>
           </div>
@@ -619,7 +650,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                     <span className="text-xs font-black text-amber-300">TZS</span>
                     <input type="number" value={ownerRetention} onChange={e => setOwnerRetention(e.target.value)} className="w-full text-2xl font-black bg-transparent outline-none text-amber-900 placeholder:text-amber-200" placeholder="0" />
                   </div>
-                  <p className="text-[8px] font-black text-amber-400 uppercase tracking-tighter">{(selectedLocation!.commissionRate * 100).toFixed(0)}% Pesa imeachwa dukani</p>
+                  <p className="text-[8px] font-black text-amber-400 uppercase tracking-tighter">{(selectedLocation!.commissionRate * 100).toFixed(0)}% Left at machine location</p>
                 </div>
               ) : (
                 <div className="p-3 bg-indigo-600 text-white rounded-2xl flex items-center gap-3 animate-in zoom-in-95">
@@ -636,10 +667,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             <div className="bg-rose-50 p-6 rounded-[35px] border border-rose-100 relative">
                <div className="flex items-center justify-between mb-4">
                  <label className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2">
-                   <Banknote size={14} /> {lang === 'zh' ? '支出 / 预支申报' : 'Matumizi / Deni'}
+                   <Banknote size={14} /> {'Expenses / Advance'}
                  </label>
                  {parseInt(expenses) > 0 && (
-                   <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded text-[9px] font-black uppercase animate-pulse">待审批 Pending</span>
+                   <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded text-[9px] font-black uppercase animate-pulse">PENDING</span>
                  )}
                </div>
 
@@ -648,13 +679,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                    onClick={() => setExpenseType('public')} 
                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'public' ? 'bg-rose-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
                  >
-                   {lang === 'zh' ? '公款报销 (Company)' : 'Matumizi ya Kampuni'}
+                   {'Company Expense'}
                  </button>
                  <button 
                    onClick={() => setExpenseType('private')} 
                    className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'private' ? 'bg-indigo-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
                  >
-                   {lang === 'zh' ? '个人预支 (Loan)' : 'Mkopo Binafsi'}
+                   {'Driver Advance (Loan)'}
                  </button>
                </div>
 
@@ -666,16 +697,16 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                   >
                     {expenseType === 'public' ? (
                       <>
-                        <option value="fuel">{lang === 'zh' ? '加油 (Fuel)' : 'Mafuta (Fuel)'}</option>
-                        <option value="repair">{lang === 'zh' ? '维修 (Repair)' : 'Matengenezo (Repair)'}</option>
-                        <option value="fine">{lang === 'zh' ? '罚款 (Fine)' : 'Faini (Fine)'}</option>
-                        <option value="other">{lang === 'zh' ? '其他 (Other)' : 'Mengine (Other)'}</option>
+                        <option value="fuel">{'Fuel'}</option>
+                        <option value="repair">{'Repair'}</option>
+                        <option value="fine">{'Fine'}</option>
+                        <option value="other">{'Other'}</option>
                       </>
                     ) : (
                       <>
-                        <option value="allowance">{lang === 'zh' ? '饭补 (Allowance)' : 'Chakula (Allowance)'}</option>
-                        <option value="salary_advance">{lang === 'zh' ? '预支工资 (Salary)' : 'Mshahara (Advance)'}</option>
-                        <option value="other">{lang === 'zh' ? '借款 (Loan)' : 'Mkopo (Loan)'}</option>
+                        <option value="allowance">{'Meal Allowance'}</option>
+                        <option value="salary_advance">{'Salary Advance'}</option>
+                        <option value="other">{'Personal Loan'}</option>
                       </>
                     )}
                   </select>
@@ -693,14 +724,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                
                <p className="text-[9px] font-bold text-rose-400 opacity-80">
                  {expenseType === 'public' 
-                   ? (lang === 'zh' ? '* 公司运营成本，不影响个人欠款' : '* Gharama ya kampuni, hailipwi na dereva') 
-                   : (lang === 'zh' ? '* 计入个人借款，需在工资中抵扣' : '* Deni binafsi, litalipwa kwenye mshahara')}
+                   ? ('* Company operating cost, does not affect personal debt') 
+                   : ('* Recorded as driver advance, deducted from salary')}
                </p>
             </div>
         </div>
 
         <div className="bg-emerald-50 p-6 rounded-[35px] border border-emerald-100">
-          <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange} (Sarafu)</label>
+          <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
           <div className="flex items-center gap-3">
              <div className="p-2.5 bg-emerald-500 rounded-xl text-white"><Coins size={20} /></div>
              <input type="number" value={coinExchange} onChange={e => setCoinExchange(e.target.value)} className="w-full text-2xl font-black bg-transparent outline-none text-emerald-900 placeholder:text-emerald-200" placeholder="0" />
@@ -710,7 +741,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         <div className="p-6 rounded-[35px] border-2 border-slate-100 bg-slate-50 flex justify-between items-center shadow-inner">
              <div className="flex flex-col">
                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.net}</span>
-               <span className="text-[8px] font-bold text-slate-300 uppercase mt-1">Pesa ya Kukabidhi</span>
+               <span className="text-[8px] font-bold text-slate-300 uppercase mt-1">Cash to Hand In</span>
              </div>
              <span className="text-3xl font-black text-slate-900">TZS {calculations.netPayable.toLocaleString()}</span>
         </div>
@@ -724,9 +755,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                     <Satellite size={16} />
                   </div>
                   <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS 地理位置验证</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS Location Verification</span>
                     <span className={`text-[8px] font-bold uppercase ${gpsPermission === 'denied' ? 'text-rose-600' : gpsCoords ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {gpsPermission === 'denied' ? '权限已禁用 (PERMISSION DENIED)' : gpsCoords ? '已锁定位置 (LOCATION LOCKED)' : '正在定位 (ACQUIRING...)'}
+                      {gpsPermission === 'denied' ? 'GPS DENIED' : gpsCoords ? 'LOCATION LOCKED' : 'ACQUIRING...'}
                     </span>
                   </div>
                </div>
@@ -738,7 +769,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             {gpsPermission === 'denied' && (
               <div className="mt-3 p-3 bg-white/60 rounded-xl border border-rose-100">
                 <p className="text-[9px] font-bold text-rose-800 leading-relaxed">
-                  ⚠️ {lang === 'zh' ? '您拒绝了定位权限。请在手机浏览器设置中找到“位置”，将其修改为“允许”，然后点击上方刷新。' : 'Umekataa ruhusa ya GPS. Tafadhali nenda kwenye mipangilio ya kivinjari chako, ruhusu eneo (Location), kisha gusa kitufe cha kupakia upya hapo juu.'}
+                  ⚠️ GPS permission denied. Please open browser settings, find Location permissions, set to Allow, then refresh.
                 </p>
               </div>
             )}
@@ -802,14 +833,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                                 className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
                             >
                                 <CheckCircle2 size={18} />
-                                <span className="text-[10px] font-black uppercase">正常 Normal</span>
+                                <span className="text-[10px] font-black uppercase">Normal</span>
                             </button>
                             <button 
                                 onClick={() => setAiReviewData({...aiReviewData, condition: 'Damaged'})}
                                 className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Damaged' ? 'bg-rose-50 border-rose-200 text-rose-600 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
                             >
                                 <AlertTriangle size={18} />
-                                <span className="text-[10px] font-black uppercase">异常 Issue</span>
+                                <span className="text-[10px] font-black uppercase">Issue</span>
                             </button>
                         </div>
                       </div>
