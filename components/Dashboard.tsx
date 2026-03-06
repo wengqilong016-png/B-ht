@@ -80,9 +80,22 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
   // --- Payroll System ---
   const payrollStats = useMemo(() => {
     const months = Array.from(new Set(transactions.map(t => t.timestamp.substring(0, 7)))).sort().reverse();
+    // Pre-group transactions and settlements by driverId to avoid O(n×m) per-driver scans
+    const txByDriver = new Map<string, Transaction[]>();
+    transactions.forEach(t => {
+      const arr = txByDriver.get(t.driverId);
+      if (arr) arr.push(t);
+      else txByDriver.set(t.driverId, [t]);
+    });
+    const settlementByDriver = new Map<string, DailySettlement[]>();
+    dailySettlements.filter(s => s.status === 'confirmed').forEach(s => {
+      const arr = settlementByDriver.get(s.driverId);
+      if (arr) arr.push(s);
+      else settlementByDriver.set(s.driverId, [s]);
+    });
     return drivers.filter(d => d.status === 'active').map(driver => {
-      const driverTxs = transactions.filter(t => t.driverId === driver.id);
-      const driverSettlements = dailySettlements.filter(s => s.driverId === driver.id && s.status === 'confirmed');
+      const driverTxs = txByDriver.get(driver.id) ?? [];
+      const driverSettlements = settlementByDriver.get(driver.id) ?? [];
       const monthlyBreakdown = months.map(month => {
         const monthTxs = driverTxs.filter(t => t.timestamp.startsWith(month));
         const monthSettlements = driverSettlements.filter(s => s.date.startsWith(month));
