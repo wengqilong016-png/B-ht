@@ -91,6 +91,30 @@ const App: React.FC = () => {
   useEffect(() => { locationsRef.current = locations; }, [locations]);
   useEffect(() => { isSyncingRef.current = isSyncing; }, [isSyncing]);
 
+  // Memoize so these don't recompute on every render triggered by unrelated state changes
+  const unsyncedCount = useMemo(
+    () =>
+      (Array.isArray(transactions) ? transactions.filter(t => !t.isSynced).length : 0) +
+      (Array.isArray(dailySettlements) ? dailySettlements.filter(s => !s.isSynced).length : 0) +
+      (Array.isArray(aiLogs) ? aiLogs.filter(l => !l.isSynced).length : 0),
+    [transactions, dailySettlements, aiLogs]
+  );
+
+  const filteredData = useMemo(() => ({
+    locations: !currentUser || currentUser.role === 'admin'
+      ? (Array.isArray(locations) ? locations : [])
+      : (Array.isArray(locations) ? locations.filter(l => l.assignedDriverId === currentUser.id) : []),
+    transactions: !currentUser || currentUser.role === 'admin'
+      ? (Array.isArray(transactions) ? transactions : [])
+      : (Array.isArray(transactions) ? transactions.filter(t => t.driverId === currentUser.id) : []),
+    dailySettlements: !currentUser || currentUser.role === 'admin'
+      ? (Array.isArray(dailySettlements) ? dailySettlements : [])
+      : (Array.isArray(dailySettlements) ? dailySettlements.filter(s => s.driverId === currentUser.id) : []),
+    drivers: !currentUser || currentUser.role === 'admin'
+      ? (Array.isArray(drivers) ? drivers : [])
+      : (Array.isArray(drivers) ? drivers.filter(d => d.id === currentUser.id) : []),
+  }), [currentUser, locations, transactions, dailySettlements, drivers]);
+
   const loadFromLocalStorage = () => {
     try {
       const locs = localStorage.getItem(CONSTANTS.STORAGE_LOCATIONS_KEY);
@@ -421,10 +445,6 @@ const App: React.FC = () => {
     if (user.role === 'driver') setView('collect');
   };
 
-  const unsyncedCount = (Array.isArray(transactions) ? transactions.filter(t => !t.isSynced).length : 0) + 
-                       (Array.isArray(dailySettlements) ? dailySettlements.filter(s => !s.isSynced).length : 0) + 
-                       (Array.isArray(aiLogs) ? aiLogs.filter(l => !l.isSynced).length : 0);
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
@@ -437,15 +457,6 @@ const App: React.FC = () => {
   if (!currentUser) {
     return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
-
-  // 1. 数据过滤逻辑：仅在 currentUser 存在时执行，且放在 return 之后是错误的，
-  // 但我们通过在顶层始终定义 Hook，内部判断逻辑来修复。
-  const filteredData = {
-    locations: currentUser.role === 'admin' ? (Array.isArray(locations) ? locations : []) : (Array.isArray(locations) ? locations.filter(l => l.assignedDriverId === currentUser.id) : []),
-    transactions: currentUser.role === 'admin' ? (Array.isArray(transactions) ? transactions : []) : (Array.isArray(transactions) ? transactions.filter(t => t.driverId === currentUser.id) : []),
-    dailySettlements: currentUser.role === 'admin' ? (Array.isArray(dailySettlements) ? dailySettlements : []) : (Array.isArray(dailySettlements) ? dailySettlements.filter(s => s.driverId === currentUser.id) : []),
-    drivers: currentUser.role === 'admin' ? (Array.isArray(drivers) ? drivers : []) : (Array.isArray(drivers) ? drivers.filter(d => d.id === currentUser.id) : []),
-  };
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">

@@ -148,8 +148,16 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
 
   // --- 1. Enrich Data Stats (Memoized) ---
   const driversWithStats = useMemo(() => {
+    // Pre-group transactions by driverId to avoid O(n×m) filter per driver
+    const txByDriver = new Map<string, Transaction[]>();
+    transactions.forEach(t => {
+      const arr = txByDriver.get(t.driverId);
+      if (arr) arr.push(t);
+      else txByDriver.set(t.driverId, [t]);
+    });
+
     return drivers.map(d => {
-      const dTx = transactions.filter(t => t.driverId === d.id);
+      const dTx = txByDriver.get(d.id) ?? [];
       const totalRevenue = dTx.reduce((sum, t) => sum + t.revenue, 0);
       const totalNet = dTx.reduce((sum, t) => sum + t.netPayable, 0);
       const collectionRate = totalRevenue > 0 ? (totalNet / totalRevenue) * 100 : 0;

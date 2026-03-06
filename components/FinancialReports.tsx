@@ -137,12 +137,31 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
 
   const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#ec4899'];
 
+  // Build a driver lookup Map once to avoid O(n×m) find() calls in table rows and CSV export
+  const driverMap = useMemo(() => new Map(drivers.map(d => [d.id, d])), [drivers]);
+
+  // Memoize pie chart expense breakdown to avoid 5 separate filter+reduce passes on every render
+  const expensePieData = useMemo(() => {
+    const totals: Record<string, number> = { fuel: 0, repair: 0, allowance: 0, salary_advance: 0, other: 0 };
+    filteredTransactions.forEach(t => {
+      const cat = (t.expenseCategory && totals[t.expenseCategory] !== undefined) ? t.expenseCategory : 'other';
+      totals[cat] += t.expenses;
+    });
+    return [
+      { name: 'Fuel', value: totals.fuel },
+      { name: 'Repair', value: totals.repair },
+      { name: 'Allowance', value: totals.allowance },
+      { name: 'Salary Adv', value: totals.salary_advance },
+      { name: 'Other', value: totals.other },
+    ].filter(v => v.value > 0);
+  }, [filteredTransactions]);
+
   const exportToCSV = () => {
     const headers = ['Date', 'Location', 'Driver', 'Revenue', 'Public Expense', 'Private Loan', 'Net Payable', 'Category', 'Notes'];
     const rows = filteredTransactions.map(tx => [
       new Date(tx.timestamp).toLocaleString(),
       tx.locationName,
-      drivers.find(d => d.id === tx.driverId)?.name || 'Unknown',
+      driverMap.get(tx.driverId)?.name || 'Unknown',
       tx.revenue,
       tx.expenseType === 'public' ? tx.expenses : 0,
       tx.expenseType === 'private' ? tx.expenses : 0,
@@ -291,13 +310,7 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
               <ResponsiveContainer width="100%" height="100%">
                  <PieChart>
                     <Pie
-                      data={[
-                        { name: 'Fuel', value: filteredTransactions.filter(t => t.expenseCategory === 'fuel').reduce((a,b)=>a+b.expenses,0) },
-                        { name: 'Repair', value: filteredTransactions.filter(t => t.expenseCategory === 'repair').reduce((a,b)=>a+b.expenses,0) },
-                        { name: 'Allowance', value: filteredTransactions.filter(t => t.expenseCategory === 'allowance').reduce((a,b)=>a+b.expenses,0) },
-                        { name: 'Salary Adv', value: filteredTransactions.filter(t => t.expenseCategory === 'salary_advance').reduce((a,b)=>a+b.expenses,0) },
-                        { name: 'Other', value: filteredTransactions.filter(t => t.expenseCategory === 'other' || (!t.expenseCategory && t.expenses > 0)).reduce((a,b)=>a+b.expenses,0) }
-                      ].filter(v => v.value > 0)}
+                      data={expensePieData}
                       cx="50%"
                       cy="45%"
                       innerRadius={60}
@@ -364,8 +377,8 @@ const FinancialReports: React.FC<FinancialReportsProps> = ({ transactions, drive
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-500">{drivers.find(d => d.id === tx.driverId)?.name.charAt(0)}</div>
-                      <span className="text-[10px] font-bold text-slate-700">{drivers.find(d => d.id === tx.driverId)?.name || 'Admin'}</span>
+                      <div className="w-6 h-6 rounded-lg bg-slate-100 flex items-center justify-center text-[9px] font-black text-slate-500">{driverMap.get(tx.driverId)?.name.charAt(0)}</div>
+                      <span className="text-[10px] font-bold text-slate-700">{driverMap.get(tx.driverId)?.name || 'Admin'}</span>
                     </div>
                   </td>
                   <td className="px-6 py-4 text-xs font-black text-slate-900 text-right">{tx.revenue > 0 ? `TZS ${tx.revenue.toLocaleString()}` : '-'}</td>
