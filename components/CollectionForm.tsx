@@ -493,7 +493,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   // --- Payout (Dividend Withdrawal) Request Handler ---
   const handleSubmitPayoutRequest = () => {
-    if (!payoutRequestLocId || !payoutAmount || parseInt(payoutAmount) <= 0) {
+    const parsedAmount = parseInt(payoutAmount, 10);
+    if (!payoutRequestLocId || !payoutAmount || isNaN(parsedAmount) || parsedAmount <= 0) {
       alert(lang === 'zh' ? '❌ 请输入有效提现金额' : '❌ Enter a valid payout amount!');
       return;
     }
@@ -501,8 +502,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     if (!loc) return;
 
     const availableBalance = loc.dividendBalance || 0;
-    const requestedAmount = parseInt(payoutAmount);
-    if (requestedAmount > availableBalance) {
+    if (parsedAmount > availableBalance) {
       alert(lang === 'zh' ? `❌ 提现金额超过可用余额 (TZS ${availableBalance.toLocaleString()})` : `❌ Amount exceeds available balance (TZS ${availableBalance.toLocaleString()})`);
       return;
     }
@@ -524,8 +524,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       gps, dataUsageKB: 40, isSynced: false,
       type: 'payout_request',
       approvalStatus: 'pending',
-      payoutAmount: requestedAmount,
-      notes: lang === 'zh' ? `店主分红提现: TZS ${requestedAmount.toLocaleString()}` : `Owner dividend payout: TZS ${requestedAmount.toLocaleString()}`
+      payoutAmount: parsedAmount,
+      notes: lang === 'zh' ? `店主分红提现: TZS ${parsedAmount.toLocaleString()}` : `Owner dividend payout: TZS ${parsedAmount.toLocaleString()}`
     };
     onSubmit(tx);
     setPayoutRequestLocId(null);
@@ -612,6 +612,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   if (payoutRequestLocId) {
     const payoutLoc = locations.find(l => l.id === payoutRequestLocId);
     const availableDividend = payoutLoc?.dividendBalance || 0;
+    const parsedPayoutAmount = parseInt(payoutAmount, 10);
+    const isValidAmount = !isNaN(parsedPayoutAmount) && parsedPayoutAmount > 0;
+    const exceedsBalance = isValidAmount && parsedPayoutAmount > availableDividend;
     return (
       <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
         <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-6">
@@ -656,7 +659,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                 placeholder="0" 
               />
             </div>
-            {payoutAmount && parseInt(payoutAmount) > availableDividend && (
+            {exceedsBalance && (
               <p className="text-[9px] font-black text-rose-500 mt-2">
                 {lang === 'zh' ? `⚠ 超过可用余额 (TZS ${availableDividend.toLocaleString()})` : `⚠ Exceeds available balance (TZS ${availableDividend.toLocaleString()})`}
               </p>
@@ -665,7 +668,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
           <button 
             onClick={handleSubmitPayoutRequest} 
-            disabled={!payoutAmount || parseInt(payoutAmount) <= 0 || parseInt(payoutAmount) > availableDividend}
+            disabled={!isValidAmount || exceedsBalance}
             className="w-full py-5 bg-emerald-600 text-white rounded-[28px] font-black uppercase text-sm shadow-xl disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
           >
             <Wallet size={20} />
