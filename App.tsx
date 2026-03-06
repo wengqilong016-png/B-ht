@@ -298,7 +298,44 @@ const App: React.FC = () => {
     const txToSave = { ...tx, isSynced: false };
     setTransactions(prev => [txToSave, ...prev]);
     
-    // Update local locations state: both score AND remaining debt
+    // Handle special transaction types
+    if (tx.type === 'reset_request') {
+      // Lock the machine when a reset request is submitted
+      setLocations(prev => prev.map(l => 
+        l.id === tx.locationId ? { ...l, resetLocked: true, isSynced: false } : l
+      ));
+      if (isOnline && supabase) {
+        const { error } = await supabase.from('transactions').upsert({...tx, isSynced: true});
+        if (!error) {
+          setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isSynced: true } : t));
+          await supabase.from('locations').update({ resetLocked: true, isSynced: true }).eq('id', tx.locationId);
+          setLocations(prev => prev.map(l => l.id === tx.locationId ? { ...l, resetLocked: true, isSynced: true } : l));
+        }
+      }
+      return;
+    }
+
+    if (tx.type === 'payout_request') {
+      // Payout requests don't affect scores or debt
+      if (isOnline && supabase) {
+        const { error } = await supabase.from('transactions').upsert({...tx, isSynced: true});
+        if (!error) setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isSynced: true } : t));
+      }
+      return;
+    }
+
+    // Default: Update local locations state: both score AND remaining debt
+    // Auto-approval pipeline: small transactions with no AI anomaly get auto-approved
+    const AUTO_APPROVE_THRESHOLD = 2000; // TZS
+    const isSmallAmount = tx.revenue <= AUTO_APPROVE_THRESHOLD;
+    const hasNoAnomaly = !tx.isAnomaly;
+    const autoApproved = isSmallAmount && hasNoAnomaly;
+    
+    const finalTx = autoApproved ? { ...txToSave, approvalStatus: 'auto-approved' as const } : txToSave;
+    if (autoApproved) {
+      setTransactions(prev => prev.map(t => t.id === tx.id ? finalTx : t));
+    }
+
     setLocations(prev => prev.map(l => 
       l.id === tx.locationId 
         ? { 
@@ -311,9 +348,10 @@ const App: React.FC = () => {
     ));
 
     if (isOnline && supabase) {
-       const { error } = await supabase.from('transactions').upsert({...tx, isSynced: true});
+       const txToUpsert = { ...finalTx, isSynced: true };
+       const { error } = await supabase.from('transactions').upsert(txToUpsert);
        if (!error) {
-          setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, isSynced: true } : t));
+          setTransactions(prev => prev.map(t => t.id === tx.id ? { ...t, ...txToUpsert } : t));
           
           // Get current state to ensure accuracy
           const currentLoc = locationsRef.current.find(l => l.id === tx.locationId);

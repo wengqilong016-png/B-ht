@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite } from 'lucide-react';
+import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite, Lock, RefreshCw, Wallet, Camera } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import EXIF from 'exif-js';
-import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../types';
+import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, resizeImage } from '../types';
 import MachineRegistrationForm from './MachineRegistrationForm';
 
 interface CollectionFormProps {
@@ -59,6 +59,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'review'>('idle');
   const [aiReviewData, setAiReviewData] = useState<AIReviewData | null>(null);
+
+  // Reset & Payout Request States
+  const [resetRequestLocId, setResetRequestLocId] = useState<string | null>(null);
+  const [resetPhotoData, setResetPhotoData] = useState<string | null>(null);
+  const [payoutRequestLocId, setPayoutRequestLocId] = useState<string | null>(null);
+  const [payoutAmount, setPayoutAmount] = useState<string>('');
+  const resetFileRef = useRef<HTMLInputElement>(null);
   
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -444,6 +451,81 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       }
   };
 
+  // --- 9999 Reset Request Handler ---
+  const handleResetPhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) resizeImage(file, 800, 0.6).then(setResetPhotoData);
+  };
+
+  const handleSubmitResetRequest = () => {
+    if (!resetRequestLocId || !resetPhotoData) {
+      alert(lang === 'zh' ? '❌ 请拍照当前分数照片' : '❌ Photo of current score required!');
+      return;
+    }
+    const loc = locations.find(l => l.id === resetRequestLocId);
+    if (!loc) return;
+
+    const gps = gpsCoords || { lat: 0, lng: 0 };
+    const tx: Transaction = {
+      id: `RST-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      locationId: loc.id,
+      locationName: loc.name,
+      driverId: currentDriver.id,
+      driverName: currentDriver.name,
+      previousScore: loc.lastScore,
+      currentScore: loc.lastScore,
+      revenue: 0, commission: 0, ownerRetention: 0,
+      debtDeduction: 0, startupDebtDeduction: 0,
+      expenses: 0, coinExchange: 0, extraIncome: 0,
+      netPayable: 0,
+      gps, photoUrl: resetPhotoData,
+      dataUsageKB: 80, isSynced: false,
+      type: 'reset_request',
+      approvalStatus: 'pending',
+      notes: lang === 'zh' ? '9999爆机重置申请' : '9999 overflow reset request'
+    };
+    onSubmit(tx);
+    setResetRequestLocId(null);
+    setResetPhotoData(null);
+    alert(lang === 'zh' ? '✅ 重置申请已提交，等待老板审批' : '✅ Reset request submitted, awaiting approval');
+  };
+
+  // --- Payout (Dividend Withdrawal) Request Handler ---
+  const handleSubmitPayoutRequest = () => {
+    if (!payoutRequestLocId || !payoutAmount || parseInt(payoutAmount) <= 0) {
+      alert(lang === 'zh' ? '❌ 请输入有效提现金额' : '❌ Enter a valid payout amount!');
+      return;
+    }
+    const loc = locations.find(l => l.id === payoutRequestLocId);
+    if (!loc) return;
+
+    const gps = gpsCoords || { lat: 0, lng: 0 };
+    const tx: Transaction = {
+      id: `PAY-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      locationId: loc.id,
+      locationName: loc.name,
+      driverId: currentDriver.id,
+      driverName: currentDriver.name,
+      previousScore: loc.lastScore,
+      currentScore: loc.lastScore,
+      revenue: 0, commission: 0, ownerRetention: 0,
+      debtDeduction: 0, startupDebtDeduction: 0,
+      expenses: 0, coinExchange: 0, extraIncome: 0,
+      netPayable: 0,
+      gps, dataUsageKB: 40, isSynced: false,
+      type: 'payout_request',
+      approvalStatus: 'pending',
+      payoutAmount: parseInt(payoutAmount),
+      notes: lang === 'zh' ? `店主分红提现: TZS ${parseInt(payoutAmount).toLocaleString()}` : `Owner dividend payout: TZS ${parseInt(payoutAmount).toLocaleString()}`
+    };
+    onSubmit(tx);
+    setPayoutRequestLocId(null);
+    setPayoutAmount('');
+    alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
+  };
+
   if (isRegistering && onRegisterMachine) {
     return (
       <MachineRegistrationForm 
@@ -452,6 +534,126 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         currentDriver={currentDriver} 
         lang={lang} 
       />
+    );
+  }
+
+  // --- 9999 Reset Request View ---
+  if (resetRequestLocId) {
+    const resetLoc = locations.find(l => l.id === resetRequestLocId);
+    return (
+      <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
+        <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-6">
+          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+            <button onClick={() => { setResetRequestLocId(null); setResetPhotoData(null); }} className="p-3 bg-slate-100 rounded-full text-slate-500 hover:text-indigo-600">
+              <ArrowRight size={20} className="rotate-180" />
+            </button>
+            <div className="text-center">
+              <h2 className="text-lg font-black text-slate-900">{t.resetRequest}</h2>
+              <p className="text-[10px] font-black text-rose-500 uppercase mt-1">{resetLoc?.name} • {resetLoc?.machineId}</p>
+            </div>
+            <div className="w-10"></div>
+          </div>
+
+          <div className="bg-rose-50 p-5 rounded-[28px] border border-rose-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-rose-500 rounded-xl text-white"><RefreshCw size={18} /></div>
+              <div>
+                <p className="text-xs font-black text-rose-800 uppercase">{t.resetRequestDesc}</p>
+                <p className="text-[9px] font-bold text-rose-400 mt-1">
+                  {lang === 'zh' ? `当前分数: ${resetLoc?.lastScore}` : `Current score: ${resetLoc?.lastScore}`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div 
+            onClick={() => resetFileRef.current?.click()} 
+            className={`relative h-40 w-full rounded-2xl overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 ${resetPhotoData ? 'border-emerald-400' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
+          >
+            <input type="file" accept="image/*" capture="environment" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
+            {resetPhotoData ? (
+              <>
+                <img src={resetPhotoData} className="w-full h-full object-cover" alt="Reset proof" />
+                <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold uppercase">
+                  <CheckCircle2 size={16} className="mr-1"/> {lang === 'zh' ? '照片已保存 (点击重拍)' : 'Photo saved (tap to retake)'}
+                </div>
+              </>
+            ) : (
+              <div className="text-center text-slate-400">
+                <Camera size={28} className="mx-auto mb-2" />
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {lang === 'zh' ? '拍摄当前分数照片 *' : 'Take photo of current score *'}
+                </span>
+              </div>
+            )}
+          </div>
+
+          <button 
+            onClick={handleSubmitResetRequest} 
+            disabled={!resetPhotoData}
+            className="w-full py-5 bg-rose-600 text-white rounded-[28px] font-black uppercase text-sm shadow-xl disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            <RefreshCw size={20} />
+            {lang === 'zh' ? '提交重置申请' : 'Submit Reset Request'}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- Payout Request View ---
+  if (payoutRequestLocId) {
+    const payoutLoc = locations.find(l => l.id === payoutRequestLocId);
+    return (
+      <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
+        <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-6">
+          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
+            <button onClick={() => { setPayoutRequestLocId(null); setPayoutAmount(''); }} className="p-3 bg-slate-100 rounded-full text-slate-500 hover:text-indigo-600">
+              <ArrowRight size={20} className="rotate-180" />
+            </button>
+            <div className="text-center">
+              <h2 className="text-lg font-black text-slate-900">{t.payoutRequest}</h2>
+              <p className="text-[10px] font-black text-emerald-500 uppercase mt-1">{payoutLoc?.name} • {payoutLoc?.ownerName || '---'}</p>
+            </div>
+            <div className="w-10"></div>
+          </div>
+
+          <div className="bg-emerald-50 p-5 rounded-[28px] border border-emerald-200">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="p-2 bg-emerald-500 rounded-xl text-white"><Wallet size={18} /></div>
+              <div>
+                <p className="text-xs font-black text-emerald-800 uppercase">{t.payoutRequestDesc}</p>
+                <p className="text-[9px] font-bold text-emerald-400 mt-1">
+                  {lang === 'zh' ? `店主: ${payoutLoc?.ownerName || 'N/A'}` : `Owner: ${payoutLoc?.ownerName || 'N/A'}`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-slate-50 p-5 rounded-[28px] border border-slate-200">
+            <label className="text-[10px] font-black text-slate-400 uppercase block mb-3">{t.payoutAmount}</label>
+            <div className="flex items-baseline gap-2">
+              <span className="text-lg font-black text-slate-300">TZS</span>
+              <input 
+                type="number" 
+                value={payoutAmount} 
+                onChange={e => setPayoutAmount(e.target.value)} 
+                className="w-full text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200" 
+                placeholder="0" 
+              />
+            </div>
+          </div>
+
+          <button 
+            onClick={handleSubmitPayoutRequest} 
+            disabled={!payoutAmount || parseInt(payoutAmount) <= 0}
+            className="w-full py-5 bg-emerald-600 text-white rounded-[28px] font-black uppercase text-sm shadow-xl disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
+          >
+            <Wallet size={20} />
+            {lang === 'zh' ? '提交提现申请' : 'Submit Payout Request'}
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -512,47 +714,82 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
               : null;
             const machineShortId = loc.machineId ? loc.machineId.substring(0, 6).toUpperCase() : '---';
+            const isLocked = loc.resetLocked === true;
+            const isNear9999 = loc.lastScore >= 9000;
             return (
-              <button key={loc.id} onClick={() => handleSelectLocation(loc.id)} className="w-full bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group active:scale-[0.98] overflow-hidden">
-                <div className="flex items-stretch">
-                  {/* Machine photo or ID badge */}
-                  <div className="relative w-20 shrink-0 bg-slate-900 flex flex-col items-center justify-center p-3 rounded-l-[28px] group-hover:bg-indigo-700 transition-colors">
-                    {loc.machinePhotoUrl ? (
-                      <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover absolute inset-0 opacity-40 rounded-l-[28px]" />
-                    ) : null}
-                    <span className="relative z-10 text-white font-black text-[10px] text-center leading-tight">{machineShortId}</span>
-                    <div className={`relative z-10 mt-1 w-2 h-2 rounded-full ${loc.status === 'active' ? 'bg-emerald-400' : loc.status === 'maintenance' ? 'bg-amber-400' : 'bg-rose-400'}`}></div>
+              <div key={loc.id} className="bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl transition-all overflow-hidden">
+                <button 
+                  onClick={() => { if (!isLocked) handleSelectLocation(loc.id); }}
+                  disabled={isLocked}
+                  className={`w-full group active:scale-[0.98] transition-all ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                >
+                  <div className="flex items-stretch">
+                    {/* Machine photo or ID badge */}
+                    <div className={`relative w-20 shrink-0 flex flex-col items-center justify-center p-3 rounded-l-[28px] transition-colors ${isLocked ? 'bg-rose-800' : 'bg-slate-900 group-hover:bg-indigo-700'}`}>
+                      {loc.machinePhotoUrl ? (
+                        <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover absolute inset-0 opacity-40 rounded-l-[28px]" />
+                      ) : null}
+                      {isLocked ? (
+                        <Lock size={16} className="relative z-10 text-white" />
+                      ) : (
+                        <span className="relative z-10 text-white font-black text-[10px] text-center leading-tight">{machineShortId}</span>
+                      )}
+                      <div className={`relative z-10 mt-1 w-2 h-2 rounded-full ${isLocked ? 'bg-rose-400 animate-pulse' : loc.status === 'active' ? 'bg-emerald-400' : loc.status === 'maintenance' ? 'bg-amber-400' : 'bg-rose-400'}`}></div>
+                    </div>
+                    {/* Machine details */}
+                    <div className="flex-1 p-4 text-left">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="text-slate-900 text-sm font-black leading-tight">{loc.name}</span>
+                        {isLocked ? (
+                          <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-lg uppercase">{t.resetLocked}</span>
+                        ) : (
+                          <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 mt-0.5 transition-all shrink-0" />
+                        )}
+                      </div>
+                      <div className="grid grid-cols-3 gap-2">
+                        <div>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Last Reading</p>
+                          <p className={`text-[10px] font-black ${isNear9999 ? 'text-rose-600' : 'text-indigo-600'}`}>{loc.lastScore.toLocaleString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Commission</p>
+                          <p className="text-[10px] font-black text-emerald-600">{(loc.commissionRate * 100).toFixed(0)}%</p>
+                        </div>
+                        <div>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Last Active</p>
+                          <p className="text-[10px] font-black text-slate-700">
+                            {daysSinceActive === null ? 'N/A' : daysSinceActive === 0 ? 'Today' : `${daysSinceActive}d ago`}
+                          </p>
+                        </div>
+                      </div>
+                      {loc.area && (
+                        <div className="mt-2">
+                          <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {/* Machine details */}
-                  <div className="flex-1 p-4 text-left">
-                    <div className="flex justify-between items-start mb-2">
-                      <span className="text-slate-900 text-sm font-black leading-tight">{loc.name}</span>
-                      <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 mt-0.5 transition-all shrink-0" />
-                    </div>
-                    <div className="grid grid-cols-3 gap-2">
-                      <div>
-                        <p className="text-[7px] font-black text-slate-400 uppercase">Last Reading</p>
-                        <p className="text-[10px] font-black text-indigo-600">{loc.lastScore.toLocaleString()}</p>
-                      </div>
-                      <div>
-                        <p className="text-[7px] font-black text-slate-400 uppercase">Commission</p>
-                        <p className="text-[10px] font-black text-emerald-600">{(loc.commissionRate * 100).toFixed(0)}%</p>
-                      </div>
-                      <div>
-                        <p className="text-[7px] font-black text-slate-400 uppercase">Last Active</p>
-                        <p className="text-[10px] font-black text-slate-700">
-                          {daysSinceActive === null ? 'N/A' : daysSinceActive === 0 ? 'Today' : `${daysSinceActive}d ago`}
-                        </p>
-                      </div>
-                    </div>
-                    {loc.area && (
-                      <div className="mt-2">
-                        <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
-                      </div>
+                </button>
+                {/* Action buttons: Reset request (when score near 9999) and Payout request */}
+                {!isLocked && (isNear9999 || true) && (
+                  <div className="flex border-t border-slate-100">
+                    {isNear9999 && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); requestGps(); setResetRequestLocId(loc.id); }}
+                        className="flex-1 py-2.5 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 border-r border-slate-100"
+                      >
+                        <RefreshCw size={12} /> {lang === 'zh' ? '9999重置' : '9999 Reset'}
+                      </button>
                     )}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); requestGps(); setPayoutRequestLocId(loc.id); }}
+                      className="flex-1 py-2.5 text-[9px] font-black uppercase text-emerald-500 hover:bg-emerald-50 transition-all flex items-center justify-center gap-1.5"
+                    >
+                      <Wallet size={12} /> {lang === 'zh' ? '分红提现' : 'Payout'}
+                    </button>
                   </div>
-                </div>
-              </button>
+                )}
+              </div>
             );
           })}
         </div>
