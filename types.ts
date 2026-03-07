@@ -28,6 +28,7 @@ export interface User {
   username: string;
   role: 'admin' | 'driver';
   name: string;
+  driverId?: string;
 }
 
 type UserProfileRow = {
@@ -71,10 +72,11 @@ export const fetchCurrentUserProfile = async (
   return {
     success: true,
     user: {
-      id: profile.driver_id || authUserId,
+      id: authUserId,
       username: fallbackIdentity,
       role: profile.role,
       name: profile.display_name || fallbackIdentity,
+      driverId: profile.driver_id || undefined,
     },
   };
 };
@@ -153,7 +155,6 @@ export interface Driver {
   id: string;
   name: string;
   username: string;
-  password: string;
   phone: string;
   initialDebt: number;
   remainingDebt: number;

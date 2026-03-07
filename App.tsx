@@ -29,6 +29,13 @@ const safeSetItem = (key: string, value: string) => {
   }
 };
 
+const sanitizeDriver = (driver: Driver): Driver => {
+  const { password: _password, ...safeDriver } = driver as Driver & { password?: string };
+  return safeDriver;
+};
+
+const sanitizeDrivers = (driverList: Driver[]): Driver[] => driverList.map(sanitizeDriver);
+
 // Global ErrorBoundary to prevent full white-screen on any render crash
 class ErrorBoundary extends React.Component<
   { children: React.ReactNode },
@@ -62,8 +69,8 @@ class ErrorBoundary extends React.Component<
 }
 
 const INITIAL_DRIVERS: Driver[] = [
-  { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', password: '123', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
-  { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', password: '123', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
+  { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
+  { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
 ];
 
 const App: React.FC = () => {
@@ -76,6 +83,7 @@ const App: React.FC = () => {
   
   const [aiContextId, setAiContextId] = useState<string>('');
   const t = TRANSLATIONS[lang];
+  const activeDriverId = currentUser?.driverId ?? currentUser?.id;
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>(INITIAL_DRIVERS);
@@ -107,17 +115,17 @@ const App: React.FC = () => {
   const filteredData = useMemo(() => ({
     locations: !currentUser || currentUser.role === 'admin'
       ? (Array.isArray(locations) ? locations : [])
-      : (Array.isArray(locations) ? locations.filter(l => l.assignedDriverId === currentUser.id) : []),
+      : (Array.isArray(locations) ? locations.filter(l => l.assignedDriverId === activeDriverId) : []),
     transactions: !currentUser || currentUser.role === 'admin'
       ? (Array.isArray(transactions) ? transactions : [])
-      : (Array.isArray(transactions) ? transactions.filter(t => t.driverId === currentUser.id) : []),
+      : (Array.isArray(transactions) ? transactions.filter(t => t.driverId === activeDriverId) : []),
     dailySettlements: !currentUser || currentUser.role === 'admin'
       ? (Array.isArray(dailySettlements) ? dailySettlements : [])
-      : (Array.isArray(dailySettlements) ? dailySettlements.filter(s => s.driverId === currentUser.id) : []),
+      : (Array.isArray(dailySettlements) ? dailySettlements.filter(s => s.driverId === activeDriverId) : []),
     drivers: !currentUser || currentUser.role === 'admin'
       ? (Array.isArray(drivers) ? drivers : [])
-      : (Array.isArray(drivers) ? drivers.filter(d => d.id === currentUser.id) : []),
-  }), [currentUser, locations, transactions, dailySettlements, drivers]);
+      : (Array.isArray(drivers) ? drivers.filter(d => d.id === activeDriverId) : []),
+  }), [activeDriverId, currentUser, locations, transactions, dailySettlements, drivers]);
 
   const loadFromLocalStorage = () => {
     try {
@@ -133,7 +141,7 @@ const App: React.FC = () => {
       }
       if (drvs) {
         const p = JSON.parse(drvs);
-        if (Array.isArray(p)) setDrivers(p);
+        if (Array.isArray(p)) setDrivers(sanitizeDrivers(p));
       }
       if (txs) {
         const p = JSON.parse(txs);
@@ -167,7 +175,7 @@ const App: React.FC = () => {
         ]);
 
         if (resLoc.data) setLocations(resLoc.data);
-        if (resDrivers.data) setDrivers(resDrivers.data);
+        if (resDrivers.data) setDrivers(sanitizeDrivers(resDrivers.data));
         if (resTx.data) setTransactions(resTx.data.map(t => ({...t, isSynced: true})));
         if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})));
         if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})));
@@ -196,10 +204,10 @@ const App: React.FC = () => {
               supabase.from('drivers').update({ 
                 lastActive: new Date().toISOString(),
                 currentGps: { lat: latitude, lng: longitude }
-              }).eq('id', currentUser.id);
-           }, (err) => {
-              console.warn("GPS Heartbeat failed (Silent)", err.message);
-           }, { enableHighAccuracy: false, timeout: 5000 });
+              }).eq('id', activeDriverId);
+            }, (err) => {
+               console.warn("GPS Heartbeat failed (Silent)", err.message);
+            }, { enableHighAccuracy: false, timeout: 5000 });
         }
       }
     }, 20000);
@@ -225,13 +233,13 @@ const App: React.FC = () => {
       clearInterval(timer);
       navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
     };
-  }, [currentUser]);
+  }, [activeDriverId, currentUser]);
 
   useEffect(() => {
     safeSetItem(CONSTANTS.STORAGE_LOCATIONS_KEY, JSON.stringify(locations));
   }, [locations]);
   useEffect(() => {
-    safeSetItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(drivers));
+    safeSetItem(CONSTANTS.STORAGE_DRIVERS_KEY, JSON.stringify(sanitizeDrivers(drivers)));
   }, [drivers]);
   useEffect(() => {
     safeSetItem(CONSTANTS.STORAGE_TRANSACTIONS_KEY, JSON.stringify(transactions));
@@ -314,9 +322,10 @@ const App: React.FC = () => {
   };
 
   const handleUpdateDrivers = async (updatedDrivers: Driver[]) => {
-    setDrivers(updatedDrivers);
+    const sanitizedDrivers = sanitizeDrivers(updatedDrivers);
+    setDrivers(sanitizedDrivers);
     if (isOnline && supabase) {
-       const results = await Promise.all(updatedDrivers.map(d => {
+       const results = await Promise.all(sanitizedDrivers.map(d => {
           const { stats, ...driverToSave } = d as any;
           return supabase.from('drivers').upsert({...driverToSave, isSynced: true});
        }));
@@ -493,6 +502,8 @@ const App: React.FC = () => {
     const result = await fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
     if (!result.success) {
       console.error('Failed to load profile from session', result.error);
+      await supabase.auth.signOut();
+      setCurrentUser(null);
       return;
     }
 
@@ -515,6 +526,8 @@ const App: React.FC = () => {
       const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
       if (!result.success) {
         console.error('Failed to load profile from auth change', result.error);
+        await supabase.auth.signOut();
+        setCurrentUser(null);
         return;
       }
 
@@ -905,14 +918,14 @@ const App: React.FC = () => {
             {view === 'collect' && (
               <CollectionForm
                 locations={filteredData.locations}
-                currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]}
+                currentDriver={drivers.find(d => d.id === activeDriverId) || drivers[0]}
                 onSubmit={handleNewTransaction}
                 lang={lang}
                 onLogAI={handleLogAI}
                 isOnline={isOnline}
                 allTransactions={filteredData.transactions}
                 onRegisterMachine={async (loc) => {
-                  const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
+                  const newLoc = { ...loc, isSynced: false, assignedDriverId: activeDriverId };
                   setLocations([...locations, newLoc]);
                   if (isOnline && supabase) {
                     const { error } = await supabase.from('locations').insert({...newLoc, isSynced: true});

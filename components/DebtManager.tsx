@@ -18,6 +18,7 @@ interface DebtManagerProps {
 
 const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUser, onUpdateLocations, lang }) => {
   const t = TRANSLATIONS[lang];
+  const activeDriverId = currentUser.driverId ?? currentUser.id;
   
   // States
   const [recoveringLocId, setRecoveringLocId] = useState<string | null>(null);
@@ -30,12 +31,12 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
      const hasDebt = l.initialStartupDebt > 0;
      if (!hasDebt) return false;
      if (currentUser.role === 'admin') return true;
-     return l.assignedDriverId === currentUser.id;
-  }), [locations, currentUser]);
+     return l.assignedDriverId === activeDriverId;
+  }), [activeDriverId, currentUser.role, locations]);
   
   const displayedDrivers = useMemo(() => currentUser.role === 'admin' 
     ? drivers 
-    : drivers.filter(d => d.id === currentUser.id), [drivers, currentUser]);
+    : drivers.filter(d => d.id === activeDriverId), [activeDriverId, currentUser.role, drivers]);
 
   // Financial Summaries
   const totals = useMemo(() => {
