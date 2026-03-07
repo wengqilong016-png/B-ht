@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'bahati-pro-v1';
+const CACHE_NAME = 'bahati-pro-v2';
 const urlsToCache = [
   './',
   './index.html'
