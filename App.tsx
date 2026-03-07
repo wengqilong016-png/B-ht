@@ -483,6 +483,92 @@ const App: React.FC = () => {
     if (user.role === 'driver') setView('collect');
   };
 
+  const loadCurrentUserFromSession = async () => {
+    if (!supabase) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData.session?.user;
+    if (!sessionUser) return;
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, display_name, driver_id')
+      .eq('auth_user_id', sessionUser.id)
+      .single();
+
+    if (error || !profile) {
+      console.error('Failed to load profile from session', error);
+      return;
+    }
+
+    if (profile.role !== 'admin' && profile.role !== 'driver') {
+      console.error('Invalid role in profile', profile.role);
+      return;
+    }
+
+    setCurrentUser({
+      id: profile.driver_id || sessionUser.id,
+      username: sessionUser.email || '',
+      role: profile.role,
+      name: profile.display_name || sessionUser.email || '',
+    });
+
+    setLang(profile.role === 'admin' ? 'zh' : 'sw');
+    if (profile.role === 'driver') setView('collect');
+  };
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    loadCurrentUserFromSession();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('role, display_name, driver_id')
+        .eq('auth_user_id', session.user.id)
+        .single();
+
+      if (error || !profile) {
+        console.error('Failed to load profile from auth change', error);
+        return;
+      }
+
+      if (profile.role !== 'admin' && profile.role !== 'driver') {
+        console.error('Invalid role in auth change profile', profile.role);
+        return;
+      }
+
+      setCurrentUser({
+        id: profile.driver_id || session.user.id,
+        username: session.user.email || '',
+        role: profile.role,
+        name: profile.display_name || session.user.email || '',
+      });
+      setLang(profile.role === 'admin' ? 'zh' : 'sw');
+      if (profile.role === 'driver') setView('collect');
+    });
+
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase?.auth.signOut();
+    } catch (e) {
+      console.error('Sign out failed', e);
+    } finally {
+      setCurrentUser(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
@@ -493,7 +579,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
+    return <Login onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
 
   const isAdmin = currentUser.role === 'admin';
@@ -647,7 +733,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-1">
                 <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Globe size={12}/></button>
-                <button onClick={() => setCurrentUser(null)} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
+                <button onClick={handleLogout} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
               </div>
             </div>
           </div>
@@ -723,7 +809,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
-              <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
+              <button onClick={handleLogout} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
             </div>
           </div>
 

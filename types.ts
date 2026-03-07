@@ -211,18 +211,13 @@ export const CONSTANTS = {
   STORAGE_NOTIFICATIONS_KEY: 'kiosk_notifications',
   IMAGE_MAX_WIDTH: 800, 
   IMAGE_QUALITY: 0.6,
-  ADMIN_USERNAME: 'JACK',
-  ADMIN_PASSWORD: '0808',
-  // Additional admin login aliases for backward compatibility
-  ADMIN_ALIASES: ['8888', 'admin'] as readonly string[],
-  ADMIN_PASSWORD_ALIASES: ['0000'] as readonly string[],
   STAGNANT_DAYS_THRESHOLD: 7,
 };
 
 export const TRANSLATIONS = {
   zh: {
     login: '账号登录 Login',
-    username: '用户名 Username',
+    username: '邮箱 Email',
     password: '密码 Password',
     loginBtn: '立即登录 Login Now',
     dashboard: '管理概览 Admin',
@@ -335,7 +330,7 @@ export const TRANSLATIONS = {
   },
   sw: {
     login: 'Driver Login',
-    username: 'Username',
+    username: 'Email',
     password: 'Password',
     loginBtn: 'Login Now',
     dashboard: 'Dashboard',

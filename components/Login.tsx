@@ -1,121 +1,85 @@
 
 import React, { useState, useEffect } from 'react';
-import { ShieldCheck, User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown, RefreshCw } from 'lucide-react';
-import { Driver, User as UserType, TRANSLATIONS, CONSTANTS } from '../types';
-import { checkDbHealth } from '../supabaseClient';
-
-const CACHED_CREDENTIALS_KEY = 'bahati_cached_creds';
+import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
+import { User as UserType, TRANSLATIONS } from '../types';
+import { checkDbHealth, supabase } from '../supabaseClient';
 
 interface LoginProps {
-  drivers: Driver[];
   onLogin: (user: UserType) => void;
   lang: 'zh' | 'sw';
   onSetLang: (lang: 'zh' | 'sw') => void;
 }
 
-const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
-  const [username, setUsername] = useState('');
+const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isAutoLogging, setIsAutoLogging] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
-  const [cachedName, setCachedName] = useState<string | null>(null);
   const t = TRANSLATIONS[lang];
 
   useEffect(() => {
     checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
-    
-    // Attempt auto-login from cached credentials
-    try {
-      const raw = localStorage.getItem(CACHED_CREDENTIALS_KEY);
-      if (raw) {
-        const cached = JSON.parse(raw) as { username: string; password: string; name: string; role: string };
-        if (cached.username && cached.password) {
-          setCachedName(cached.name || cached.username);
-          // Pre-fill fields so user can see what's cached
-          setUsername(cached.username);
-          setPassword(cached.password);
-          // Auto-login after a brief delay (only for drivers, not admins)
-          if (cached.role === 'driver') {
-            setIsAutoLogging(true);
-          }
-        }
-      }
-    } catch (e) {
-      // ignore
-    }
   }, []);
 
-  // Auto-login effect — fires once drivers are available and isAutoLogging = true
-  useEffect(() => {
-    if (!isAutoLogging || drivers.length === 0) return;
-    const raw = localStorage.getItem(CACHED_CREDENTIALS_KEY);
-    if (!raw) { setIsAutoLogging(false); return; }
-    try {
-      const cached = JSON.parse(raw) as { username: string; password: string };
-      attemptLogin(cached.username, cached.password, true);
-    } catch (e) {
-      setIsAutoLogging(false);
-    }
-  }, [isAutoLogging, drivers]);
-
-  const cacheCredentials = (u: string, p: string, name: string, role: string) => {
-    try {
-      localStorage.setItem(CACHED_CREDENTIALS_KEY, JSON.stringify({ username: u, password: p, name, role }));
-    } catch (e) { /* ignore */ }
-  };
-
-  const clearCache = () => {
-    localStorage.removeItem(CACHED_CREDENTIALS_KEY);
-    setCachedName(null);
-    setUsername('');
-    setPassword('');
-    setIsAutoLogging(false);
-  };
-
-  const attemptLogin = async (u: string, p: string, silent = false) => {
-    if (!silent) setError('');
-    setIsLoading(true);
-
-    if (!silent) await new Promise(resolve => setTimeout(resolve, 600));
-
-    const userLower = u.toLowerCase();
-
-    // Admin Master Login
-    const validUsernames = [CONSTANTS.ADMIN_USERNAME.toLowerCase(), ...CONSTANTS.ADMIN_ALIASES];
-    const validPasswords = [CONSTANTS.ADMIN_PASSWORD, ...CONSTANTS.ADMIN_PASSWORD_ALIASES];
-    if (validUsernames.includes(userLower) && validPasswords.includes(p)) {
-      cacheCredentials(userLower, p, 'Administrator', 'admin');
-      onLogin({ id: 'ADMIN-MASTER', username: userLower, role: 'admin', name: 'Administrator' });
-      setIsLoading(false);
-      setIsAutoLogging(false);
+  const loadProfileAndLogin = async (authUserId: string, fallbackEmail?: string) => {
+    if (!supabase) {
+      setError(lang === 'zh' ? 'Supabase 未配置' : 'Supabase not configured');
       return;
     }
 
-    const driver = drivers.find(d => d.username.toLowerCase() === userLower);
-    if (driver) {
-      if (driver.status === 'inactive') {
-        setError(lang === 'zh' ? '账号已停用' : 'Account Disabled');
-        clearCache();
-      } else if (driver.password === p) {
-        cacheCredentials(userLower, p, driver.name, 'driver');
-        onLogin({ id: driver.id, username: driver.username, role: 'driver', name: driver.name });
-      } else {
-        setError(lang === 'zh' ? '密码错误' : 'Wrong Password');
-        clearCache();
-      }
-    } else {
-      if (!silent) setError(lang === 'zh' ? '账号不存在' : 'User Not Found');
-      clearCache();
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('role, display_name, driver_id')
+      .eq('auth_user_id', authUserId)
+      .single();
+
+    if (profileError || !profile) {
+      setError(lang === 'zh' ? '未找到用户资料' : 'Profile not found');
+      return;
     }
-    setIsLoading(false);
-    setIsAutoLogging(false);
+
+    if (profile.role !== 'admin' && profile.role !== 'driver') {
+      setError(lang === 'zh' ? '用户角色无效' : 'Invalid user role');
+      return;
+    }
+
+    onLogin({
+      id: profile.driver_id || authUserId,
+      username: fallbackEmail || '',
+      role: profile.role,
+      name: profile.display_name || fallbackEmail || '',
+    });
   };
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    await attemptLogin(username, password);
+    setError('');
+    setIsLoading(true);
+
+    try {
+      if (!supabase) {
+        setError(lang === 'zh' ? 'Supabase 未配置' : 'Supabase not configured');
+        return;
+      }
+
+      const { data, error: loginError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (loginError || !data.user) {
+        setError(lang === 'zh' ? '登录失败，请检查账号密码' : 'Login failed');
+        return;
+      }
+
+      await loadProfileAndLogin(data.user.id, data.user.email || email);
+    } catch (err) {
+      console.error(err);
+      setError(lang === 'zh' ? '登录过程中发生错误' : 'Login error');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -151,37 +115,13 @@ const Login: React.FC<LoginProps> = ({ drivers, onLogin, lang, onSetLang }) => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
         </div>
 
-        {/* Auto-login banner */}
-        {(isAutoLogging || isLoading) && cachedName && (
-          <div className="w-full mb-4 p-4 bg-indigo-500/20 border border-indigo-500/30 rounded-2xl flex items-center gap-3 animate-pulse">
-            <Loader2 size={16} className="text-indigo-400 animate-spin" />
-            <div>
-              <p className="text-xs font-black text-indigo-300">Auto-signing in as {cachedName}...</p>
-              <button onClick={clearCache} className="text-[9px] text-indigo-400/70 underline">Use different account</button>
-            </div>
-          </div>
-        )}
-
-        {/* Cached account banner (not auto-logging) */}
-        {cachedName && !isAutoLogging && !isLoading && (
-          <div className="w-full mb-4 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <ShieldCheck size={14} className="text-emerald-400" />
-              <span className="text-[10px] font-black text-emerald-300">Saved: {cachedName}</span>
-            </div>
-            <button onClick={clearCache} className="p-1.5 bg-white/10 rounded-lg text-white/50 hover:text-white transition-colors">
-              <RefreshCw size={11} />
-            </button>
-          </div>
-        )}
-
         <div className="bg-slate-800/50 backdrop-blur-xl p-8 rounded-[32px] shadow-2xl border border-white/10 w-full">
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                  <User size={12} className="text-amber-500" /> {t.username}
               </label>
-              <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-bold text-white focus:border-amber-500/50 outline-none transition-all" placeholder="ID Number" required />
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-bold text-white focus:border-amber-500/50 outline-none transition-all" placeholder="email@example.com" required />
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
