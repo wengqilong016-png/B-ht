@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS, fetchCurrentUserProfile } from './types';
+import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS } from './types';
 import Dashboard from './components/Dashboard';
 import CollectionForm from './components/CollectionForm';
 import MachineRegistrationForm from './components/MachineRegistrationForm';
@@ -19,6 +19,7 @@ import {
 import { supabase, checkDbHealth } from './supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
 import { flushQueue, enqueueTransaction, getPendingTransactions } from './offlineQueue';
+import { fetchCurrentUserProfile, restoreCurrentUserFromSession, signOutCurrentUser } from './services/authService';
 
 // Safe localStorage wrapper – iOS Safari private mode throws QuotaExceededError on writes
 const safeSetItem = (key: string, value: string) => {
@@ -30,7 +31,8 @@ const safeSetItem = (key: string, value: string) => {
 };
 
 const sanitizeDriver = (driver: Driver): Driver => {
-  const { password: _password, ...safeDriver } = driver as Driver & { password?: string };
+  const safeDriver = { ...(driver as Driver & { password?: string }) };
+  delete safeDriver.password;
   return safeDriver;
 };
 
@@ -493,17 +495,13 @@ const App: React.FC = () => {
   };
 
   const loadCurrentUserFromSession = async () => {
-    if (!supabase) return;
-
-    const { data: sessionData } = await supabase.auth.getSession();
-    const sessionUser = sessionData.session?.user;
-    if (!sessionUser) return;
-
-    const result = await fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
+    const result = await restoreCurrentUserFromSession();
     if (!result.success) {
-      console.error('Failed to load profile from session', result.error);
-      await supabase.auth.signOut();
-      setCurrentUser(null);
+      if (result.error !== 'No active session') {
+        console.error('Failed to load profile from session', result.error);
+        await signOutCurrentUser();
+        setCurrentUser(null);
+      }
       return;
     }
 
@@ -526,7 +524,7 @@ const App: React.FC = () => {
       const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
       if (!result.success) {
         console.error('Failed to load profile from auth change', result.error);
-        await supabase.auth.signOut();
+        await signOutCurrentUser();
         setCurrentUser(null);
         return;
       }
@@ -543,7 +541,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     try {
-      await supabase?.auth.signOut();
+      await signOutCurrentUser();
     } catch (e) {
       console.error('Sign out failed', e);
     } finally {
