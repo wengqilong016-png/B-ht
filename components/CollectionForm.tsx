@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite, Lock, RefreshCw, Wallet, Camera, WifiOff, DatabaseBackup, Route } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import EXIF from 'exif-js';
-import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, resizeImage } from '../types';
+import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, resizeImage, getDistance } from '../types';
 import MachineRegistrationForm from './MachineRegistrationForm';
 import OfflineRouteMap from './OfflineRouteMap';
 import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../offlineQueue';
@@ -32,6 +32,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const [step, setStep] = useState<'selection' | 'entry'>('selection');
   const [selectedLocId, setSelectedLocId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedArea, setSelectedArea] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<'all' | 'pending' | 'urgent' | 'nearby'>('all');
   
   // Registration View State
   const [isRegistering, setIsRegistering] = useState(false);
@@ -177,16 +179,72 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const driverSpecificLocations = useMemo(() => locations.filter(l => l.assignedDriverId === currentDriver.id), [locations, currentDriver.id]);
   const isShowingAllLocations = driverSpecificLocations.length === 0 && locations.length > 0;
   const assignedLocations = isShowingAllLocations ? locations : driverSpecificLocations;
+  const availableAreas = useMemo(() => Array.from(new Set(assignedLocations.map(l => l.area).filter(Boolean))).sort(), [assignedLocations]);
 
-  const filteredLocations = useMemo(() => {
-    if (!searchQuery) return assignedLocations;
-    const lower = searchQuery.toLowerCase();
-    return assignedLocations.filter(l => 
-      l.name.toLowerCase().includes(lower) || 
-      l.machineId.toLowerCase().includes(lower) ||
-      l.area.toLowerCase().includes(lower)
-    );
-  }, [assignedLocations, searchQuery]);
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayDriverTransactions = useMemo(
+    () => allTransactions.filter(t => t.driverId === currentDriver.id && t.timestamp.startsWith(todayStr) && (t.type === undefined || t.type === 'collection')),
+    [allTransactions, currentDriver.id, todayStr]
+  );
+  const visitedLocationIds = useMemo(() => new Set(todayDriverTransactions.map(t => t.locationId)), [todayDriverTransactions]);
+
+  const locationCards = useMemo(() => {
+    return assignedLocations
+      .map(loc => {
+        const distanceMeters = gpsCoords && loc.coords
+          ? getDistance(gpsCoords.lat, gpsCoords.lng, loc.coords.lat, loc.coords.lng)
+          : null;
+        const daysSinceActive = loc.lastRevenueDate
+          ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
+          : null;
+        const isUrgent = loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
+        const isNearby = distanceMeters !== null && distanceMeters <= 1500;
+        const isPending = !visitedLocationIds.has(loc.id);
+        const isLocked = loc.resetLocked === true;
+        const priorityScore =
+          (isPending ? 100 : 0) +
+          (isUrgent ? 50 : 0) +
+          (isLocked ? -200 : 0) +
+          (isNearby ? 20 : 0) +
+          (loc.status === 'active' ? 10 : 0) -
+          Math.min(9, Math.floor((distanceMeters ?? 99999) / 1000));
+
+        return { loc, distanceMeters, daysSinceActive, isUrgent, isNearby, isPending, isLocked, priorityScore };
+      })
+      .filter(({ loc, isPending, isUrgent, isNearby }) => {
+        const lower = searchQuery.toLowerCase();
+        const matchSearch = !searchQuery ||
+          loc.name.toLowerCase().includes(lower) ||
+          loc.machineId.toLowerCase().includes(lower) ||
+          loc.area.toLowerCase().includes(lower);
+        const matchArea = selectedArea === 'all' || loc.area === selectedArea;
+        const matchQuickFilter =
+          locationFilter === 'all' ||
+          (locationFilter === 'pending' && isPending) ||
+          (locationFilter === 'urgent' && isUrgent) ||
+          (locationFilter === 'nearby' && isNearby);
+        return matchSearch && matchArea && matchQuickFilter;
+      })
+      .sort((a, b) => {
+        if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
+        if ((a.distanceMeters ?? Number.MAX_SAFE_INTEGER) !== (b.distanceMeters ?? Number.MAX_SAFE_INTEGER)) {
+          return (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) - (b.distanceMeters ?? Number.MAX_SAFE_INTEGER);
+        }
+        return a.loc.name.localeCompare(b.loc.name);
+      });
+  }, [assignedLocations, gpsCoords, searchQuery, selectedArea, locationFilter, visitedLocationIds]);
+
+  const collectionOverview = useMemo(() => ({
+    totalMachines: assignedLocations.length,
+    pendingStops: assignedLocations.filter(loc => !visitedLocationIds.has(loc.id)).length,
+    urgentMachines: assignedLocations.filter(loc => {
+      const daysSinceActive = loc.lastRevenueDate
+        ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
+        : null;
+      return loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
+    }).length,
+    nearbySites: assignedLocations.filter(loc => gpsCoords && loc.coords && getDistance(gpsCoords.lat, gpsCoords.lng, loc.coords.lat, loc.coords.lng) <= 1500).length,
+  }), [assignedLocations, visitedLocationIds, gpsCoords]);
 
   const startScanner = async () => {
     setIsScannerOpen(true);
@@ -778,13 +836,42 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         )}
 
         <div className="flex items-center justify-between mb-4 px-2">
-           <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase">
-            <ScanLine className="text-indigo-600" />
-            {t.selectMachine}
-          </h2>
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase">
+              <ScanLine className="text-indigo-600" />
+              {t.selectMachine}
+            </h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
+              {todayDriverTransactions.length} {t.todaysCollections}
+            </p>
+          </div>
           <div className="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-2xl shadow-lg">
              <Coins size={14} className="text-emerald-400" />
              <span className="text-xs font-black text-white">{(currentDriver?.dailyFloatingCoins ?? 0).toLocaleString()}</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
+            <p className="text-[9px] font-black text-slate-400 uppercase">{t.totalMachines}</p>
+            <p className="text-xl font-black text-slate-900 mt-1">{collectionOverview.totalMachines}</p>
+          </div>
+          <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
+            <p className="text-[9px] font-black text-slate-400 uppercase">{t.pendingStops}</p>
+            <p className="text-xl font-black text-indigo-600 mt-1">{collectionOverview.pendingStops}</p>
+          </div>
+          <div className="bg-amber-50 rounded-[24px] border border-amber-200 p-4 shadow-sm">
+            <p className="text-[9px] font-black text-amber-500 uppercase">{t.urgentMachines}</p>
+            <p className="text-xl font-black text-amber-700 mt-1">{collectionOverview.urgentMachines}</p>
+          </div>
+          <div className="bg-emerald-50 rounded-[24px] border border-emerald-200 p-4 shadow-sm">
+            <p className="text-[9px] font-black text-emerald-500 uppercase">{t.nearbySites}</p>
+            <p className="text-xl font-black text-emerald-700 mt-1">
+              {gpsCoords ? collectionOverview.nearbySites : '—'}
+            </p>
+            {!gpsCoords && (
+              <p className="text-[8px] font-bold text-emerald-500 uppercase mt-1">{t.awaitingGps}</p>
+            )}
           </div>
         </div>
 
@@ -797,6 +884,40 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             placeholder={t.enterId}
             className="w-full bg-white border border-slate-200 rounded-[32px] py-5 pl-14 pr-6 text-sm font-bold shadow-xl shadow-indigo-50/50 outline-none focus:border-indigo-500/10 focus:ring-4 transition-all"
           />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_140px] gap-3">
+          <div className="flex flex-wrap gap-2">
+            {([
+              ['all', t.quickFilterAll, collectionOverview.totalMachines],
+              ['pending', t.quickFilterPending, collectionOverview.pendingStops],
+              ['urgent', t.quickFilterUrgent, collectionOverview.urgentMachines],
+              ['nearby', t.quickFilterNearby, collectionOverview.nearbySites],
+            ] as const).map(([key, label, count]) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setLocationFilter(key)}
+                className={`px-3 py-2 rounded-2xl text-[10px] font-black uppercase transition-all border ${
+                  locationFilter === key
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                    : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-600'
+                }`}
+              >
+                {label} <span className="ml-1 opacity-70">{count}</span>
+              </button>
+            ))}
+          </div>
+          <select
+            value={selectedArea}
+            onChange={(e) => setSelectedArea(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-[10px] font-black uppercase text-slate-600 outline-none shadow-sm"
+          >
+            <option value="all">{t.allAreas}</option>
+            {availableAreas.map(area => (
+              <option key={area} value={area}>{area}</option>
+            ))}
+          </select>
         </div>
 
         {/* Merge New Machine Registration Entry */}
@@ -819,19 +940,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               </p>
             </div>
           )}
-          {filteredLocations.length === 0 && (
+          {locationCards.length === 0 && (
             <div className="py-16 text-center bg-white rounded-[35px] border border-dashed border-slate-200">
               <Layers size={40} className="mx-auto text-slate-200 mb-3" />
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.noMachinesAssigned}</p>
             </div>
           )}
-          {filteredLocations.map(loc => {
-            // Compute days since last activity for this location
-            const daysSinceActive = loc.lastRevenueDate
-              ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
-              : null;
+          {locationCards.map(({ loc, daysSinceActive, distanceMeters, isLocked, isUrgent, isPending }) => {
             const machineShortId = loc.machineId ? loc.machineId.substring(0, 6).toUpperCase() : '---';
-            const isLocked = loc.resetLocked === true;
             const isNear9999 = loc.lastScore >= 9000;
             return (
               <div key={loc.id} className="bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl transition-all overflow-hidden">
@@ -855,7 +971,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                     </div>
                     {/* Machine details */}
                     <div className="flex-1 p-4 text-left">
-                      <div className="flex justify-between items-start mb-2">
+                     <div className="flex justify-between items-start mb-2">
                         <span className="text-slate-900 text-sm font-black leading-tight">{loc.name}</span>
                         {isLocked ? (
                           <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-lg uppercase">{t.resetLocked}</span>
@@ -877,14 +993,31 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                           <p className="text-[10px] font-black text-amber-600">TZS {(loc.dividendBalance || 0).toLocaleString()}</p>
                         </div>
                       </div>
-                      {loc.area && (
-                        <div className="mt-2">
-                          <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </button>
+                       {loc.area && (
+                         <div className="mt-2 flex flex-wrap gap-1.5">
+                           <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
+                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border ${isPending ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                             {isPending ? t.pendingToday : t.visitedToday}
+                           </span>
+                           {distanceMeters !== null ? (
+                             <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                               {Math.round(distanceMeters)}m
+                             </span>
+                           ) : (
+                             <span className="text-[8px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
+                               {t.awaitingGps}
+                             </span>
+                           )}
+                           {isUrgent && daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD && (
+                             <span className="text-[8px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
+                               {t.staleMachine} {daysSinceActive}d
+                             </span>
+                           )}
+                         </div>
+                       )}
+                     </div>
+                   </div>
+                 </button>
                 {/* Action buttons: Reset request (when score near 9999) and Payout request */}
                 {!isLocked && (isNear9999 || true) && (
                   <div className="flex border-t border-slate-100">
