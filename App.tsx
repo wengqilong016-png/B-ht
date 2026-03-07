@@ -8,13 +8,17 @@ import Login from './components/Login';
 import FinancialReports from './components/FinancialReports';
 import AIHub from './components/AIHub';
 import DebtManager from './components/DebtManager';
+import BillingReconciliation from './components/BillingReconciliation';
+import DriverManagement from './components/DriverManagement';
 import { 
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain, 
-  LogOut, Globe, Loader2, CloudOff, 
-  CheckSquare, Crown, ShieldCheck, AlertTriangle
+  LogOut, Globe, Loader2, CloudOff, Menu, X,
+  CheckSquare, Crown, ShieldCheck, AlertTriangle,
+  MapPin, Store, Users, FileSpreadsheet, History, Banknote
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
+import { flushQueue, enqueueTransaction, getPendingTransactions } from './offlineQueue';
 
 // Safe localStorage wrapper – iOS Safari private mode throws QuotaExceededError on writes
 const safeSetItem = (key: string, value: string) => {
@@ -63,7 +67,7 @@ const INITIAL_DRIVERS: Driver[] = [
 ];
 
 const App: React.FC = () => {
-  const [view, setView] = useState<'dashboard' | 'collect' | 'register' | 'history' | 'reports' | 'ai' | 'debt' | 'settlement'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports'>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [lang, setLang] = useState<'zh' | 'sw'>('zh');
   const [isSyncing, setIsSyncing] = useState(false);
@@ -184,7 +188,7 @@ const App: React.FC = () => {
       setIsOnline(online);
       if (online && !isSyncingRef.current) syncOfflineData();
       
-      // NEW: Heartbeat for Active Drivers (Safari compatibility added)
+      // Heartbeat for Active Drivers (Safari compatibility added)
       if (online && supabase && currentUser?.role === 'driver') {
         if ('geolocation' in navigator) {
            navigator.geolocation.getCurrentPosition((pos) => {
@@ -199,7 +203,28 @@ const App: React.FC = () => {
         }
       }
     }, 20000);
-    return () => clearInterval(timer);
+
+    // Listen for service worker background-sync message
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'FLUSH_OFFLINE_QUEUE') {
+        syncOfflineData();
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
+
+    // Register background sync tag (Chrome/Edge only)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((reg) => {
+        if ('sync' in reg) {
+          (reg as any).sync.register('bahati-flush-queue').catch(() => {});
+        }
+      }).catch(() => {});
+    }
+
+    return () => {
+      clearInterval(timer);
+      navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
+    };
   }, [currentUser]);
 
   useEffect(() => {
@@ -222,6 +247,21 @@ const App: React.FC = () => {
     if (isSyncingRef.current || !supabase) return;
     setIsSyncing(true);
     try {
+        // ── Flush IndexedDB offline queue first ────────────────────────────
+        try {
+          const flushed = await flushQueue(supabase, (done, total) => {
+            console.log(`[OfflineQueue] Flushed ${done}/${total}`);
+          });
+          if (flushed > 0) {
+            // Reload transactions from Supabase after flushing queue
+            const { data } = await supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200);
+            if (data) setTransactions(data.map((t: any) => ({ ...t, isSynced: true })));
+          }
+        } catch (e) {
+          console.warn('[OfflineQueue] flush error (non-fatal):', e);
+        }
+
+        // ── Existing localStorage-based sync ──────────────────────────────
         const offlineTx = transactionsRef.current.filter(t => !t.isSynced);
         if (offlineTx.length > 0) {
             const { error } = await supabase.from('transactions').upsert(offlineTx.map(item => ({ ...item, isSynced: true })));
@@ -229,7 +269,6 @@ const App: React.FC = () => {
                 const syncedIds = new Set(offlineTx.map(t => t.id));
                 setTransactions(prev => prev.map(t => {
                     if (syncedIds.has(t.id)) {
-                        // 同步成功后清理本地图片的 Base64 数据，防止 localStorage 溢出
                         const { photoUrl, ...rest } = t;
                         return { ...rest, isSynced: true };
                     }
@@ -252,7 +291,6 @@ const App: React.FC = () => {
                 const syncedIds = new Set(offlineLogs.map(l => l.id));
                 setAiLogs(prev => prev.map(l => {
                     if (syncedIds.has(l.id)) {
-                        // 同步成功后清理 AI 日志的图片数据
                         const { imageUrl, ...rest } = l;
                         return { ...rest, isSynced: true };
                     }
@@ -458,115 +496,405 @@ const App: React.FC = () => {
     return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
 
+  const isAdmin = currentUser.role === 'admin';
+
+  // Badge counts for nav
+  const pendingSettlementCount = dailySettlements.filter(s => s.status === 'pending').length;
+  const pendingExpenseCount = transactions.filter(t => t.expenses > 0 && t.expenseStatus === 'pending').length;
+  const anomalyCount = transactions.filter(t => t.isAnomaly === true && t.approvalStatus !== 'approved' && t.approvalStatus !== 'rejected').length;
+  const totalApprovalBadge = pendingSettlementCount + pendingExpenseCount + anomalyCount + 
+    transactions.filter(t => t.type === 'reset_request' && t.approvalStatus === 'pending').length +
+    transactions.filter(t => t.type === 'payout_request' && t.approvalStatus === 'pending').length;
+
+  // Page title mapping
+  const pageTitles: Record<string, string> = {
+    dashboard: 'Action Center',
+    settlement: 'Settlement',
+    map: 'Map & Routes',
+    sites: 'Site Management',
+    team: 'Team',
+    billing: 'Billing',
+    ai: 'AI Audit',
+    collect: 'Collect',
+    debt: 'Finance',
+    history: 'History',
+    reports: 'Reports',
+  };
+
+  // Admin sidebar nav items
+  type NavItem = { id: string; icon: React.ReactNode; label: string; labelEn: string; badge?: number };
+  const adminNavItems: NavItem[] = [
+    { id: 'dashboard', icon: <LayoutDashboard size={18}/>, label: '工作台', labelEn: 'Overview' },
+    { id: 'settlement', icon: <CheckSquare size={18}/>, label: '审批中心', labelEn: 'Approvals', badge: totalApprovalBadge },
+    { id: 'map', icon: <MapPin size={18}/>, label: '地图与轨迹', labelEn: 'Map & Routes' },
+    { id: 'sites', icon: <Store size={18}/>, label: '网点管理', labelEn: 'Sites' },
+    { id: 'team', icon: <Users size={18}/>, label: '车队与薪资', labelEn: 'Fleet' },
+    { id: 'billing', icon: <FileSpreadsheet size={18}/>, label: '月账单核对', labelEn: 'Billing' },
+    { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
+  ];
+
+  // Dashboard tab mapping
+  const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {
+    if (v === 'settlement') return 'settlement';
+    if (v === 'map') return 'tracking';
+    if (v === 'sites') return 'locations';
+    if (v === 'ai') return 'ai-logs';
+    return 'overview';
+  };
+
+  const showDashboard = isAdmin ? ['dashboard', 'settlement', 'map', 'sites', 'ai'].includes(view) : view === 'settlement';
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col">
-      <header className="bg-slate-900 border-b border-white/10 p-4 sticky top-0 z-40 shadow-xl safe-top">
-        <div className="max-w-7xl mx-auto flex justify-between items-center">
-          <div className="flex items-center gap-3">
-             <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-2 rounded-xl">
-               <Crown size={20} fill="currentColor" />
-             </div>
-             <div className="hidden sm:block">
-               <div className="flex items-center gap-2">
-                 <h1 className="text-sm font-black text-white">BAHATI JACKPOTS</h1>
-                 <div className={`flex items-center gap-1.5 px-2 py-0.5 rounded-full border text-[8px] font-black ${isOnline ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border-rose-500/30'}`}>
-                   {isOnline ? 'ONLINE' : 'LOCAL'}
-                 </div>
-               </div>
-               <p className="text-[9px] font-bold text-slate-400 uppercase">{currentUser.role} • {currentUser.name}</p>
-             </div>
+    <div className="flex h-screen overflow-hidden bg-slate-50">
+
+      {/* ── ADMIN: Left Sidebar ─────────────────────────────────────────────── */}
+      {isAdmin && (
+        <aside className="hidden md:flex flex-col w-[180px] lg:w-[200px] bg-slate-900 flex-shrink-0 h-full z-40">
+          {/* Logo */}
+          <div className="p-4 border-b border-white/10">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl flex-shrink-0">
+                <Crown size={16} fill="currentColor" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-[11px] font-black text-white leading-tight">BAHATI JACKPOTS</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Admin Console</p>
+              </div>
+            </div>
           </div>
-          
-          <div className="flex items-center gap-2">
-             <button onClick={syncOfflineData} disabled={isSyncing || !isOnline} className={`flex items-center gap-2 px-3 py-2 rounded-xl transition-all shadow-lg border ${isSyncing ? 'bg-slate-800 text-indigo-400' : !isOnline ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' : unsyncedCount > 0 ? 'bg-amber-50 text-slate-900 border-amber-600 animate-pulse' : 'bg-emerald-50/10 text-emerald-400 border-emerald-500/20'}`}>
-                {isSyncing ? <Loader2 size={16} className="animate-spin" /> : !isOnline ? <CloudOff size={16} /> : unsyncedCount > 0 ? <AlertTriangle size={16} /> : <ShieldCheck size={16} />}
-                <div className="flex flex-col items-start leading-none">
-                   <span className="text-[10px] font-black uppercase">{isSyncing ? 'Syncing...' : !isOnline ? 'Offline' : unsyncedCount > 0 ? 'Pending' : 'Synced'}</span>
+
+          {/* Nav Items */}
+          <nav className="flex-1 p-2.5 space-y-0.5 overflow-y-auto">
+            {adminNavItems.map((item) => {
+              const active = view === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as any)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all relative group ${
+                    active
+                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40'
+                      : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="text-[10px] font-black uppercase leading-tight truncate">{item.label}</span>
+                  {!active && item.badge > 0 && (
+                    <span className="ml-auto flex-shrink-0 w-5 h-5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-black flex items-center justify-center">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                  {active && item.badge > 0 && (
+                    <span className="ml-auto flex-shrink-0 w-5 h-5 bg-white/20 text-white rounded-full text-[8px] font-black flex items-center justify-center">
+                      {item.badge > 9 ? '9+' : item.badge}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+
+            {/* Divider */}
+            <div className="h-px bg-white/10 my-2" />
+
+            {/* Secondary items */}
+            {[
+              { id: 'collect', icon: <PlusCircle size={18}/>, label: '采集录入' },
+              { id: 'debt', icon: <CreditCard size={18}/>, label: '债务管理' },
+              { id: 'reports', icon: <PieChart size={18}/>, label: '财务报表' },
+              { id: 'history', icon: <History size={18}/>, label: '操作记录' },
+            ].map((item) => {
+              const active = view === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as any)}
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
+                    active ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-white/10 hover:text-white'
+                  }`}
+                >
+                  <span className="flex-shrink-0">{item.icon}</span>
+                  <span className="text-[10px] font-black uppercase leading-tight truncate">{item.label}</span>
+                </button>
+              );
+            })}
+          </nav>
+
+          {/* User + Sync Footer */}
+          <div className="p-3 border-t border-white/10 space-y-2">
+            <button
+              onClick={syncOfflineData}
+              disabled={isSyncing || !isOnline}
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${
+                isSyncing ? 'bg-slate-800 text-indigo-400' :
+                !isOnline ? 'bg-rose-500/10 text-rose-400' :
+                unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
+                'bg-emerald-500/10 text-emerald-400'
+              }`}
+            >
+              {isSyncing ? <Loader2 size={12} className="animate-spin"/> :
+               !isOnline ? <CloudOff size={12}/> :
+               unsyncedCount > 0 ? <AlertTriangle size={12}/> :
+               <ShieldCheck size={12}/>}
+              <span>{isSyncing ? 'Syncing...' : !isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount} Pending` : 'Cloud Synced'}</span>
+            </button>
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs flex-shrink-0">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[10px] font-black text-white truncate">{currentUser.name}</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase">Admin User</p>
+              </div>
+              <div className="flex flex-col gap-1">
+                <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Globe size={12}/></button>
+                <button onClick={() => setCurrentUser(null)} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
+              </div>
+            </div>
+          </div>
+        </aside>
+      )}
+
+      {/* ── Main Content Column ─────────────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+
+        {/* ── Top Header Bar ─────────────────────────────────────────────────── */}
+        <header className={`border-b flex-shrink-0 z-30 ${isAdmin ? 'bg-white border-slate-200' : 'bg-slate-900 border-white/10'}`}>
+          <div className="flex items-center justify-between px-4 py-3">
+            {/* Left: mobile menu + page title */}
+            <div className="flex items-center gap-3">
+              {/* Mobile: show logo for driver or hamburger hint for admin */}
+              {isAdmin ? (
+                <div className="md:hidden flex items-center gap-2">
+                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl">
+                    <Crown size={14} fill="currentColor" />
+                  </div>
+                  <span className="text-xs font-black text-slate-900">BAHATI</span>
                 </div>
-             </button>
-             <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 bg-white/10 rounded-xl text-white hover:bg-white/20"><Globe size={18} /></button>
-             <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={18} /></button>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl">
+                    <Crown size={14} fill="currentColor" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black text-white leading-none">BAHATI</p>
+                    <p className="text-[8px] font-bold text-slate-400 uppercase leading-none">{currentUser.name}</p>
+                  </div>
+                </div>
+              )}
+              {isAdmin && (
+                <div className="hidden md:block">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pageTitles[view] || 'ADMIN'}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Right: sync + actions */}
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  onClick={syncOfflineData}
+                  disabled={isSyncing || !isOnline}
+                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border ${
+                    isSyncing ? 'bg-slate-50 border-slate-200 text-slate-400' :
+                    !isOnline ? 'bg-rose-50 border-rose-200 text-rose-500' :
+                    unsyncedCount > 0 ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse' :
+                    'bg-emerald-50 border-emerald-200 text-emerald-600'
+                  }`}
+                >
+                  {isSyncing ? <Loader2 size={11} className="animate-spin"/> :
+                   !isOnline ? <CloudOff size={11}/> :
+                   unsyncedCount > 0 ? <AlertTriangle size={11}/> :
+                   <ShieldCheck size={11}/>}
+                  {isSyncing ? 'Syncing' : !isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount} Pending` : 'Synced'}
+                </button>
+              )}
+              {!isAdmin && (
+                <button
+                  onClick={syncOfflineData}
+                  disabled={isSyncing || !isOnline}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all ${
+                    !isOnline ? 'bg-rose-500/10 text-rose-400' :
+                    unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
+                    'bg-emerald-500/10 text-emerald-400'
+                  }`}
+                >
+                  {!isOnline ? <CloudOff size={11}/> : unsyncedCount > 0 ? <AlertTriangle size={11}/> : <ShieldCheck size={11}/>}
+                  {!isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount}` : 'Synced'}
+                </button>
+              )}
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
+              <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
+            </div>
           </div>
-        </div>
-      </header>
 
-      <main className="flex-1 w-full max-w-7xl mx-auto p-3 sm:p-4 lg:p-8 pb-32 overflow-x-hidden">
-        {(view === 'dashboard' || view === 'settlement') && (
-          <Dashboard 
-            transactions={filteredData.transactions} 
-            drivers={filteredData.drivers} 
-            locations={filteredData.locations} 
-            dailySettlements={filteredData.dailySettlements} 
-            aiLogs={aiLogs} 
-            currentUser={currentUser} 
-            onUpdateDrivers={handleUpdateDrivers} 
-            onUpdateLocations={handleUpdateLocations} 
-            onDeleteLocations={handleDeleteLocations} 
-            onUpdateTransaction={handleUpdateTransaction}
-            onNewTransaction={handleNewTransaction} 
-            onSaveSettlement={handleSaveSettlement} 
-            onSync={syncOfflineData} 
-            isSyncing={isSyncing} 
-            offlineCount={unsyncedCount} 
-            lang={lang}
-            onNavigate={(v) => setView(v)}
-            initialTab={view === 'settlement' ? 'settlement' : 'overview'}
-          />
-        )}
-        {view === 'collect' && (
-          <CollectionForm 
-            locations={filteredData.locations} 
-            currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]} 
-            onSubmit={handleNewTransaction} 
-            lang={lang} 
-            onLogAI={handleLogAI}
-            onRegisterMachine={async (loc) => { 
-                const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
-                setLocations([...locations, newLoc]); 
-                if (isOnline && supabase) {
-                   const { error } = await supabase.from('locations').insert({...newLoc, isSynced: true});
-                   if (!error) setLocations(prev => prev.map(l => l.id === newLoc.id ? {...l, isSynced: true} : l));
-                }
-            }}
-          />
-        )}
-        {view === 'history' && <TransactionHistory transactions={filteredData.transactions} locations={locations} onAnalyze={(id) => {}} />}
-        {view === 'reports' && <FinancialReports transactions={filteredData.transactions} drivers={filteredData.drivers} locations={filteredData.locations} dailySettlements={filteredData.dailySettlements} lang={lang} />}
-        {view === 'debt' && <DebtManager drivers={filteredData.drivers} locations={filteredData.locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />}
-        {view === 'ai' && currentUser.role === 'admin' && (
-          <AIHub
-            drivers={filteredData.drivers}
-            locations={filteredData.locations}
-            transactions={filteredData.transactions}
-            onLogAI={handleLogAI}
-            currentUser={currentUser}
-            initialContextId={aiContextId}
-            onClearContext={() => setAiContextId('')}
-          />
-        )}
-      </main>
+          {/* Driver mobile nav tabs */}
+          {!isAdmin && (
+            <div className="flex border-t border-white/10">
+              {[
+                { id: 'collect', icon: <PlusCircle size={16}/>, label: t.collect },
+                { id: 'settlement', icon: <Banknote size={16}/>, label: t.dailySettlement },
+                { id: 'debt', icon: <CreditCard size={16}/>, label: t.debt },
+              ].map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as any)}
+                  className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[9px] font-black uppercase transition-all ${
+                    view === item.id ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
 
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/90 backdrop-blur-xl border-t border-slate-200 p-2 z-50 shadow-lg safe-bottom">
-        <div className="max-w-2xl mx-auto flex justify-around items-center">
-           {currentUser.role === 'admin' && <NavItem icon={<LayoutDashboard size={20}/>} label="Admin" active={view === 'dashboard'} onClick={() => setView('dashboard')} />}
-           <NavItem icon={<PlusCircle size={20}/>} label={currentUser.role === 'admin' ? 'Collect' : t.collect} active={view === 'collect'} onClick={() => setView('collect')} />
-           <NavItem icon={<CheckSquare size={20}/>} label={currentUser.role === 'admin' ? 'Approve' : t.dailySettlement} active={view === 'settlement'} onClick={() => setView('settlement')} />
-           <NavItem icon={<CreditCard size={20}/>} label={currentUser.role === 'admin' ? 'Finance' : t.debt} active={view === 'debt'} onClick={() => setView('debt')} />
-           {currentUser.role === 'admin' && <NavItem icon={<PieChart size={20}/>} label="Reports" active={view === 'reports'} onClick={() => setView('reports')} />}
-           {currentUser.role === 'admin' && <NavItem icon={<Brain size={20}/>} label="AI Audit" active={view === 'ai'} onClick={() => setView('ai')} />}
-        </div>
-      </nav>
+          {/* Admin mobile bottom nav (shown below md) */}
+          {isAdmin && (
+            <div className="md:hidden flex border-t border-slate-100 overflow-x-auto scrollbar-hide">
+              {adminNavItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => setView(item.id as any)}
+                  className={`flex flex-col items-center gap-0.5 px-3 py-2 text-[7px] font-black uppercase whitespace-nowrap transition-all flex-shrink-0 relative ${
+                    view === item.id ? 'text-indigo-600 border-b-2 border-indigo-600' : 'text-slate-400'
+                  }`}
+                >
+                  {item.icon}
+                  <span>{item.labelEn}</span>
+                  {item.badge > 0 && (
+                    <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-500 text-white rounded-full text-[6px] font-black flex items-center justify-center">
+                      {item.badge}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </header>
+
+        {/* ── Page Content ───────────────────────────────────────────────────── */}
+        <main className="flex-1 overflow-y-auto overflow-x-hidden">
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+
+            {/* Admin: Dashboard views (overview / settlement / map / sites / ai) */}
+            {isAdmin && showDashboard && (
+              <Dashboard
+                transactions={filteredData.transactions}
+                drivers={filteredData.drivers}
+                locations={filteredData.locations}
+                dailySettlements={filteredData.dailySettlements}
+                aiLogs={aiLogs}
+                currentUser={currentUser}
+                onUpdateDrivers={handleUpdateDrivers}
+                onUpdateLocations={handleUpdateLocations}
+                onDeleteLocations={handleDeleteLocations}
+                onUpdateTransaction={handleUpdateTransaction}
+                onNewTransaction={handleNewTransaction}
+                onSaveSettlement={handleSaveSettlement}
+                onSync={syncOfflineData}
+                isSyncing={isSyncing}
+                offlineCount={unsyncedCount}
+                lang={lang}
+                onNavigate={(v) => setView(v as any)}
+                initialTab={getDashboardTab(view)}
+                hideTabs={true}
+              />
+            )}
+
+            {/* Driver: settlement view via Dashboard */}
+            {!isAdmin && view === 'settlement' && (
+              <Dashboard
+                transactions={filteredData.transactions}
+                drivers={filteredData.drivers}
+                locations={filteredData.locations}
+                dailySettlements={filteredData.dailySettlements}
+                aiLogs={aiLogs}
+                currentUser={currentUser}
+                onUpdateDrivers={handleUpdateDrivers}
+                onUpdateLocations={handleUpdateLocations}
+                onDeleteLocations={handleDeleteLocations}
+                onUpdateTransaction={handleUpdateTransaction}
+                onNewTransaction={handleNewTransaction}
+                onSaveSettlement={handleSaveSettlement}
+                onSync={syncOfflineData}
+                isSyncing={isSyncing}
+                offlineCount={unsyncedCount}
+                lang={lang}
+                onNavigate={(v) => setView(v as any)}
+                initialTab="settlement"
+                hideTabs={true}
+              />
+            )}
+
+            {/* Team / Fleet Management */}
+            {view === 'team' && isAdmin && (
+              <DriverManagement
+                drivers={filteredData.drivers}
+                transactions={filteredData.transactions}
+                dailySettlements={filteredData.dailySettlements}
+                onUpdateDrivers={handleUpdateDrivers}
+              />
+            )}
+
+            {/* Monthly Billing */}
+            {view === 'billing' && isAdmin && (
+              <BillingReconciliation
+                drivers={filteredData.drivers}
+                transactions={filteredData.transactions}
+                dailySettlements={filteredData.dailySettlements}
+              />
+            )}
+
+            {/* Collection Form */}
+            {view === 'collect' && (
+              <CollectionForm
+                locations={filteredData.locations}
+                currentDriver={drivers.find(d => d.id === currentUser.id) || drivers[0]}
+                onSubmit={handleNewTransaction}
+                lang={lang}
+                onLogAI={handleLogAI}
+                isOnline={isOnline}
+                allTransactions={filteredData.transactions}
+                onRegisterMachine={async (loc) => {
+                  const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
+                  setLocations([...locations, newLoc]);
+                  if (isOnline && supabase) {
+                    const { error } = await supabase.from('locations').insert({...newLoc, isSynced: true});
+                    if (!error) setLocations(prev => prev.map(l => l.id === newLoc.id ? {...l, isSynced: true} : l));
+                  }
+                }}
+              />
+            )}
+
+            {view === 'history' && (
+              <TransactionHistory transactions={filteredData.transactions} locations={locations} onAnalyze={(id) => {}} />
+            )}
+            {view === 'reports' && (
+              <FinancialReports transactions={filteredData.transactions} drivers={filteredData.drivers} locations={filteredData.locations} dailySettlements={filteredData.dailySettlements} lang={lang} />
+            )}
+            {view === 'debt' && (
+              <DebtManager drivers={filteredData.drivers} locations={filteredData.locations} currentUser={currentUser} onUpdateLocations={handleUpdateLocations} lang={lang} />
+            )}
+            {view === 'ai' && !showDashboard && isAdmin && (
+              <AIHub
+                drivers={filteredData.drivers}
+                locations={filteredData.locations}
+                transactions={filteredData.transactions}
+                onLogAI={handleLogAI}
+                currentUser={currentUser}
+                initialContextId={aiContextId}
+                onClearContext={() => setAiContextId('')}
+              />
+            )}
+          </div>
+        </main>
+      </div>
+
       <Analytics />
     </div>
   );
 };
-
-const NavItem = ({ icon, label, active, onClick }: any) => (
-  <button onClick={onClick} className={`flex flex-col items-center p-3 rounded-2xl transition-all ${active ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}>
-    {icon}
-    <span className="text-[8px] font-black uppercase mt-1">{label}</span>
-  </button>
-);
 
 const AppWithBoundary: React.FC = () => (
   <ErrorBoundary>

@@ -2,21 +2,28 @@
 {
   "name": "BAHATI JACKPOTS PRO",
   "short_name": "Bahati Pro",
-  "start_url": "/B-ht/",
+  "description": "Slot machine route management system for Bahati Jackpots",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#f8fafc",
+  "background_color": "#0f172a",
   "theme_color": "#4f46e5",
-  "orientation": "portrait",
+  "orientation": "any",
+  "lang": "zh-CN",
   "icons": [
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     },
     {
       "src": "https://cdn-icons-png.flaticon.com/512/3135/3135715.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "screenshots": [],
+  "categories": ["business", "finance"]
 }
