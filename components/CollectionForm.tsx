@@ -26,9 +26,17 @@ interface AIReviewData {
 }
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
+// Route prioritization keeps the selection list practical in the field:
+// nearby means within ~1.5km, distance penalty stops growing after 9km,
+// and GPS-less machines fall back to a very large distance so they sort later.
 const NEARBY_DISTANCE_METERS = 1500;
 const PRIORITY_DISTANCE_FALLBACK = 99999;
 const PRIORITY_DISTANCE_CAP_KM = 9;
+const PRIORITY_PENDING_WEIGHT = 100;
+const PRIORITY_URGENT_WEIGHT = 50;
+const PRIORITY_LOCKED_PENALTY = -200;
+const PRIORITY_NEARBY_WEIGHT = 20;
+const PRIORITY_ACTIVE_WEIGHT = 10;
 
 const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine, isOnline = true, allTransactions = [] }) => {
   const t = TRANSLATIONS[lang];
@@ -203,15 +211,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
           : null;
         const isUrgent = loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
-        const isNearby = distanceMeters !== null && distanceMeters <= 1500;
+        const isNearby = distanceMeters !== null && distanceMeters <= NEARBY_DISTANCE_METERS;
         const isPending = !visitedLocationIds.has(loc.id);
         const isLocked = loc.resetLocked === true;
+        // Priority favors actionable stops first: pending work, urgent machines,
+        // unlocked and nearby sites, then active machines, before distance lowers rank.
         const priorityScore =
-          (isPending ? 100 : 0) +
-          (isUrgent ? 50 : 0) +
-          (isLocked ? -200 : 0) +
-          (isNearby ? 20 : 0) +
-          (loc.status === 'active' ? 10 : 0) -
+          (isPending ? PRIORITY_PENDING_WEIGHT : 0) +
+          (isUrgent ? PRIORITY_URGENT_WEIGHT : 0) +
+          (isLocked ? PRIORITY_LOCKED_PENALTY : 0) +
+          (isNearby ? PRIORITY_NEARBY_WEIGHT : 0) +
+          (loc.status === 'active' ? PRIORITY_ACTIVE_WEIGHT : 0) -
           Math.min(PRIORITY_DISTANCE_CAP_KM, Math.floor((distanceMeters ?? PRIORITY_DISTANCE_FALLBACK) / 1000));
 
         return { loc, distanceMeters, daysSinceActive, isUrgent, isNearby, isPending, isLocked, priorityScore };
@@ -230,10 +240,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         return matchSearch && matchArea && matchQuickFilter;
       })
       .sort((a, b) => {
+        const distanceA = a.distanceMeters ?? Number.MAX_SAFE_INTEGER;
+        const distanceB = b.distanceMeters ?? Number.MAX_SAFE_INTEGER;
         if (b.priorityScore !== a.priorityScore) return b.priorityScore - a.priorityScore;
-        if ((a.distanceMeters ?? Number.MAX_SAFE_INTEGER) !== (b.distanceMeters ?? Number.MAX_SAFE_INTEGER)) {
-          return (a.distanceMeters ?? Number.MAX_SAFE_INTEGER) - (b.distanceMeters ?? Number.MAX_SAFE_INTEGER);
-        }
+        if (distanceA !== distanceB) return distanceA - distanceB;
         return a.loc.name.localeCompare(b.loc.name);
       });
   }, [assignedLocations, gpsCoords, searchQuery, selectedArea, locationFilter, visitedLocationIds]);

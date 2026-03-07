@@ -182,7 +182,9 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
         return matchSearch && matchFilter;
       })
       .sort((a, b) => {
-        if (Number(b.hasStaleGps) !== Number(a.hasStaleGps)) return Number(b.hasStaleGps) - Number(a.hasStaleGps);
+        // Sort the tracking list by urgency first, then by workload, then alphabetically.
+        if (b.hasStaleGps && !a.hasStaleGps) return 1;
+        if (!b.hasStaleGps && a.hasStaleGps) return -1;
         if (b.attentionLocations.length !== a.attentionLocations.length) return b.attentionLocations.length - a.attentionLocations.length;
         if (b.driverTxsToday.length !== a.driverTxsToday.length) return b.driverTxsToday.length - a.driverTxsToday.length;
         return a.driver.name.localeCompare(b.driver.name);
