@@ -1,8 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
-import { User as UserType, TRANSLATIONS, fetchCurrentUserProfile } from '../types';
+import { User as UserType, TRANSLATIONS } from '../types';
 import { checkDbHealth, supabase } from '../supabaseClient';
+import { fetchCurrentUserProfile, signInWithEmailPassword, signOutCurrentUser } from '../services/authService';
 
 interface LoginProps {
   onLogin: (user: UserType) => void;
@@ -18,6 +19,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const t = TRANSLATIONS[lang];
 
+  const resolveLoginError = (message: string) => {
+    if (message === 'Profile not found') {
+      return t.profileNotProvisioned;
+    }
+    if (message === 'Invalid user role') {
+      return t.invalidAccountRole;
+    }
+    return t.loginError;
+  };
+
   useEffect(() => {
     checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
   }, []);
@@ -26,7 +37,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     const result = await fetchCurrentUserProfile(authUserId, fallbackEmail || '');
 
     if (!result.success) {
-      setError(lang === 'zh' ? '未找到用户资料' : 'Profile not found');
+      await signOutCurrentUser();
+      setError(resolveLoginError(result.error));
       return;
     }
 
@@ -44,20 +56,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
         return;
       }
 
-      const { data, error: loginError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (loginError || !data.user) {
-        setError(lang === 'zh' ? '登录失败，请检查账号密码' : 'Login failed');
+      const loginResult = await signInWithEmailPassword(email, password);
+      if (!loginResult.success) {
+        setError(t.loginFailed);
         return;
       }
 
-      await fetchUserProfile(data.user.id, data.user.email || email);
+      await fetchUserProfile(loginResult.user.id, loginResult.user.email || email);
     } catch (err) {
       console.error(err);
-      setError(lang === 'zh' ? '登录过程中发生错误' : 'Login error');
+      setError(t.loginError);
     } finally {
       setIsLoading(false);
     }

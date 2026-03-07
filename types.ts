@@ -1,5 +1,3 @@
-import { supabase } from './supabaseClient';
-
 export interface Location {
   id: string;
   name: string;
@@ -28,56 +26,9 @@ export interface User {
   username: string;
   role: 'admin' | 'driver';
   name: string;
+  // For driver-role users, this references public.drivers.id while User.id remains the auth user id.
+  driverId?: string;
 }
-
-type UserProfileRow = {
-  role: string;
-  display_name: string | null;
-  driver_id: string | null;
-};
-
-const VALID_USER_ROLES = ['admin', 'driver'] as const;
-const isValidUserRole = (role: string): role is User['role'] =>
-  VALID_USER_ROLES.includes(role as User['role']);
-
-type FetchCurrentUserProfileResult =
-  | { success: true; user: User }
-  | { success: false; error: string };
-
-export const fetchCurrentUserProfile = async (
-  authUserId: string,
-  fallbackEmail = ''
-): Promise<FetchCurrentUserProfileResult> => {
-  const fallbackIdentity = fallbackEmail || authUserId;
-
-  if (!supabase) {
-    return { success: false, error: 'Supabase not configured' };
-  }
-
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role, display_name, driver_id')
-    .eq('auth_user_id', authUserId)
-    .single<UserProfileRow>();
-
-  if (error || !profile) {
-    return { success: false, error: 'Profile not found' };
-  }
-
-  if (!isValidUserRole(profile.role)) {
-    return { success: false, error: 'Invalid user role' };
-  }
-
-  return {
-    success: true,
-    user: {
-      id: profile.driver_id || authUserId,
-      username: fallbackIdentity,
-      role: profile.role,
-      name: profile.display_name || fallbackIdentity,
-    },
-  };
-};
 
 export interface Notification {
   id: string;
@@ -153,7 +104,6 @@ export interface Driver {
   id: string;
   name: string;
   username: string;
-  password: string;
   phone: string;
   initialDebt: number;
   remainingDebt: number;
@@ -270,6 +220,10 @@ export const TRANSLATIONS = {
     username: '邮箱',
     password: '密码 Password',
     loginBtn: '立即登录 Login Now',
+    loginFailed: '登录失败，请检查账号密码',
+    loginError: '登录过程中发生错误',
+    profileNotProvisioned: '账号已存在，但未完成资料配置',
+    invalidAccountRole: '账号角色无效',
     dashboard: '管理概览 Admin',
     collect: '现场巡检',
     register: '新机注册',
@@ -383,6 +337,10 @@ export const TRANSLATIONS = {
     username: 'Email',
     password: 'Password',
     loginBtn: 'Login Now',
+    loginFailed: 'Login failed',
+    loginError: 'Login error',
+    profileNotProvisioned: 'Account exists but profile is not provisioned.',
+    invalidAccountRole: 'Invalid account role.',
     dashboard: 'Dashboard',
     collect: 'Collect',
     register: 'New Machine',
