@@ -20,6 +20,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const [startupDebt, setStartupDebt] = useState('');
   const [commissionRate, setCommissionRate] = useState((CONSTANTS.DEFAULT_PROFIT_SHARE * 100).toString());
   const [machinePhoto, setMachinePhoto] = useState<string | null>(null);
+  const [isPhotoProcessing, setIsPhotoProcessing] = useState(false);
   const [gps, setGps] = useState<{ lat: number; lng: number } | null>(null);
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   
@@ -48,7 +49,14 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      resizeImage(file).then(setMachinePhoto);
+      setIsPhotoProcessing(true);
+      resizeImage(file)
+        .then(setMachinePhoto)
+        .catch((err) => {
+          console.error('Photo resize failed:', err);
+          alert(lang === 'zh' ? '图片处理失败，请重试' : 'Photo processing failed, please retry');
+        })
+        .finally(() => setIsPhotoProcessing(false));
     }
   };
 
@@ -185,6 +193,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
                     <Camera size={32} className="text-white drop-shadow-lg" />
                  </div>
                </>
+             ) : isPhotoProcessing ? (
+               <div className="text-center space-y-2">
+                 <Loader2 size={32} className="text-indigo-400 mx-auto animate-spin" />
+                 <p className="text-[10px] font-black text-indigo-400 uppercase">{lang === 'zh' ? '处理中...' : 'Inasindika...'}</p>
+               </div>
              ) : (
                <div className="text-center space-y-2">
                  <ImagePlus size={32} className="text-slate-300 mx-auto" />

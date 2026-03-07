@@ -136,7 +136,12 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      resizeImage(file).then(setSelectedImage);
+      resizeImage(file)
+        .then(setSelectedImage)
+        .catch((err) => {
+          console.error('Image resize failed:', err);
+          alert('Image processing failed. Please try a smaller file.');
+        });
     }
   };
 

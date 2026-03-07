@@ -164,38 +164,80 @@ export const safeRandomUUID = (): string => {
   });
 };
 
+/** Maximum file size for image uploads (20 MB). */
+const MAX_IMAGE_FILE_SIZE = 20 * 1024 * 1024;
+
 /**
  * Resize an image file to a max width and return a data URL.
  * Shared utility to avoid duplicating the canvas-based resize logic across components.
+ *
+ * Performance optimisations over the original implementation:
+ * - Uses `createImageBitmap()` when available for off-main-thread decoding
+ *   (faster and auto-applies EXIF orientation on modern browsers).
+ * - Uses `URL.createObjectURL()` instead of `FileReader.readAsDataURL()` so the
+ *   full original file is never base64-encoded into memory.
+ * - Validates file size up-front to prevent out-of-memory on very large uploads.
+ * - Revokes the temporary object URL after decoding to prevent memory leaks.
  */
 export const resizeImage = (
   file: File,
   maxWidth: number = 800,
   quality: number = 0.6,
-): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.onload = (ev) => {
-      const img = new Image();
-      img.onerror = () => reject(new Error('Failed to load image'));
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const scale = Math.min(1, maxWidth / img.width);
-        canvas.width = img.width * scale;
-        canvas.height = img.height * scale;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Failed to get canvas context'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', quality));
-      };
-      img.src = ev.target?.result as string;
+): Promise<string> => {
+  // Guard: reject files that are too large before doing any work
+  if (file.size > MAX_IMAGE_FILE_SIZE) {
+    return Promise.reject(
+      new Error(`File too large (${(file.size / 1024 / 1024).toFixed(1)} MB). Max is 20 MB.`),
+    );
+  }
+
+  // Fast path: use createImageBitmap (off-main-thread, EXIF-aware)
+  if (typeof createImageBitmap === 'function') {
+    return createImageBitmap(file).then((bitmap) => {
+      const scale = Math.min(1, maxWidth / bitmap.width);
+      const w = Math.round(bitmap.width * scale);
+      const h = Math.round(bitmap.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        bitmap.close();
+        throw new Error('Failed to get canvas context');
+      }
+      ctx.drawImage(bitmap, 0, 0, w, h);
+      bitmap.close();
+      return canvas.toDataURL('image/jpeg', quality);
+    });
+  }
+
+  // Fallback: URL.createObjectURL → Image (no FileReader base64 overhead)
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
     };
-    reader.readAsDataURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const scale = Math.min(1, maxWidth / img.width);
+      const w = Math.round(img.width * scale);
+      const h = Math.round(img.height * scale);
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0, w, h);
+      resolve(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = url;
   });
+};
 
 export const CONSTANTS = {
   COIN_VALUE_TZS: 200,

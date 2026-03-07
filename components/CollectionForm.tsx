@@ -224,12 +224,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     
     const canvas = canvasRef.current;
     const video = videoRef.current;
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    const vw = video.videoWidth;
+    const vh = video.videoHeight;
+    // Limit to 800px max width (consistent with resizeImage) to reduce payload size
+    const MAX_W = 800;
+    const scale = Math.min(1, MAX_W / vw);
+    canvas.width = Math.round(vw * scale);
+    canvas.height = Math.round(vh * scale);
     const ctx = canvas.getContext('2d');
     
     if (ctx) {
-      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       const base64 = canvas.toDataURL('image/jpeg', 0.7);
       
       // Go to manual review directly with clear defaults
@@ -317,8 +322,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
       if (detectedScore && detectedScore.length >= 1) {
         const evidenceCanvas = document.createElement('canvas');
-        evidenceCanvas.width = 640;
-        evidenceCanvas.height = 640 * (vh / vw);
+        // Limit evidence image to 800px max width (consistent with resizeImage)
+        const EVIDENCE_MAX_W = 800;
+        const evidenceScale = Math.min(1, EVIDENCE_MAX_W / vw);
+        evidenceCanvas.width = Math.round(vw * evidenceScale);
+        evidenceCanvas.height = Math.round(vh * evidenceScale);
         const evidenceCtx = evidenceCanvas.getContext('2d');
         evidenceCtx?.drawImage(video, 0, 0, evidenceCanvas.width, evidenceCanvas.height);
         const finalImage = evidenceCanvas.toDataURL('image/jpeg', 0.7);
@@ -516,7 +524,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   // --- 9999 Reset Request Handler ---
   const handleResetPhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) resizeImage(file, 800, 0.6).then(setResetPhotoData);
+    if (file) {
+      resizeImage(file, 800, 0.6)
+        .then(setResetPhotoData)
+        .catch((err) => {
+          console.error('Reset photo resize failed:', err);
+          alert(lang === 'zh' ? '图片处理失败，请重试' : 'Photo processing failed, please retry');
+        });
+    }
   };
 
   const handleSubmitResetRequest = () => {
