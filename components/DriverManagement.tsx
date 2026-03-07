@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { 
-  Truck, User, Phone, Key, Save, X, Plus,
+  Truck, User, Phone, Save, X, Plus,
   Pencil, Banknote, Wallet, 
   UserCog, AlertCircle, ShieldCheck,
   Percent, Loader2,
@@ -33,14 +33,14 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
 
   // Form State
   const [form, setForm] = useState({
-    name: '', username: '', password: '', phone: '',
+    name: '', username: '', phone: '',
     model: '', plate: '', dailyFloatingCoins: '10000', 
     initialDebt: '0', baseSalary: '300000', commissionRate: '5'
   });
 
   const resetForm = () => {
     setForm({
-      name: '', username: '', password: '', phone: '',
+      name: '', username: '', phone: '',
       model: '', plate: '', dailyFloatingCoins: '10000', initialDebt: '0',
       baseSalary: '300000', commissionRate: '5'
     });
@@ -52,7 +52,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
     setForm({
       name: d.name || '',
       username: d.username || '',
-      password: d.password || '',
       phone: d.phone || '',
       model: d.vehicleInfo?.model || '',
       plate: d.vehicleInfo?.plate || '',
@@ -85,7 +84,6 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
         const driverData = {
           name: form.name,
           username: form.username,
-          password: form.password,
           phone: form.phone,
           dailyFloatingCoins: parseNum(form.dailyFloatingCoins),
           initialDebt: parseNum(form.initialDebt),
@@ -572,14 +570,13 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
              </div>
              
              <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
-                <div className="grid grid-cols-2 gap-4">
-                   <InputField label="姓名 NAME" value={form.name} icon={<User size={16}/>} onChange={v => setForm({...form, name: v})} />
-                   <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16}/>} onChange={v => setForm({...form, phone: v})} />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                   <InputField label="登录账号 USERNAME" value={form.username} icon={<ShieldCheck size={16}/>} onChange={v => setForm({...form, username: v})} />
-                   <InputField label="登录密码 PASSWORD" value={form.password} icon={<Key size={16}/>} onChange={v => setForm({...form, password: v})} type="text" />
-                </div>
+                 <div className="grid grid-cols-2 gap-4">
+                    <InputField label="姓名 NAME" value={form.name} icon={<User size={16}/>} onChange={v => setForm({...form, name: v})} />
+                    <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16}/>} onChange={v => setForm({...form, phone: v})} />
+                 </div>
+                 <div>
+                    <InputField label="登录账号 USERNAME" value={form.username} icon={<ShieldCheck size={16}/>} onChange={v => setForm({...form, username: v})} />
+                 </div>
                 
                 {/* Vehicle & Asset Configuration */}
                 <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">

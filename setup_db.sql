@@ -6,6 +6,7 @@ DROP TABLE IF EXISTS public.transactions CASCADE;
 DROP TABLE IF EXISTS public.daily_settlements CASCADE;
 DROP TABLE IF EXISTS public.locations CASCADE;
 DROP TABLE IF EXISTS public.drivers CASCADE;
+DROP TABLE IF EXISTS public.profiles CASCADE;
 DROP TABLE IF EXISTS public.ai_logs CASCADE;
 DROP TABLE IF EXISTS public.notifications CASCADE;
 
@@ -39,7 +40,6 @@ CREATE TABLE public.drivers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
     phone TEXT,
     "initialDebt" NUMERIC DEFAULT 0,
     "remainingDebt" NUMERIC DEFAULT 0,
@@ -53,7 +53,16 @@ CREATE TABLE public.drivers (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 4. 交易流水表 (Transactions)
+-- 4. 身份资料表 (Profiles)
+CREATE TABLE public.profiles (
+    "auth_user_id" UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    role TEXT NOT NULL CHECK (role IN ('admin', 'driver')),
+    "display_name" TEXT,
+    "driver_id" TEXT,
+    "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+-- 5. 交易流水表 (Transactions)
 -- 注意: timestamp 和 date 是保留字，必须加引号
 CREATE TABLE public.transactions (
     id TEXT PRIMARY KEY,
@@ -94,7 +103,7 @@ CREATE TABLE public.transactions (
     "payoutAmount" NUMERIC DEFAULT 0
 );
 
--- 5. 结账表 (Daily Settlements)
+-- 6. 结账表 (Daily Settlements)
 CREATE TABLE public.daily_settlements (
     id TEXT PRIMARY KEY,
     "date" DATE DEFAULT CURRENT_DATE,
@@ -125,7 +134,7 @@ CREATE TABLE public.daily_settlements (
     "hasCheckedOut" BOOLEAN DEFAULT false
 );
 
--- 6. AI 日志表 (AI Logs)
+-- 7. AI 日志表 (AI Logs)
 CREATE TABLE public.ai_logs (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     "timestamp" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
@@ -140,7 +149,7 @@ CREATE TABLE public.ai_logs (
     "isSynced" BOOLEAN DEFAULT true
 );
 
--- 7. 通知表 (Notifications)
+-- 8. 通知表 (Notifications)
 CREATE TABLE public.notifications (
     id UUID PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     type TEXT,
@@ -152,9 +161,10 @@ CREATE TABLE public.notifications (
     "relatedTransactionId" TEXT
 );
 
--- 8. 索引优化
+-- 9. 索引优化
 CREATE INDEX IF NOT EXISTS idx_locations_machineId ON public.locations("machineId");
 CREATE INDEX IF NOT EXISTS idx_drivers_username ON public.drivers("username");
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 CREATE INDEX IF NOT EXISTS idx_transactions_timestamp ON public.transactions("timestamp" DESC);
 CREATE INDEX IF NOT EXISTS idx_transactions_locationId ON public.transactions("locationId");
 CREATE INDEX IF NOT EXISTS idx_transactions_driverId ON public.transactions("driverId");
@@ -168,15 +178,17 @@ CREATE INDEX IF NOT EXISTS idx_transactions_driver_date
 CREATE INDEX IF NOT EXISTS idx_daily_settlements_driver_date
   ON public.daily_settlements ("driverId", "date");
 
--- 9. 关闭 RLS 权限 (开发测试阶段)
+-- 10. 关闭 RLS 权限 (开发测试阶段)
+-- NOTE: Production should enable RLS and replace these dev-friendly settings with role-based policies.
 ALTER TABLE public.locations DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.drivers DISABLE ROW LEVEL SECURITY;
+ALTER TABLE public.profiles DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.daily_settlements DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ai_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE public.notifications DISABLE ROW LEVEL SECURITY;
 
--- 10. 约束 (可选)
+-- 11. 约束 (可选)
 DO $$
 BEGIN
   IF NOT EXISTS (
@@ -199,13 +211,29 @@ BEGIN
   END IF;
 END $$;
 
--- 11. 增量迁移 (Incremental Migration)
+-- 12. 增量迁移 (Incremental Migration)
 -- 如果数据库已存在，请运行以下语句补充新字段/索引/约束，无需重建表。
 -- Run these if upgrading an existing database instead of doing a full rebuild.
 
 -- Locations
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "machinePhotoUrl" TEXT;
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "lastRevenueDate" TEXT;
+
+-- Drivers
+ALTER TABLE public.drivers DROP COLUMN IF EXISTS password;
+
+CREATE TABLE IF NOT EXISTS public.profiles (
+  "auth_user_id" UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  role TEXT NOT NULL CHECK (role IN ('admin', 'driver')),
+  "display_name" TEXT,
+  "driver_id" TEXT,
+  "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+);
+
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS "display_name" TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS "driver_id" TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS "created_at" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP;
+CREATE INDEX IF NOT EXISTS idx_profiles_role ON public.profiles(role);
 
 -- Transactions
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "uploadTimestamp" TIMESTAMPTZ;
