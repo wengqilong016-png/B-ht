@@ -39,7 +39,6 @@ CREATE TABLE public.drivers (
     id TEXT PRIMARY KEY,
     name TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
     phone TEXT,
     "initialDebt" NUMERIC DEFAULT 0,
     "remainingDebt" NUMERIC DEFAULT 0,
@@ -206,6 +205,9 @@ END $$;
 -- Locations
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "machinePhotoUrl" TEXT;
 ALTER TABLE public.locations ADD COLUMN IF NOT EXISTS "lastRevenueDate" TEXT;
+
+-- Drivers
+ALTER TABLE public.drivers DROP COLUMN IF EXISTS password;
 
 -- Transactions
 ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS "uploadTimestamp" TIMESTAMPTZ;

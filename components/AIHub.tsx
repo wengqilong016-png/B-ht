@@ -26,6 +26,7 @@ interface PendingReviewData {
 }
 
 const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI, currentUser, initialContextId, onClearContext }) => {
+  const activeDriverId = currentUser.driverId ?? currentUser.id;
   const [mode, setMode] = useState<'audit' | 'design'>('audit');
   
   // Audit Configuration State
@@ -163,7 +164,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
           onLogAI({
             id: `GEN-${Date.now()}`,
             timestamp: new Date().toISOString(),
-            driverId: currentUser.id,
+            driverId: activeDriverId,
             driverName: currentUser.name,
             query: `[Image Gen] ${imagePrompt}`,
             response: "Image Generated Successfully",
@@ -214,7 +215,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
     const newLog: AILog = {
       id: safeRandomUUID(),
       timestamp: new Date().toISOString(),
-      driverId: currentUser.id,
+      driverId: activeDriverId,
       driverName: currentUser.name,
       query: pendingReview.isOCR ? `[OCR-CONFIRMED] ${pendingReview.originalQuery || 'Auto-Read'}` : (pendingReview.originalQuery || "Image Analysis"),
       imageUrl: pendingReview.image,
@@ -349,7 +350,7 @@ const AIHub: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI
           onLogAI({
             id: safeRandomUUID(),
             timestamp: new Date().toISOString(),
-            driverId: currentUser.id,
+            driverId: activeDriverId,
             driverName: currentUser.name,
             query: userMsg,
             response: resultText,

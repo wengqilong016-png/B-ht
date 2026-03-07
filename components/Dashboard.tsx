@@ -30,6 +30,7 @@ interface DashboardProps {
 const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate, initialTab, hideTabs }) => {
   const t = TRANSLATIONS[lang];
   const isAdmin = currentUser.role === 'admin';
+  const activeDriverId = currentUser.driverId ?? currentUser.id;
   const [activeTab, setActiveTab] = useState<'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking'>(initialTab || (isAdmin ? 'overview' : 'settlement'));
   const [revDrilldown, setRevDrilldown] = useState<'none' | 'drivers' | string>('none'); // revenue drill-down state
   const [expandedDriverTracking, setExpandedDriverTracking] = useState<string | null>(null); // tracking tab driver expand
@@ -67,10 +68,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
     if (!isAdmin) setActiveTab('settlement');
   }, [isAdmin]);
 
-  const myTransactions = useMemo(() => isAdmin ? transactions : transactions.filter(t => t.driverId === currentUser.id), [transactions, currentUser, isAdmin]);
+  const myTransactions = useMemo(() => isAdmin ? transactions : transactions.filter(t => t.driverId === activeDriverId), [activeDriverId, transactions, isAdmin]);
   const todayStr = new Date().toISOString().split('T')[0];
   const todayDriverTxs = useMemo(() => myTransactions.filter(t => t.timestamp.startsWith(todayStr)), [myTransactions, todayStr]);
-  const myProfile = useMemo(() => drivers.find(d => d.id === (isAdmin ? drivers[0]?.id : currentUser.id)), [drivers, currentUser, isAdmin]);
+  const myProfile = useMemo(() => drivers.find(d => d.id === (isAdmin ? drivers[0]?.id : activeDriverId)), [activeDriverId, drivers, isAdmin]);
   const totalArrears = useMemo(() => myTransactions.filter(tx => tx.paymentStatus === 'unpaid').reduce((sum, tx) => sum + tx.netPayable, 0), [myTransactions]);
   const pendingExpenses = useMemo(() => transactions.filter(tx => tx.expenses > 0 && tx.expenseStatus === 'pending'), [transactions]);
   const pendingSettlements = useMemo(() => dailySettlements.filter(s => s.status === 'pending'), [dailySettlements]);
@@ -1063,11 +1064,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                   onClick={() => {
                       const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
                      const actual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
-                     const settlement: DailySettlement = {
-                        id: `STL-${Date.now()}`,
-                        date: todayStr,
-                        driverId: currentUser.id,
-                        driverName: currentUser.name,
+                      const settlement: DailySettlement = {
+                         id: `STL-${Date.now()}`,
+                         date: todayStr,
+                         driverId: activeDriverId,
+                         driverName: currentUser.name,
                          totalRevenue: todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0),
                         totalNetPayable: totalNet,
                          totalExpenses: todayDriverTxs.reduce((sum, tx) => sum + tx.expenses, 0),

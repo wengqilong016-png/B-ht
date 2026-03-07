@@ -18,6 +18,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const t = TRANSLATIONS[lang];
 
+  const resolveLoginError = (message: string) => {
+    if (message === 'Profile not found') {
+      return lang === 'zh'
+        ? '账号已存在，但未完成资料配置'
+        : 'Account exists but profile is not provisioned.';
+    }
+    if (message === 'Invalid user role') {
+      return lang === 'zh' ? '账号角色无效' : 'Invalid account role.';
+    }
+    return lang === 'zh' ? '登录过程中发生错误' : 'Login error';
+  };
+
   useEffect(() => {
     checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
   }, []);
@@ -26,7 +38,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     const result = await fetchCurrentUserProfile(authUserId, fallbackEmail || '');
 
     if (!result.success) {
-      setError(lang === 'zh' ? '未找到用户资料' : 'Profile not found');
+      await supabase?.auth.signOut();
+      setError(resolveLoginError(result.error));
       return;
     }
 
