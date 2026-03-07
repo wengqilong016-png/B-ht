@@ -26,6 +26,9 @@ interface AIReviewData {
 }
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
+const NEARBY_DISTANCE_METERS = 1500;
+const PRIORITY_DISTANCE_FALLBACK = 99999;
+const PRIORITY_DISTANCE_CAP_KM = 9;
 
 const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine, isOnline = true, allTransactions = [] }) => {
   const t = TRANSLATIONS[lang];
@@ -189,6 +192,8 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const visitedLocationIds = useMemo(() => new Set(todayDriverTransactions.map(t => t.locationId)), [todayDriverTransactions]);
 
   const locationCards = useMemo(() => {
+    const lowerSearch = searchQuery.toLowerCase();
+
     return assignedLocations
       .map(loc => {
         const distanceMeters = gpsCoords && loc.coords
@@ -207,16 +212,15 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           (isLocked ? -200 : 0) +
           (isNearby ? 20 : 0) +
           (loc.status === 'active' ? 10 : 0) -
-          Math.min(9, Math.floor((distanceMeters ?? 99999) / 1000));
+          Math.min(PRIORITY_DISTANCE_CAP_KM, Math.floor((distanceMeters ?? PRIORITY_DISTANCE_FALLBACK) / 1000));
 
         return { loc, distanceMeters, daysSinceActive, isUrgent, isNearby, isPending, isLocked, priorityScore };
       })
       .filter(({ loc, isPending, isUrgent, isNearby }) => {
-        const lower = searchQuery.toLowerCase();
         const matchSearch = !searchQuery ||
-          loc.name.toLowerCase().includes(lower) ||
-          loc.machineId.toLowerCase().includes(lower) ||
-          loc.area.toLowerCase().includes(lower);
+          loc.name.toLowerCase().includes(lowerSearch) ||
+          loc.machineId.toLowerCase().includes(lowerSearch) ||
+          loc.area.toLowerCase().includes(lowerSearch);
         const matchArea = selectedArea === 'all' || loc.area === selectedArea;
         const matchQuickFilter =
           locationFilter === 'all' ||
@@ -236,15 +240,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   const collectionOverview = useMemo(() => ({
     totalMachines: assignedLocations.length,
-    pendingStops: assignedLocations.filter(loc => !visitedLocationIds.has(loc.id)).length,
-    urgentMachines: assignedLocations.filter(loc => {
-      const daysSinceActive = loc.lastRevenueDate
-        ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
-        : null;
-      return loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
-    }).length,
-    nearbySites: assignedLocations.filter(loc => gpsCoords && loc.coords && getDistance(gpsCoords.lat, gpsCoords.lng, loc.coords.lat, loc.coords.lng) <= 1500).length,
-  }), [assignedLocations, visitedLocationIds, gpsCoords]);
+    pendingStops: locationCards.filter(item => item.isPending).length,
+    urgentMachines: locationCards.filter(item => item.isUrgent).length,
+    nearbySites: locationCards.filter(item => item.isNearby).length,
+  }), [assignedLocations.length, locationCards]);
 
   const startScanner = async () => {
     setIsScannerOpen(true);
@@ -867,7 +866,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           <div className="bg-emerald-50 rounded-[24px] border border-emerald-200 p-4 shadow-sm">
             <p className="text-[9px] font-black text-emerald-500 uppercase">{t.nearbySites}</p>
             <p className="text-xl font-black text-emerald-700 mt-1">
-              {gpsCoords ? collectionOverview.nearbySites : '—'}
+              {gpsCoords ? collectionOverview.nearbySites : '-'}
             </p>
             {!gpsCoords && (
               <p className="text-[8px] font-bold text-emerald-500 uppercase mt-1">{t.awaitingGps}</p>
