@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS } from './types';
+import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS, fetchCurrentUserProfile } from './types';
 import Dashboard from './components/Dashboard';
 import CollectionForm from './components/CollectionForm';
 import MachineRegistrationForm from './components/MachineRegistrationForm';
@@ -483,6 +483,61 @@ const App: React.FC = () => {
     if (user.role === 'driver') setView('collect');
   };
 
+  const loadCurrentUserFromSession = async () => {
+    if (!supabase) return;
+
+    const { data: sessionData } = await supabase.auth.getSession();
+    const sessionUser = sessionData.session?.user;
+    if (!sessionUser) return;
+
+    const result = await fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
+    if (!result.success) {
+      console.error('Failed to load profile from session', result.error);
+      return;
+    }
+
+    setCurrentUser(result.user);
+    setLang(result.user.role === 'admin' ? 'zh' : 'sw');
+    if (result.user.role === 'driver') setView('collect');
+  };
+
+  useEffect(() => {
+    if (!supabase) return;
+
+    loadCurrentUserFromSession();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!session?.user) {
+        setCurrentUser(null);
+        return;
+      }
+
+      const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
+      if (!result.success) {
+        console.error('Failed to load profile from auth change', result.error);
+        return;
+      }
+
+      setCurrentUser(result.user);
+      setLang(result.user.role === 'admin' ? 'zh' : 'sw');
+      if (result.user.role === 'driver') setView('collect');
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  const handleLogout = async () => {
+    try {
+      await supabase?.auth.signOut();
+    } catch (e) {
+      console.error('Sign out failed', e);
+    } finally {
+      setCurrentUser(null);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
@@ -493,7 +548,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login drivers={drivers} onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
+    return <Login onLogin={handleUserLogin} lang={lang} onSetLang={setLang} />;
   }
 
   const isAdmin = currentUser.role === 'admin';
@@ -647,7 +702,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-1">
                 <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Globe size={12}/></button>
-                <button onClick={() => setCurrentUser(null)} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
+                <button onClick={handleLogout} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
               </div>
             </div>
           </div>
@@ -723,7 +778,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
-              <button onClick={() => setCurrentUser(null)} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
+              <button onClick={handleLogout} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
             </div>
           </div>
 
