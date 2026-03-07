@@ -1,3 +1,4 @@
+import { supabase } from './supabaseClient';
 
 export interface Location {
   id: string;
@@ -28,6 +29,55 @@ export interface User {
   role: 'admin' | 'driver';
   name: string;
 }
+
+type UserProfileRow = {
+  role: string;
+  display_name: string | null;
+  driver_id: string | null;
+};
+
+const VALID_USER_ROLES = ['admin', 'driver'] as const;
+const isValidUserRole = (role: string): role is User['role'] =>
+  VALID_USER_ROLES.includes(role as User['role']);
+
+type FetchCurrentUserProfileResult =
+  | { success: true; user: User }
+  | { success: false; error: string };
+
+export const fetchCurrentUserProfile = async (
+  authUserId: string,
+  fallbackEmail = ''
+): Promise<FetchCurrentUserProfileResult> => {
+  const fallbackIdentity = fallbackEmail || authUserId;
+
+  if (!supabase) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  const { data: profile, error } = await supabase
+    .from('profiles')
+    .select('role, display_name, driver_id')
+    .eq('auth_user_id', authUserId)
+    .single<UserProfileRow>();
+
+  if (error || !profile) {
+    return { success: false, error: 'Profile not found' };
+  }
+
+  if (!isValidUserRole(profile.role)) {
+    return { success: false, error: 'Invalid user role' };
+  }
+
+  return {
+    success: true,
+    user: {
+      id: profile.driver_id || authUserId,
+      username: fallbackIdentity,
+      role: profile.role,
+      name: profile.display_name || fallbackIdentity,
+    },
+  };
+};
 
 export interface Notification {
   id: string;
@@ -217,7 +267,7 @@ export const CONSTANTS = {
 export const TRANSLATIONS = {
   zh: {
     login: '账号登录 Login',
-    username: '邮箱 Email',
+    username: '邮箱',
     password: '密码 Password',
     loginBtn: '立即登录 Login Now',
     dashboard: '管理概览 Admin',

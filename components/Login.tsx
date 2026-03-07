@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
-import { User as UserType, TRANSLATIONS } from '../types';
+import { User as UserType, TRANSLATIONS, fetchCurrentUserProfile } from '../types';
 import { checkDbHealth, supabase } from '../supabaseClient';
 
 interface LoginProps {
@@ -22,34 +22,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
   }, []);
 
-  const loadProfileAndLogin = async (authUserId: string, fallbackEmail?: string) => {
-    if (!supabase) {
-      setError(lang === 'zh' ? 'Supabase 未配置' : 'Supabase not configured');
-      return;
-    }
+  const fetchUserProfile = async (authUserId: string, fallbackEmail?: string) => {
+    const result = await fetchCurrentUserProfile(authUserId, fallbackEmail || '');
 
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('role, display_name, driver_id')
-      .eq('auth_user_id', authUserId)
-      .single();
-
-    if (profileError || !profile) {
+    if (!result.success) {
       setError(lang === 'zh' ? '未找到用户资料' : 'Profile not found');
       return;
     }
 
-    if (profile.role !== 'admin' && profile.role !== 'driver') {
-      setError(lang === 'zh' ? '用户角色无效' : 'Invalid user role');
-      return;
-    }
-
-    onLogin({
-      id: profile.driver_id || authUserId,
-      username: fallbackEmail || '',
-      role: profile.role,
-      name: profile.display_name || fallbackEmail || '',
-    });
+    onLogin(result.user);
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -73,7 +54,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
         return;
       }
 
-      await loadProfileAndLogin(data.user.id, data.user.email || email);
+      await fetchUserProfile(data.user.id, data.user.email || email);
     } catch (err) {
       console.error(err);
       setError(lang === 'zh' ? '登录过程中发生错误' : 'Login error');
@@ -118,16 +99,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
         <div className="bg-slate-800/50 backdrop-blur-xl p-8 rounded-[32px] shadow-2xl border border-white/10 w-full">
           <form onSubmit={handleLogin} className="space-y-5">
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <label htmlFor="email-input" className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                  <User size={12} className="text-amber-500" /> {t.username}
               </label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-bold text-white focus:border-amber-500/50 outline-none transition-all" placeholder="email@example.com" required />
+              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-bold text-white focus:border-amber-500/50 outline-none transition-all" placeholder="email@example.com" required />
             </div>
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <label htmlFor="password-input" className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
                  <Lock size={12} className="text-amber-500" /> {t.password}
               </label>
-              <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-black text-white focus:border-amber-500/50 outline-none transition-all" placeholder="••••••••" required />
+              <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-900/50 border border-white/10 rounded-xl py-4 px-4 font-black text-white focus:border-amber-500/50 outline-none transition-all" placeholder="••••••••" required />
             </div>
             
             {error && (

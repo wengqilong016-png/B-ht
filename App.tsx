@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS } from './types';
+import { Transaction, Driver, Location, DailySettlement, User, CONSTANTS, AILog, TRANSLATIONS, fetchCurrentUserProfile } from './types';
 import Dashboard from './components/Dashboard';
 import CollectionForm from './components/CollectionForm';
 import MachineRegistrationForm from './components/MachineRegistrationForm';
@@ -490,31 +490,15 @@ const App: React.FC = () => {
     const sessionUser = sessionData.session?.user;
     if (!sessionUser) return;
 
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role, display_name, driver_id')
-      .eq('auth_user_id', sessionUser.id)
-      .single();
-
-    if (error || !profile) {
-      console.error('Failed to load profile from session', error);
+    const result = await fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
+    if (!result.success) {
+      console.error('Failed to load profile from session', result.error);
       return;
     }
 
-    if (profile.role !== 'admin' && profile.role !== 'driver') {
-      console.error('Invalid role in profile', profile.role);
-      return;
-    }
-
-    setCurrentUser({
-      id: profile.driver_id || sessionUser.id,
-      username: sessionUser.email || '',
-      role: profile.role,
-      name: profile.display_name || sessionUser.email || '',
-    });
-
-    setLang(profile.role === 'admin' ? 'zh' : 'sw');
-    if (profile.role === 'driver') setView('collect');
+    setCurrentUser(result.user);
+    setLang(result.user.role === 'admin' ? 'zh' : 'sw');
+    if (result.user.role === 'driver') setView('collect');
   };
 
   useEffect(() => {
@@ -522,40 +506,25 @@ const App: React.FC = () => {
 
     loadCurrentUserFromSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setCurrentUser(null);
         return;
       }
 
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('role, display_name, driver_id')
-        .eq('auth_user_id', session.user.id)
-        .single();
-
-      if (error || !profile) {
-        console.error('Failed to load profile from auth change', error);
+      const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
+      if (!result.success) {
+        console.error('Failed to load profile from auth change', result.error);
         return;
       }
 
-      if (profile.role !== 'admin' && profile.role !== 'driver') {
-        console.error('Invalid role in auth change profile', profile.role);
-        return;
-      }
-
-      setCurrentUser({
-        id: profile.driver_id || session.user.id,
-        username: session.user.email || '',
-        role: profile.role,
-        name: profile.display_name || session.user.email || '',
-      });
-      setLang(profile.role === 'admin' ? 'zh' : 'sw');
-      if (profile.role === 'driver') setView('collect');
+      setCurrentUser(result.user);
+      setLang(result.user.role === 'admin' ? 'zh' : 'sw');
+      if (result.user.role === 'driver') setView('collect');
     });
 
     return () => {
-      authListener.subscription.unsubscribe();
+      subscription.unsubscribe();
     };
   }, []);
 
