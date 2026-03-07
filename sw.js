@@ -113,3 +113,38 @@ self.addEventListener('fetch', (event) => {
     })
   );
 });
+
+// ── Background Sync ───────────────────────────────────────────────────────────
+// When the device reconnects, Chrome/Edge fires a 'sync' event.
+// We broadcast a message so the React app flushes the IndexedDB queue.
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'bahati-flush-queue') {
+    event.waitUntil(
+      self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+        .then((clients) => {
+          clients.forEach((client) => {
+            try {
+              client.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
+            } catch (err) {
+              console.warn('[SW] postMessage failed for client:', err);
+            }
+          });
+        })
+        .catch((err) => {
+          console.warn('[SW] clients.matchAll failed during sync:', err);
+        })
+    );
+  }
+});
+
+// ── Push (future use) ─────────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+  const data = event.data.json();
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Bahati Jackpots', {
+      body: data.body || '',
+      icon: 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+    })
+  );
+});

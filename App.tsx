@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
+import { flushQueue, enqueueTransaction, getPendingTransactions } from './offlineQueue';
 
 // Safe localStorage wrapper – iOS Safari private mode throws QuotaExceededError on writes
 const safeSetItem = (key: string, value: string) => {
@@ -187,7 +188,7 @@ const App: React.FC = () => {
       setIsOnline(online);
       if (online && !isSyncingRef.current) syncOfflineData();
       
-      // NEW: Heartbeat for Active Drivers (Safari compatibility added)
+      // Heartbeat for Active Drivers (Safari compatibility added)
       if (online && supabase && currentUser?.role === 'driver') {
         if ('geolocation' in navigator) {
            navigator.geolocation.getCurrentPosition((pos) => {
@@ -202,7 +203,28 @@ const App: React.FC = () => {
         }
       }
     }, 20000);
-    return () => clearInterval(timer);
+
+    // Listen for service worker background-sync message
+    const handleSwMessage = (event: MessageEvent) => {
+      if (event.data?.type === 'FLUSH_OFFLINE_QUEUE') {
+        syncOfflineData();
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
+
+    // Register background sync tag (Chrome/Edge only)
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.ready.then((reg) => {
+        if ('sync' in reg) {
+          (reg as any).sync.register('bahati-flush-queue').catch(() => {});
+        }
+      }).catch(() => {});
+    }
+
+    return () => {
+      clearInterval(timer);
+      navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
+    };
   }, [currentUser]);
 
   useEffect(() => {
@@ -225,6 +247,21 @@ const App: React.FC = () => {
     if (isSyncingRef.current || !supabase) return;
     setIsSyncing(true);
     try {
+        // ── Flush IndexedDB offline queue first ────────────────────────────
+        try {
+          const flushed = await flushQueue(supabase, (done, total) => {
+            console.log(`[OfflineQueue] Flushed ${done}/${total}`);
+          });
+          if (flushed > 0) {
+            // Reload transactions from Supabase after flushing queue
+            const { data } = await supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200);
+            if (data) setTransactions(data.map((t: any) => ({ ...t, isSynced: true })));
+          }
+        } catch (e) {
+          console.warn('[OfflineQueue] flush error (non-fatal):', e);
+        }
+
+        // ── Existing localStorage-based sync ──────────────────────────────
         const offlineTx = transactionsRef.current.filter(t => !t.isSynced);
         if (offlineTx.length > 0) {
             const { error } = await supabase.from('transactions').upsert(offlineTx.map(item => ({ ...item, isSynced: true })));
@@ -232,7 +269,6 @@ const App: React.FC = () => {
                 const syncedIds = new Set(offlineTx.map(t => t.id));
                 setTransactions(prev => prev.map(t => {
                     if (syncedIds.has(t.id)) {
-                        // 同步成功后清理本地图片的 Base64 数据，防止 localStorage 溢出
                         const { photoUrl, ...rest } = t;
                         return { ...rest, isSynced: true };
                     }
@@ -255,7 +291,6 @@ const App: React.FC = () => {
                 const syncedIds = new Set(offlineLogs.map(l => l.id));
                 setAiLogs(prev => prev.map(l => {
                     if (syncedIds.has(l.id)) {
-                        // 同步成功后清理 AI 日志的图片数据
                         const { imageUrl, ...rest } = l;
                         return { ...rest, isSynced: true };
                     }
@@ -487,7 +522,8 @@ const App: React.FC = () => {
   };
 
   // Admin sidebar nav items
-  const adminNavItems = [
+  type NavItem = { id: string; icon: React.ReactNode; label: string; labelEn: string; badge?: number };
+  const adminNavItems: NavItem[] = [
     { id: 'dashboard', icon: <LayoutDashboard size={18}/>, label: '工作台', labelEn: 'Overview' },
     { id: 'settlement', icon: <CheckSquare size={18}/>, label: '审批中心', labelEn: 'Approvals', badge: totalApprovalBadge },
     { id: 'map', icon: <MapPin size={18}/>, label: '地图与轨迹', labelEn: 'Map & Routes' },
@@ -495,7 +531,7 @@ const App: React.FC = () => {
     { id: 'team', icon: <Users size={18}/>, label: '车队与薪资', labelEn: 'Fleet' },
     { id: 'billing', icon: <FileSpreadsheet size={18}/>, label: '月账单核对', labelEn: 'Billing' },
     { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
-  ] as const;
+  ];
 
   // Dashboard tab mapping
   const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {
@@ -543,14 +579,14 @@ const App: React.FC = () => {
                 >
                   <span className="flex-shrink-0">{item.icon}</span>
                   <span className="text-[10px] font-black uppercase leading-tight truncate">{item.label}</span>
-                  {!active && (item as any).badge > 0 && (
+                  {!active && item.badge > 0 && (
                     <span className="ml-auto flex-shrink-0 w-5 h-5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-black flex items-center justify-center">
-                      {(item as any).badge > 9 ? '9+' : (item as any).badge}
+                      {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
-                  {active && (item as any).badge > 0 && (
+                  {active && item.badge > 0 && (
                     <span className="ml-auto flex-shrink-0 w-5 h-5 bg-white/20 text-white rounded-full text-[8px] font-black flex items-center justify-center">
-                      {(item as any).badge > 9 ? '9+' : (item as any).badge}
+                      {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
                 </button>
@@ -726,9 +762,9 @@ const App: React.FC = () => {
                 >
                   {item.icon}
                   <span>{item.labelEn}</span>
-                  {(item as any).badge > 0 && (
+                  {item.badge > 0 && (
                     <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-500 text-white rounded-full text-[6px] font-black flex items-center justify-center">
-                      {(item as any).badge}
+                      {item.badge}
                     </span>
                   )}
                 </button>
@@ -818,6 +854,8 @@ const App: React.FC = () => {
                 onSubmit={handleNewTransaction}
                 lang={lang}
                 onLogAI={handleLogAI}
+                isOnline={isOnline}
+                allTransactions={filteredData.transactions}
                 onRegisterMachine={async (loc) => {
                   const newLoc = { ...loc, isSynced: false, assignedDriverId: currentUser.id };
                   setLocations([...locations, newLoc]);

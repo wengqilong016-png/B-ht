@@ -204,6 +204,31 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
             </div>
          </div>
       </div>
+
+      {/* Google Maps quick-open button */}
+      {mappedLocations.length > 0 && (
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-[1000]">
+          <a
+            href={(() => {
+              const base = 'https://www.google.com/maps/dir/?api=1';
+              const origin = `${mappedLocations[0].coords!.lat},${mappedLocations[0].coords!.lng}`;
+              const dest   = `${mappedLocations[mappedLocations.length - 1].coords!.lat},${mappedLocations[mappedLocations.length - 1].coords!.lng}`;
+              const waypoints = mappedLocations.slice(1, -1).map(l => `${l.coords!.lat},${l.coords!.lng}`).join('|');
+              let url = `${base}&origin=${origin}&destination=${dest}&travelmode=driving`;
+              if (waypoints) url += `&waypoints=${waypoints}`;
+              return url;
+            })()}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-2 px-5 py-2.5 bg-white/95 backdrop-blur-sm border border-white/40 text-slate-700 rounded-2xl text-[10px] font-black uppercase shadow-lg hover:bg-white transition-all active:scale-95"
+          >
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z" fill="#4f46e5"/>
+            </svg>
+            Open in Google Maps
+          </a>
+        </div>
+      )}
     </div>
   );
 };

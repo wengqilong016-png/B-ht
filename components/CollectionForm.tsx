@@ -1,9 +1,11 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite, Lock, RefreshCw, Wallet, Camera } from 'lucide-react';
+import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite, Lock, RefreshCw, Wallet, Camera, WifiOff, DatabaseBackup, Route } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import EXIF from 'exif-js';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, resizeImage } from '../types';
 import MachineRegistrationForm from './MachineRegistrationForm';
+import OfflineRouteMap from './OfflineRouteMap';
+import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../offlineQueue';
 
 interface CollectionFormProps {
   locations: Location[];
@@ -12,6 +14,8 @@ interface CollectionFormProps {
   lang: 'zh' | 'sw';
   onLogAI: (log: AILog) => void;
   onRegisterMachine?: (location: Location) => void;
+  isOnline?: boolean;
+  allTransactions?: Transaction[];   // for route map
 }
 
 interface AIReviewData {
@@ -23,7 +27,7 @@ interface AIReviewData {
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
 
-const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine }) => {
+const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine, isOnline = true, allTransactions = [] }) => {
   const t = TRANSLATIONS[lang];
   const [step, setStep] = useState<'selection' | 'entry'>('selection');
   const [selectedLocId, setSelectedLocId] = useState<string>('');
@@ -54,6 +58,10 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   // New Status State
   const [status, setStatus] = useState<SubmissionStatus>('idle');
   const [showGpsSkip, setShowGpsSkip] = useState(false);
+
+  // Offline queue state
+  const [offlineQueueCount, setOfflineQueueCount] = useState(0);
+  const [gpsSource, setGpsSource] = useState<'live' | 'exif' | 'estimated' | null>(null);
   
   // Scanner & AI Review States
   const [isScannerOpen, setIsScannerOpen] = useState(false);
@@ -71,7 +79,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
-  const gpsTimeoutRef = useRef<any>(null); // Fixed: Changed NodeJS.Timeout to any for browser compatibility
+  const gpsTimeoutRef = useRef<any>(null);
 
   const requestGps = () => {
     if (!navigator.geolocation) return;
@@ -98,6 +106,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       requestGps();
     }
   }, [step]);
+
+  // Load offline queue count on mount and after each submission
+  useEffect(() => {
+    getPendingTransactions().then((list) => setOfflineQueueCount(list.length)).catch(() => {});
+  }, [step]); // re-check when returning to selection screen
 
   const selectedLocation = useMemo(() => locations.find(l => l.id === selectedLocId), [selectedLocId, locations]);
 
@@ -365,14 +378,13 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       isProcessingRef.current = false;
   };
 
-  const processSubmission = (gpsCoords: {lat: number, lng: number}) => {
+  const processSubmission = async (resolvedGps: {lat: number, lng: number}, gpsSourceType: 'live' | 'exif' | 'estimated' | 'none' = 'live') => {
       setStatus('uploading');
       
       const expenseValue = parseInt(expenses) || 0;
       const userScore = parseInt(currentScore) || (selectedLocation?.lastScore || 0);
       const recognizedScore = aiReviewData?.score ? parseInt(aiReviewData.score) : undefined;
       
-      // 比对逻辑：差异超过 50 个单位标记为异常
       const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
       
       const tx: Transaction = {
@@ -396,19 +408,32 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
         
         coinExchange: parseInt(coinExchange) || 0, extraIncome: 0,
         netPayable: calculations.netPayable,
-        gps: gpsCoords, 
+        gps: resolvedGps, 
         photoUrl: photoData || undefined, 
         dataUsageKB: 120, isSynced: false,
         paymentStatus: 'paid',
         
-        // AI 审计字段
         aiScore: recognizedScore,
         isAnomaly: isAnomaly,
         reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
-        notes: aiReviewData?.notes
+        notes: [
+          aiReviewData?.notes,
+          gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
+        ].filter(Boolean).join(' ') || undefined
       };
+
+      // Always save to IndexedDB offline queue for resilience
+      try {
+        await enqueueTransaction(tx);
+      } catch (e) {
+        console.warn('[CollectionForm] IDB enqueue failed:', e);
+      }
       
+      // Also call parent handler (works online AND offline — parent saves to localStorage)
       onSubmit(tx);
+      
+      // Update queue count
+      getPendingTransactions().then((list) => setOfflineQueueCount(list.length)).catch(() => {});
       
       // Cleanup
       setStatus('idle');
@@ -425,30 +450,67 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       setAiReviewData(null);
       setExpenseType('public');
       setExpenseCategory('fuel');
+      setGpsSource(null);
 
-      alert(lang === 'zh' ? '✅ Collection report saved' : '✅ Collection report saved');
+      const savedMsg = !isOnline
+        ? (lang === 'zh' ? '✅ 离线已保存！恢复网络后自动上传。' : '✅ Saved offline! Will auto-upload when connected.')
+        : (lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
+      alert(savedMsg);
   };
 
   const handleSubmit = async () => {
     if (!selectedLocation || status !== 'idle') return;
     
-    // Hard Lock: No GPS = No Submit
-    if (!gpsCoords) {
-      alert(lang === 'zh' ? '❌ Cannot get location! Please enable GPS permission and retry.' : '❌ GPS required! Please enable location access.');
-      requestGps(); // Re-trigger request
+    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ Coin stock insufficient, continue?" : "⚠️ Coin stock insufficient, continue?")) return;
+
+    // 1. Try live GPS (best accuracy)
+    if (gpsCoords) {
+      setGpsSource('live');
+      processSubmission(gpsCoords, 'live');
       return;
     }
 
-    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ Coin stock insufficient, continue?" : "⚠️ Coin stock insufficient, continue?")) return;
-
-    processSubmission(gpsCoords);
-  };
-
-  const handleSkipGps = () => {
-      if (gpsTimeoutRef.current) clearTimeout(gpsTimeoutRef.current);
-      if (confirm(lang === 'zh' ? "Skip GPS? (Record will be marked as GPS missing)" : "Skip GPS location?")) {
-          processSubmission({ lat: 0, lng: 0 });
+    // 2. Try EXIF GPS from photo
+    if (photoData) {
+      setStatus('gps');
+      const exifGps = await extractGpsFromExif(photoData);
+      if (exifGps) {
+        setGpsSource('exif');
+        processSubmission(exifGps, 'exif');
+        return;
       }
+    }
+
+    // 3. Try machine's registered coordinates (estimated)
+    const estimated = estimateLocationFromContext(null, selectedLocation?.coords || null);
+    if (estimated) {
+      const confirmEst = confirm(
+        lang === 'zh'
+          ? '⚠️ 无法获取GPS，将使用网点坐标估算位置。继续提交？'
+          : '⚠️ No GPS available. Will use site coordinates as estimated location. Continue?'
+      );
+      if (confirmEst) {
+        setGpsSource('estimated');
+        processSubmission(estimated, 'estimated');
+        return;
+      }
+      setStatus('idle');
+      return;
+    }
+
+    // 4. Last resort: submit without GPS (0,0) after confirmation
+    const confirmNoGps = confirm(
+      lang === 'zh'
+        ? '❌ 无GPS信号。是否仍要保存记录？（将标注为无位置）'
+        : '❌ No GPS signal. Save record without location? (marked as offline)'
+    );
+    if (confirmNoGps) {
+      setGpsSource(null);
+      processSubmission({ lat: 0, lng: 0 }, 'none');
+    } else {
+      setStatus('idle');
+      requestGps();
+    }
   };
 
   // --- 9999 Reset Request Handler ---
@@ -681,8 +743,41 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
   if (step === 'selection') {
     return (
-      <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
-        <div className="flex items-center justify-between mb-8 px-2">
+      <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+        {/* Offline status banner */}
+        {!isOnline && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+            <WifiOff size={16} className="text-amber-500 flex-shrink-0" />
+            <div className="min-w-0">
+              <p className="text-[10px] font-black text-amber-700 uppercase">
+                {lang === 'zh' ? '离线模式 — 数据已本地保存' : 'Offline Mode — Data saved locally'}
+              </p>
+              <p className="text-[8px] font-bold text-amber-600">
+                {lang === 'zh' ? '恢复网络后自动同步到云端' : 'Auto-syncs when connection returns'}
+              </p>
+            </div>
+            {offlineQueueCount > 0 && (
+              <div className="flex items-center gap-1 px-2 py-1 bg-amber-200 rounded-lg flex-shrink-0">
+                <DatabaseBackup size={10} className="text-amber-700" />
+                <span className="text-[8px] font-black text-amber-700">{offlineQueueCount}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Online with pending queue */}
+        {isOnline && offlineQueueCount > 0 && (
+          <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
+            <DatabaseBackup size={16} className="text-indigo-500 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] font-black text-indigo-700 uppercase">
+                {lang === 'zh' ? `${offlineQueueCount} 条离线记录正在同步...` : `Syncing ${offlineQueueCount} offline records...`}
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between mb-4 px-2">
            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase">
             <ScanLine className="text-indigo-600" />
             {t.selectMachine}
@@ -813,6 +908,17 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             );
           })}
         </div>
+
+        {/* Offline Route Map — shows today's completed stops */}
+        {allTransactions.length > 0 && (
+          <OfflineRouteMap
+            transactions={allTransactions}
+            driverId={currentDriver.id}
+            driverName={currentDriver.name}
+            isOnline={isOnline}
+            lang={lang}
+          />
+        )}
       </div>
     );
   }
