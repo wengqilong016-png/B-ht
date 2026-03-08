@@ -64,7 +64,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
     const result = await updateUserEmail(newEmail.trim());
     if (result.success) {
       setEmailStatus('ok');
-      setEmailMsg(t.updateSuccess);
+      setEmailMsg(t.emailConfirmationSent);
       setNewEmail('');
     } else {
       setEmailStatus('error');

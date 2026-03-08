@@ -99,7 +99,11 @@ const App: React.FC = () => {
 
   // Authentication Effect
   useEffect(() => {
-    if (!supabase) return;
+    if (!supabase) {
+      // Supabase is not configured – unblock the loading screen immediately.
+      setIsInitializing(false);
+      return;
+    }
 
     const loadUser = async () => {
       const result = await restoreCurrentUserFromSession();
