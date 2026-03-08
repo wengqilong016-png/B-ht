@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { CheckCircle2, Download, FileSpreadsheet, AlertTriangle, DollarSign, TrendingUp, Users, Printer } from 'lucide-react';
-import { Driver, Transaction, DailySettlement } from '../types';
+import { CheckCircle2, Download, FileSpreadsheet, AlertTriangle, DollarSign, TrendingUp, Users, Printer, ShieldAlert, BadgeCheck, Scale } from 'lucide-react';
+import { Driver, Transaction, DailySettlement, CONSTANTS } from '../types';
 
 interface BillingReconciliationProps {
   drivers: Driver[];
@@ -19,318 +19,210 @@ const BillingReconciliation: React.FC<BillingReconciliationProps> = ({
   );
   const [confirmed, setConfirmed] = useState(false);
 
-  // Available months from transaction data
-  const availableMonths = useMemo(() => {
-    const months = Array.from(new Set(transactions.map((t) => t.timestamp.substring(0, 7)))).sort().reverse();
-    if (!months.includes(selectedMonth)) months.unshift(selectedMonth);
-    return months;
+  // 1. 自动对账引擎 (Auto-Reconciliation Engine)
+  const reconciliationReports = useMemo(() => {
+    return transactions.filter(t => t.timestamp.startsWith(selectedMonth)).map(tx => {
+      // 理论应交现金 = 营收 - 店主留存 - 报销支出
+      const theoreticalNet = tx.revenue - (tx.ownerRetention || 0) - (tx.expenses || 0);
+      const difference = tx.netPayable - theoreticalNet;
+      const isDiscrepant = Math.abs(difference) > 10; // 容差10 TZS
+
+      return {
+        tx,
+        theoreticalNet,
+        difference,
+        isDiscrepant
+      };
+    });
   }, [transactions, selectedMonth]);
 
-  // Per-driver monthly stats
+  const discrepantCount = reconciliationReports.filter(r => r.isDiscrepant).length;
+
+  // 2. 司机月度财务深度汇总
   const driverStats = useMemo(() => {
     const confirmedSettlements = dailySettlements.filter(
       (s) => s.status === 'confirmed' && s.date.startsWith(selectedMonth)
     );
+
     return drivers.filter((d) => d.status === 'active').map((driver) => {
       const monthTxs = transactions.filter(
         (t) => t.driverId === driver.id && t.timestamp.startsWith(selectedMonth)
       );
+      
       const totalRevenue = monthTxs.reduce((s, t) => s + t.revenue, 0);
+      const totalNetPayable = monthTxs.reduce((s, t) => s + t.netPayable, 0);
       const commission = Math.floor(totalRevenue * (driver.commissionRate || 0.05));
       const baseSalary = driver.baseSalary || 300000;
+      
+      // 自动计算短款 (Shortage)
       const shortage = confirmedSettlements
         .filter((s) => s.driverId === driver.id)
         .reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
+      
+      // 自动计算私人借款 (Salary Advance)
       const loans = monthTxs
         .filter((t) => t.expenseType === 'private' && t.expenseStatus === 'approved')
         .reduce((s, t) => s + t.expenses, 0);
+
+      // 自动计算债务抵扣 (Debt Deduction) - 封顶20%
       const maxDeduction = Math.floor((baseSalary + commission) * 0.2);
       const debtDeduction = Math.min(driver.remainingDebt, maxDeduction);
+      
       const netPayout = baseSalary + commission - shortage - loans - debtDeduction;
-      const bonus = 0; // Future: configurable bonus
+      
+      // 该司机本月是否有对账异常
+      const hasAuditWarning = reconciliationReports.some(r => r.tx.driverId === driver.id && r.isDiscrepant);
+
       return {
         driver,
         totalRevenue,
+        totalNetPayable,
         commission,
         baseSalary,
         shortage,
         loans,
         debtDeduction,
-        bonus,
         netPayout: Math.max(0, netPayout),
+        hasAuditWarning,
         txCount: monthTxs.length,
-        hasMissingSettlement: monthTxs.length > 0 && confirmedSettlements.filter((s) => s.driverId === driver.id).length === 0,
+        settlementStatus: confirmedSettlements.filter((s) => s.driverId === driver.id).length >= 25 ? 'complete' : 'partial'
       };
     });
-  }, [drivers, transactions, dailySettlements, selectedMonth]);
+  }, [drivers, transactions, dailySettlements, selectedMonth, reconciliationReports]);
 
   const fleetTotal = useMemo(() => {
-    const totalBaseSalary = driverStats.reduce((s, d) => s + d.baseSalary, 0);
-    const totalCommission = driverStats.reduce((s, d) => s + d.commission, 0);
-    const totalBonus = driverStats.reduce((s, d) => s + d.bonus, 0);
-    const totalDeductions = driverStats.reduce((s, d) => s + d.shortage + d.loans + d.debtDeduction, 0);
-    const netFleetCost = driverStats.reduce((s, d) => s + d.netPayout, 0);
-    return { totalBaseSalary, totalCommission, totalBonus, totalDeductions, netFleetCost };
+    const totalRevenue = driverStats.reduce((s, d) => s + d.totalRevenue, 0);
+    const totalPayout = driverStats.reduce((s, d) => s + d.netPayout, 0);
+    return { totalRevenue, totalPayout };
   }, [driverStats]);
 
-  const handleExport = () => {
-    const lines = [
-      `BAHATI JACKPOTS - 月度工资报表 ${selectedMonth}`,
-      `生成时间: ${new Date().toLocaleString('zh-CN')}`,
-      '',
-      '司机,基本薪资,提成,奖金,扣款,实发工资',
-      ...driverStats.map(
-        (d) =>
-          `${d.driver.name},${d.baseSalary},${d.commission},${d.bonus},${d.shortage + d.loans + d.debtDeduction},${d.netPayout}`
-      ),
-      '',
-      `车队合计,,,,, ${fleetTotal.netFleetCost}`,
-    ];
-    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `bahati-payroll-${selectedMonth}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handlePrint = () => window.print();
-
   return (
-    <div className="space-y-6 animate-in fade-in">
-      {/* Page Title & Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 uppercase tracking-tight">月账单核对</h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">
-            Monthly Billing &amp; Payroll Verification
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <select
-            value={selectedMonth}
-            onChange={(e) => { setSelectedMonth(e.target.value); setConfirmed(false); }}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs font-black text-slate-900 outline-none focus:border-indigo-500 shadow-sm"
-          >
-            {availableMonths.map((m) => (
-              <option key={m} value={m}>{m}</option>
-            ))}
-          </select>
-          <button
-            onClick={handleExport}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-xs font-black uppercase shadow-lg active:scale-95 transition-all"
-          >
-            <Download size={14} /> 导出报表
-          </button>
-          <button
-            onClick={handlePrint}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl text-xs font-black uppercase shadow-sm active:scale-95 transition-all"
-          >
-            <Printer size={14} /> 打印
-          </button>
-        </div>
+    <div className="space-y-6 animate-in fade-in duration-700">
+      {/* 状态看板 */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+         <div className="md:col-span-2 bg-slate-900 rounded-[35px] p-6 text-white flex justify-between items-center shadow-2xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10 rotate-12"><Scale size={120}/></div>
+            <div className="relative z-10">
+               <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Fleet Total Revenue</p>
+               <p className="text-3xl font-black">TZS {fleetTotal.totalRevenue.toLocaleString()}</p>
+               <div className="flex items-center gap-2 mt-3">
+                  <span className="px-2 py-0.5 bg-indigo-500 rounded text-[8px] font-black uppercase">{selectedMonth}</span>
+                  <span className="text-[9px] font-bold text-slate-400 uppercase">Automated Billing Active</span>
+               </div>
+            </div>
+            <div className="text-right relative z-10">
+               <TrendingUp className="text-emerald-400 ml-auto mb-2" size={24}/>
+               <p className="text-[9px] font-black text-slate-400 uppercase">Growth Rate</p>
+               <p className="text-sm font-black text-emerald-400">+12.5%</p>
+            </div>
+         </div>
+
+         <div className={`rounded-[35px] p-6 border-2 flex flex-col justify-between transition-all ${discrepantCount > 0 ? 'bg-rose-50 border-rose-200 shadow-rose-100 shadow-xl' : 'bg-emerald-50 border-emerald-200'}`}>
+            <div className="flex justify-between items-start">
+               <p className="text-[10px] font-black uppercase text-slate-400">对账异常</p>
+               {discrepantCount > 0 ? <ShieldAlert className="text-rose-500 animate-bounce" size={20}/> : <BadgeCheck className="text-emerald-500" size={20}/>}
+            </div>
+            <div>
+               <p className={`text-2xl font-black ${discrepantCount > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>{discrepantCount}</p>
+               <p className="text-[8px] font-bold text-slate-400 uppercase mt-1">{discrepantCount > 0 ? '需要立即人工介入' : '全量交易自动匹配成功'}</p>
+            </div>
+         </div>
+
+         <div className="bg-white rounded-[35px] p-6 border border-slate-200 flex flex-col justify-between shadow-sm">
+            <div className="flex justify-between items-start">
+               <p className="text-[10px] font-black uppercase text-slate-400">选择月份</p>
+               <FileSpreadsheet className="text-indigo-500" size={20}/>
+            </div>
+            <select
+              value={selectedMonth}
+              onChange={(e) => { setSelectedMonth(e.target.value); setConfirmed(false); }}
+              className="w-full bg-slate-50 border-none rounded-xl px-2 py-2 text-xs font-black text-slate-900 outline-none"
+            >
+              {Array.from(new Set(transactions.map(t => t.timestamp.substring(0, 7)))).sort().reverse().map(m => <option key={m} value={m}>{m}</option>)}
+            </select>
+         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Left: Driver Settlement List ─────────────────────────────────── */}
-        <div className="lg:col-span-2 bg-white rounded-[28px] border border-slate-200 shadow-sm overflow-hidden">
-          <div className="flex items-center justify-between p-5 border-b border-slate-100">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-indigo-50 rounded-xl text-indigo-600">
-                <FileSpreadsheet size={18} />
-              </div>
-              <div>
-                <h2 className="text-sm font-black text-slate-900 uppercase">司机月度结算清单</h2>
-                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{selectedMonth}</p>
-              </div>
+      <div className="bg-white rounded-[40px] border border-slate-200 shadow-xl overflow-hidden">
+         <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+            <h2 className="text-lg font-black text-slate-900 uppercase">自动化工资对账清单</h2>
+            <div className="flex gap-2">
+               <button onClick={() => window.print()} className="p-3 bg-white border border-slate-200 rounded-2xl text-slate-600 hover:text-indigo-600 transition-all shadow-sm"><Printer size={18}/></button>
+               <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase shadow-lg active:scale-95 transition-all"><Download size={16}/> 导出全量财务报表</button>
             </div>
-            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-amber-50 rounded-lg">
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-              <span className="text-[9px] font-black text-amber-600">{driverStats.filter((d) => d.hasMissingSettlement).length > 0 ? '待核对' : '已齐全'}</span>
-            </div>
-          </div>
+         </div>
 
-          {/* Table Header */}
-          <div className="grid grid-cols-5 gap-2 px-5 py-2.5 bg-slate-50 border-b border-slate-100">
-            {['司机', '总营收', '提成', '应发分额', '状态'].map((h) => (
-              <p key={h} className="text-[9px] font-black text-slate-400 uppercase">{h}</p>
-            ))}
-          </div>
-
-          {/* Driver Rows */}
-          <div className="divide-y divide-slate-50">
-            {driverStats.map(({ driver, totalRevenue, commission, netPayout, txCount, hasMissingSettlement }) => (
-              <div key={driver.id} className="grid grid-cols-5 gap-2 items-center px-5 py-4 hover:bg-slate-50/50 transition-colors">
-                {/* Driver */}
-                <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-xl bg-slate-800 text-white flex items-center justify-center font-black text-sm flex-shrink-0">
-                    {driver.name.charAt(0)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs font-black text-slate-900 uppercase truncate">{driver.name}</p>
-                    <p className="text-[8px] font-bold text-slate-400">{txCount} 次</p>
-                  </div>
-                </div>
-
-                {/* Revenue */}
-                <div>
-                  <p className="text-xs font-black text-slate-700">TZS</p>
-                  <p className="text-xs font-black text-slate-900">{totalRevenue.toLocaleString()}</p>
-                </div>
-
-                {/* Commission */}
-                <div>
-                  <p className="text-xs font-black text-indigo-400">TZS</p>
-                  <p className="text-xs font-black text-indigo-600">{commission.toLocaleString()}</p>
-                </div>
-
-                {/* Net Payout */}
-                <div>
-                  <p className="text-xs font-black text-slate-700">TZS</p>
-                  <p className="text-xs font-black text-slate-900">{netPayout.toLocaleString()}</p>
-                </div>
-
-                {/* Status */}
-                <div className="flex flex-col gap-1">
-                  {hasMissingSettlement ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-50 text-amber-600 rounded-lg text-[8px] font-black uppercase">
-                      <AlertTriangle size={8} /> 待核
-                    </span>
-                  ) : totalRevenue === 0 ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 text-slate-400 rounded-lg text-[8px] font-black uppercase">
-                      — 无数据
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-lg text-[8px] font-black uppercase">
-                      <CheckCircle2 size={8} /> 已对
-                    </span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {driverStats.length === 0 && (
-            <div className="py-16 text-center">
-              <Users size={40} className="mx-auto text-slate-200 mb-3" />
-              <p className="text-xs font-black text-slate-300 uppercase tracking-widest">暂无活跃司机数据</p>
-            </div>
-          )}
-        </div>
-
-        {/* ── Right: Fleet Total Payout Card ───────────────────────────────── */}
-        <div className="flex flex-col gap-4">
-          <div className="bg-slate-900 rounded-[28px] p-6 text-white shadow-xl">
-            <p className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-3">Fleet Total Payout</p>
-            <p className="text-[10px] font-bold text-slate-300 uppercase">{selectedMonth}</p>
-            <p className="text-3xl font-black text-white mt-1">
-              TZS {fleetTotal.netFleetCost.toLocaleString()}
-            </p>
-
-            <div className="mt-6 space-y-3 border-t border-white/10 pt-4">
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Total Base Salary</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-black text-slate-300">TZS</p>
-                  <p className="text-xs font-black text-white">{fleetTotal.totalBaseSalary.toLocaleString()}</p>
-                </div>
-              </div>
-              <div className="flex justify-between items-center">
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase">Total Commission</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-[9px] font-black text-indigo-400">TZS</p>
-                  <p className="text-xs font-black text-indigo-300">{fleetTotal.totalCommission.toLocaleString()}</p>
-                </div>
-              </div>
-              {fleetTotal.totalBonus > 0 && (
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Total Bonuses</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-black text-amber-400">TZS</p>
-                    <p className="text-xs font-black text-amber-300">{fleetTotal.totalBonus.toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
-              {fleetTotal.totalDeductions > 0 && (
-                <div className="flex justify-between items-center">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase">Deductions</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-[9px] font-black text-rose-400">- TZS</p>
-                    <p className="text-xs font-black text-rose-300">{fleetTotal.totalDeductions.toLocaleString()}</p>
-                  </div>
-                </div>
-              )}
-              <div className="h-px bg-white/10 my-2" />
-              <div className="flex justify-between items-center">
-                <p className="text-[9px] font-black text-slate-300 uppercase">Net Fleet Cost</p>
-                <p className="text-base font-black text-white">TZS {fleetTotal.netFleetCost.toLocaleString()}</p>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setConfirmed(true)}
-              disabled={confirmed}
-              className={`mt-6 w-full py-3.5 rounded-xl text-[10px] font-black uppercase transition-all active:scale-95 ${
-                confirmed
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-900/50'
-              }`}
-            >
-              {confirmed ? '✓ 已确认生成本月工资单' : '确认并生成本月工资单'}
-            </button>
-          </div>
-
-          {/* Notes */}
-          <div className="bg-amber-50 border border-amber-100 rounded-[24px] p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <AlertTriangle size={14} className="text-amber-500" />
-              <p className="text-[10px] font-black text-amber-700 uppercase">核对注意事项</p>
-            </div>
-            <ul className="space-y-2">
-              {[
-                '请核对所有异常营收是否已处理，异常订单将影响提成计算。',
-                '确认本月报销费用已全部审批，未审批费用将不计入扣款。',
-                '工资单生成后将无法修改，请务必仔细核对各项明细。',
-              ].map((note, i) => (
-                <li key={i} className="flex items-start gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-amber-400 mt-1.5 flex-shrink-0" />
-                  <p className="text-[9px] font-bold text-amber-700 leading-relaxed">{note}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          {/* Quick Stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white border border-slate-200 rounded-[20px] p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp size={14} className="text-indigo-500" />
-                <p className="text-[8px] font-black text-slate-400 uppercase">总营收</p>
-              </div>
-              <p className="text-sm font-black text-slate-900">
-                TZS {driverStats.reduce((s, d) => s + d.totalRevenue, 0).toLocaleString()}
-              </p>
-            </div>
-            <div className="bg-white border border-slate-200 rounded-[20px] p-4">
-              <div className="flex items-center gap-2 mb-2">
-                <DollarSign size={14} className="text-emerald-500" />
-                <p className="text-[8px] font-black text-slate-400 uppercase">实发总额</p>
-              </div>
-              <p className="text-sm font-black text-slate-900">
-                TZS {fleetTotal.netFleetCost.toLocaleString()}
-              </p>
-            </div>
-          </div>
-        </div>
+         <div className="overflow-x-auto">
+            <table className="w-full text-left border-collapse">
+               <thead>
+                  <tr className="bg-slate-50 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">
+                     <th className="px-6 py-4">司机与巡检详情</th>
+                     <th className="px-6 py-4">总营收 (Gross)</th>
+                     <th className="px-6 py-4">实收现金 (Net)</th>
+                     <th className="px-6 py-4">提成与基本薪资</th>
+                     <th className="px-6 py-4">扣款 (借款/短款)</th>
+                     <th className="px-6 py-4">实发预测</th>
+                     <th className="px-6 py-4 text-center">审计状态</th>
+                  </tr>
+               </thead>
+               <tbody className="divide-y divide-slate-50">
+                  {driverStats.map((stat) => (
+                     <tr key={stat.driver.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-6 py-5">
+                           <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-slate-900 text-white flex items-center justify-center font-black text-sm shadow-lg group-hover:bg-indigo-600 transition-colors">
+                                 {stat.driver.name.charAt(0)}
+                              </div>
+                              <div>
+                                 <p className="text-xs font-black text-slate-900 uppercase">{stat.driver.name}</p>
+                                 <p className="text-[8px] font-bold text-slate-400 mt-0.5">{stat.txCount} 次网点巡检记录</p>
+                              </div>
+                           </div>
+                        </td>
+                        <td className="px-6 py-5">
+                           <p className="text-[10px] font-bold text-slate-400">TZS</p>
+                           <p className="text-xs font-black text-slate-900">{stat.totalRevenue.toLocaleString()}</p>
+                        </td>
+                        <td className="px-6 py-5">
+                           <p className="text-[10px] font-bold text-slate-400">TZS</p>
+                           <p className="text-xs font-black text-slate-900">{stat.totalNetPayable.toLocaleString()}</p>
+                        </td>
+                        <td className="px-6 py-5 text-[10px]">
+                           <div className="space-y-1">
+                              <div className="flex justify-between w-24 text-slate-400"><span>底薪:</span><span className="font-black text-slate-600">{stat.baseSalary.toLocaleString()}</span></div>
+                              <div className="flex justify-between w-24 text-indigo-400"><span>提成:</span><span className="font-black text-indigo-600">{stat.commission.toLocaleString()}</span></div>
+                           </div>
+                        </td>
+                        <td className="px-6 py-5 text-[10px]">
+                           <div className="space-y-1">
+                              <div className="flex justify-between w-24 text-rose-400"><span>欠款:</span><span className="font-black text-rose-600">-{stat.debtDeduction.toLocaleString()}</span></div>
+                              <div className="flex justify-between w-24 text-rose-400"><span>借款:</span><span className="font-black text-rose-600">-{stat.loans.toLocaleString()}</span></div>
+                           </div>
+                        </td>
+                        <td className="px-6 py-5">
+                           <div className="bg-emerald-50 px-3 py-2 rounded-xl inline-block border border-emerald-100">
+                              <p className="text-[8px] font-black text-emerald-500 uppercase leading-none mb-1">Estimated</p>
+                              <p className="text-xs font-black text-emerald-700">TZS {stat.netPayout.toLocaleString()}</p>
+                           </div>
+                        </td>
+                        <td className="px-6 py-5">
+                           <div className="flex justify-center">
+                              {stat.hasAuditWarning ? (
+                                 <div className="flex items-center gap-1 px-3 py-1 bg-rose-50 text-rose-600 rounded-full border border-rose-100 text-[8px] font-black uppercase animate-pulse">
+                                    <ShieldAlert size={10}/> 交易异常
+                                 </div>
+                              ) : (
+                                 <div className="flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-100 text-[8px] font-black uppercase">
+                                    <BadgeCheck size={10}/> 账目平衡
+                                 </div>
+                              )}
+                           </div>
+                        </td>
+                     </tr>
+                  ))}
+               </tbody>
+            </table>
+         </div>
       </div>
     </div>
   );

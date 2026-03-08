@@ -2,6 +2,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight, RefreshCw, Wallet, ShieldAlert, Eye, Camera } from 'lucide-react';
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
+import { getOptimizedImageUrl } from '../utils/imageUtils';
 import DriverManagement from './DriverManagement';
 import SmartInsights from './SmartInsights';
 import LiveMap from './LiveMap';
@@ -311,7 +312,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                               <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
                                 <div className="flex items-center gap-2">
                                   {loc?.machinePhotoUrl ? (
-                                    <img src={loc.machinePhotoUrl} alt="machine" className="w-7 h-7 rounded-lg object-cover border border-slate-200"/>
+                                    <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 100, 100)} alt="machine" className="w-7 h-7 rounded-lg object-cover border border-slate-200"/>
                                   ) : (
                                     <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={12}/></div>
                                   )}
@@ -621,7 +622,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                     {/* Machine Photo — permanent display */}
                     <div className="h-36 bg-slate-100 relative overflow-hidden">
                        {loc.machinePhotoUrl ? (
-                          <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
+                          <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 400, 400)} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
                        ) : (
                           <div className="w-full h-full flex items-center justify-center text-slate-300">
                              <Store size={36} />
@@ -858,7 +859,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                             </div>
                             {tx.photoUrl && (
                               <div className="mb-3">
-                                <img src={tx.photoUrl} alt="Evidence" className="w-full h-24 object-cover rounded-xl border border-slate-200" />
+                                <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt="Evidence" className="w-full h-24 object-cover rounded-xl border border-slate-200" />
                               </div>
                             )}
                             <div className="flex gap-2">
@@ -905,7 +906,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                             {tx.photoUrl && (
                               <div className="mb-3">
                                 <p className="text-[8px] font-black text-slate-400 uppercase mb-1">Reset Evidence Photo</p>
-                                <img src={tx.photoUrl} alt="Reset proof" className="w-full h-28 object-cover rounded-xl border border-slate-200" />
+                                <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt="Reset proof" className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                               </div>
                             )}
                             <div className="flex gap-2">

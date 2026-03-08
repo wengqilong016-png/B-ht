@@ -1,7 +1,8 @@
 
 import React, { useState, useRef } from 'react';
 import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
-import { Location, Driver, CONSTANTS, safeRandomUUID, resizeImage } from '../types';
+import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
+import { compressAndResizeImage } from '../utils/imageUtils';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => void;
@@ -45,10 +46,19 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
     );
   };
 
-  const handlePhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      resizeImage(file).then(setMachinePhoto);
+      try {
+        const compressedBlob = await compressAndResizeImage(file);
+        const reader = new FileReader();
+        reader.readAsDataURL(compressedBlob);
+        reader.onloadend = () => {
+          setMachinePhoto(reader.result as string);
+        };
+      } catch (err) {
+        console.error("Compression failed", err);
+      }
     }
   };
 

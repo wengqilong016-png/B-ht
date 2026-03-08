@@ -2,7 +2,8 @@ import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { Send, Loader2, BrainCircuit, X, Layers, Coins, ArrowRight, ShieldAlert, CheckCircle2, AlertTriangle, ScanLine, Scan, Calculator, Search, HandCoins, ChevronRight, Trophy, Fuel, Banknote, Edit2, RotateCcw, Plus, Satellite, Lock, RefreshCw, Wallet, Camera, WifiOff, DatabaseBackup, Route } from 'lucide-react';
 import { GoogleGenAI } from '@google/genai';
 import EXIF from 'exif-js';
-import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, resizeImage, getDistance } from '../types';
+import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog, safeRandomUUID, getDistance } from '../types';
+import { compressAndResizeImage } from '../utils/imageUtils';
 import MachineRegistrationForm from './MachineRegistrationForm';
 import OfflineRouteMap from './OfflineRouteMap';
 import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../offlineQueue';
@@ -587,9 +588,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   };
 
   // --- 9999 Reset Request Handler ---
-  const handleResetPhotoCapture = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleResetPhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) resizeImage(file, 800, 0.6).then(setResetPhotoData);
+    if (file) {
+      try {
+        const compressedBlob = await compressAndResizeImage(file);
+        const reader = new FileReader();
+        reader.readAsDataURL(compressedBlob);
+        reader.onloadend = () => {
+          setResetPhotoData(reader.result as string);
+        };
+      } catch (err) {
+        console.error("Compression failed", err);
+      }
+    }
   };
 
   const handleSubmitResetRequest = () => {
