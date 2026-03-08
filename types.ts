@@ -332,7 +332,8 @@ export const TRANSLATIONS = {
     passwordMismatch: '两次密码不一致',
     passwordTooShort: '密码至少6位',
     updateSuccess: '更新成功',
-    updateError: '更新失败'
+    updateError: '更新失败',
+    emailConfirmationSent: '确认邮件已发送，请查收并点击链接完成邮箱修改'
   },
   sw: {
     login: 'Driver Login',
@@ -462,7 +463,8 @@ export const TRANSLATIONS = {
     passwordMismatch: 'Passwords do not match',
     passwordTooShort: 'Password must be at least 6 characters',
     updateSuccess: 'Updated successfully',
-    updateError: 'Update failed'
+    updateError: 'Update failed',
+    emailConfirmationSent: 'Confirmation email sent – please check your inbox and click the link to complete the email change'
   }
 };
 
