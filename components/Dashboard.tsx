@@ -1114,6 +1114,6 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
       )}
     </div>
   );
-};
+});
 
 export default Dashboard;
