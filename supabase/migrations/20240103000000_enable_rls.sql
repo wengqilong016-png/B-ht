@@ -88,13 +88,20 @@ CREATE POLICY "drivers_insert"
   ON public.drivers FOR INSERT
   WITH CHECK (public.get_my_role() = 'admin');
 
+-- 更新策略：管理员可更新任意司机；司机仅可更新自己的行（配合列级权限限制字段）。
 CREATE POLICY "drivers_update"
   ON public.drivers FOR UPDATE
   USING (
     public.get_my_role() = 'admin'
-    OR id = public.get_my_driver_id()
+    OR (
+      public.get_my_role() = 'driver'
+      AND id = public.get_my_driver_id()
+    )
   );
 
+-- 保护工资与债务等敏感字段：仅管理员（非 authenticated 普通用户）可更新。
+REVOKE UPDATE (baseSalary, commissionRate, initialDebt, remainingDebt)
+  ON public.drivers FROM authenticated;
 CREATE POLICY "drivers_delete"
   ON public.drivers FOR DELETE
   USING (public.get_my_role() = 'admin');
