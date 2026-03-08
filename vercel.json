@@ -1,15 +1,17 @@
 {
   "redirects": [
     {
-      "source": "/(.*)",
-      "has": [{ "type": "host", "value": "www.bahatiwin.space" }],
-      "destination": "https://bahatiwin.space/$1",
+      "source": "/:path*",
+      "has": [
+        { "type": "host", "value": "www.bahatiwin.space" }
+      ],
+      "destination": "https://bahatiwin.space/:path*",
       "permanent": true
     }
   ],
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!assets/)(?!.*\\.[^/]+$).*)",
       "destination": "/index.html"
     }
   ]
