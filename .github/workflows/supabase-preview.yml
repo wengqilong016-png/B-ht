@@ -28,13 +28,13 @@ jobs:
           version: latest
 
       - name: Create or update Supabase preview branch
-        if: github.event.action != 'closed'
+        if: ${{ github.event.action != 'closed' && env.SUPABASE_PROJECT_ID != '' }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_ID"
           supabase db push --include-all
 
       - name: Delete Supabase preview branch
-        if: github.event.action == 'closed'
+        if: ${{ github.event.action == 'closed' && env.SUPABASE_PROJECT_ID != '' }}
         run: |
           supabase link --project-ref "$SUPABASE_PROJECT_ID"
           echo "PR closed – preview branch cleanup handled by Supabase branching integration."
