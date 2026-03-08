@@ -1,6 +1,6 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight, RefreshCw, Wallet, ShieldAlert, Eye, Camera } from 'lucide-react';
+import { MapPin, Radio, Search, Calculator, AlertTriangle, CheckCircle2, Banknote, User, Pencil, ChevronRight, Receipt, Navigation, Store, ThumbsUp, ArrowRight, RefreshCw, Wallet, ShieldAlert } from 'lucide-react';
 import { Transaction, Driver, Location, CONSTANTS, User as UserType, DailySettlement, TRANSLATIONS, AILog } from '../types';
 import { getOptimizedImageUrl } from '../utils/imageUtils';
 import DriverManagement from './DriverManagement';

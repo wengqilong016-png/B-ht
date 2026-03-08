@@ -30,17 +30,6 @@ export interface User {
   driverId?: string;
 }
 
-export interface Notification {
-  id: string;
-  type: 'check-in' | 'alert' | 'system';
-  title: string;
-  message: string;
-  timestamp: string;
-  isRead: boolean;
-  relatedTransactionId?: string;
-  driverId?: string;
-}
-
 export interface AILog {
   id: string;
   timestamp: string;
