@@ -548,6 +548,12 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       }
     }
 
+    // Re-check live GPS in case it became available while awaiting EXIF
+    if (gpsCoords) {
+      setGpsSource('live');
+      processSubmission(gpsCoords, 'live');
+      return;
+    }
     // 3. Try machine's registered coordinates (estimated)
     const estimated = estimateLocationFromContext(gpsCoords, selectedLocation?.coords || null);
     if (estimated) {
