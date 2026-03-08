@@ -706,7 +706,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             onClick={() => resetFileRef.current?.click()} 
             className={`relative h-40 w-full rounded-2xl overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 ${resetPhotoData ? 'border-emerald-400' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
           >
-            <input type="file" accept="image/*" capture="environment" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
+            <input type="file" accept="image/*" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
             {resetPhotoData ? (
               <>
                 <img src={resetPhotoData} className="w-full h-full object-cover" alt="Reset proof" />

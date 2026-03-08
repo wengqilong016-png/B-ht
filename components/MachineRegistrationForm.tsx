@@ -177,7 +177,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
             onClick={() => fileInputRef.current?.click()}
             className={`relative h-48 rounded-[30px] border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all active:scale-98 ${machinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300'}`}
           >
-             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoCapture} className="hidden" />
+             <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoCapture} className="hidden" />
              {machinePhoto ? (
                <>
                  <img src={machinePhoto} className="w-full h-full object-cover grayscale" alt="Site Proof" />
