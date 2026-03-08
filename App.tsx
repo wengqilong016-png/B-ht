@@ -70,6 +70,9 @@ class ErrorBoundary extends React.Component<
   }
 }
 
+// Offline fallback data – shown only when Supabase is unreachable AND localStorage is empty.
+// These records are overwritten immediately once the app fetches live data from Supabase.
+// Do NOT add real credentials or sensitive personal data here.
 const INITIAL_DRIVERS: Driver[] = [
   { id: 'D-NUDIN', name: 'Nudin', username: 'nudin', phone: '+255 62 691 4141', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'TVS King', plate: 'T 111 AAA' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
   { id: 'D-RAJABU', name: 'Rajabu', username: 'rajabu', phone: '+255 65 106 4066', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 10000, vehicleInfo: { model: 'Bajaj', plate: 'T 222 BBB' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 },
