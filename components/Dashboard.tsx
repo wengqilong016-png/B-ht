@@ -27,7 +27,7 @@ interface DashboardProps {
   hideTabs?: boolean;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate, initialTab, hideTabs }) => {
+const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers, locations, dailySettlements, aiLogs, currentUser, onUpdateDrivers, onUpdateLocations, onUpdateTransaction, onNewTransaction, onSaveSettlement, onSync, isSyncing, offlineCount, lang, onNavigate, initialTab, hideTabs }) => {
   const t = TRANSLATIONS[lang];
   const isAdmin = currentUser.role === 'admin';
   const activeDriverId = currentUser.driverId ?? currentUser.id;
@@ -621,7 +621,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, drivers, locations,
                     {/* Machine Photo — permanent display */}
                     <div className="h-36 bg-slate-100 relative overflow-hidden">
                        {loc.machinePhotoUrl ? (
-                          <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover" />
+                          <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
                        ) : (
                           <div className="w-full h-full flex items-center justify-center text-slate-300">
                              <Store size={36} />
