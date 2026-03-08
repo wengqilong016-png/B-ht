@@ -1288,7 +1288,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
           <button 
             onClick={handleSubmit} 
-            disabled={status !== 'idle' || !currentScore || !photoData || (!gpsCoords && gpsPermission === 'prompt')} 
+            disabled={status !== 'idle' || !currentScore || !photoData} 
             className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
           >
             {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
