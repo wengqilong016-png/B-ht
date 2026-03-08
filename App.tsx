@@ -174,18 +174,18 @@ const App: React.FC = () => {
     if (online && supabase) {
       try {
         const [resLoc, resDrivers, resTx, resSettlement, resLogs] = await Promise.all([
-          supabase.from('locations').select('*'),
-          supabase.from('drivers').select('*'),
-          supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200),
-          supabase.from('daily_settlements').select('*').order('timestamp', { ascending: false }).limit(30),
-          supabase.from('ai_logs').select('*').order('timestamp', { ascending: false }).limit(50)
+          supabase.from('locations').select('id, name, machineId, lastScore, area, assignedDriverId, ownerName, shopOwnerPhone, initialStartupDebt, remainingStartupDebt, isNewOffice, coords, status, lastRevenueDate, commissionRate, resetLocked, dividendBalance'),
+          supabase.from('drivers').select('id, name, username, phone, initialDebt, remainingDebt, dailyFloatingCoins, vehicleInfo, currentGps, lastActive, status, baseSalary, commissionRate'),
+          supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(200),
+          supabase.from('daily_settlements').select('id, date, adminId, adminName, driverId, driverName, totalRevenue, totalNetPayable, totalExpenses, driverFloat, expectedTotal, actualCash, actualCoins, shortage, note, timestamp, status').order('timestamp', { ascending: false }).limit(30),
+          supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(50)
         ]);
 
-        if (resLoc.data) setLocations(resLoc.data);
-        if (resDrivers.data) setDrivers(sanitizeDrivers(resDrivers.data));
-        if (resTx.data) setTransactions(resTx.data.map(t => ({...t, isSynced: true})));
-        if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})));
-        if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})));
+        if (resLoc.data) setLocations(resLoc.data as Location[]);
+        if (resDrivers.data) setDrivers(sanitizeDrivers(resDrivers.data as Driver[]));
+        if (resTx.data) setTransactions(resTx.data.map(t => ({...t, isSynced: true})) as Transaction[]);
+        if (resSettlement.data) setDailySettlements(resSettlement.data.map(s => ({...s, isSynced: true})) as DailySettlement[]);
+        if (resLogs.data) setAiLogs(resLogs.data.map(l => ({...l, isSynced: true})) as AILog[]);
       } catch (err) {
         console.error("Supabase fetch failed, using local backup", err);
         loadFromLocalStorage();
@@ -258,7 +258,7 @@ const App: React.FC = () => {
     safeSetItem(CONSTANTS.STORAGE_AI_LOGS_KEY, JSON.stringify(aiLogs));
   }, [aiLogs]);
 
-  const syncOfflineData = async () => {
+  const syncOfflineData = React.useCallback(async () => {
     if (isSyncingRef.current || !supabase) return;
     setIsSyncing(true);
     try {
@@ -269,8 +269,8 @@ const App: React.FC = () => {
           });
           if (flushed > 0) {
             // Reload transactions from Supabase after flushing queue
-            const { data } = await supabase.from('transactions').select('*').order('timestamp', { ascending: false }).limit(200);
-            if (data) setTransactions(data.map((t: any) => ({ ...t, isSynced: true })));
+            const { data } = await supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(200);
+            if (data) setTransactions(data.map((t: any) => ({ ...t, isSynced: true })) as Transaction[]);
           }
         } catch (e) {
           console.warn('[OfflineQueue] flush error (non-fatal):', e);
@@ -326,9 +326,9 @@ const App: React.FC = () => {
     } finally {
         setIsSyncing(false);
     }
-  };
+  }, []);
 
-  const handleUpdateDrivers = async (updatedDrivers: Driver[]) => {
+  const handleUpdateDrivers = React.useCallback(async (updatedDrivers: Driver[]) => {
     const sanitizedDrivers = sanitizeDrivers(updatedDrivers);
     setDrivers(sanitizedDrivers);
     if (isOnline && supabase) {
@@ -340,16 +340,16 @@ const App: React.FC = () => {
          if (error) console.error("Error upserting driver:", error.message, error.details);
        });
     }
-  };
+  }, [isOnline]);
 
-  const handleUpdateLocations = async (updatedLocations: Location[]) => {
+  const handleUpdateLocations = React.useCallback(async (updatedLocations: Location[]) => {
     setLocations(updatedLocations);
     if (isOnline && supabase) {
        await Promise.all(updatedLocations.map(l => supabase.from('locations').upsert({...l, isSynced: true})));
     }
-  };
+  }, [isOnline]);
 
-  const handleDeleteLocations = async (ids: string[]) => {
+  const handleDeleteLocations = React.useCallback(async (ids: string[]) => {
     // 1. 本地删除
     setLocations(prev => prev.filter(l => !ids.includes(l.id)));
     
@@ -359,9 +359,9 @@ const App: React.FC = () => {
       if (error) console.error("Cloud delete failed:", error.message);
       else console.log(`Successfully deleted ${ids.length} locations from cloud.`);
     }
-  };
+  }, [isOnline]);
 
-  const handleUpdateTransaction = async (txId: string, updates: Partial<Transaction>) => {
+  const handleUpdateTransaction = React.useCallback(async (txId: string, updates: Partial<Transaction>) => {
     setTransactions(prev => prev.map(t => t.id === txId ? { ...t, ...updates, isSynced: false } : t));
     if (isOnline && supabase) {
         const tx = transactionsRef.current.find(t => t.id === txId);
@@ -370,9 +370,9 @@ const App: React.FC = () => {
             if (!error) setTransactions(prev => prev.map(t => t.id === txId ? { ...t, ...updates, isSynced: true } : t));
         }
     }
-  };
+  }, [isOnline]);
 
-  const handleNewTransaction = async (tx: Transaction) => {
+  const handleNewTransaction = React.useCallback(async (tx: Transaction) => {
     const txToSave = { ...tx, isSynced: false };
     setTransactions(prev => [txToSave, ...prev]);
     
@@ -451,9 +451,9 @@ const App: React.FC = () => {
           }
        }
     }
-  };
+  }, [isOnline]);
 
-  const handleSaveSettlement = async (settlement: DailySettlement) => {
+  const handleSaveSettlement = React.useCallback(async (settlement: DailySettlement) => {
     const stlToSave = { ...settlement, isSynced: false };
     setDailySettlements(prev => {
       const exists = prev.find(s => s.id === settlement.id);
@@ -482,16 +482,16 @@ const App: React.FC = () => {
     } else {
        updateDriverCoinBalance(settlement.driverId, nextDayStartingCoins);
     }
-  };
+  }, [isOnline]);
 
-  const handleLogAI = async (log: AILog) => {
+  const handleLogAI = React.useCallback(async (log: AILog) => {
     const logToSave = { ...log, isSynced: false };
     setAiLogs(prev => [logToSave, ...prev]);
     if (isOnline && supabase) {
       const { error } = await supabase.from('ai_logs').insert({ ...log, isSynced: true });
       if (!error) setAiLogs(prev => prev.map(l => l.id === log.id ? { ...l, isSynced: true } : l));
     }
-  };
+  }, [isOnline]);
 
   const handleUserLogin = (user: User) => {
     setCurrentUser(user);
