@@ -1,0 +1,40 @@
+name: Supabase Preview Branch
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+jobs:
+  supabase_preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+
+    env:
+      SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+      SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
+      SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Create or update Supabase preview branch
+        if: github.event.action != 'closed'
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          supabase db push --include-all
+
+      - name: Delete Supabase preview branch
+        if: github.event.action == 'closed'
+        run: |
+          supabase link --project-ref "$SUPABASE_PROJECT_ID"
+          echo "PR closed – preview branch cleanup handled by Supabase branching integration."
