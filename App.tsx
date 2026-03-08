@@ -10,11 +10,12 @@ import AIHub from './components/AIHub';
 import DebtManager from './components/DebtManager';
 import BillingReconciliation from './components/BillingReconciliation';
 import DriverManagement from './components/DriverManagement';
+import AccountSettings from './components/AccountSettings';
 import { 
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain, 
   LogOut, Globe, Loader2, CloudOff, Menu, X,
   CheckSquare, Crown, ShieldCheck, AlertTriangle,
-  MapPin, Store, Users, FileSpreadsheet, History, Banknote
+  MapPin, Store, Users, FileSpreadsheet, History, Banknote, Settings
 } from 'lucide-react';
 import { supabase, checkDbHealth } from './supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
@@ -87,6 +88,7 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(false);
   
   const [aiContextId, setAiContextId] = useState<string>('');
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
   const t = TRANSLATIONS[lang];
   const activeDriverId = currentUser?.driverId ?? currentUser?.id;
 
@@ -716,6 +718,7 @@ const App: React.FC = () => {
               </div>
               <div className="flex flex-col gap-1">
                 <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Globe size={12}/></button>
+                <button onClick={() => setShowAccountSettings(true)} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Settings size={12}/></button>
                 <button onClick={handleLogout} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
               </div>
             </div>
@@ -792,6 +795,7 @@ const App: React.FC = () => {
                 </button>
               )}
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
+              <button onClick={() => setShowAccountSettings(true)} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Settings size={15}/></button>
               <button onClick={handleLogout} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
             </div>
           </div>
@@ -961,6 +965,17 @@ const App: React.FC = () => {
       </div>
 
       <Analytics />
+
+      {showAccountSettings && currentUser && (
+        <AccountSettings
+          currentUser={currentUser}
+          lang={lang}
+          onClose={() => setShowAccountSettings(false)}
+          onPhoneUpdated={(driverId, phone) => {
+            setDrivers(prev => prev.map(d => d.id === driverId ? { ...d, phone } : d));
+          }}
+        />
+      )}
     </div>
   );
 };
