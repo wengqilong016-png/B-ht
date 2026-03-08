@@ -330,7 +330,20 @@ export const TRANSLATIONS = {
     staleGps: '定位延迟',
     liveNow: '在线中',
     noDriversFound: '没有符合筛选条件的司机',
-    risk9999: '9999风险'
+    risk9999: '9999风险',
+    accountSettings: '账号设置',
+    changePassword: '修改密码',
+    newPassword: '新密码',
+    confirmPassword: '确认密码',
+    changeEmail: '修改邮箱',
+    newEmail: '新邮箱',
+    updatePhone: '修改手机号',
+    newPhone: '新手机号',
+    saveChanges: '保存',
+    passwordMismatch: '两次密码不一致',
+    passwordTooShort: '密码至少6位',
+    updateSuccess: '更新成功',
+    updateError: '更新失败'
   },
   sw: {
     login: 'Driver Login',
@@ -447,7 +460,20 @@ export const TRANSLATIONS = {
     staleGps: 'Stale GPS',
     liveNow: 'Live Now',
     noDriversFound: 'No drivers match the current filter',
-    risk9999: '9999 Risk'
+    risk9999: '9999 Risk',
+    accountSettings: 'Account Settings',
+    changePassword: 'Change Password',
+    newPassword: 'New Password',
+    confirmPassword: 'Confirm Password',
+    changeEmail: 'Change Email',
+    newEmail: 'New Email',
+    updatePhone: 'Update Phone',
+    newPhone: 'New Phone Number',
+    saveChanges: 'Save',
+    passwordMismatch: 'Passwords do not match',
+    passwordTooShort: 'Password must be at least 6 characters',
+    updateSuccess: 'Updated successfully',
+    updateError: 'Update failed'
   }
 };
 
