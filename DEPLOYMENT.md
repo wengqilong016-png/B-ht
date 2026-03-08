@@ -12,6 +12,7 @@ All frontend variables **must** be prefixed with `VITE_` so that Vite exposes th
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key | Yes |
 | `VITE_GEMINI_API_KEY` | Google Gemini API key | Yes |
 | `VITE_STATUS_API_BASE` | Base URL for the status API (e.g. `https://your-status-api.example.com`) | Optional |
+| `VITE_INTERNAL_API_KEY` | API key sent as `X-API-KEY` header to the status API | Optional |
 | `SUPABASE_URL` | Your Supabase project URL for the backend status API (`status_api.py`) | Yes (backend) |
 | `SUPABASE_KEY` | Supabase service role key for the backend status API (`status_api.py`) | Yes (backend) |
 
@@ -23,6 +24,8 @@ All frontend variables **must** be prefixed with `VITE_` so that Vite exposes th
 2. Go to **Settings → Environment Variables**.
 3. Add each variable from the table above with the appropriate value for each environment (Production, Preview, Development).
 4. Redeploy the project after saving the variables.
+
+> **If you see a white screen after deployment**, the most common cause is missing `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY`. Check the browser console for a `[Bahati] Supabase is not configured` warning. A second common cause is a stale service-worker cache – the service worker has been updated to always fetch fresh HTML, so a hard-refresh (`Ctrl+Shift+R`) or clearing site data will resolve it on existing installs.
 
 ## Local Development
 
@@ -39,6 +42,7 @@ VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
 VITE_GEMINI_API_KEY=your_gemini_api_key_here
 VITE_STATUS_API_BASE=http://localhost:5000
+VITE_INTERNAL_API_KEY=your_internal_api_key_here
 ```
 
 Then start the dev server:
