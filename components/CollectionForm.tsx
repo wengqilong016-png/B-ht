@@ -548,8 +548,14 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       }
     }
 
+    // Re-check live GPS in case it became available while awaiting EXIF
+    if (gpsCoords) {
+      setGpsSource('live');
+      processSubmission(gpsCoords, 'live');
+      return;
+    }
     // 3. Try machine's registered coordinates (estimated)
-    const estimated = estimateLocationFromContext(null, selectedLocation?.coords || null);
+    const estimated = estimateLocationFromContext(gpsCoords, selectedLocation?.coords || null);
     if (estimated) {
       const confirmEst = confirm(
         lang === 'zh'
@@ -706,7 +712,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             onClick={() => resetFileRef.current?.click()} 
             className={`relative h-40 w-full rounded-2xl overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 ${resetPhotoData ? 'border-emerald-400' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
           >
-            <input type="file" accept="image/*" capture="environment" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
+            <input type="file" accept="image/*" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
             {resetPhotoData ? (
               <>
                 <img src={resetPhotoData} className="w-full h-full object-cover" alt="Reset proof" />
@@ -1282,7 +1288,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
           <button 
             onClick={handleSubmit} 
-            disabled={status !== 'idle' || !currentScore || !photoData || !gpsCoords} 
+            disabled={status !== 'idle' || !currentScore || !photoData} 
             className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
           >
             {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
