@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase, checkDbHealth } from '../supabaseClient';
 import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
@@ -106,6 +107,19 @@ export function useSupabaseData() {
     enabled: !!transactions.length, // Defer even further
     staleTime: 1000 * 60 * 10,
   });
+
+  // When we come online, force-refresh all data from Supabase.
+  // This fixes the race condition where data queries see isOnline=false on
+  // initial render (before the health check returns) and cache localDB data
+  // with a long staleTime, so they never re-fetch from Supabase.
+  useEffect(() => {
+    if (!isOnline) return;
+    queryClient.invalidateQueries({ queryKey: ['locations'] });
+    queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    queryClient.invalidateQueries({ queryKey: ['transactions'] });
+    queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
+    queryClient.invalidateQueries({ queryKey: ['aiLogs'] });
+  }, [isOnline, queryClient]);
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;
