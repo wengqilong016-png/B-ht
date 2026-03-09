@@ -136,8 +136,27 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, l
                                  {tx.isAnomaly ? '⚠ 存在读数差异' : '✅ 读数完全吻合'}
                               </span>
                            </div>
-                           <div className="p-2 bg-slate-50 rounded-lg">
-                              <p className="text-[9px] font-bold text-slate-500 leading-relaxed italic">“ {tx.notes || '现场情况正常，建议入库。'} ”</p>
+                           <div className="p-3 bg-slate-50 rounded-xl relative group">
+                              <p className="text-[9px] font-bold text-slate-600 leading-relaxed italic">“ {tx.notes || '现场情况正常，建议入库。'} ”</p>
+                              {tx.notes && (
+                                <button 
+                                  onClick={async (e) => {
+                                    const btn = e.currentTarget;
+                                    btn.innerHTML = '翻译中...';
+                                    try {
+                                      const { translateToChinese } = await import('../services/translateService');
+                                      const res = await translateToChinese(tx.notes || '');
+                                      btn.parentElement!.querySelector('p')!.innerText = `“ ${res} ”`;
+                                      btn.style.display = 'none';
+                                    } catch (err) {
+                                      btn.innerHTML = '翻译失败';
+                                    }
+                                  }}
+                                  className="absolute top-2 right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[8px] font-black"
+                                >
+                                  <Globe size={10} /> 翻译
+                                </button>
+                              )}
                            </div>
                         </div>
                       )}

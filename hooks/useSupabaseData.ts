@@ -61,7 +61,7 @@ export function useSupabaseData() {
     queryKey: ['transactions'],
     queryFn: async () => {
       if (isOnline && supabase) {
-        const { data, error } = await supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(100); // Reduced limit for initial load
+        const { data, error } = await supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(2000); // 提升至2000条支持大规模回溯
         if (!error && data) {
           const mapped = data.map(t => ({...t, isSynced: true})) as Transaction[];
           await localDB.set(CONSTANTS.STORAGE_TRANSACTIONS_KEY, mapped);
@@ -78,7 +78,7 @@ export function useSupabaseData() {
     queryKey: ['dailySettlements'],
     queryFn: async () => {
       if (isOnline && supabase) {
-        const { data, error } = await supabase.from('daily_settlements').select('id, date, adminId, adminName, driverId, driverName, totalRevenue, totalNetPayable, totalExpenses, driverFloat, expectedTotal, actualCash, actualCoins, shortage, note, timestamp, status').order('timestamp', { ascending: false }).limit(20);
+        const { data, error } = await supabase.from('daily_settlements').select('id, date, adminId, adminName, driverId, driverName, totalRevenue, totalNetPayable, totalExpenses, driverFloat, expectedTotal, actualCash, actualCoins, shortage, note, timestamp, status').order('timestamp', { ascending: false }).limit(500);
         if (!error && data) {
           const mapped = data.map(s => ({...s, isSynced: true})) as DailySettlement[];
           await localDB.set(CONSTANTS.STORAGE_SETTLEMENTS_KEY, mapped);
@@ -95,7 +95,7 @@ export function useSupabaseData() {
     queryKey: ['aiLogs'],
     queryFn: async () => {
       if (isOnline && supabase) {
-         const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(30);
+         const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(500);
          if (!error && data) {
            const mapped = data.map(l => ({...l, isSynced: true})) as AILog[];
            await localDB.set(CONSTANTS.STORAGE_AI_LOGS_KEY, mapped);
