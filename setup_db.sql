@@ -513,22 +513,18 @@ BEGIN
 END $$;
 
 -- ════════════════════════════════════════════════════════════════════════════
--- 13. 初始司机账号 (Seed Driver Accounts)
--- 在 Supabase 控制台 → Authentication → Users 中先创建以下4个用户，
--- 然后在 SQL Editor 执行以下 INSERT 语句将 auth_user_id 填入 profiles。
+-- 13. 初始账号 (Seed Auth Accounts)
 --
--- 用户邮箱 / 初始密码（首次登录后务必在 App 内修改密码！请勿使用默认密码上线）:
---   feilong@bahati.com  / 请使用强密码替换
---   q@bahati.com        / 请使用强密码替换
---   sudi@bahati.com     / 请使用强密码替换
---   w@bahati.com        / 请使用强密码替换
+-- ✅ 已自动化：请直接执行以下迁移文件，它会在 Supabase Auth 中自动创建或
+--    重置所有账号（包括管理员），并关联 profiles 表，无需手动操作：
 --
--- Step 1: 在 Supabase Auth 中创建用户后，查询其 UUID:
---   SELECT id, email FROM auth.users WHERE email IN (
---     'feilong@bahati.com','q@bahati.com','sudi@bahati.com','w@bahati.com'
---   );
+--    supabase/migrations/20240201000000_seed_auth_users.sql
 --
--- Step 2: 在 public.drivers 中创建记录（如未存在）:
+-- ⚠️  安全提示：该迁移文件中的初始密码均为临时弱密码，仅用于首次登录。
+--    上线后必须立即修改所有账号密码，请勿将默认密码保留用于生产环境。
+--
+-- 若需重置任一账号密码，重新运行上述迁移文件即可（幂等操作）。
+-- ════════════════════════════════════════════════════════════════════════════
 INSERT INTO public.drivers (id, name, username, phone, "initialDebt", "remainingDebt", "dailyFloatingCoins", "vehicleInfo", status, "baseSalary", "commissionRate")
 VALUES
   ('D-FEILONG', 'Feilong', 'feilong', '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
@@ -536,13 +532,12 @@ VALUES
   ('D-SUDI',    'Sudi',    'sudi',    '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
   ('D-W',       'W',       'w',       '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05)
 ON CONFLICT (id) DO NOTHING;
---
--- Step 3: 将 auth.users.id 和 drivers.id 关联到 profiles（替换下方 UUID）:
--- INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
--- VALUES
---   ('<feilong_auth_uuid>', 'driver', 'Feilong', 'D-FEILONG'),
---   ('<q_auth_uuid>',       'driver', 'Q',       'D-Q'),
---   ('<sudi_auth_uuid>',    'driver', 'Sudi',    'D-SUDI'),
---   ('<w_auth_uuid>',       'driver', 'W',       'D-W')
--- ON CONFLICT (auth_user_id) DO NOTHING;
+-- ════════════════════════════════════════════════════════════════════════════
+INSERT INTO public.drivers (id, name, username, phone, "initialDebt", "remainingDebt", "dailyFloatingCoins", "vehicleInfo", status, "baseSalary", "commissionRate")
+VALUES
+  ('D-FEILONG', 'Feilong', 'feilong', '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+  ('D-Q',       'Q',       'q',       '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+  ('D-SUDI',    'Sudi',    'sudi',    '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+  ('D-W',       'W',       'w',       '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05)
+ON CONFLICT (id) DO NOTHING;
 -- ════════════════════════════════════════════════════════════════════════════
