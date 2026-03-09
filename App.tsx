@@ -32,12 +32,16 @@ const LoadingFallback = () => (
   </div>
 );
 
-// Global ErrorBoundary
-class ErrorBoundary extends React.Component<
-  { children: React.ReactNode },
-  { hasError: boolean; error: string }
-> {
-  constructor(props: { children: React.ReactNode }) {
+interface ErrorBoundaryProps {
+  children: React.ReactNode;
+}
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error: string;
+}
+
+class ErrorBoundary extends React.Component<any, any> {
+  constructor(props: any) {
     super(props);
     this.state = { hasError: false, error: '' };
   }
@@ -108,7 +112,7 @@ const App: React.FC = () => {
     const loadUser = async () => {
       const result = await restoreCurrentUserFromSession();
       if (!result.success) {
-        if (result.error !== 'No active session') {
+        if ('error' in result && result.error !== 'No active session') {
            await signOutCurrentUser();
         }
         setIsInitializing(false);

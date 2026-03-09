@@ -38,7 +38,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
     if (!result.success) {
       await signOutCurrentUser();
-      setError(resolveLoginError(result.error));
+      setError(resolveLoginError('error' in result ? (result as any).error : 'Unknown error'));
       return;
     }
 

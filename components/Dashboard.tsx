@@ -101,7 +101,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
     return drivers.filter(d => d.status === 'active').map(driver => {
       const driverTxs = txByDriver.get(driver.id) ?? [];
       const driverSettlements = settlementByDriver.get(driver.id) ?? [];
-      const monthlyBreakdown = months.map(month => {
+      const monthlyBreakdown = (months as string[]).map((month: string) => {
         const monthTxs = driverTxs.filter(t => t.timestamp.startsWith(month));
         const monthSettlements = driverSettlements.filter(s => s.date.startsWith(month));
         const totalRevenue = monthTxs.reduce((sum, t) => sum + t.revenue, 0);

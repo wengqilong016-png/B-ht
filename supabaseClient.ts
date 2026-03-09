@@ -1,23 +1,13 @@
 // supabaseClient.ts
-
 import { createClient } from '@supabase/supabase-js';
 
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '';
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? '';
+// 强制注入配置（这是你的 Supabase 恢复后的地址）
+export const SUPABASE_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjU4NDgsImV4cCI6MjA4NzIwMTg0OH0.MkLFBP9GIjY21tfWepQFyaCAC5KHCzUVcYOB43g4s4U';
 
-const hasSupabaseConfig = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+const hasSupabaseConfig = true; // 强制设为 true
 
-if (!hasSupabaseConfig) {
-  console.warn(
-    '[Bahati] Supabase is not configured – set VITE_SUPABASE_URL and ' +
-    'VITE_SUPABASE_ANON_KEY in your Vercel project environment variables. ' +
-    'The app will run in offline/local mode only.'
-  );
-}
-
-export const supabase = hasSupabaseConfig
-  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const checkDbHealth = async () => {
   if (!supabase) return false;
@@ -25,7 +15,6 @@ export const checkDbHealth = async () => {
     const { error } = await supabase.from('drivers').select('id').limit(1);
     return !error;
   } catch (err) {
-    console.error('Supabase health check failed:', err);
     return false;
   }
 };
