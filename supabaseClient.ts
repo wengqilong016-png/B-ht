@@ -12,7 +12,12 @@ export const supabase = hasSupabaseConfig ? createClient(SUPABASE_URL, SUPABASE_
 export const checkDbHealth = async () => {
   if (!supabase) return false;
   try {
-    const { error } = await supabase.from('drivers').select('id').limit(1);
+    // We use a simple select on a table that might be public or just check if the client can reach Supabase
+    const { error } = await supabase.from('locations').select('id').limit(1);
+    // If it's a connection error (no network), it returns error.
+    // If it's a permission error (PGRST116/401), it means Supabase IS reachable, just needs login.
+    if (error && error.code === 'PGRST116') return true; // Means table exists but empty or restricted
+    if (error && (error as any).status === 401) return true; // Reachable but Unauthorized
     return !error;
   } catch (err) {
     return false;
