@@ -23,10 +23,21 @@ async function uploadData() {
   const backup = JSON.parse(fs.readFileSync(BACKUP_FILE, 'utf8'));
   console.log(`Starting data upload. Found: ${backup.locations.length} locations, ${backup.drivers.length} drivers, ${backup.transactions.length} transactions.`);
 
+  // Helper to clean object based on known good fields (minimal set)
+  const cleanObject = (obj, allowedFields) => {
+    const newObj = {};
+    allowedFields.forEach(f => {
+      if (obj[f] !== undefined) newObj[f] = obj[f];
+    });
+    return newObj;
+  };
+
   // 1. Upload Drivers
   if (backup.drivers.length > 0) {
     console.log('Uploading drivers...');
-    const { error } = await supabase.from('drivers').upsert(backup.drivers);
+    const driverFields = ['id', 'name', 'username', 'phone', 'initialDebt', 'remainingDebt', 'dailyFloatingCoins', 'vehicleInfo', 'currentGps', 'lastActive', 'status', 'baseSalary', 'commissionRate'];
+    const cleanedDrivers = backup.drivers.map(d => cleanObject(d, driverFields));
+    const { error } = await supabase.from('drivers').upsert(cleanedDrivers);
     if (error) console.error('Error uploading drivers:', error.message);
     else console.log('✅ Drivers uploaded.');
   }
@@ -34,10 +45,10 @@ async function uploadData() {
   // 2. Upload Locations
   if (backup.locations.length > 0) {
     console.log('Uploading locations...');
-    // Split into chunks if too large (Supabase limits)
+    const locFields = ['id', 'name', 'machineId', 'lastScore', 'area', 'assignedDriverId', 'ownerName', 'shopOwnerPhone', 'ownerPhotoUrl', 'machinePhotoUrl', 'initialStartupDebt', 'remainingStartupDebt', 'isNewOffice', 'coords', 'status', 'lastRevenueDate', 'commissionRate', 'resetLocked', 'dividendBalance'];
     const chunkSize = 50;
     for (let i = 0; i < backup.locations.length; i += chunkSize) {
-      const chunk = backup.locations.slice(i, i + chunkSize);
+      const chunk = backup.locations.slice(i, i + chunkSize).map(l => cleanObject(l, locFields));
       const { error } = await supabase.from('locations').upsert(chunk);
       if (error) console.error(`Error uploading locations chunk ${i}:`, error.message);
     }
@@ -47,8 +58,8 @@ async function uploadData() {
   // 3. Upload Transactions
   if (backup.transactions.length > 0) {
     console.log('Uploading transactions...');
-    // We only upload valid transactions (exclude potential placeholders)
-    const validTxs = backup.transactions.filter(t => t.locationId && t.driverId);
+    const txFields = ['id', 'timestamp', 'locationId', 'locationName', 'driverId', 'driverName', 'previousScore', 'currentScore', 'revenue', 'commission', 'ownerRetention', 'debtDeduction', 'startupDebtDeduction', 'expenses', 'coinExchange', 'extraIncome', 'netPayable', 'gps', 'photoUrl', 'aiScore', 'isAnomaly', 'notes', 'paymentStatus', 'type', 'approvalStatus', 'expenseType', 'expenseCategory', 'expenseStatus'];
+    const validTxs = backup.transactions.filter(t => t.locationId && t.driverId).map(t => cleanObject(t, txFields));
     const chunkSize = 50;
     for (let i = 0; i < validTxs.length; i += chunkSize) {
         const chunk = validTxs.slice(i, i + chunkSize);
