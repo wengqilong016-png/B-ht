@@ -1,0 +1,189 @@
+import React, { Suspense, lazy, useState } from 'react';
+import {
+  PlusCircle, CreditCard, LogOut, Globe, Loader2, CloudOff,
+  Crown, ShieldCheck, AlertTriangle, History, Banknote, Settings
+} from 'lucide-react';
+import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
+
+const Dashboard = lazy(() => import('../components/Dashboard'));
+const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
+const TransactionHistory = lazy(() => import('../components/TransactionHistory'));
+const DebtManager = lazy(() => import('../components/DebtManager'));
+const AccountSettings = lazy(() => import('../components/AccountSettings'));
+const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
+
+const LoadingFallback = () => (
+  <div className="flex-1 flex flex-col items-center justify-center p-12">
+    <Loader2 size={32} className="text-indigo-600 animate-spin mb-4" />
+    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Module...</p>
+  </div>
+);
+
+type DriverView = 'collect' | 'settlement' | 'debt' | 'history';
+
+interface AppDriverShellProps {
+  currentUser: User;
+  lang: 'zh' | 'sw';
+  isOnline: boolean;
+  locations: Location[];
+  drivers: Driver[];
+  transactions: Transaction[];
+  dailySettlements: DailySettlement[];
+  aiLogs: AILog[];
+  filteredLocations: Location[];
+  filteredDrivers: Driver[];
+  filteredTransactions: Transaction[];
+  filteredSettlements: DailySettlement[];
+  unsyncedCount: number;
+  activeDriverId: string | undefined;
+  syncOfflineData: { mutate: () => void; isPending: boolean };
+  updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
+  updateLocations: { mutate: (l: Location[]) => void };
+  deleteLocations: { mutate: (ids: string[]) => void };
+  updateTransaction: { mutate: (args: { txId: string; updates: Partial<Transaction> }) => void };
+  saveSettlement: { mutate: (s: DailySettlement) => void };
+  logAI: { mutate: (l: AILog) => void };
+  onSetLang: (lang: 'zh' | 'sw') => void;
+  onLogout: () => void;
+}
+
+const AppDriverShell: React.FC<AppDriverShellProps> = ({
+  currentUser, lang, isOnline,
+  locations, drivers, transactions, dailySettlements, aiLogs,
+  filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
+  unsyncedCount, activeDriverId,
+  syncOfflineData, updateDrivers, updateLocations, deleteLocations,
+  updateTransaction, saveSettlement, logAI,
+  onSetLang, onLogout,
+}) => {
+  const t = TRANSLATIONS[lang];
+  const [view, setView] = useState<DriverView>('collect');
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+        {/* Header */}
+        <header className="border-b flex-shrink-0 z-30 bg-slate-900 border-white/10">
+          <div className="flex items-center justify-between px-4 py-3">
+            <div className="flex items-center gap-2">
+              <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-[10px]">
+                <Crown size={14} fill="currentColor" />
+              </div>
+              <div>
+                <p className="text-[11px] font-black text-white leading-none">BAHATI</p>
+                <p className="text-[8px] font-bold text-slate-400 uppercase leading-none">{currentUser.name}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => syncOfflineData.mutate()}
+                disabled={syncOfflineData.isPending || !isOnline}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-[9px] font-black uppercase transition-all ${
+                  !isOnline ? 'bg-rose-500/10 text-rose-400' :
+                  unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
+                  'bg-emerald-500/10 text-emerald-400'
+                }`}
+              >
+                {!isOnline ? <CloudOff size={11}/> : unsyncedCount > 0 ? <AlertTriangle size={11}/> : <ShieldCheck size={11}/>}
+                {!isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount}` : 'Synced'}
+              </button>
+              <Suspense fallback={null}>
+                <PwaInstallPrompt variant="dark" lang={lang} />
+              </Suspense>
+              <button onClick={() => onSetLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white/10 text-white hover:bg-white/20"><Globe size={15}/></button>
+              <button onClick={() => setShowAccountSettings(true)} className="p-2 rounded-subcard bg-white/10 text-white hover:bg-white/20"><Settings size={15}/></button>
+              <button onClick={onLogout} className="p-2 rounded-subcard bg-rose-500/20 text-rose-400"><LogOut size={15}/></button>
+            </div>
+          </div>
+
+          {/* Driver 4-tab nav */}
+          <div className="flex border-t border-white/10">
+            {[
+              { id: 'collect' as const, icon: <PlusCircle size={16}/>, label: t.collect },
+              { id: 'settlement' as const, icon: <Banknote size={16}/>, label: t.dailySettlement },
+              { id: 'debt' as const, icon: <CreditCard size={16}/>, label: t.debt },
+              { id: 'history' as const, icon: <History size={16}/>, label: lang === 'sw' ? 'Historia' : '记录' },
+            ].map((item) => (
+              <button
+                key={item.id}
+                onClick={() => setView(item.id)}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[9px] font-black uppercase transition-all ${
+                  view === item.id ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400'
+                }`}
+              >
+                {item.icon}
+                <span>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </header>
+
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#f3f5f8]">
+          <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
+            <Suspense fallback={<LoadingFallback />}>
+              {view === 'collect' && (
+                <DriverCollectionFlow
+                  locations={filteredLocations}
+                  currentDriver={drivers.find(d => d.id === activeDriverId) || drivers[0]}
+                  onSubmit={() => syncOfflineData.mutate()}
+                  lang={lang}
+                  onLogAI={(l) => logAI.mutate(l)}
+                  isOnline={isOnline}
+                  allTransactions={filteredTransactions}
+                  onRegisterMachine={async (loc) => {
+                    const newLoc = { ...loc, isSynced: false, assignedDriverId: activeDriverId };
+                    updateLocations.mutate([...locations, newLoc]);
+                  }}
+                />
+              )}
+              {view === 'settlement' && (
+                <Dashboard
+                  transactions={filteredTransactions}
+                  drivers={filteredDrivers}
+                  locations={filteredLocations}
+                  dailySettlements={filteredSettlements}
+                  aiLogs={aiLogs}
+                  currentUser={currentUser}
+                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onUpdateLocations={(l) => updateLocations.mutate(l)}
+                  onDeleteLocations={(ids) => deleteLocations.mutate(ids)}
+                  onUpdateTransaction={(id, updates) => updateTransaction.mutate({txId: id, updates})}
+                  onNewTransaction={() => {}}
+                  onSaveSettlement={(s) => saveSettlement.mutate(s)}
+                  onSync={async () => syncOfflineData.mutate()}
+                  isSyncing={syncOfflineData.isPending}
+                  offlineCount={unsyncedCount}
+                  lang={lang}
+                  onNavigate={(v) => setView(v as any)}
+                  initialTab="settlement"
+                  hideTabs={true}
+                />
+              )}
+              {view === 'debt' && (
+                <DebtManager drivers={filteredDrivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={(l) => updateLocations.mutate(l)} lang={lang} />
+              )}
+              {view === 'history' && (
+                <TransactionHistory transactions={filteredTransactions} locations={locations} onAnalyze={() => {}} />
+              )}
+            </Suspense>
+          </div>
+        </main>
+      </div>
+
+      {showAccountSettings && currentUser && (
+        <AccountSettings
+          currentUser={currentUser}
+          lang={lang}
+          onClose={() => setShowAccountSettings(false)}
+          onPhoneUpdated={(driverId, phone) => {
+            const updated = drivers.map(d => d.id === driverId ? { ...d, phone } : d);
+            updateDrivers.mutate(updated);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+export default AppDriverShell;
