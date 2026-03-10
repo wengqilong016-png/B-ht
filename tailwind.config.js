@@ -5,6 +5,9 @@ export default {
     './*.{ts,tsx}',
     './components/**/*.{ts,tsx}',
     './hooks/**/*.{ts,tsx}',
+    './driver/**/*.{ts,tsx}',
+    './admin/**/*.{ts,tsx}',
+    './shared/**/*.{ts,tsx}',
   ],
   theme: {
     extend: {

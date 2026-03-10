@@ -1,0 +1,18 @@
+/* ─── Theme Variants ──────────────────────────────────────────────── */
+/* Admin Soft Console theme */
+.theme-admin {
+  --theme-bg: #f3f5f8;
+  --theme-surface: #ffffff;
+  --theme-border: rgba(226, 232, 240, 1);
+  --theme-text: #1e293b;
+  --theme-accent: #4f46e5;
+}
+
+/* Driver Field Mode theme */
+.theme-driver {
+  --theme-bg: #0f172a;
+  --theme-surface: #1e293b;
+  --theme-border: rgba(255, 255, 255, 0.1);
+  --theme-text: #f8fafc;
+  --theme-accent: #f59e0b;
+}

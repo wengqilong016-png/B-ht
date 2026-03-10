@@ -123,6 +123,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
             <button type="submit" disabled={isLoading} className="w-full bg-silicone-gradient text-indigo-600 font-black py-4 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all">
               {isLoading ? <Loader2 size={20} className="animate-spin text-indigo-600" /> : <span className="flex items-center gap-2">{t.loginBtn} <ArrowRight size={20} /></span>}
             </button>
+
+            {/* Environment status placeholder — reserved for future connection diagnostics */}
+            <div className="text-center">
+              <p className={`text-[8px] font-bold uppercase tracking-widest ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'offline' ? 'text-rose-400' : 'text-slate-300'}`}>
+                {dbStatus === 'online' ? '● Connected' : dbStatus === 'offline' ? '● Offline' : '● Checking...'}
+              </p>
+            </div>
           </form>
         </div>
       </div>
