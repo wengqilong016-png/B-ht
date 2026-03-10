@@ -1218,7 +1218,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               </div>
               <div className="text-right">
                 <p className="text-xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
-                <p className="text-[8px] opacity-60 uppercase">Gross Revenue</p>
+                <p className="text-[8px] opacity-60 uppercase">{t.revenue}</p>
               </div>
             </div>
           )}
@@ -1397,7 +1397,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               </div>
             )}
             <p className="text-2xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
-            <p className="text-[8px] opacity-60 uppercase">Gross Revenue</p>
+            <p className="text-[8px] opacity-60 uppercase">{t.revenue}</p>
           </div>
         </div>
 
@@ -1548,7 +1548,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       <div className="bg-slate-900 rounded-subcard p-5 text-white flex justify-between items-center">
         <div>
           <p className="text-[10px] font-black uppercase opacity-60">{t.net}</p>
-          <p className="text-[8px] font-bold opacity-40 uppercase mt-0.5">Cash to hand in</p>
+          <p className="text-[8px] font-bold opacity-40 uppercase mt-0.5">{t.cashToHandIn}</p>
         </div>
         <p className="text-4xl font-black">TZS {calculations.netPayable.toLocaleString()}</p>
       </div>
@@ -1556,11 +1556,11 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
       {/* Summary breakdown */}
       <div className="bg-white rounded-subcard border border-slate-200 shadow-field divide-y divide-slate-100">
         {[
-          { label: 'Gross Revenue', value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
-          { label: lang === 'zh' ? '店主留存' : 'Owner Retention', value: `− TZS ${calculations.finalRetention.toLocaleString()}`, color: 'text-amber-600' },
-          { label: 'Expenses', value: `− TZS ${(parseInt(expenses) || 0).toLocaleString()}`, color: 'text-rose-500' },
-          { label: lang === 'zh' ? '换币' : 'Coin Exchange', value: `TZS ${(parseInt(coinExchange) || 0).toLocaleString()}`, color: 'text-emerald-600' },
-          { label: lang === 'zh' ? '硬币库存' : 'Coin Stock', value: `${calculations.remainingCoins.toLocaleString()} coins`, color: calculations.isCoinStockNegative ? 'text-rose-600 font-black' : 'text-slate-500' },
+          { label: t.revenue, value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
+          { label: t.retention, value: `− TZS ${calculations.finalRetention.toLocaleString()}`, color: 'text-amber-600' },
+          { label: t.expenses, value: `− TZS ${(parseInt(expenses) || 0).toLocaleString()}`, color: 'text-rose-500' },
+          { label: t.exchange, value: `TZS ${(parseInt(coinExchange) || 0).toLocaleString()}`, color: 'text-emerald-600' },
+          { label: t.coinStock, value: `${calculations.remainingCoins.toLocaleString()} ${t.coinUnit}`, color: calculations.isCoinStockNegative ? 'text-rose-600 font-black' : 'text-slate-500' },
         ].map((row) => (
           <div key={row.label} className="flex justify-between items-center px-4 py-2.5">
             <span className="text-[10px] font-black text-slate-400 uppercase">{row.label}</span>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 export type PerformanceTier = 'high' | 'medium' | 'low';
 
@@ -50,14 +50,15 @@ function detectPerformanceTier(): PerformanceTier {
 }
 
 export function useDevicePerformance(): PerformanceTier {
-  const [tier, setTier] = useState<PerformanceTier>('high');
-
-  useEffect(() => {
+  // Lazy initializer: detectPerformanceTier() runs synchronously on the first
+  // render, so `data-perf` is written to <html> before any paint — no
+  // "wrong tier on first paint" flash. Defaults to 'medium' (not 'high')
+  // when browser APIs are unavailable, matching the conservative intent.
+  const [tier] = useState<PerformanceTier>(() => {
     const detected = detectPerformanceTier();
-    setTier(detected);
-    // Write to the root element so CSS selectors in styles.css engage
     document.documentElement.dataset.perf = detected;
-  }, []);
+    return detected;
+  });
 
   return tier;
 }
