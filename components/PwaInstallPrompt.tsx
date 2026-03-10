@@ -49,15 +49,27 @@ const PwaInstallPrompt: React.FC<PwaInstallPromptProps> = ({
       );
   }, []);
 
+  useEffect(() => {
+    const handleAppInstalled = () => {
+      // App is now installed — hide the prompt and clear any cached event
+      setIsInstallable(false);
+      deferredPrompt = null;
+    };
+
+    window.addEventListener('appinstalled', handleAppInstalled);
+    return () => {
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
+  }, []);
+
   if (!isInstallable) return null;
 
   const handleInstall = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
     const { outcome } = await deferredPrompt.userChoice;
-    if (outcome === 'accepted') {
-      setIsInstallable(false);
-    }
+    // Hide the button after any outcome so it never becomes a no-op
+    setIsInstallable(false);
     deferredPrompt = null;
   };
 
