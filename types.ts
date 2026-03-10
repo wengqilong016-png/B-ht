@@ -333,7 +333,11 @@ export const TRANSLATIONS = {
     passwordTooShort: '密码至少6位',
     updateSuccess: '更新成功',
     updateError: '更新失败',
-    emailConfirmationSent: '确认邮件已发送，请查收并点击链接完成邮箱修改'
+    emailConfirmationSent: '确认邮件已发送，请查收并点击链接完成邮箱修改',
+    // Confirm step summary labels
+    coinStock: '硬币库存',
+    coinUnit: '枚',
+    cashToHandIn: '现金应缴'
   },
   sw: {
     login: 'Driver Login',
@@ -464,7 +468,11 @@ export const TRANSLATIONS = {
     passwordTooShort: 'Password must be at least 6 characters',
     updateSuccess: 'Updated successfully',
     updateError: 'Update failed',
-    emailConfirmationSent: 'Confirmation email sent – please check your inbox and click the link to complete the email change'
+    emailConfirmationSent: 'Confirmation email sent – please check your inbox and click the link to complete the email change',
+    // Confirm step summary labels
+    coinStock: 'Coin Stock',
+    coinUnit: 'coins',
+    cashToHandIn: 'Cash to hand in'
   }
 };
 

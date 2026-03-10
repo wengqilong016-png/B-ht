@@ -104,7 +104,7 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
   // When userRole is unknown (null/undefined, pre-auth) the existing
   // transaction-chain gate still defers loading until transactions exist.
   const { data: aiLogs = [] } = useQuery({
-    queryKey: ['aiLogs'],
+    queryKey: ['aiLogs', userRole ?? 'none'],
     queryFn: async () => {
       if (isOnline && supabase) {
          const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(500);
@@ -132,7 +132,7 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
     if (!isDriver) {
-      queryClient.invalidateQueries({ queryKey: ['aiLogs'] });
+      queryClient.invalidateQueries({ queryKey: ['aiLogs', userRole ?? 'none'] });
     }
   }, [isOnline, isDriver, queryClient]);
 

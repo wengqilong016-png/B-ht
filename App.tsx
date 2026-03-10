@@ -139,6 +139,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
         setCurrentUser(null);
+        setUserRole(null);
         return;
       }
       const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
