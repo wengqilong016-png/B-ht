@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useReducer } from 'react';
 import { User } from './types';
 import { Loader2 } from 'lucide-react';
 import { supabase } from './supabaseClient';
@@ -10,6 +10,41 @@ import { useSupabaseMutations } from './hooks/useSupabaseMutations';
 import { useDevicePerformance } from './hooks/useDevicePerformance';
 import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
+
+// ─── Types & Reducer ──────────────────────────────────────────────
+type AuthState = {
+  currentUser: User | null;
+  userRole: 'admin' | 'driver' | null;
+  lang: 'zh' | 'sw';
+  isInitializing: boolean;
+};
+
+type AuthAction =
+  | { type: 'SET_USER'; user: User }
+  | { type: 'LOGOUT' }
+  | { type: 'SET_LANG'; lang: 'zh' | 'sw' }
+  | { type: 'FINISH_INITIALIZING' };
+
+const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+  switch (action.type) {
+    case 'SET_USER':
+      return {
+        ...state,
+        currentUser: action.user,
+        userRole: action.user.role as 'admin' | 'driver',
+        lang: action.user.role === 'admin' ? 'zh' : 'sw',
+        isInitializing: false,
+      };
+    case 'LOGOUT':
+      return { ...state, currentUser: null, userRole: null, isInitializing: false };
+    case 'SET_LANG':
+      return { ...state, lang: action.lang };
+    case 'FINISH_INITIALIZING':
+      return { ...state, isInitializing: false };
+    default:
+      return state;
+  }
+};
 
 // ─── Error Boundary ────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
@@ -42,9 +77,14 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 // ─── Main App (auth + global init + role routing) ──────────────────
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'admin' | 'driver' | null>(null);
-  const [lang, setLang] = useState<'zh' | 'sw'>('zh');
+  const [state, dispatch] = useReducer(authReducer, {
+    currentUser: null,
+    userRole: null,
+    lang: 'zh',
+    isInitializing: true,
+  });
+
+  const { currentUser, userRole, lang, isInitializing } = state;
 
   // Detect device performance tier and apply CSS degradation class to <html>.
   useDevicePerformance();
@@ -72,12 +112,10 @@ const App: React.FC = () => {
     logAI
   } = useSupabaseMutations(isOnline);
 
-  const [isInitializing, setIsInitializing] = useState(true);
-
   // ─── Authentication ──────────────────────────────────────────────
   useEffect(() => {
     if (!supabase) {
-      setIsInitializing(false);
+      dispatch({ type: 'FINISH_INITIALIZING' });
       return;
     }
 
@@ -87,33 +125,26 @@ const App: React.FC = () => {
         if ('error' in result && result.error !== 'No active session') {
            await signOutCurrentUser();
         }
-        setIsInitializing(false);
+        dispatch({ type: 'FINISH_INITIALIZING' });
         return;
       }
-      setCurrentUser(result.user);
-      setUserRole(result.user.role as 'admin' | 'driver');
-      setLang(result.user.role === 'admin' ? 'zh' : 'sw');
-      setIsInitializing(false);
+      dispatch({ type: 'SET_USER', user: result.user });
     };
     
     loadUser();
 
     const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (_event, session) => {
       if (!session?.user) {
-        setCurrentUser(null);
-        setUserRole(null);
+        dispatch({ type: 'LOGOUT' });
         return;
       }
       const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
       if (!result.success) {
         await signOutCurrentUser();
-        setCurrentUser(null);
-        setUserRole(null);
+        dispatch({ type: 'LOGOUT' });
         return;
       }
-      setCurrentUser(result.user);
-      setUserRole(result.user.role as 'admin' | 'driver');
-      setLang(result.user.role === 'admin' ? 'zh' : 'sw');
+      dispatch({ type: 'SET_USER', user: result.user });
     }) || { data: { subscription: { unsubscribe: () => {} } } };
 
     return () => subscription.unsubscribe();
@@ -180,8 +211,7 @@ const App: React.FC = () => {
 
   const handleLogout = async () => {
     await signOutCurrentUser();
-    setCurrentUser(null);
-    setUserRole(null);
+    dispatch({ type: 'LOGOUT' });
   };
 
   // ─── Loading / Login screens ─────────────────────────────────────
@@ -195,7 +225,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login onLogin={user => setCurrentUser(user)} lang={lang} onSetLang={setLang} />;
+    return <Login onLogin={user => dispatch({ type: 'SET_USER', user })} lang={lang} onSetLang={l => dispatch({ type: 'SET_LANG', lang: l })} />;
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
@@ -223,7 +253,7 @@ const App: React.FC = () => {
         updateTransaction={updateTransaction}
         saveSettlement={saveSettlement}
         logAI={logAI}
-        onSetLang={setLang}
+        onSetLang={l => dispatch({ type: 'SET_LANG', lang: l })}
         onLogout={handleLogout}
       />
       <Analytics />
