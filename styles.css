@@ -1,3 +1,66 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Design System Tokens ─────────────────────────────────────────── */
+@layer base {
+  :root {
+    /* Admin Soft Console palette */
+    --console-bg: #f3f5f8;
+    --console-surface: #f3f5f8;
+    --console-border: rgba(255, 255, 255, 0.7);
+    --console-shadow: 2px 2px 8px rgba(15, 23, 42, 0.08),
+      -2px -2px 8px rgba(255, 255, 255, 0.9);
+
+    /* Driver Field Mode palette */
+    --field-bg: #f8fafc;
+    --field-btn-radius: 14px;
+    --field-card-radius: 16px;
+  }
+}
+
+/* ─── Reduced Motion ─────────────────────────────────────────────────
+   Respect the OS-level "Reduce Motion" preference. All CSS transitions
+   and animations are near-instant; JS-driven scroll is kept automatic. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ─── Low-Performance Device UI Degradation ─────────────────────────
+   Applied by useDevicePerformance hook via data-perf="low" on <html>.
+   Removes costly paint operations so old Android devices stay smooth. */
+html[data-perf="low"] .shadow-silicone,
+html[data-perf="low"] .shadow-silicone-sm,
+html[data-perf="low"] .shadow-field,
+html[data-perf="low"] .shadow-field-md,
+html[data-perf="low"] [class*="shadow-xl"],
+html[data-perf="low"] [class*="shadow-2xl"],
+html[data-perf="low"] [class*="shadow-lg"] {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
+}
+
+html[data-perf="low"] [class*="animate-"] {
+  animation: none !important;
+}
+
+html[data-perf="low"] [class*="transition"] {
+  transition: none !important;
+}
+
+html[data-perf="low"] [class*="backdrop-blur"] {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+  background-color: rgba(255, 255, 255, 0.97) !important;
+}
+
+/* Medium tier: keep transitions but skip heavy shadows */
+html[data-perf="medium"] [class*="shadow-2xl"] {
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}

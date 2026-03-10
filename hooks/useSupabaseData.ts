@@ -13,8 +13,17 @@ const sanitizeDrivers = (driverList: any[]): Driver[] => {
   });
 };
 
-export function useSupabaseData() {
+/**
+ * Central data-fetching hook backed by React Query + Supabase.
+ *
+ * Pass `userRole` so the hook can skip admin-only data (AI logs) for
+ * driver accounts, reducing their initial data load significantly.
+ * When `userRole` is `null | undefined` (before auth resolves) the hook
+ * falls back to the fully-deferred chain, which is the existing behaviour.
+ */
+export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined) {
   const queryClient = useQueryClient();
+  const isDriver = userRole === 'driver';
 
   // 1. Health check - High priority
   const { data: isOnline = false } = useQuery({
@@ -91,6 +100,9 @@ export function useSupabaseData() {
     staleTime: 1000 * 60 * 5,
   });
 
+  // AI Logs: admin-only data — skipped entirely for driver accounts.
+  // When userRole is unknown (null/undefined, pre-auth) the existing
+  // transaction-chain gate still defers loading until transactions exist.
   const { data: aiLogs = [] } = useQuery({
     queryKey: ['aiLogs'],
     queryFn: async () => {
@@ -104,7 +116,8 @@ export function useSupabaseData() {
       }
       return (await localDB.get<AILog[]>(CONSTANTS.STORAGE_AI_LOGS_KEY)) || [];
     },
-    enabled: !!transactions.length, // Defer even further
+    // Skip for drivers; defer for unknown role until transactions exist
+    enabled: !isDriver && !!transactions.length,
     staleTime: 1000 * 60 * 10,
   });
 
@@ -118,8 +131,10 @@ export function useSupabaseData() {
     queryClient.invalidateQueries({ queryKey: ['drivers'] });
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
-    queryClient.invalidateQueries({ queryKey: ['aiLogs'] });
-  }, [isOnline, queryClient]);
+    if (!isDriver) {
+      queryClient.invalidateQueries({ queryKey: ['aiLogs'] });
+    }
+  }, [isOnline, isDriver, queryClient]);
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;

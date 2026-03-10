@@ -41,7 +41,8 @@ const PRIORITY_ACTIVE_WEIGHT = 10;
 
 const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDriver, onSubmit, lang, onLogAI, onRegisterMachine, isOnline = true, allTransactions = [] }) => {
   const t = TRANSLATIONS[lang];
-  const [step, setStep] = useState<'selection' | 'entry'>('selection');
+  // 4-step wizard: selection → capture → amounts → confirm
+  const [step, setStep] = useState<'selection' | 'capture' | 'amounts' | 'confirm'>('selection');
   const [selectedLocId, setSelectedLocId] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedArea, setSelectedArea] = useState<string>('all');
@@ -114,9 +115,9 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     );
   };
 
-  // Request GPS as soon as an entry starts
+  // Request GPS as soon as capture step starts
   useEffect(() => {
-    if (step === 'entry') {
+    if (step === 'capture') {
       requestGps();
     }
   }, [step]);
@@ -131,7 +132,24 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
   const handleSelectLocation = (locId: string) => {
     setSelectedLocId(locId);
     setDraftTxId(`TX-${Date.now()}`); // Generate ID immediately upon selection
-    setStep('entry');
+    setStep('capture');
+  };
+
+  // Return to the selection screen, clearing form state
+  const handleBackToSelection = () => {
+    setStep('selection');
+    setSelectedLocId('');
+    setDraftTxId('');
+    setCurrentScore('');
+    setPhotoData(null);
+    setAiReviewData(null);
+    setOwnerRetention('');
+    setExpenses('');
+    setCoinExchange('');
+    setIsOwnerRetaining(true);
+    setExpenseType('public');
+    setExpenseCategory('fuel');
+    setGpsSource(null);
   };
 
   // 1. 核心计算逻辑：单一事实来源 (Single Source of Truth)
@@ -680,74 +698,132 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
   };
 
+
+  // ─── Wizard step indicator ──────────────────────────────────────────
+  // Maps the string step names to visual step numbers (2, 3, 4).
+  // Step 1 (selection) has its own full-page layout and no bar.
+  const WIZARD_STEPS: Array<{ key: 'capture' | 'amounts' | 'confirm'; label: string }> = [
+    { key: 'capture',  label: lang === 'sw' ? 'Picha'     : '拍照' },
+    { key: 'amounts',  label: lang === 'sw' ? 'Fedha'     : '金额' },
+    { key: 'confirm',  label: lang === 'sw' ? 'Wasilisha' : '提交' },
+  ];
+
+  const WizardStepBar = ({ current }: { current: 'capture' | 'amounts' | 'confirm' }) => {
+    const currentIdx = WIZARD_STEPS.findIndex(s => s.key === current);
+    return (
+      <div className="flex items-center gap-2 mb-5">
+        {WIZARD_STEPS.map((s, i) => {
+          const done = i < currentIdx;
+          const active = s.key === current;
+          return (
+            <React.Fragment key={s.key}>
+              <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-tag text-[9px] font-black uppercase transition-all ${
+                active ? 'bg-indigo-600 text-white' :
+                done    ? 'bg-emerald-100 text-emerald-600' :
+                          'bg-slate-100 text-slate-400'
+              }`}>
+                {done ? <CheckCircle2 size={10} /> : <span>{i + 2}</span>}
+                {s.label}
+              </div>
+              {i < WIZARD_STEPS.length - 1 && (
+                <div className={`flex-1 h-px ${done ? 'bg-emerald-300' : 'bg-slate-200'}`} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ─── Location sub-header (steps 2-4) ────────────────────────────────
+  const LocationSubHeader = ({ onBack }: { onBack: () => void }) => (
+    <div className="flex items-center gap-3 mb-5">
+      <button
+        onClick={onBack}
+        className="p-2.5 bg-white border border-slate-200 rounded-subcard text-slate-500 hover:text-indigo-600 shadow-field transition-colors flex-shrink-0"
+      >
+        <ArrowRight size={18} className="rotate-180" />
+      </button>
+      <div className="min-w-0">
+        <h2 className="text-base font-black text-slate-900 truncate leading-tight">{selectedLocation?.name}</h2>
+        <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
+          {selectedLocation?.machineId} • {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
+        </p>
+      </div>
+    </div>
+  );
+
   if (isRegistering && onRegisterMachine) {
     return (
-      <MachineRegistrationForm 
-        onSubmit={(loc) => { onRegisterMachine(loc); setIsRegistering(false); }} 
-        onCancel={() => setIsRegistering(false)} 
-        currentDriver={currentDriver} 
-        lang={lang} 
+      <MachineRegistrationForm
+        onSubmit={(loc) => { onRegisterMachine(loc); setIsRegistering(false); }}
+        onCancel={() => setIsRegistering(false)}
+        currentDriver={currentDriver}
+        lang={lang}
       />
     );
   }
 
-  // --- 9999 Reset Request View ---
+  // ─── 9999 Reset Request View ─────────────────────────────────────────
   if (resetRequestLocId) {
     const resetLoc = locations.find(l => l.id === resetRequestLocId);
     return (
-      <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
-        <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-            <button onClick={() => { setResetRequestLocId(null); setResetPhotoData(null); }} className="p-3 bg-slate-100 rounded-full text-slate-500 hover:text-indigo-600">
-              <ArrowRight size={20} className="rotate-180" />
+      <div className="max-w-md mx-auto py-6 px-4 animate-in fade-in">
+        <div className="bg-white rounded-card p-6 border border-slate-200 shadow-field-md space-y-5">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+            <button
+              onClick={() => { setResetRequestLocId(null); setResetPhotoData(null); }}
+              className="p-2.5 bg-slate-100 rounded-subcard text-slate-500 hover:text-indigo-600 transition-colors"
+            >
+              <ArrowRight size={18} className="rotate-180" />
             </button>
             <div className="text-center">
-              <h2 className="text-lg font-black text-slate-900">{t.resetRequest}</h2>
+              <h2 className="text-base font-black text-slate-900">{t.resetRequest}</h2>
               <p className="text-[10px] font-black text-rose-500 uppercase mt-1">{resetLoc?.name} • {resetLoc?.machineId}</p>
             </div>
-            <div className="w-10"></div>
+            <div className="w-10" />
           </div>
 
-          <div className="bg-rose-50 p-5 rounded-[28px] border border-rose-200">
-            <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-rose-500 rounded-xl text-white"><RefreshCw size={18} /></div>
+          <div className="bg-rose-50 p-4 rounded-subcard border border-rose-200">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-rose-500 rounded-btn text-white flex-shrink-0"><RefreshCw size={16} /></div>
               <div>
                 <p className="text-xs font-black text-rose-800 uppercase">{t.resetRequestDesc}</p>
-                <p className="text-[9px] font-bold text-rose-400 mt-1">
+                <p className="text-[9px] font-bold text-rose-400 mt-0.5">
                   {lang === 'zh' ? `当前分数: ${resetLoc?.lastScore}` : `Current score: ${resetLoc?.lastScore}`}
                 </p>
               </div>
             </div>
           </div>
 
-          <div 
-            onClick={() => resetFileRef.current?.click()} 
-            className={`relative h-40 w-full rounded-2xl overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 ${resetPhotoData ? 'border-emerald-400' : 'border-slate-300 bg-white hover:bg-slate-100'}`}
+          <div
+            onClick={() => resetFileRef.current?.click()}
+            className={`relative h-36 w-full rounded-subcard overflow-hidden border-2 border-dashed flex flex-col items-center justify-center cursor-pointer transition-all active:scale-95 ${resetPhotoData ? 'border-emerald-400' : 'border-slate-300 bg-white hover:bg-slate-50'}`}
           >
             <input type="file" accept="image/*" ref={resetFileRef} onChange={handleResetPhotoCapture} className="hidden" />
             {resetPhotoData ? (
               <>
                 <img src={resetPhotoData} className="w-full h-full object-cover" alt="Reset proof" />
                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold uppercase">
-                  <CheckCircle2 size={16} className="mr-1"/> {lang === 'zh' ? '照片已保存 (点击重拍)' : 'Photo saved (tap to retake)'}
+                  <CheckCircle2 size={14} className="mr-1" /> {lang === 'zh' ? '点击重拍' : 'Tap to retake'}
                 </div>
               </>
             ) : (
               <div className="text-center text-slate-400">
-                <Camera size={28} className="mx-auto mb-2" />
+                <Camera size={24} className="mx-auto mb-2" />
                 <span className="text-[10px] font-black uppercase tracking-widest">
-                  {lang === 'zh' ? '拍摄当前分数照片 *' : 'Take photo of current score *'}
+                  {lang === 'zh' ? '拍摄当前分数照片 *' : 'Photo of current score *'}
                 </span>
               </div>
             )}
           </div>
 
-          <button 
-            onClick={handleSubmitResetRequest} 
+          <button
+            onClick={handleSubmitResetRequest}
             disabled={!resetPhotoData}
-            className="w-full py-5 bg-rose-600 text-white rounded-[28px] font-black uppercase text-sm shadow-xl disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-rose-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            <RefreshCw size={20} />
+            <RefreshCw size={18} />
             {lang === 'zh' ? '提交重置申请' : 'Submit Reset Request'}
           </button>
         </div>
@@ -755,7 +831,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     );
   }
 
-  // --- Payout Request View ---
+  // ─── Payout Request View ─────────────────────────────────────────────
   if (payoutRequestLocId) {
     const payoutLoc = locations.find(l => l.id === payoutRequestLocId);
     const availableDividend = payoutLoc?.dividendBalance || 0;
@@ -763,47 +839,50 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     const isValidAmount = !isNaN(parsedPayoutAmount) && parsedPayoutAmount > 0;
     const exceedsBalance = isValidAmount && parsedPayoutAmount > availableDividend;
     return (
-      <div className="max-w-md mx-auto py-8 px-4 animate-in fade-in">
-        <div className="bg-white rounded-[40px] p-8 border border-slate-200 shadow-2xl space-y-6">
-          <div className="flex justify-between items-center border-b border-slate-50 pb-4">
-            <button onClick={() => { setPayoutRequestLocId(null); setPayoutAmount(''); }} className="p-3 bg-slate-100 rounded-full text-slate-500 hover:text-indigo-600">
-              <ArrowRight size={20} className="rotate-180" />
+      <div className="max-w-md mx-auto py-6 px-4 animate-in fade-in">
+        <div className="bg-white rounded-card p-6 border border-slate-200 shadow-field-md space-y-5">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-4">
+            <button
+              onClick={() => { setPayoutRequestLocId(null); setPayoutAmount(''); }}
+              className="p-2.5 bg-slate-100 rounded-subcard text-slate-500 hover:text-indigo-600 transition-colors"
+            >
+              <ArrowRight size={18} className="rotate-180" />
             </button>
             <div className="text-center">
-              <h2 className="text-lg font-black text-slate-900">{t.payoutRequest}</h2>
+              <h2 className="text-base font-black text-slate-900">{t.payoutRequest}</h2>
               <p className="text-[10px] font-black text-emerald-500 uppercase mt-1">{payoutLoc?.name} • {payoutLoc?.ownerName || '---'}</p>
             </div>
-            <div className="w-10"></div>
+            <div className="w-10" />
           </div>
 
-          <div className="bg-emerald-50 p-5 rounded-[28px] border border-emerald-200">
+          <div className="bg-emerald-50 p-4 rounded-subcard border border-emerald-200">
             <div className="flex items-center gap-3 mb-3">
-              <div className="p-2 bg-emerald-500 rounded-xl text-white"><Wallet size={18} /></div>
+              <div className="p-2 bg-emerald-500 rounded-btn text-white flex-shrink-0"><Wallet size={16} /></div>
               <div>
                 <p className="text-xs font-black text-emerald-800 uppercase">{t.payoutRequestDesc}</p>
-                <p className="text-[9px] font-bold text-emerald-400 mt-1">
+                <p className="text-[9px] font-bold text-emerald-400 mt-0.5">
                   {lang === 'zh' ? `店主: ${payoutLoc?.ownerName || 'N/A'}` : `Owner: ${payoutLoc?.ownerName || 'N/A'}`}
                 </p>
               </div>
             </div>
-            <div className="bg-white p-4 rounded-xl mt-3 text-center border border-emerald-100">
-              <p className="text-[8px] font-black text-emerald-400 uppercase">
+            <div className="bg-white p-3 rounded-btn border border-emerald-100 text-center">
+              <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">
                 {lang === 'zh' ? '可提现余额' : 'Available Balance'}
               </p>
               <p className="text-2xl font-black text-emerald-700">TZS {availableDividend.toLocaleString()}</p>
             </div>
           </div>
 
-          <div className="bg-slate-50 p-5 rounded-[28px] border border-slate-200">
-            <label className="text-[10px] font-black text-slate-400 uppercase block mb-3">{t.payoutAmount}</label>
+          <div className="bg-slate-50 p-4 rounded-subcard border border-slate-200">
+            <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">{t.payoutAmount}</label>
             <div className="flex items-baseline gap-2">
-              <span className="text-lg font-black text-slate-300">TZS</span>
-              <input 
-                type="number" 
-                value={payoutAmount} 
-                onChange={e => setPayoutAmount(e.target.value)} 
-                className="w-full text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200" 
-                placeholder="0" 
+              <span className="text-base font-black text-slate-300">TZS</span>
+              <input
+                type="number"
+                value={payoutAmount}
+                onChange={e => setPayoutAmount(e.target.value)}
+                className="w-full text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200"
+                placeholder="0"
               />
             </div>
             {exceedsBalance && (
@@ -813,12 +892,12 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             )}
           </div>
 
-          <button 
-            onClick={handleSubmitPayoutRequest} 
+          <button
+            onClick={handleSubmitPayoutRequest}
             disabled={!isValidAmount || exceedsBalance}
-            className="w-full py-5 bg-emerald-600 text-white rounded-[28px] font-black uppercase text-sm shadow-xl disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
+            className="w-full py-4 bg-emerald-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
           >
-            <Wallet size={20} />
+            <Wallet size={18} />
             {lang === 'zh' ? '提交提现申请' : 'Submit Payout Request'}
           </button>
         </div>
@@ -826,12 +905,15 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     );
   }
 
+  // ══════════════════════════════════════════════════════════════════════
+  // STEP 1 — Machine Selection
+  // ══════════════════════════════════════════════════════════════════════
   if (step === 'selection') {
     return (
       <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
         {/* Offline status banner */}
         {!isOnline && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-2xl">
+          <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-subcard">
             <WifiOff size={16} className="text-amber-500 flex-shrink-0" />
             <div className="min-w-0">
               <p className="text-[10px] font-black text-amber-700 uppercase">
@@ -842,7 +924,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
               </p>
             </div>
             {offlineQueueCount > 0 && (
-              <div className="flex items-center gap-1 px-2 py-1 bg-amber-200 rounded-lg flex-shrink-0">
+              <div className="flex items-center gap-1 px-2 py-1 bg-amber-200 rounded-tag flex-shrink-0">
                 <DatabaseBackup size={10} className="text-amber-700" />
                 <span className="text-[8px] font-black text-amber-700">{offlineQueueCount}</span>
               </div>
@@ -852,7 +934,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
 
         {/* Online with pending queue */}
         {isOnline && offlineQueueCount > 0 && (
-          <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-2xl">
+          <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-subcard">
             <DatabaseBackup size={16} className="text-indigo-500 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-[10px] font-black text-indigo-700 uppercase">
@@ -862,58 +944,61 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           </div>
         )}
 
-        <div className="flex items-center justify-between mb-4 px-2">
+        <div className="flex items-center justify-between mb-2 px-1">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3 uppercase">
-              <ScanLine className="text-indigo-600" />
+            <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 uppercase">
+              <ScanLine className="text-indigo-600" size={20} />
               {t.selectMachine}
             </h2>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
               {todayDriverTransactions.length} {t.todaysCollections}
             </p>
           </div>
-          <div className="flex items-center gap-2 bg-slate-900 px-4 py-2 rounded-2xl shadow-lg">
-             <Coins size={14} className="text-emerald-400" />
-             <span className="text-xs font-black text-white">{(currentDriver?.dailyFloatingCoins ?? 0).toLocaleString()}</span>
+          <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-subcard shadow-field">
+            <Coins size={13} className="text-emerald-400" />
+            <span className="text-xs font-black text-white">{(currentDriver?.dailyFloatingCoins ?? 0).toLocaleString()}</span>
           </div>
         </div>
 
+        {/* Overview stats */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
+          <div className="bg-white rounded-subcard border border-slate-200 p-3.5 shadow-field">
             <p className="text-[9px] font-black text-slate-400 uppercase">{t.totalMachines}</p>
             <p className="text-xl font-black text-slate-900 mt-1">{collectionOverview.totalMachines}</p>
           </div>
-          <div className="bg-white rounded-[24px] border border-slate-200 p-4 shadow-sm">
+          <div className="bg-white rounded-subcard border border-slate-200 p-3.5 shadow-field">
             <p className="text-[9px] font-black text-slate-400 uppercase">{t.pendingStops}</p>
             <p className="text-xl font-black text-indigo-600 mt-1">{collectionOverview.pendingStops}</p>
           </div>
-          <div className="bg-amber-50 rounded-[24px] border border-amber-200 p-4 shadow-sm">
+          <div className="bg-amber-50 rounded-subcard border border-amber-200 p-3.5 shadow-field">
             <p className="text-[9px] font-black text-amber-500 uppercase">{t.urgentMachines}</p>
             <p className="text-xl font-black text-amber-700 mt-1">{collectionOverview.urgentMachines}</p>
           </div>
-          <div className="bg-emerald-50 rounded-[24px] border border-emerald-200 p-4 shadow-sm">
+          <div className="bg-emerald-50 rounded-subcard border border-emerald-200 p-3.5 shadow-field">
             <p className="text-[9px] font-black text-emerald-500 uppercase">{t.nearbySites}</p>
             <p className="text-xl font-black text-emerald-700 mt-1">
               {gpsCoords ? collectionOverview.nearbySites : '-'}
             </p>
             {!gpsCoords && (
-              <p className="text-[8px] font-bold text-emerald-500 uppercase mt-1">{t.awaitingGps}</p>
+              <p className="text-[8px] font-bold text-emerald-500 uppercase mt-0.5">{t.awaitingGps}</p>
             )}
           </div>
         </div>
 
-        <div className="relative mb-6 group">
-          <Search size={20} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
-          <input 
-            type="text" 
-            value={searchQuery} 
-            onChange={(e) => setSearchQuery(e.target.value)} 
+        {/* Search */}
+        <div className="relative group">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={t.enterId}
-            className="w-full bg-white border border-slate-200 rounded-[32px] py-5 pl-14 pr-6 text-sm font-bold shadow-xl shadow-indigo-50/50 outline-none focus:border-indigo-500/10 focus:ring-4 transition-all"
+            className="w-full bg-white border border-slate-200 rounded-card py-4 pl-12 pr-5 text-sm font-bold shadow-field outline-none focus:border-indigo-300 focus:ring-2 focus:ring-indigo-100 transition-all"
           />
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_140px] gap-3">
+        {/* Filters */}
+        <div className="grid grid-cols-1 sm:grid-cols-[minmax(0,1fr)_130px] gap-3">
           <div className="flex flex-wrap gap-2">
             {([
               ['all', t.quickFilterAll, collectionOverview.totalMachines],
@@ -925,20 +1010,20 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                 key={key}
                 type="button"
                 onClick={() => setLocationFilter(key)}
-                className={`px-3 py-2 rounded-2xl text-[10px] font-black uppercase transition-all border ${
+                className={`px-3 py-1.5 rounded-btn text-[10px] font-black uppercase transition-all border ${
                   locationFilter === key
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg'
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-field'
                     : 'bg-white text-slate-500 border-slate-200 hover:border-indigo-200 hover:text-indigo-600'
                 }`}
               >
-                {label} <span className="ml-1 opacity-70">{count}</span>
+                {label} <span className="ml-1 opacity-60">{count}</span>
               </button>
             ))}
           </div>
           <select
             value={selectedArea}
             onChange={(e) => setSelectedArea(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-2xl px-4 py-3 text-[10px] font-black uppercase text-slate-600 outline-none shadow-sm"
+            className="w-full bg-white border border-slate-200 rounded-btn px-4 py-2.5 text-[10px] font-black uppercase text-slate-600 outline-none shadow-field"
           >
             <option value="all">{t.allAreas}</option>
             {availableAreas.map(area => (
@@ -947,29 +1032,29 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
           </select>
         </div>
 
-        {/* Merge New Machine Registration Entry */}
+        {/* Register new machine */}
         {onRegisterMachine && (
-          <button 
-            onClick={() => setIsRegistering(true)} 
-            className="w-full mb-6 py-4 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-[28px] font-black uppercase text-xs hover:bg-indigo-100 transition-all flex items-center justify-center gap-2"
+          <button
+            onClick={() => setIsRegistering(true)}
+            className="w-full py-3.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-btn font-black uppercase text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
           >
-            <Plus size={16} />
+            <Plus size={15} />
             {lang === 'zh' ? 'Register New Machine' : t.registerNewMachine}
           </button>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           {isShowingAllLocations && (
-            <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
-              <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+            <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-subcard flex items-center gap-2">
+              <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
               <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
                 {lang === 'zh' ? 'Showing all machines (none assigned)' : 'Showing all machines (none assigned)'}
               </p>
             </div>
           )}
           {locationCards.length === 0 && (
-            <div className="py-16 text-center bg-white rounded-[35px] border border-dashed border-slate-200">
-              <Layers size={40} className="mx-auto text-slate-200 mb-3" />
+            <div className="py-14 text-center bg-white rounded-card border border-dashed border-slate-200">
+              <Layers size={36} className="mx-auto text-slate-200 mb-3" />
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.noMachinesAssigned}</p>
             </div>
           )}
@@ -977,90 +1062,90 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             const machineShortId = loc.machineId ? loc.machineId.substring(0, 6).toUpperCase() : '---';
             const isNear9999 = loc.lastScore >= 9000;
             return (
-              <div key={loc.id} className="bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-xl transition-all overflow-hidden">
-                <button 
+              <div key={loc.id} className="bg-white rounded-subcard border border-slate-200 shadow-field hover:shadow-field-md transition-shadow overflow-hidden">
+                <button
                   onClick={() => { if (!isLocked) handleSelectLocation(loc.id); }}
                   disabled={isLocked}
-                  className={`w-full group active:scale-[0.98] transition-all ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
+                  className={`w-full group active:scale-[0.98] transition-transform ${isLocked ? 'opacity-60 cursor-not-allowed' : ''}`}
                 >
                   <div className="flex items-stretch">
-                    {/* Machine photo or ID badge */}
-                    <div className={`relative w-20 shrink-0 flex flex-col items-center justify-center p-3 rounded-l-[28px] transition-colors ${isLocked ? 'bg-rose-800' : 'bg-slate-900 group-hover:bg-indigo-700'}`}>
+                    {/* Machine ID badge */}
+                    <div className={`relative w-16 shrink-0 flex flex-col items-center justify-center p-2 rounded-l-subcard transition-colors ${isLocked ? 'bg-rose-800' : 'bg-slate-900 group-hover:bg-indigo-700'}`}>
                       {loc.machinePhotoUrl ? (
-                        <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover absolute inset-0 opacity-40 rounded-l-[28px]" />
+                        <img src={loc.machinePhotoUrl} alt={loc.name} className="w-full h-full object-cover absolute inset-0 opacity-40 rounded-l-subcard" />
                       ) : null}
                       {isLocked ? (
-                        <Lock size={16} className="relative z-10 text-white" />
+                        <Lock size={14} className="relative z-10 text-white" />
                       ) : (
-                        <span className="relative z-10 text-white font-black text-[10px] text-center leading-tight">{machineShortId}</span>
+                        <span className="relative z-10 text-white font-black text-[9px] text-center leading-tight">{machineShortId}</span>
                       )}
-                      <div className={`relative z-10 mt-1 w-2 h-2 rounded-full ${isLocked ? 'bg-rose-400 animate-pulse' : loc.status === 'active' ? 'bg-emerald-400' : loc.status === 'maintenance' ? 'bg-amber-400' : 'bg-rose-400'}`}></div>
+                      <div className={`relative z-10 mt-1 w-2 h-2 rounded-full ${isLocked ? 'bg-rose-400 animate-pulse' : loc.status === 'active' ? 'bg-emerald-400' : loc.status === 'maintenance' ? 'bg-amber-400' : 'bg-rose-400'}`} />
                     </div>
                     {/* Machine details */}
-                    <div className="flex-1 p-4 text-left">
-                     <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1 p-3.5 text-left">
+                      <div className="flex justify-between items-start mb-2">
                         <span className="text-slate-900 text-sm font-black leading-tight">{loc.name}</span>
                         {isLocked ? (
-                          <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-lg uppercase">{t.resetLocked}</span>
+                          <span className="text-[8px] font-black text-rose-500 bg-rose-50 px-2 py-0.5 rounded-tag uppercase">{t.resetLocked}</span>
                         ) : (
-                          <ChevronRight size={16} className="text-slate-300 group-hover:text-indigo-500 mt-0.5 transition-all shrink-0" />
+                          <ChevronRight size={15} className="text-slate-300 group-hover:text-indigo-500 mt-0.5 transition-colors shrink-0" />
                         )}
                       </div>
-                      <div className="grid grid-cols-3 gap-2">
+                      <div className="grid grid-cols-3 gap-1.5">
                         <div>
-                          <p className="text-[7px] font-black text-slate-400 uppercase">Last Reading</p>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Last</p>
                           <p className={`text-[10px] font-black ${isNear9999 ? 'text-rose-600' : 'text-indigo-600'}`}>{loc.lastScore.toLocaleString()}</p>
                         </div>
                         <div>
-                          <p className="text-[7px] font-black text-slate-400 uppercase">Commission</p>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">Comm.</p>
                           <p className="text-[10px] font-black text-emerald-600">{(loc.commissionRate * 100).toFixed(0)}%</p>
                         </div>
                         <div>
-                          <p className="text-[7px] font-black text-slate-400 uppercase">{lang === 'zh' ? '分红余额' : 'Dividend'}</p>
+                          <p className="text-[7px] font-black text-slate-400 uppercase">{lang === 'zh' ? '分红' : 'Div.'}</p>
                           <p className="text-[10px] font-black text-amber-600">TZS {(loc.dividendBalance || 0).toLocaleString()}</p>
                         </div>
                       </div>
-                       {loc.area && (
-                         <div className="mt-2 flex flex-wrap gap-1.5">
-                           <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full border border-slate-100">{loc.area}</span>
-                           <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full border ${isPending ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
-                             {isPending ? t.pendingToday : t.visitedToday}
-                           </span>
-                           {distanceMeters !== null ? (
-                             <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                               {Math.round(distanceMeters)}m
-                             </span>
-                           ) : (
-                             <span className="text-[8px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full border border-slate-200">
-                               {t.awaitingGps}
-                             </span>
-                           )}
-                           {isUrgent && daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD && (
-                             <span className="text-[8px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100">
-                               {t.staleMachine} {daysSinceActive}d
-                             </span>
-                           )}
-                         </div>
-                       )}
-                     </div>
-                   </div>
-                 </button>
-                {/* Action buttons: Reset request (when score near 9999) and Payout request */}
+                      {loc.area && (
+                        <div className="mt-2 flex flex-wrap gap-1">
+                          <span className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-tag border border-slate-100">{loc.area}</span>
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-tag border ${isPending ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                            {isPending ? t.pendingToday : t.visitedToday}
+                          </span>
+                          {distanceMeters !== null ? (
+                            <span className="text-[8px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-tag border border-emerald-100">
+                              {Math.round(distanceMeters)}m
+                            </span>
+                          ) : (
+                            <span className="text-[8px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded-tag border border-slate-200">
+                              {t.awaitingGps}
+                            </span>
+                          )}
+                          {isUrgent && daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD && (
+                            <span className="text-[8px] font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-tag border border-amber-100">
+                              {t.staleMachine} {daysSinceActive}d
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </button>
+                {/* Action buttons: Reset / Payout */}
                 {!isLocked && (isNear9999 || true) && (
                   <div className="flex border-t border-slate-100">
                     {isNear9999 && (
-                      <button 
+                      <button
                         onClick={(e) => { e.stopPropagation(); requestGps(); setResetRequestLocId(loc.id); }}
-                        className="flex-1 py-2.5 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-all flex items-center justify-center gap-1.5 border-r border-slate-100"
+                        className="flex-1 py-2.5 text-[9px] font-black uppercase text-rose-500 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 border-r border-slate-100"
                       >
-                        <RefreshCw size={12} /> {lang === 'zh' ? '9999重置' : '9999 Reset'}
+                        <RefreshCw size={11} /> {lang === 'zh' ? '9999重置' : '9999 Reset'}
                       </button>
                     )}
-                    <button 
+                    <button
                       onClick={(e) => { e.stopPropagation(); requestGps(); setPayoutRequestLocId(loc.id); }}
-                      className="flex-1 py-2.5 text-[9px] font-black uppercase text-emerald-500 hover:bg-emerald-50 transition-all flex items-center justify-center gap-1.5"
+                      className="flex-1 py-2.5 text-[9px] font-black uppercase text-emerald-500 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5"
                     >
-                      <Wallet size={12} /> {lang === 'zh' ? '分红提现' : 'Payout'}
+                      <Wallet size={11} /> {lang === 'zh' ? '分红提现' : 'Payout'}
                     </button>
                   </div>
                 )}
@@ -1083,339 +1168,478 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
     );
   }
 
-  return (
-    <div className="max-w-md mx-auto pb-24 px-4 animate-in slide-in-from-bottom-8">
-      <div className="bg-white rounded-[48px] p-8 border border-slate-200 shadow-2xl space-y-8 relative overflow-hidden">
-        
-        <div className="flex justify-between items-center border-b border-slate-50 pb-6">
-           <button onClick={() => setStep('selection')} className="p-3 bg-slate-100 rounded-full text-slate-500 hover:text-indigo-600 transition-colors"><ArrowRight size={20} className="rotate-180" /></button>
-           <div className="text-center">
-             <h2 className="text-xl font-black text-slate-900 leading-tight">{selectedLocation?.name}</h2>
-             <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.2em] mt-1">{selectedLocation?.machineId} • {(selectedLocation!.commissionRate * 100).toFixed(0)}%</p>
-           </div>
-           <div className="p-3 opacity-0"><ArrowRight size={20} /></div>
-        </div>
+  // ══════════════════════════════════════════════════════════════════════
+  // STEP 2 — Capture: Score Reading + Photo
+  // ══════════════════════════════════════════════════════════════════════
+  if (step === 'capture') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+        <WizardStepBar current="capture" />
+        <LocationSubHeader onBack={handleBackToSelection} />
 
-        <div className="bg-slate-50 p-6 rounded-[35px] border border-slate-200 relative group focus-within:border-indigo-400 transition-all shadow-inner">
-             <label className="text-[10px] font-black text-slate-400 uppercase block mb-4 tracking-widest text-center">{t.currentReading}</label>
-             <div className="flex items-center justify-between gap-4">
-                <input 
-                  type="number" 
-                  value={currentScore} 
-                  onChange={e => setCurrentScore(e.target.value)} 
-                  className="w-1/2 text-4xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200" 
-                  placeholder="0000" 
-                />
-                <button 
-                  onClick={startScanner}
-                  className={`flex-1 py-4 rounded-2xl shadow-xl flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 text-white' : 'bg-slate-900 text-white'}`}
-                >
-                  {currentScore ? <CheckCircle2 size={18} /> : <Scan size={18} />}
-                  <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? t.reScan : t.scanner}</span>
-                </button>
-             </div>
-             {photoData && !isScannerOpen && (
-               <div className="mt-5 h-28 w-full rounded-2xl overflow-hidden border-2 border-white shadow-md relative group">
-                 <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
-                 <div className="absolute inset-0 bg-black/40 flex items-center justify-center text-white text-xs font-bold uppercase opacity-0 group-hover:opacity-100 transition-opacity">
-                   {t.photoRequired}
-                 </div>
-               </div>
-             )}
-        </div>
-
-        {currentScore && (
-          <div className={`p-6 rounded-[35px] shadow-2xl text-white space-y-4 animate-in slide-in-from-top-4 transition-colors ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-900'}`}>
-             <div className="flex items-center justify-between mb-2">
-               <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-white/20 rounded-lg"><Calculator size={14} className="text-white" /></div>
-                  <span className="text-[10px] font-black uppercase tracking-widest opacity-70">{t.formula}</span>
-               </div>
-               {calculations.revenue > 50000 && (
-                 <div className="px-2 py-0.5 bg-yellow-400 text-yellow-900 rounded-md text-[9px] font-black uppercase flex items-center gap-1 animate-pulse">
-                    <Trophy size={10} /> High Value
-                 </div>
-               )}
-             </div>
-             <div className="flex justify-between items-center text-[10px] font-black opacity-50 uppercase border-b border-white/10 pb-2">
-               <span>({currentScore} - {selectedLocation?.lastScore})</span>
-               <span>{t.diff} {calculations.diff}</span>
-             </div>
-             <div className="flex justify-between items-center pt-1">
-               <span className="text-sm font-black opacity-80">{calculations.diff} × 200 TZS</span>
-               <div className="text-right">
-                  <p className="text-2xl font-black text-white">TZS {calculations.revenue.toLocaleString()}</p>
-                  <p className="text-[8px] font-bold opacity-60 uppercase">Total Revenue</p>
-               </div>
-             </div>
-          </div>
-        )}
-          
-        <div className="grid grid-cols-1 gap-4">
-            {/* Retention Toggle */}
-            <div className={`p-6 rounded-[35px] border transition-all duration-300 ${isOwnerRetaining ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
-              <div className="flex justify-between items-center mb-4">
-                <label className={`text-[10px] font-black uppercase flex items-center gap-2 ${isOwnerRetaining ? 'text-amber-600' : 'text-slate-400'}`}>
-                  <HandCoins size={14} /> {t.retention}
-                </label>
-                <button 
-                  type="button"
-                  onClick={() => setIsOwnerRetaining(!isOwnerRetaining)}
-                  className={`relative w-10 h-5 rounded-full transition-colors ${isOwnerRetaining ? 'bg-amber-500' : 'bg-slate-300'}`}
-                >
-                  <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${isOwnerRetaining ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                </button>
-              </div>
-              
-              {isOwnerRetaining ? (
-                <div className="space-y-1">
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-xs font-black text-amber-300">TZS</span>
-                    <input type="number" value={ownerRetention} onChange={e => setOwnerRetention(e.target.value)} className="w-full text-2xl font-black bg-transparent outline-none text-amber-900 placeholder:text-amber-200" placeholder="0" />
-                  </div>
-                  <p className="text-[8px] font-black text-amber-400 uppercase tracking-tighter">{(selectedLocation!.commissionRate * 100).toFixed(0)}% Left at machine location</p>
-                </div>
-              ) : (
-                <div className="p-3 bg-indigo-600 text-white rounded-2xl flex items-center gap-3 animate-in zoom-in-95">
-                  <ShieldAlert size={20} />
-                  <div className="flex-1">
-                    <p className="text-[10px] font-black uppercase">{t.fullCollect}</p>
-                    <p className="text-[8px] font-bold opacity-80 mt-0.5">Deni TZS {calculations.commission.toLocaleString()} litawekwa.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Enhanced Expense Section */}
-            <div className="bg-rose-50 p-6 rounded-[35px] border border-rose-100 relative">
-               <div className="flex items-center justify-between mb-4">
-                 <label className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2">
-                   <Banknote size={14} /> {'Expenses / Advance'}
-                 </label>
-                 {parseInt(expenses) > 0 && (
-                   <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded text-[9px] font-black uppercase animate-pulse">PENDING</span>
-                 )}
-               </div>
-
-               <div className="flex bg-white/50 p-1 rounded-xl mb-3">
-                 <button 
-                   onClick={() => setExpenseType('public')} 
-                   className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'public' ? 'bg-rose-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
-                 >
-                   {'Company Expense'}
-                 </button>
-                 <button 
-                   onClick={() => setExpenseType('private')} 
-                   className={`flex-1 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${expenseType === 'private' ? 'bg-indigo-500 text-white shadow-md' : 'text-rose-400 hover:bg-rose-100'}`}
-                 >
-                   {'Driver Advance (Loan)'}
-                 </button>
-               </div>
-
-               <div className="flex items-center gap-2 mb-3">
-                  <select 
-                    value={expenseCategory} 
-                    onChange={e => setExpenseCategory(e.target.value as any)} 
-                    className="bg-white border border-rose-100 rounded-xl px-2 py-2 text-[10px] font-black text-rose-600 outline-none uppercase w-28"
-                  >
-                    {expenseType === 'public' ? (
-                      <>
-                        <option value="fuel">{'Fuel'}</option>
-                        <option value="repair">{'Repair'}</option>
-                        <option value="fine">{'Fine'}</option>
-                        <option value="other">{'Other'}</option>
-                      </>
-                    ) : (
-                      <>
-                        <option value="allowance">{'Meal Allowance'}</option>
-                        <option value="salary_advance">{'Salary Advance'}</option>
-                        <option value="other">{'Personal Loan'}</option>
-                      </>
-                    )}
-                  </select>
-                  <div className="flex-1 flex items-baseline gap-1 border-b border-rose-200 px-1">
-                     <span className="text-xs font-black text-rose-300">TZS</span>
-                     <input 
-                       type="number" 
-                       value={expenses} 
-                       onChange={e => setExpenses(e.target.value)} 
-                       className="w-full text-xl font-black bg-transparent outline-none text-rose-900 placeholder:text-rose-200" 
-                       placeholder="0" 
-                     />
-                  </div>
-               </div>
-               
-               <p className="text-[9px] font-bold text-rose-400 opacity-80">
-                 {expenseType === 'public' 
-                   ? ('* Company operating cost, does not affect personal debt') 
-                   : ('* Recorded as driver advance, deducted from salary')}
-               </p>
-            </div>
-        </div>
-
-        <div className="bg-emerald-50 p-6 rounded-[35px] border border-emerald-100">
-          <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
+        {/* Score input */}
+        <div className="bg-white rounded-subcard border border-slate-200 p-5 shadow-field">
+          <label className="text-[10px] font-black text-slate-400 uppercase block mb-3 tracking-widest">{t.currentReading}</label>
           <div className="flex items-center gap-3">
-             <div className="p-2.5 bg-emerald-500 rounded-xl text-white"><Coins size={20} /></div>
-             <input type="number" value={coinExchange} onChange={e => setCoinExchange(e.target.value)} className="w-full text-2xl font-black bg-transparent outline-none text-emerald-900 placeholder:text-emerald-200" placeholder="0" />
+            <input
+              type="number"
+              value={currentScore}
+              onChange={e => setCurrentScore(e.target.value)}
+              className="w-1/2 text-4xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200"
+              placeholder="0000"
+              inputMode="numeric"
+              autoFocus
+            />
+            <button
+              onClick={startScanner}
+              className={`flex-1 py-3.5 rounded-subcard shadow-field flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-900 text-white'}`}
+            >
+              {currentScore ? <CheckCircle2 size={16} /> : <Scan size={16} />}
+              <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? t.reScan : t.scanner}</span>
+            </button>
           </div>
-        </div>
 
-        <div className="p-6 rounded-[35px] border-2 border-slate-100 bg-slate-50 flex justify-between items-center shadow-inner">
-             <div className="flex flex-col">
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.net}</span>
-               <span className="text-[8px] font-bold text-slate-300 uppercase mt-1">Cash to Hand In</span>
-             </div>
-             <span className="text-3xl font-black text-slate-900">TZS {calculations.netPayable.toLocaleString()}</span>
-        </div>
-
-        <div className="space-y-4">
-          {/* GPS Status Dashboard */}
-          <div className={`p-5 rounded-[32px] border transition-all ${gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' : gpsCoords ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
-            <div className="flex justify-between items-center mb-2">
-               <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-xl ${gpsPermission === 'denied' ? 'bg-rose-500 text-white animate-pulse' : gpsCoords ? 'bg-emerald-500 text-white' : 'bg-slate-400 text-white'}`}>
-                    <Satellite size={16} />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest block leading-none">GPS Location Verification</span>
-                    <span className={`text-[8px] font-bold uppercase ${gpsPermission === 'denied' ? 'text-rose-600' : gpsCoords ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {gpsPermission === 'denied' ? 'GPS DENIED' : gpsCoords ? 'LOCATION LOCKED' : 'ACQUIRING...'}
-                    </span>
-                  </div>
-               </div>
-               {!gpsCoords && (
-                 <button onClick={requestGps} className="p-2 bg-white rounded-lg shadow-sm text-indigo-600"><RotateCcw size={14} /></button>
-               )}
-            </div>
-            
-            {gpsPermission === 'denied' && (
-              <div className="mt-3 p-3 bg-white/60 rounded-xl border border-rose-100">
-                <p className="text-[9px] font-bold text-rose-800 leading-relaxed">
-                  ⚠️ GPS permission denied. Please open browser settings, find Location permissions, set to Allow, then refresh.
-                </p>
+          {/* Photo preview */}
+          {photoData && !isScannerOpen && (
+            <div className="mt-4 h-24 w-full rounded-subcard overflow-hidden border border-slate-200 shadow-field relative">
+              <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
+              <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
+                <CheckCircle2 size={9} /> Photo
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
-          <button 
-            onClick={handleSubmit} 
-            disabled={status !== 'idle' || !currentScore || !photoData} 
-            className="w-full py-6 bg-indigo-600 text-white rounded-[32px] font-black uppercase text-sm shadow-2xl shadow-indigo-100 disabled:bg-slate-200 active:scale-95 transition-all flex items-center justify-center gap-4"
-          >
-            {status !== 'idle' ? <Loader2 className="animate-spin" /> : <Send size={22} />} 
-            {!gpsCoords && gpsPermission !== 'denied' ? t.acquiringGps : status === 'uploading' ? t.saving : t.confirmSubmit}
-          </button>
+          {/* Revenue preview */}
+          {currentScore && (
+            <div className={`mt-4 p-4 rounded-subcard text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+              <div>
+                <p className="text-[9px] font-black uppercase opacity-60">{t.diff} {calculations.diff}</p>
+                <p className="text-[9px] font-black uppercase opacity-60">{calculations.diff} × 200 TZS</p>
+              </div>
+              <div className="text-right">
+                <p className="text-xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
+                <p className="text-[8px] opacity-60 uppercase">Gross Revenue</p>
+              </div>
+            </div>
+          )}
         </div>
-      </div>
 
-      {isScannerOpen && (
-        <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in">
-          <div className="relative flex-1">
-            <video ref={videoRef} playsInline className="w-full h-full object-cover" />
-            <canvas ref={canvasRef} className="hidden" />
-            
-            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              {/* Review UI Layer */}
-              {scannerStatus === 'review' && aiReviewData ? (
-                <div className="bg-white/90 backdrop-blur-xl w-[90%] max-w-sm rounded-[40px] p-6 shadow-2xl pointer-events-auto animate-in slide-in-from-bottom-10 duration-500 max-h-[85vh] overflow-y-auto">
-                   <div className="flex items-center gap-3 mb-6">
-                      <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg shadow-indigo-200">
-                         <BrainCircuit size={24} />
+        {/* GPS acquiring status — compact */}
+        <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${
+          gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' :
+          gpsCoords ? 'bg-emerald-50 border-emerald-200' :
+          'bg-slate-50 border-slate-200'
+        }`}>
+          <div className={`p-1.5 rounded-btn flex-shrink-0 ${
+            gpsPermission === 'denied' ? 'bg-rose-500 text-white' :
+            gpsCoords ? 'bg-emerald-500 text-white' :
+            'bg-slate-400 text-white'
+          }`}>
+            <Satellite size={13} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className={`text-[9px] font-black uppercase ${
+              gpsPermission === 'denied' ? 'text-rose-600' :
+              gpsCoords ? 'text-emerald-700' :
+              'text-slate-500'
+            }`}>
+              {gpsPermission === 'denied' ? 'GPS Denied — check browser settings' :
+               gpsCoords ? `GPS Locked (${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)})` :
+               'Acquiring GPS...'}
+            </p>
+          </div>
+          {!gpsCoords && (
+            <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
+              <RotateCcw size={12} />
+            </button>
+          )}
+        </div>
+
+        {/* Next button */}
+        <button
+          onClick={() => setStep('amounts')}
+          disabled={!currentScore}
+          className="w-full py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-3"
+        >
+          <ChevronRight size={18} />
+          {lang === 'zh' ? '下一步：金额确认' : 'Next: Financial Details'}
+        </button>
+
+        {/* Scanner overlay */}
+        {isScannerOpen && (
+          <div className="fixed inset-0 z-[100] bg-black flex flex-col animate-in fade-in">
+            <div className="relative flex-1">
+              <video ref={videoRef} playsInline className="w-full h-full object-cover" />
+              <canvas ref={canvasRef} className="hidden" />
+
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                {scannerStatus === 'review' && aiReviewData ? (
+                  <div className="bg-white/90 backdrop-blur-xl w-[90%] max-w-sm rounded-card p-5 shadow-field-md pointer-events-auto animate-in slide-in-from-bottom-10 duration-500 max-h-[85vh] overflow-y-auto">
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="p-2.5 bg-indigo-600 rounded-subcard text-white shadow-field">
+                        <BrainCircuit size={20} />
                       </div>
                       <div>
-                         <h3 className="text-lg font-black text-slate-900 uppercase">{t.aiReviewTitle}</h3>
-                         <p className="text-[10px] font-bold text-slate-400 uppercase">Review & Confirm</p>
+                        <h3 className="text-base font-black text-slate-900 uppercase">{t.aiReviewTitle}</h3>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase">Review & Confirm</p>
                       </div>
-                   </div>
+                    </div>
 
-                   <div className="space-y-4 mb-6">
-                      <div className="h-40 rounded-2xl overflow-hidden border-2 border-slate-100 relative group bg-black">
-                         <img src={aiReviewData.image} className="w-full h-full object-contain" alt="Captured" />
-                      </div>
-
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.counterScore}</label>
-                         <div className="flex items-center gap-3">
-                            <input 
-                              type="number" 
-                              value={aiReviewData.score} 
-                              onChange={e => setAiReviewData({...aiReviewData, score: e.target.value})} 
-                              className="text-3xl font-black text-slate-900 bg-transparent w-full outline-none border-b border-dashed border-slate-300 focus:border-indigo-500 placeholder:text-slate-200"
-                              placeholder="0000"
-                            />
-                            <Edit2 size={16} className="text-slate-400" />
-                         </div>
+                    <div className="space-y-3 mb-5">
+                      <div className="h-36 rounded-subcard overflow-hidden border border-slate-100 bg-black">
+                        <img src={aiReviewData.image} className="w-full h-full object-contain" alt="Captured" />
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-[9px] font-black text-slate-400 uppercase block ml-1">{t.machineCondition}</label>
-                        <div className="flex gap-2">
-                            <button 
-                                onClick={() => setAiReviewData({...aiReviewData, condition: 'Normal'})}
-                                className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
-                            >
-                                <CheckCircle2 size={18} />
-                                <span className="text-[10px] font-black uppercase">Normal</span>
-                            </button>
-                            <button 
-                                onClick={() => setAiReviewData({...aiReviewData, condition: 'Damaged'})}
-                                className={`flex-1 py-3 rounded-xl border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Damaged' ? 'bg-rose-50 border-rose-200 text-rose-600 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
-                            >
-                                <AlertTriangle size={18} />
-                                <span className="text-[10px] font-black uppercase">Issue</span>
-                            </button>
+                      <div className="bg-slate-50 p-3.5 rounded-subcard border border-slate-200">
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.counterScore}</label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="number"
+                            value={aiReviewData.score}
+                            onChange={e => setAiReviewData({...aiReviewData, score: e.target.value})}
+                            className="text-3xl font-black text-slate-900 bg-transparent w-full outline-none border-b border-dashed border-slate-300 focus:border-indigo-500 placeholder:text-slate-200"
+                            placeholder="0000"
+                          />
+                          <Edit2 size={14} className="text-slate-400 flex-shrink-0" />
                         </div>
                       </div>
 
-                      <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200">
-                         <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.notes}</label>
-                         <textarea 
-                           value={aiReviewData.notes}
-                           onChange={e => setAiReviewData({...aiReviewData, notes: e.target.value})}
-                           className="w-full bg-transparent text-xs font-bold text-slate-700 outline-none resize-none h-16"
-                           placeholder={t.notesPlaceholder}
-                         />
+                      <div className="space-y-1.5">
+                        <label className="text-[9px] font-black text-slate-400 uppercase block">{t.machineCondition}</label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setAiReviewData({...aiReviewData, condition: 'Normal'})}
+                            className={`flex-1 py-2.5 rounded-subcard border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Normal' ? 'bg-emerald-50 border-emerald-200 text-emerald-600 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 text-slate-400'}`}
+                          >
+                            <CheckCircle2 size={16} />
+                            <span className="text-[10px] font-black uppercase">Normal</span>
+                          </button>
+                          <button
+                            onClick={() => setAiReviewData({...aiReviewData, condition: 'Damaged'})}
+                            className={`flex-1 py-2.5 rounded-subcard border flex flex-col items-center gap-1 transition-all ${aiReviewData.condition === 'Damaged' ? 'bg-rose-50 border-rose-200 text-rose-600 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 text-slate-400'}`}
+                          >
+                            <AlertTriangle size={16} />
+                            <span className="text-[10px] font-black uppercase">Issue</span>
+                          </button>
+                        </div>
                       </div>
-                   </div>
 
-                   <div className="grid grid-cols-2 gap-3">
-                      <button onClick={handleRetake} className="py-4 bg-slate-100 text-slate-500 rounded-2xl font-black uppercase text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
-                         <RotateCcw size={14} /> {t.retake}
+                      <div className="bg-slate-50 p-3.5 rounded-subcard border border-slate-200">
+                        <label className="text-[9px] font-black text-slate-400 uppercase block mb-1">{t.notes}</label>
+                        <textarea
+                          value={aiReviewData.notes}
+                          onChange={e => setAiReviewData({...aiReviewData, notes: e.target.value})}
+                          className="w-full bg-transparent text-xs font-bold text-slate-700 outline-none resize-none h-12"
+                          placeholder={t.notesPlaceholder}
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <button onClick={handleRetake} className="py-3.5 bg-slate-100 text-slate-500 rounded-subcard font-black uppercase text-xs hover:bg-slate-200 transition-colors flex items-center justify-center gap-2">
+                        <RotateCcw size={13} /> {t.retake}
                       </button>
-                      <button onClick={handleConfirmAI} className="py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs shadow-xl shadow-indigo-200 active:scale-95 transition-all flex items-center justify-center gap-2">
-                         <CheckCircle2 size={14} /> {t.confirmFill}
+                      <button onClick={handleConfirmAI} className="py-3.5 bg-indigo-600 text-white rounded-subcard font-black uppercase text-xs shadow-field-md active:scale-95 transition-all flex items-center justify-center gap-2">
+                        <CheckCircle2 size={13} /> {t.confirmFill}
                       </button>
-                   </div>
-                </div>
-              ) : (
-                // Scanning UI Layer
-                <div className={`w-80 h-80 border-2 rounded-[50px] relative transition-all duration-700 ${scannerStatus === 'scanning' ? 'border-white/20' : 'border-emerald-500 scale-105'}`}>
-                   {scannerStatus === 'scanning' && <div className="absolute top-0 left-6 right-6 h-1 bg-red-500 shadow-[0_0_20px_#ef4444] animate-scan-y rounded-full"></div>}
-                   
-                   <div className="absolute -top-2 -left-2 w-10 h-10 border-t-4 border-l-4 border-emerald-500 rounded-tl-2xl"></div>
-                   <div className="absolute -top-2 -right-2 w-10 h-10 border-t-4 border-r-4 border-emerald-500 rounded-tr-2xl"></div>
-                   <div className="absolute -bottom-2 -left-2 w-10 h-10 border-b-4 border-l-4 border-emerald-500 rounded-bl-2xl"></div>
-                   <div className="absolute -bottom-2 -right-2 w-10 h-10 border-b-4 border-r-4 border-emerald-500 rounded-br-2xl"></div>
-                </div>
-              )}
-            </div>
-            
-             <div className="absolute bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none">
-                 <div className="flex items-center gap-6 pointer-events-auto">
-                    <button onClick={stopScanner} className="w-14 h-14 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all">
-                       <X size={24} />
+                    </div>
+                  </div>
+                ) : (
+                  <div className={`w-72 h-72 border-2 rounded-[40px] relative transition-all duration-700 ${scannerStatus === 'scanning' ? 'border-white/20' : 'border-emerald-500 scale-105'}`}>
+                    {scannerStatus === 'scanning' && <div className="absolute top-0 left-6 right-6 h-1 bg-red-500 shadow-[0_0_20px_#ef4444] animate-scan-y rounded-full" />}
+                    <div className="absolute -top-2 -left-2 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-xl" />
+                    <div className="absolute -top-2 -right-2 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-xl" />
+                    <div className="absolute -bottom-2 -left-2 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-xl" />
+                    <div className="absolute -bottom-2 -right-2 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-xl" />
+                  </div>
+                )}
+              </div>
+
+              <div className="absolute bottom-8 left-0 right-0 flex justify-center z-50 pointer-events-none">
+                <div className="flex items-center gap-6 pointer-events-auto">
+                  <button onClick={stopScanner} className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/20 transition-all">
+                    <X size={22} />
+                  </button>
+                  {scannerStatus === 'scanning' && (
+                    <button onClick={takeManualPhoto} className="w-18 h-18 bg-white rounded-full border-4 border-slate-200 flex items-center justify-center shadow-field-md active:scale-95 transition-all w-[72px] h-[72px]">
+                      <div className="w-14 h-14 rounded-full border-2 border-slate-900" />
                     </button>
-                    {scannerStatus === 'scanning' && (
-                        <button onClick={takeManualPhoto} className="w-20 h-20 bg-white rounded-full border-4 border-slate-200 flex items-center justify-center shadow-2xl active:scale-95 transition-all">
-                           <div className="w-16 h-16 rounded-full border-2 border-slate-900"></div>
-                        </button>
-                    )}
-                 </div>
-             </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // STEP 3 — Amounts: Retention + Expenses + Coin Exchange
+  // ══════════════════════════════════════════════════════════════════════
+  if (step === 'amounts') {
+    return (
+      <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+        <WizardStepBar current="amounts" />
+        <LocationSubHeader onBack={() => setStep('capture')} />
+
+        {/* Revenue summary */}
+        <div className={`p-4 rounded-subcard text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+          <div>
+            <p className="text-[9px] font-black uppercase opacity-60">{t.formula}</p>
+            <p className="text-[9px] font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
+          </div>
+          <div className="text-right">
+            {calculations.revenue > 50000 && (
+              <div className="flex items-center gap-1 justify-end mb-1">
+                <Trophy size={10} className="text-yellow-300" />
+                <span className="text-[8px] font-black text-yellow-300 uppercase">High Value</span>
+              </div>
+            )}
+            <p className="text-2xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
+            <p className="text-[8px] opacity-60 uppercase">Gross Revenue</p>
+          </div>
+        </div>
+
+        {/* Owner Retention */}
+        <div className={`p-4 rounded-subcard border transition-all ${isOwnerRetaining ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
+          <div className="flex justify-between items-center mb-3">
+            <label className={`text-[10px] font-black uppercase flex items-center gap-2 ${isOwnerRetaining ? 'text-amber-600' : 'text-slate-400'}`}>
+              <HandCoins size={13} /> {t.retention}
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsOwnerRetaining(!isOwnerRetaining)}
+              className={`relative w-9 h-5 rounded-full transition-colors ${isOwnerRetaining ? 'bg-amber-500' : 'bg-slate-300'}`}
+            >
+              <div className={`absolute top-1 left-1 w-3 h-3 bg-white rounded-full transition-transform ${isOwnerRetaining ? 'translate-x-4' : 'translate-x-0'}`} />
+            </button>
+          </div>
+          {isOwnerRetaining ? (
+            <div className="space-y-1">
+              <div className="flex items-baseline gap-1">
+                <span className="text-xs font-black text-amber-300">TZS</span>
+                <input
+                  type="number"
+                  value={ownerRetention}
+                  onChange={e => setOwnerRetention(e.target.value)}
+                  className="w-full text-2xl font-black bg-transparent outline-none text-amber-900 placeholder:text-amber-200"
+                  placeholder="0"
+                />
+              </div>
+              <p className="text-[8px] font-black text-amber-400 uppercase">{(selectedLocation!.commissionRate * 100).toFixed(0)}% Left at machine</p>
+            </div>
+          ) : (
+            <div className="p-3 bg-indigo-600 text-white rounded-btn flex items-center gap-2.5">
+              <ShieldAlert size={16} />
+              <div className="flex-1">
+                <p className="text-[10px] font-black uppercase">{t.fullCollect}</p>
+                <p className="text-[8px] font-bold opacity-80 mt-0.5">TZS {calculations.commission.toLocaleString()} recorded as debt</p>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Expenses */}
+        <div className="bg-rose-50 p-4 rounded-subcard border border-rose-100">
+          <div className="flex items-center justify-between mb-3">
+            <label className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2">
+              <Banknote size={13} /> Expenses / Advance
+            </label>
+            {parseInt(expenses) > 0 && (
+              <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded-tag text-[8px] font-black uppercase">PENDING</span>
+            )}
+          </div>
+
+          <div className="flex bg-white/60 p-1 rounded-btn mb-3">
+            <button
+              onClick={() => setExpenseType('public')}
+              className={`flex-1 py-1.5 rounded-tag text-[9px] font-black uppercase transition-all ${expenseType === 'public' ? 'bg-rose-500 text-white shadow-field' : 'text-rose-400 hover:bg-rose-100'}`}
+            >
+              Company
+            </button>
+            <button
+              onClick={() => setExpenseType('private')}
+              className={`flex-1 py-1.5 rounded-tag text-[9px] font-black uppercase transition-all ${expenseType === 'private' ? 'bg-indigo-500 text-white shadow-field' : 'text-rose-400 hover:bg-rose-100'}`}
+            >
+              Driver Advance
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <select
+              value={expenseCategory}
+              onChange={e => setExpenseCategory(e.target.value as any)}
+              className="bg-white border border-rose-100 rounded-btn px-2 py-2 text-[10px] font-black text-rose-600 outline-none uppercase w-28 flex-shrink-0"
+            >
+              {expenseType === 'public' ? (
+                <>
+                  <option value="fuel">Fuel</option>
+                  <option value="repair">Repair</option>
+                  <option value="fine">Fine</option>
+                  <option value="other">Other</option>
+                </>
+              ) : (
+                <>
+                  <option value="allowance">Meal Allow.</option>
+                  <option value="salary_advance">Salary Adv.</option>
+                  <option value="other">Personal</option>
+                </>
+              )}
+            </select>
+            <div className="flex-1 flex items-baseline gap-1 border-b border-rose-200 px-1">
+              <span className="text-xs font-black text-rose-300">TZS</span>
+              <input
+                type="number"
+                value={expenses}
+                onChange={e => setExpenses(e.target.value)}
+                className="w-full text-xl font-black bg-transparent outline-none text-rose-900 placeholder:text-rose-200"
+                placeholder="0"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Coin Exchange */}
+        <div className="bg-emerald-50 p-4 rounded-subcard border border-emerald-100">
+          <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-500 rounded-btn text-white flex-shrink-0"><Coins size={16} /></div>
+            <input
+              type="number"
+              value={coinExchange}
+              onChange={e => setCoinExchange(e.target.value)}
+              className="w-full text-2xl font-black bg-transparent outline-none text-emerald-900 placeholder:text-emerald-200"
+              placeholder="0"
+            />
+          </div>
+        </div>
+
+        {/* Navigation */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => setStep('capture')}
+            className="py-4 bg-white border border-slate-200 text-slate-500 rounded-btn font-black uppercase text-xs shadow-field hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+          >
+            <ArrowRight size={15} className="rotate-180" />
+            {lang === 'zh' ? '返回' : 'Back'}
+          </button>
+          <button
+            onClick={() => setStep('confirm')}
+            className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-xs shadow-field-md active:scale-95 transition-all flex items-center justify-center gap-2"
+          >
+            {lang === 'zh' ? '确认提交' : 'Review & Submit'}
+            <ChevronRight size={15} />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  // ══════════════════════════════════════════════════════════════════════
+  // STEP 4 — Confirm: Summary + GPS + Submit
+  // ══════════════════════════════════════════════════════════════════════
+  return (
+    <div className="max-w-md mx-auto py-4 px-4 pb-20 animate-in fade-in space-y-4">
+      <WizardStepBar current="confirm" />
+      <LocationSubHeader onBack={() => setStep('amounts')} />
+
+      {/* Net payable — big display */}
+      <div className="bg-slate-900 rounded-subcard p-5 text-white flex justify-between items-center">
+        <div>
+          <p className="text-[10px] font-black uppercase opacity-60">{t.net}</p>
+          <p className="text-[8px] font-bold opacity-40 uppercase mt-0.5">Cash to hand in</p>
+        </div>
+        <p className="text-4xl font-black">TZS {calculations.netPayable.toLocaleString()}</p>
+      </div>
+
+      {/* Summary breakdown */}
+      <div className="bg-white rounded-subcard border border-slate-200 shadow-field divide-y divide-slate-100">
+        {[
+          { label: 'Gross Revenue', value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
+          { label: lang === 'zh' ? '店主留存' : 'Owner Retention', value: `− TZS ${calculations.finalRetention.toLocaleString()}`, color: 'text-amber-600' },
+          { label: 'Expenses', value: `− TZS ${(parseInt(expenses) || 0).toLocaleString()}`, color: 'text-rose-500' },
+          { label: lang === 'zh' ? '换币' : 'Coin Exchange', value: `TZS ${(parseInt(coinExchange) || 0).toLocaleString()}`, color: 'text-emerald-600' },
+          { label: lang === 'zh' ? '硬币库存' : 'Coin Stock', value: `${calculations.remainingCoins.toLocaleString()} coins`, color: calculations.isCoinStockNegative ? 'text-rose-600 font-black' : 'text-slate-500' },
+        ].map((row) => (
+          <div key={row.label} className="flex justify-between items-center px-4 py-2.5">
+            <span className="text-[10px] font-black text-slate-400 uppercase">{row.label}</span>
+            <span className={`text-[11px] font-black ${row.color}`}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Photo thumbnail */}
+      {photoData && (
+        <div className="h-20 rounded-subcard overflow-hidden border border-slate-200 shadow-field relative">
+          <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
+          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
+            <CheckCircle2 size={9} /> Photo Attached
           </div>
         </div>
       )}
+
+      {/* GPS status */}
+      <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${
+        gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' :
+        gpsCoords ? 'bg-emerald-50 border-emerald-200' :
+        'bg-slate-50 border-slate-200'
+      }`}>
+        <div className={`p-1.5 rounded-btn flex-shrink-0 ${
+          gpsPermission === 'denied' ? 'bg-rose-500 text-white animate-pulse' :
+          gpsCoords ? 'bg-emerald-500 text-white' :
+          'bg-slate-400 text-white'
+        }`}>
+          <Satellite size={13} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className={`text-[9px] font-black uppercase ${
+            gpsPermission === 'denied' ? 'text-rose-600' :
+            gpsCoords ? 'text-emerald-700' :
+            'text-slate-500'
+          }`}>
+            {gpsPermission === 'denied' ? 'GPS denied — open browser settings → allow location' :
+             gpsCoords ? 'GPS location confirmed' :
+             'Acquiring GPS signal...'}
+          </p>
+        </div>
+        {!gpsCoords && gpsPermission !== 'denied' && (
+          <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
+            <RotateCcw size={12} />
+          </button>
+        )}
+      </div>
+
+      {/* Coin stock warning */}
+      {calculations.isCoinStockNegative && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-200 rounded-subcard">
+          <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
+          <p className="text-[9px] font-black text-rose-700 uppercase">
+            {lang === 'zh' ? '⚠ 硬币库存不足，请确认后提交' : '⚠ Coin stock insufficient — confirm before submit'}
+          </p>
+        </div>
+      )}
+
+      {/* Navigation */}
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          onClick={() => setStep('amounts')}
+          className="py-4 bg-white border border-slate-200 text-slate-500 rounded-btn font-black uppercase text-xs shadow-field hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+        >
+          <ArrowRight size={15} className="rotate-180" />
+          {lang === 'zh' ? '返回' : 'Back'}
+        </button>
+        <button
+          onClick={handleSubmit}
+          disabled={status !== 'idle' || !currentScore || !photoData}
+          className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
+        >
+          {status !== 'idle' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          {status === 'uploading' ? t.saving :
+           !gpsCoords && gpsPermission !== 'denied' ? t.acquiringGps :
+           t.confirmSubmit}
+        </button>
+      </div>
     </div>
   );
 };

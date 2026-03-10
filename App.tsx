@@ -12,6 +12,7 @@ import { fetchCurrentUserProfile, restoreCurrentUserFromSession, signOutCurrentU
 
 import { useSupabaseData } from './hooks/useSupabaseData';
 import { useSupabaseMutations } from './hooks/useSupabaseMutations';
+import { useDevicePerformance } from './hooks/useDevicePerformance';
 
 // Lazy load heavy components
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -24,6 +25,7 @@ const BillingReconciliation = lazy(() => import('./components/BillingReconciliat
 const DriverManagement = lazy(() => import('./components/DriverManagement'));
 const AccountSettings = lazy(() => import('./components/AccountSettings'));
 const Login = lazy(() => import('./components/Login'));
+const PwaInstallPrompt = lazy(() => import('./components/PwaInstallPrompt'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -71,14 +73,21 @@ class ErrorBoundary extends React.Component<any, any> {
 const App: React.FC = () => {
   const [view, setView] = useState<'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports'>('dashboard');
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [userRole, setUserRole] = useState<'admin' | 'driver' | null>(null);
   const [lang, setLang] = useState<'zh' | 'sw'>('zh');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [aiContextId, setAiContextId] = useState<string>('');
+
+  // Detect device performance tier and apply CSS degradation class to <html>.
+  // The hook writes document.documentElement.dataset.perf as a side effect,
+  // which activates the CSS degradation rules in styles.css.
+  useDevicePerformance();
 
   const t = TRANSLATIONS[lang];
   const activeDriverId = currentUser?.driverId ?? currentUser?.id;
 
   // -- Use React Query Custom Hooks --
+  // Pass userRole so driver accounts skip admin-only data (AI logs)
   const { 
     isOnline, 
     locations, 
@@ -87,7 +96,7 @@ const App: React.FC = () => {
     dailySettlements, 
     aiLogs, 
     isLoading: isDataLoading 
-  } = useSupabaseData();
+  } = useSupabaseData(userRole);
 
   const {
     syncOfflineData,
@@ -119,6 +128,7 @@ const App: React.FC = () => {
         return;
       }
       setCurrentUser(result.user);
+      setUserRole(result.user.role as 'admin' | 'driver');
       setLang(result.user.role === 'admin' ? 'zh' : 'sw');
       if (result.user.role === 'driver') setView('collect');
       setIsInitializing(false);
@@ -135,9 +145,11 @@ const App: React.FC = () => {
       if (!result.success) {
         await signOutCurrentUser();
         setCurrentUser(null);
+        setUserRole(null);
         return;
       }
       setCurrentUser(result.user);
+      setUserRole(result.user.role as 'admin' | 'driver');
       setLang(result.user.role === 'admin' ? 'zh' : 'sw');
       if (result.user.role === 'driver') setView('collect');
     }) || { data: { subscription: { unsubscribe: () => {} } } };
@@ -207,13 +219,14 @@ const App: React.FC = () => {
   const handleLogout = async () => {
     await signOutCurrentUser();
     setCurrentUser(null);
+    setUserRole(null);
   };
 
   if (isInitializing || (isDataLoading && !currentUser)) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-slate-900">
-        <Loader2 size={48} className="text-amber-400 animate-spin mb-4" />
-        <p className="text-[10px] font-black uppercase tracking-widest text-amber-500/50">Bahati Engine Initializing...</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#f3f5f8]">
+        <Loader2 size={48} className="text-indigo-500 animate-spin mb-4" />
+        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Bahati Engine Initializing...</p>
       </div>
     );
   }
@@ -267,16 +280,17 @@ const App: React.FC = () => {
   const showDashboard = isAdmin ? ['dashboard', 'settlement', 'map', 'sites', 'ai'].includes(view) : view === 'settlement';
 
   return (
-    <div className="flex h-screen overflow-hidden bg-slate-50">
+    <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
       {isAdmin && (
-        <aside className="hidden md:flex flex-col w-[180px] lg:w-[200px] bg-slate-900 flex-shrink-0 h-full z-40">
-          <div className="p-4 border-b border-white/10">
+        <aside className="hidden md:flex flex-col w-[180px] lg:w-[200px] bg-[#f3f5f8] border-r border-slate-200 flex-shrink-0 h-full z-40">
+          {/* Soft Console header */}
+          <div className="p-4 border-b border-slate-200">
             <div className="flex items-center gap-2.5">
-              <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl flex-shrink-0">
+              <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-[10px] flex-shrink-0 shadow-field">
                 <Crown size={16} fill="currentColor" />
               </div>
               <div className="min-w-0">
-                <p className="text-[11px] font-black text-white leading-tight">BAHATI JACKPOTS</p>
+                <p className="text-[11px] font-black text-slate-800 leading-tight">BAHATI JACKPOTS</p>
                 <p className="text-[8px] font-bold text-slate-400 uppercase tracking-wider leading-tight">Admin Console</p>
               </div>
             </div>
@@ -289,26 +303,23 @@ const App: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setView(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all relative group ${
-                    active ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-900/40' : 'text-slate-400 hover:bg-white/10 hover:text-white'
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-subcard text-left transition-colors relative group ${
+                    active
+                      ? 'bg-white text-indigo-600 shadow-silicone-sm border border-white/80'
+                      : 'text-slate-500 hover:bg-white/60 hover:text-indigo-600'
                   }`}
                 >
                   <span className="flex-shrink-0">{item.icon}</span>
                   <span className="text-[10px] font-black uppercase leading-tight truncate">{item.label}</span>
-                  {!active && item.badge > 0 && (
-                    <span className="ml-auto flex-shrink-0 w-5 h-5 bg-amber-500 text-slate-900 rounded-full text-[8px] font-black flex items-center justify-center">
-                      {item.badge > 9 ? '9+' : item.badge}
-                    </span>
-                  )}
-                  {active && item.badge > 0 && (
-                    <span className="ml-auto flex-shrink-0 w-5 h-5 bg-white/20 text-white rounded-full text-[8px] font-black flex items-center justify-center">
+                  {item.badge > 0 && (
+                    <span className={`ml-auto flex-shrink-0 w-5 h-5 rounded-full text-[8px] font-black flex items-center justify-center ${active ? 'bg-indigo-100 text-indigo-600' : 'bg-amber-500 text-white'}`}>
                       {item.badge > 9 ? '9+' : item.badge}
                     </span>
                   )}
                 </button>
               );
             })}
-            <div className="h-px bg-white/10 my-2" />
+            <div className="h-px bg-slate-200 my-2" />
             {[
               { id: 'collect', icon: <PlusCircle size={18}/>, label: '采集录入' },
               { id: 'debt', icon: <CreditCard size={18}/>, label: '债务管理' },
@@ -320,8 +331,10 @@ const App: React.FC = () => {
                 <button
                   key={item.id}
                   onClick={() => setView(item.id as any)}
-                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-all ${
-                    active ? 'bg-indigo-600 text-white' : 'text-slate-500 hover:bg-white/10 hover:text-white'
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-subcard text-left transition-colors ${
+                    active
+                      ? 'bg-white text-indigo-600 shadow-silicone-sm border border-white/80'
+                      : 'text-slate-400 hover:bg-white/60 hover:text-slate-600'
                   }`}
                 >
                   <span className="flex-shrink-0">{item.icon}</span>
@@ -331,15 +344,16 @@ const App: React.FC = () => {
             })}
           </nav>
 
-          <div className="p-3 border-t border-white/10 space-y-2">
+          {/* Soft Console footer */}
+          <div className="p-3 border-t border-slate-200 space-y-2">
             <button
               onClick={() => syncOfflineData.mutate()}
               disabled={syncOfflineData.isPending || !isOnline}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all ${
-                syncOfflineData.isPending ? 'bg-slate-800 text-indigo-400' :
-                !isOnline ? 'bg-rose-500/10 text-rose-400' :
-                unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
-                'bg-emerald-500/10 text-emerald-400'
+              className={`w-full flex items-center gap-2 px-3 py-2 rounded-subcard text-[9px] font-black uppercase transition-all border ${
+                syncOfflineData.isPending ? 'bg-slate-100 border-slate-200 text-slate-400' :
+                !isOnline ? 'bg-rose-50 border-rose-200 text-rose-500' :
+                unsyncedCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse' :
+                'bg-emerald-50 border-emerald-200 text-emerald-600'
               }`}
             >
               {syncOfflineData.isPending ? <Loader2 size={12} className="animate-spin"/> :
@@ -348,18 +362,24 @@ const App: React.FC = () => {
                <ShieldCheck size={12}/>}
               <span>{syncOfflineData.isPending ? 'Syncing...' : !isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount} Pending` : 'Cloud Synced'}</span>
             </button>
+
+            {/* PWA install */}
+            <Suspense fallback={null}>
+              <PwaInstallPrompt variant="light" lang={lang} />
+            </Suspense>
+
             <div className="flex items-center gap-2 px-2">
-              <div className="w-7 h-7 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-black text-xs flex-shrink-0">
+              <div className="w-7 h-7 rounded-subcard bg-indigo-100 text-indigo-600 flex items-center justify-center font-black text-xs flex-shrink-0 shadow-silicone-sm">
                 {currentUser.name.charAt(0).toUpperCase()}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-[10px] font-black text-white truncate">{currentUser.name}</p>
+                <p className="text-[10px] font-black text-slate-800 truncate">{currentUser.name}</p>
                 <p className="text-[8px] font-bold text-slate-400 uppercase">Admin User</p>
               </div>
               <div className="flex flex-col gap-1">
-                <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Globe size={12}/></button>
-                <button onClick={() => setShowAccountSettings(true)} className="p-1 bg-white/10 rounded-lg text-slate-400 hover:text-white"><Settings size={12}/></button>
-                <button onClick={handleLogout} className="p-1 bg-rose-500/20 rounded-lg text-rose-400"><LogOut size={12}/></button>
+                <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white rounded-lg shadow-silicone-sm text-slate-500 hover:text-indigo-600 transition-colors"><Globe size={12}/></button>
+                <button onClick={() => setShowAccountSettings(true)} className="p-1 bg-white rounded-lg shadow-silicone-sm text-slate-500 hover:text-indigo-600 transition-colors"><Settings size={12}/></button>
+                <button onClick={handleLogout} className="p-1 bg-rose-50 rounded-lg border border-rose-100 text-rose-500 hover:text-rose-700 transition-colors"><LogOut size={12}/></button>
               </div>
             </div>
           </div>
@@ -367,19 +387,19 @@ const App: React.FC = () => {
       )}
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className={`border-b flex-shrink-0 z-30 ${isAdmin ? 'bg-white border-slate-200' : 'bg-slate-900 border-white/10'}`}>
+        <header className={`border-b flex-shrink-0 z-30 ${isAdmin ? 'bg-[#f3f5f8] border-slate-200' : 'bg-slate-900 border-white/10'}`}>
           <div className="flex items-center justify-between px-4 py-3">
             <div className="flex items-center gap-3">
               {isAdmin ? (
                 <div className="md:hidden flex items-center gap-2">
-                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl">
+                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-[10px] shadow-field">
                     <Crown size={14} fill="currentColor" />
                   </div>
-                  <span className="text-xs font-black text-slate-900">BAHATI</span>
+                  <span className="text-xs font-black text-slate-800">BAHATI</span>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-xl">
+                  <div className="bg-gradient-to-br from-amber-300 to-amber-600 text-slate-900 p-1.5 rounded-[10px]">
                     <Crown size={14} fill="currentColor" />
                   </div>
                   <div>
@@ -400,10 +420,10 @@ const App: React.FC = () => {
                 <button
                   onClick={() => syncOfflineData.mutate()}
                   disabled={syncOfflineData.isPending || !isOnline}
-                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all border ${
-                    syncOfflineData.isPending ? 'bg-slate-50 border-slate-200 text-slate-400' :
+                  className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-subcard text-[9px] font-black uppercase transition-all border ${
+                    syncOfflineData.isPending ? 'bg-white border-slate-200 text-slate-400 shadow-silicone-sm' :
                     !isOnline ? 'bg-rose-50 border-rose-200 text-rose-500' :
-                    unsyncedCount > 0 ? 'bg-amber-50 border-amber-300 text-amber-700 animate-pulse' :
+                    unsyncedCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-700 animate-pulse' :
                     'bg-emerald-50 border-emerald-200 text-emerald-600'
                   }`}
                 >
@@ -418,7 +438,7 @@ const App: React.FC = () => {
                 <button
                   onClick={() => syncOfflineData.mutate()}
                   disabled={syncOfflineData.isPending || !isOnline}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase transition-all ${
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-[9px] font-black uppercase transition-all ${
                     !isOnline ? 'bg-rose-500/10 text-rose-400' :
                     unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
                     'bg-emerald-500/10 text-emerald-400'
@@ -428,18 +448,25 @@ const App: React.FC = () => {
                   {!isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount}` : 'Synced'}
                 </button>
               )}
-              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
-              <button onClick={() => setShowAccountSettings(true)} className={`p-2 rounded-xl ${isAdmin ? 'bg-slate-100 text-slate-600 hover:bg-slate-200' : 'bg-white/10 text-white hover:bg-white/20'}`}><Settings size={15}/></button>
-              <button onClick={handleLogout} className="p-2 bg-rose-500/20 rounded-xl text-rose-400"><LogOut size={15}/></button>
+              {!isAdmin && (
+                <Suspense fallback={null}>
+                  <PwaInstallPrompt variant="dark" lang={lang} />
+                </Suspense>
+              )}
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className={`p-2 rounded-subcard ${isAdmin ? 'bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm' : 'bg-white/10 text-white hover:bg-white/20'}`}><Globe size={15}/></button>
+              <button onClick={() => setShowAccountSettings(true)} className={`p-2 rounded-subcard ${isAdmin ? 'bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm' : 'bg-white/10 text-white hover:bg-white/20'}`}><Settings size={15}/></button>
+              <button onClick={handleLogout} className={`p-2 rounded-subcard ${isAdmin ? 'bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700' : 'bg-rose-500/20 text-rose-400'}`}><LogOut size={15}/></button>
             </div>
           </div>
 
+          {/* Driver Field Mode — 4-tab bottom nav */}
           {!isAdmin && (
             <div className="flex border-t border-white/10">
               {[
                 { id: 'collect', icon: <PlusCircle size={16}/>, label: t.collect },
                 { id: 'settlement', icon: <Banknote size={16}/>, label: t.dailySettlement },
                 { id: 'debt', icon: <CreditCard size={16}/>, label: t.debt },
+                { id: 'history', icon: <History size={16}/>, label: lang === 'sw' ? 'Historia' : '记录' },
               ].map((item) => (
                 <button
                   key={item.id}
@@ -456,7 +483,7 @@ const App: React.FC = () => {
           )}
 
           {isAdmin && (
-            <div className="md:hidden flex border-t border-slate-100 overflow-x-auto scrollbar-hide">
+            <div className="md:hidden flex border-t border-slate-200 overflow-x-auto scrollbar-hide">
               {adminNavItems.map((item) => (
                 <button
                   key={item.id}
@@ -478,11 +505,11 @@ const App: React.FC = () => {
           )}
         </header>
 
-        <main className="flex-1 overflow-y-auto overflow-x-hidden relative">
+        <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#f3f5f8]">
           {/* Overlay loading state during sync/fetch */}
           {isDataLoading && (
-            <div className="absolute inset-0 bg-white/50 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
-               <Loader2 size={32} className="text-indigo-600 animate-spin" />
+            <div className="absolute inset-0 bg-[#f3f5f8]/70 backdrop-blur-sm z-50 flex items-center justify-center pointer-events-none">
+               <Loader2 size={32} className="text-indigo-500 animate-spin" />
             </div>
           )}
           
