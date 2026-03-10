@@ -20,7 +20,7 @@ export function useSupabaseData() {
   const { data: isOnline = false } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
-    refetchInterval: 20000,
+    refetchInterval: 30000, // 30 s — health-check interval (was 20 s)
   });
 
   // 2. Core Data: Locations & Drivers - Critical for first paint

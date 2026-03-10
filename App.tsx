@@ -158,7 +158,7 @@ const App: React.FC = () => {
            }).eq('id', activeDriverId);
          }, () => {}, { enableHighAccuracy: false, timeout: 5000 });
       }
-    }, 20000);
+    }, 60000); // 60 s — reduced from 20 s to cut unnecessary DB writes by ~66 %
     return () => clearInterval(timer);
   }, [isOnline, currentUser, activeDriverId]);
 
