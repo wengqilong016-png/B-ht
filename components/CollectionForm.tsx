@@ -1131,7 +1131,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
                   </div>
                 </button>
                 {/* Action buttons: Reset / Payout */}
-                {!isLocked && (isNear9999 || true) && (
+                {!isLocked && (
                   <div className="flex border-t border-slate-100">
                     {isNear9999 && (
                       <button
