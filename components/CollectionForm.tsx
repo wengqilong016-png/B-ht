@@ -1039,7 +1039,7 @@ const CollectionForm: React.FC<CollectionFormProps> = ({ locations, currentDrive
             className="w-full py-3.5 bg-indigo-50 border border-indigo-100 text-indigo-600 rounded-btn font-black uppercase text-xs hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
           >
             <Plus size={15} />
-            {lang === 'zh' ? 'Register New Machine' : t.registerNewMachine}
+            {t.registerNewMachine}
           </button>
         )}
 
