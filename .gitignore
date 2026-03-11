@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 .env
 manage_users.js
+.vercel
