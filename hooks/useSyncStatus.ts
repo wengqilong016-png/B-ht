@@ -16,7 +16,7 @@ export interface SyncStatus {
   isSyncing: boolean;
   syncFailed: boolean;
   unsyncedCount: number;
-  /** ISO timestamp of the most recent successful full sync, or null if never synced this session */
+  /** Date of the most recent successful full sync, or null if never synced this session */
   lastSyncedAt: Date | null;
   trigger: () => void;
 }

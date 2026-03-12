@@ -6,7 +6,7 @@ import {
   MapPin, Store, Users, FileSpreadsheet, History, Settings
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
-import { useSyncStatus } from '../hooks/useSyncStatus';
+import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
@@ -44,7 +44,7 @@ interface AppAdminShellProps {
   filteredSettlements: DailySettlement[];
   unsyncedCount: number;
   activeDriverId: string | undefined;
-  syncOfflineData: { mutate: () => void; isPending: boolean; isError: boolean; isSuccess: boolean };
+  syncOfflineData: SyncMutationHandle;
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };

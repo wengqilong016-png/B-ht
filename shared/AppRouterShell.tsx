@@ -1,5 +1,6 @@
 import React from 'react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
+import { SyncMutationHandle } from '../hooks/useSyncStatus';
 import AppAdminShell from '../admin/AppAdminShell';
 import AppDriverShell from '../driver/AppDriverShell';
 
@@ -18,7 +19,7 @@ interface AppRouterShellProps {
   filteredSettlements: DailySettlement[];
   unsyncedCount: number;
   activeDriverId: string | undefined;
-  syncOfflineData: { mutate: () => void; isPending: boolean; isError: boolean; isSuccess: boolean };
+  syncOfflineData: SyncMutationHandle;
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CloudOff, AlertTriangle, ShieldCheck, Loader2, RefreshCw,
 } from 'lucide-react';
@@ -42,12 +42,20 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
   const { isOnline, isSyncing, syncFailed, unsyncedCount, lastSyncedAt, trigger } = syncStatus;
   const isZh = lang === 'zh';
 
+  // ─── Tick state for keeping the elapsed-time label fresh ─────────────────
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (!lastSyncedAt) return;
+    const id = setInterval(() => setTick(t => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, [lastSyncedAt]);
+
   // ─── Derive display state ──────────────────────────────────────────────────
   type State = 'syncing' | 'offline' | 'failed' | 'pending' | 'synced';
-  const state: State = isSyncing
-    ? 'syncing'
-    : !isOnline
+  const state: State = !isOnline
     ? 'offline'
+    : isSyncing
+    ? 'syncing'
     : syncFailed
     ? 'failed'
     : unsyncedCount > 0
@@ -110,7 +118,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
       title={syncFailed
         ? (isZh ? '上次同步失败，点击重试' : 'Last sync failed – tap to retry')
         : lastSyncedAt
-        ? (isZh ? `上次同步：${lastSyncedAt.toLocaleTimeString()}` : `Last synced: ${lastSyncedAt.toLocaleTimeString()}`)
+        ? (isZh ? `上次同步：${lastSyncedAt.toLocaleString()}` : `Last synced: ${lastSyncedAt.toLocaleString()}`)
         : undefined}
       className={[
         'flex items-center gap-1.5 px-3 py-1.5 rounded-subcard',
