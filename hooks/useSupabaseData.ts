@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { supabase, checkDbHealth } from '../supabaseClient';
 import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
@@ -125,16 +125,24 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
   // This fixes the race condition where data queries see isOnline=false on
   // initial render (before the health check returns) and cache localDB data
   // with a long staleTime, so they never re-fetch from Supabase.
+  // Keep a stable ref to the current role so the online-refresh effect
+  // can read the latest value without being listed as a dependency
+  // (which would cause spurious refetches on every login).
+  const isDriverRef = useRef(isDriver);
+  const userRoleRef = useRef(userRole);
+  useEffect(() => { isDriverRef.current = isDriver; }, [isDriver]);
+  useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
+
   useEffect(() => {
     if (!isOnline) return;
     queryClient.invalidateQueries({ queryKey: ['locations'] });
     queryClient.invalidateQueries({ queryKey: ['drivers'] });
     queryClient.invalidateQueries({ queryKey: ['transactions'] });
     queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
-    if (!isDriver) {
-      queryClient.invalidateQueries({ queryKey: ['aiLogs', userRole ?? 'none'] });
+    if (!isDriverRef.current) {
+      queryClient.invalidateQueries({ queryKey: ['aiLogs', userRoleRef.current ?? 'none'] });
     }
-  }, [isOnline, isDriver, queryClient]);
+  }, [isOnline, queryClient]); // Only re-run when connectivity changes
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;
