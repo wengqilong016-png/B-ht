@@ -189,7 +189,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
             </div>
 
             {/* Current email read-only display */}
-            {/* currentUser.username holds the Supabase auth email for all users */}
+            {/* currentUser.username usually holds the Supabase auth email, but may fall back to the Supabase auth user id if no email is available */}
             <div className="mb-1">
               <label className={labelClass}><Mail size={10} className="text-slate-400" />{t.currentEmailLabel}</label>
               <p className="w-full bg-[#e8eaed] rounded-xl py-2.5 px-4 text-sm font-bold text-slate-500 shadow-silicone-pressed border border-slate-200/60 truncate">
