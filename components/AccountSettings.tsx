@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock } from 'lucide-react';
-import { User as UserType, TRANSLATIONS } from '../types';
+import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
 import { supabase } from '../supabaseClient';
 import { changeUserPassword, updateUserEmail } from '../services/authService';
 
@@ -15,7 +15,7 @@ interface AccountSettingsProps {
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, onClose, onPhoneUpdated }) => {
   const t = TRANSLATIONS[lang];
-  const currentEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(currentUser.username.trim())
+  const currentEmail = isLikelyEmail(currentUser.username)
     ? currentUser.username.trim()
     : '';
 

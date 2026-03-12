@@ -153,6 +153,9 @@ export const safeRandomUUID = (): string => {
   });
 };
 
+export const isLikelyEmail = (value: string): boolean =>
+  /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim());
+
 /**
  * Resize an image file to a max width and return a data URL.
  * Shared utility to avoid duplicating the canvas-based resize logic across components.
