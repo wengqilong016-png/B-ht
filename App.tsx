@@ -1,50 +1,14 @@
-import React, { useEffect, useMemo, useReducer, useState } from 'react';
-import { User } from './types';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
-import { supabase } from './supabaseClient';
 import { Analytics } from '@vercel/analytics/react';
-import { fetchCurrentUserProfile, restoreCurrentUserFromSession, signOutCurrentUser } from './services/authService';
 
 import { useSupabaseData } from './hooks/useSupabaseData';
 import { useSupabaseMutations } from './hooks/useSupabaseMutations';
 import { useDevicePerformance } from './hooks/useDevicePerformance';
+import { useAuthBootstrap } from './hooks/useAuthBootstrap';
+import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
-
-// ─── Types & Reducer ──────────────────────────────────────────────
-type AuthState = {
-  currentUser: User | null;
-  userRole: 'admin' | 'driver' | null;
-  lang: 'zh' | 'sw';
-  isInitializing: boolean;
-};
-
-type AuthAction =
-  | { type: 'SET_USER'; user: User }
-  | { type: 'LOGOUT' }
-  | { type: 'SET_LANG'; lang: 'zh' | 'sw' }
-  | { type: 'FINISH_INITIALIZING' };
-
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  switch (action.type) {
-    case 'SET_USER':
-      return {
-        ...state,
-        currentUser: action.user,
-        userRole: action.user.role as 'admin' | 'driver',
-        lang: action.user.role === 'admin' ? 'zh' : 'sw',
-        isInitializing: false,
-      };
-    case 'LOGOUT':
-      return { ...state, currentUser: null, userRole: null, isInitializing: false };
-    case 'SET_LANG':
-      return { ...state, lang: action.lang };
-    case 'FINISH_INITIALIZING':
-      return { ...state, isInitializing: false };
-    default:
-      return state;
-  }
-};
 
 // ─── Error Boundary ────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
@@ -77,14 +41,7 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
 
 // ─── Main App (auth + global init + role routing) ──────────────────
 const App: React.FC = () => {
-  const [state, dispatch] = useReducer(authReducer, {
-    currentUser: null,
-    userRole: null,
-    lang: 'zh',
-    isInitializing: true, // Safety Timeout Added
-  });
-
-  const { currentUser, userRole, lang, isInitializing } = state;
+  const { currentUser, userRole, lang, isInitializing, handleLogin, handleLogout, setLang } = useAuthBootstrap();
 
   // Detect device performance tier and apply CSS degradation class to <html>.
   useDevicePerformance();
@@ -126,78 +83,8 @@ const App: React.FC = () => {
     logAI
   } = useSupabaseMutations(isOnline);
 
-  // ─── Authentication ──────────────────────────────────────────────
-  useEffect(() => {
-    if (!supabase) {
-      dispatch({ type: 'FINISH_INITIALIZING' });
-      return;
-    }
-
-    const loadUser = async () => {
-      const result = await restoreCurrentUserFromSession();
-      if (!result.success) {
-        if ('error' in result && result.error !== 'No active session') {
-           await signOutCurrentUser();
-        }
-        dispatch({ type: 'FINISH_INITIALIZING' });
-        return;
-      }
-      dispatch({ type: 'SET_USER', user: result.user });
-    };
-    
-    loadUser();
-
-    const { data: { subscription } } = supabase?.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) {
-        dispatch({ type: 'LOGOUT' });
-        return;
-      }
-      const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
-      if (!result.success) {
-        await signOutCurrentUser();
-        dispatch({ type: 'LOGOUT' });
-        return;
-      }
-      dispatch({ type: 'SET_USER', user: result.user });
-    }) || { data: { subscription: { unsubscribe: () => {} } } };
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // ─── GPS Heartbeat ───────────────────────────────────────────────
-  useEffect(() => {
-    if (!isOnline || !supabase || currentUser?.role !== 'driver') return;
-    const timer = setInterval(() => {
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition((pos) => {
-           const { latitude, longitude } = pos.coords;
-           supabase.from('drivers').update({ 
-             lastActive: new Date().toISOString(),
-             currentGps: { lat: latitude, lng: longitude }
-           }).eq('id', activeDriverId);
-         }, () => {}, { enableHighAccuracy: false, timeout: 5000 });
-      }
-    }, 60000);
-    return () => clearInterval(timer);
-  }, [isOnline, currentUser, activeDriverId]);
-
-  // ─── Service Worker offline flush ────────────────────────────────
-  useEffect(() => {
-    const handleSwMessage = (event: MessageEvent) => {
-      if (event.data?.type === 'FLUSH_OFFLINE_QUEUE') {
-        syncOfflineData.mutate();
-      }
-    };
-    navigator.serviceWorker?.addEventListener('message', handleSwMessage);
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.ready.then((reg) => {
-        if ('sync' in reg) {
-          (reg as any).sync.register('bahati-flush-queue').catch(() => {});
-        }
-      }).catch(() => {});
-    }
-    return () => navigator.serviceWorker?.removeEventListener('message', handleSwMessage);
-  }, [syncOfflineData]);
+  // ─── Offline sync + GPS heartbeat ────────────────────────────────
+  useOfflineSyncLoop({ isOnline, currentUser, activeDriverId, syncOfflineData });
 
   // ─── Derived data ────────────────────────────────────────────────
   const filteredData = useMemo(() => ({
@@ -223,11 +110,6 @@ const App: React.FC = () => {
     [transactions, dailySettlements, aiLogs]
   );
 
-  const handleLogout = async () => {
-    await signOutCurrentUser();
-    dispatch({ type: 'LOGOUT' });
-  };
-
   // ─── Loading / Login screens ─────────────────────────────────────
   if (isInitializing || (isDataLoading && !currentUser)) {
     return (
@@ -239,7 +121,7 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
-    return <Login onLogin={user => dispatch({ type: 'SET_USER', user })} lang={lang} onSetLang={l => dispatch({ type: 'SET_LANG', lang: l })} />;
+    return <Login onLogin={handleLogin} lang={lang} onSetLang={setLang} />;
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
@@ -267,7 +149,7 @@ const App: React.FC = () => {
         updateTransaction={updateTransaction}
         saveSettlement={saveSettlement}
         logAI={logAI}
-        onSetLang={l => dispatch({ type: 'SET_LANG', lang: l })}
+        onSetLang={setLang}
         onLogout={handleLogout}
       />
       <Analytics />
