@@ -124,7 +124,7 @@ const App: React.FC = () => {
 
   if (!currentUser) {
     if (isAuthDisabled()) {
-      return <LocalDriverPicker onConfirm={handleLogin} lang={lang} />;
+      return <LocalDriverPicker onConfirm={handleLogin} lang="sw" />;
     }
     return <Login onLogin={handleLogin} lang={lang} onSetLang={setLang} />;
   }
