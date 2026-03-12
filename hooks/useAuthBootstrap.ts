@@ -63,6 +63,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
  *   the LocalDriverPicker component.
  * - handleLogout clears the local driver id instead of calling Supabase signOut.
  *
+ * IMPORTANT — RLS limitation: In disable-auth mode the Supabase client
+ * operates under the "anon" role. Current RLS policies require an
+ * authenticated session for reads/writes, so online Supabase fetch/sync will
+ * fail unless you explicitly grant the anon role appropriate access or route
+ * data through a service-role proxy. This mode is therefore recommended for
+ * offline/local use unless you have updated your Supabase security config.
+ *
  * When VITE_DISABLE_AUTH is falsy (default) the original Supabase Auth flow
  * runs unchanged.
  */

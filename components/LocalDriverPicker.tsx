@@ -114,6 +114,7 @@ export const SwitchDriverButton: React.FC<{
   const t = TRANSLATIONS[lang];
   return (
     <button
+      type="button"
       onClick={onSwitch}
       className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 border border-amber-100 shadow-silicone-sm hover:bg-amber-100 transition-all"
       title={t.localPickerSwitch}

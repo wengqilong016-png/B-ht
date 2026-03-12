@@ -35,6 +35,7 @@ export const setLocalDriverId = (driverId: string): void => {
   }
   localStorage.setItem(LOCAL_DRIVER_ID_KEY, normalized);
 };
+
 /** Clear the locally stored driver id (e.g. for driver switching). */
 export const clearLocalDriverId = (): void =>
   localStorage.removeItem(LOCAL_DRIVER_ID_KEY);
