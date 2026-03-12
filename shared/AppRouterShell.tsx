@@ -18,7 +18,7 @@ interface AppRouterShellProps {
   filteredSettlements: DailySettlement[];
   unsyncedCount: number;
   activeDriverId: string | undefined;
-  syncOfflineData: { mutate: () => void; isPending: boolean };
+  syncOfflineData: { mutate: () => void; isPending: boolean; isError: boolean; isSuccess: boolean };
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };
