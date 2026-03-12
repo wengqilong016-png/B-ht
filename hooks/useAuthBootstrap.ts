@@ -6,6 +6,12 @@ import {
   restoreCurrentUserFromSession,
   signOutCurrentUser,
 } from '../services/authService';
+import {
+  isAuthDisabled,
+  getLocalDriverId,
+  clearLocalDriverId,
+  buildLocalUser,
+} from '../utils/authMode';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,8 +54,24 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * Manages Supabase session restoration and auth state changes.
- * Extracted from App.tsx to keep authentication lifecycle self-contained.
+ * Manages session restoration and auth state changes.
+ *
+ * When VITE_DISABLE_AUTH=true the hook bypasses Supabase Auth entirely:
+ * - It reads a driver id from localStorage (key: bht_local_driver_id).
+ * - If a driver id is found it builds a local User and dispatches SET_USER.
+ * - Otherwise it finishes initialising without a user so the app can show
+ *   the LocalDriverPicker component.
+ * - handleLogout clears the local driver id instead of calling Supabase signOut.
+ *
+ * IMPORTANT — RLS limitation: In disable-auth mode the Supabase client
+ * operates under the "anon" role. Current RLS policies require an
+ * authenticated session for reads/writes, so online Supabase fetch/sync will
+ * fail unless you explicitly grant the anon role appropriate access or route
+ * data through a service-role proxy. This mode is therefore recommended for
+ * offline/local use unless you have updated your Supabase security config.
+ *
+ * When VITE_DISABLE_AUTH is falsy (default) the original Supabase Auth flow
+ * runs unchanged.
  */
 export function useAuthBootstrap() {
   const [state, dispatch] = useReducer(authReducer, {
@@ -60,6 +82,18 @@ export function useAuthBootstrap() {
   });
 
   useEffect(() => {
+    // ── Disable-Auth mode ───────────────────────────────────────────
+    if (isAuthDisabled()) {
+      const driverId = getLocalDriverId();
+      if (driverId) {
+        dispatch({ type: 'SET_USER', user: buildLocalUser(driverId) });
+      } else {
+        dispatch({ type: 'FINISH_INITIALIZING' });
+      }
+      return; // no Supabase subscription in this mode
+    }
+
+    // ── Normal Supabase Auth mode ───────────────────────────────────
     if (!supabase) {
       dispatch({ type: 'FINISH_INITIALIZING' });
       return;
@@ -99,7 +133,11 @@ export function useAuthBootstrap() {
   const handleLogin = (user: User) => dispatch({ type: 'SET_USER', user });
 
   const handleLogout = async () => {
-    await signOutCurrentUser();
+    if (isAuthDisabled()) {
+      clearLocalDriverId();
+    } else {
+      await signOutCurrentUser();
+    }
     dispatch({ type: 'LOGOUT' });
   };
 
