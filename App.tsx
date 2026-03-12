@@ -9,6 +9,8 @@ import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
+import LocalDriverPicker from './components/LocalDriverPicker';
+import { isAuthDisabled } from './utils/authMode';
 
 // ─── Error Boundary ────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
@@ -121,6 +123,9 @@ const App: React.FC = () => {
   }
 
   if (!currentUser) {
+    if (isAuthDisabled()) {
+      return <LocalDriverPicker onConfirm={handleLogin} lang={lang} />;
+    }
     return <Login onLogin={handleLogin} lang={lang} onSetLang={setLang} />;
   }
 

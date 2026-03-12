@@ -345,7 +345,15 @@ export const TRANSLATIONS = {
     // Confirm step summary labels
     coinStock: '硬币库存',
     coinUnit: '枚',
-    cashToHandIn: '现金应缴'
+    cashToHandIn: '现金应缴',
+    // Local driver picker (VITE_DISABLE_AUTH mode)
+    localPickerTitle: '选择司机身份',
+    localPickerLabel: '司机编号（如 D-SUDI）',
+    localPickerPlaceholder: '输入司机编号...',
+    localPickerConfirm: '进入系统',
+    localPickerSwitch: '切换司机',
+    localPickerMode: '免认证模式',
+    localPickerEmptyError: '司机编号不能为空'
   },
   sw: {
     login: 'Driver Login',
@@ -485,7 +493,15 @@ export const TRANSLATIONS = {
     // Confirm step summary labels
     coinStock: 'Coin Stock',
     coinUnit: 'coins',
-    cashToHandIn: 'Cash to hand in'
+    cashToHandIn: 'Cash to hand in',
+    // Local driver picker (VITE_DISABLE_AUTH mode)
+    localPickerTitle: 'Select Driver Identity',
+    localPickerLabel: 'Driver ID (e.g. D-SUDI)',
+    localPickerPlaceholder: 'Enter driver ID...',
+    localPickerConfirm: 'Enter System',
+    localPickerSwitch: 'Switch Driver',
+    localPickerMode: 'Auth-Free Mode',
+    localPickerEmptyError: 'Driver ID cannot be empty'
   }
 };
 
