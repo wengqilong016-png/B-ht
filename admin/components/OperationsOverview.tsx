@@ -13,7 +13,7 @@ const OperationsOverview: React.FC<Props> = ({ transactions, drivers, locations,
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    const todayTxs = transactions.filter(t => t.createdAt.startsWith(todayStr));
+    const todayTxs = transactions.filter(t => t.timestamp.startsWith(todayStr));
     
     return [
       { 
@@ -24,7 +24,7 @@ const OperationsOverview: React.FC<Props> = ({ transactions, drivers, locations,
       },
       { 
         label: '今日收入', 
-        value: `$${todayTxs.reduce((sum, t) => sum + (t.totalAmount || 0), 0).toLocaleString()}`, 
+        value: `$${todayTxs.reduce((sum, t) => sum + (t.revenue || 0), 0).toLocaleString()}`, 
         color: 'text-green-500',
         desc: '今日总 revenue'
       },
@@ -36,21 +36,21 @@ const OperationsOverview: React.FC<Props> = ({ transactions, drivers, locations,
       },
       { 
         label: '待审批', 
-        value: dailySettlements.filter(s => !s.isSynced).length + transactions.filter(t => t.type === 'payout' && !t.isSynced).length, 
+        value: dailySettlements.filter(s => !s.isSynced).length + transactions.filter(t => t.type === 'payout_request' && !t.isSynced).length, 
         color: 'text-yellow-500',
         desc: 'Pending Approval'
       },
       { 
         label: '异常交易', 
-        value: transactions.filter(t => t.anomaly).length, 
+        value: transactions.filter(t => t.isAnomaly).length, 
         color: 'text-red-500',
         desc: '需要介入处理'
       },
       { 
         label: '滞留机器', 
         value: locations.filter(l => {
-          if (!l.lastVisited) return true;
-          const days = (Date.now() - new Date(l.lastVisited).getTime()) / (1000 * 60 * 60 * 24);
+          if (!l.lastRevenueDate) return true;
+          const days = (Date.now() - new Date(l.lastRevenueDate).getTime()) / (1000 * 60 * 60 * 24);
           return days > 7;
         }).length, 
         color: 'text-orange-500',

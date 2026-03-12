@@ -26,5 +26,14 @@
     },
     "allowImportingTsExtensions": true,
     "noEmit": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "dist",
+    "supabase/functions",
+    "src/driver",
+    "src/admin",
+    "src/notifications",
+    "src/shared"
+  ]
 }
