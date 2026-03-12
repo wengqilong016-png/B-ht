@@ -334,6 +334,11 @@ export const TRANSLATIONS = {
     updateSuccess: '更新成功',
     updateError: '更新失败',
     emailConfirmationSent: '确认邮件已发送，请查收并点击链接完成邮箱修改',
+    emailPendingConfirmation: '邮箱修改待确认',
+    emailOldRemainsActiveNote: '在您点击新邮箱中的确认链接之前，当前邮箱仍将保持有效，系统显示的也仍是旧邮箱——这是正常现象，并非恢复原状。',
+    emailCheckNewInboxNote: '请检查新邮箱，点击确认链接以完成修改',
+    emailSubmitAnotherRequest: '重新提交',
+    currentEmailLabel: '当前邮箱',
     // Confirm step summary labels
     coinStock: '硬币库存',
     coinUnit: '枚',
@@ -469,6 +474,11 @@ export const TRANSLATIONS = {
     updateSuccess: 'Updated successfully',
     updateError: 'Update failed',
     emailConfirmationSent: 'Confirmation email sent – please check your inbox and click the link to complete the email change',
+    emailPendingConfirmation: 'Email change pending confirmation',
+    emailOldRemainsActiveNote: 'Your current email stays active until you click the confirmation link in your new inbox. The UI will still show the old email until then – this is expected, not a revert.',
+    emailCheckNewInboxNote: 'Please check your new inbox and click the confirmation link to complete the change',
+    emailSubmitAnotherRequest: 'Submit a new request',
+    currentEmailLabel: 'Current email',
     // Confirm step summary labels
     coinStock: 'Coin Stock',
     coinUnit: 'coins',
