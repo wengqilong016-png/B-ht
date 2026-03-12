@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound } from 'lucide-react';
+import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock } from 'lucide-react';
 import { User as UserType, TRANSLATIONS } from '../types';
 import { supabase } from '../supabaseClient';
 import { changeUserPassword, updateUserEmail } from '../services/authService';
@@ -26,6 +26,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
   const [newEmail, setNewEmail] = useState('');
   const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
   const [emailMsg, setEmailMsg] = useState('');
+  const [submittedEmail, setSubmittedEmail] = useState('');
 
   // Phone section (stored in drivers table)
   const [newPhone, setNewPhone] = useState('');
@@ -60,9 +61,11 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newEmail.trim()) return;
+    const target = newEmail.trim();
     setEmailStatus('loading');
-    const result = await updateUserEmail(newEmail.trim());
+    const result = await updateUserEmail(target);
     if (result.success) {
+      setSubmittedEmail(target);
       setEmailStatus('ok');
       setEmailMsg(t.emailConfirmationSent);
       setNewEmail('');
@@ -184,28 +187,63 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
               <Mail size={14} className="text-indigo-400" />
               <p className="text-xs font-black text-white uppercase tracking-widest">{t.changeEmail}</p>
             </div>
-            <form onSubmit={handleChangeEmail} className="space-y-3">
-              <div>
-                <label className={labelClass}><Mail size={10} className="text-indigo-400" />{t.newEmail}</label>
-                <input
-                  type="email"
-                  value={newEmail}
-                  onChange={e => { setNewEmail(e.target.value); setEmailStatus('idle'); }}
-                  className={inputClass}
-                  placeholder="new@example.com"
-                  required
-                />
-              </div>
-              {emailStatus !== 'idle' && (
-                <div className={`flex items-center gap-2 text-xs font-bold ${emailStatus === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  <StatusIcon status={emailStatus} />
-                  <span>{emailMsg}</span>
+
+            {/* Current email read-only display */}
+            <div className="mb-1">
+              <label className={labelClass}><Mail size={10} className="text-slate-400" />{t.currentEmailLabel}</label>
+              <p className="w-full bg-[#e8eaed] rounded-xl py-2.5 px-4 text-sm font-bold text-slate-500 shadow-silicone-pressed border border-slate-200/60 truncate">
+                {currentUser.username}
+              </p>
+            </div>
+
+            {/* Pending confirmation panel – shown instead of the form after a successful request */}
+            {emailStatus === 'ok' ? (
+              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
+                <div className="flex items-center gap-2">
+                  <Clock size={14} className="text-amber-500 flex-shrink-0" />
+                  <span className="text-xs font-black text-amber-700 uppercase tracking-wide">{t.emailPendingConfirmation}</span>
                 </div>
-              )}
-              <button type="submit" disabled={emailStatus === 'loading'} className={submitClass}>
-                {emailStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
-              </button>
-            </form>
+                <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+                  {t.emailCheckNewInboxNote}
+                  {submittedEmail ? (
+                    <span className="block mt-1 text-indigo-600 break-all">{submittedEmail}</span>
+                  ) : null}
+                </p>
+                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
+                  {t.emailOldRemainsActiveNote}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setEmailStatus('idle'); setSubmittedEmail(''); setNewEmail(''); }}
+                  className="text-[10px] text-indigo-500 font-black underline underline-offset-2 hover:text-indigo-700 transition-colors"
+                >
+                  {t.emailSubmitAnotherRequest} →
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleChangeEmail} className="space-y-3">
+                <div>
+                  <label className={labelClass}><Mail size={10} className="text-indigo-400" />{t.newEmail}</label>
+                  <input
+                    type="email"
+                    value={newEmail}
+                    onChange={e => { setNewEmail(e.target.value); setEmailStatus('idle'); }}
+                    className={inputClass}
+                    placeholder="new@example.com"
+                    required
+                  />
+                </div>
+                {emailStatus === 'error' && (
+                  <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
+                    <AlertCircle size={14} className="text-rose-400" />
+                    <span>{emailMsg}</span>
+                  </div>
+                )}
+                <button type="submit" disabled={emailStatus === 'loading'} className={submitClass}>
+                  {emailStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
+                </button>
+              </form>
+            )}
           </div>
 
           {/* ── Update Phone (driver only) ── */}
