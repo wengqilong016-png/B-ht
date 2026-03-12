@@ -62,7 +62,7 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
   const [view, setView] = useState<DriverView>('collect');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
-  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount });
+  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
