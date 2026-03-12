@@ -84,7 +84,7 @@ const App: React.FC = () => {
   } = useSupabaseMutations(isOnline);
 
   // ─── Offline sync + GPS heartbeat ────────────────────────────────
-  useOfflineSyncLoop({ isOnline, currentUser, activeDriverId, syncOfflineData });
+  useOfflineSyncLoop({ isOnline, unsyncedCount, currentUser, activeDriverId, syncOfflineData });
 
   // ─── Derived data ────────────────────────────────────────────────
   const filteredData = useMemo(() => ({

@@ -69,7 +69,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [aiContextId, setAiContextId] = useState<string>('');
 
-  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount });
+  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
 
   const pendingSettlementCount = dailySettlements.filter(s => s.status === 'pending').length;
   const pendingExpenseCount = transactions.filter(t => t.expenses > 0 && t.expenseStatus === 'pending').length;

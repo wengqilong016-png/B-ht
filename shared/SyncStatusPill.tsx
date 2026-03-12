@@ -93,14 +93,14 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
     zh: {
       syncing: '同步中...',
       offline:  '离线',
-      failed:   '同步失败·重试',
+      failed:   '同步失败·将自动重试',
       pending:  `${unsyncedCount} 条待同步`,
       synced:   relTime === 'just now' ? '刚同步' : relTime ? `${relTime}前同步` : '已同步',
     },
     sw: {
       syncing: 'Syncing...',
       offline:  'Offline',
-      failed:   'Failed · Retry',
+      failed:   'Failed · Will Retry',
       pending:  `${unsyncedCount} Pending`,
       synced:   relTime === 'just now' ? 'Synced just now' : relTime ? `Synced ${relTime} ago` : 'Synced',
     },
@@ -116,7 +116,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
       onClick={state === 'syncing' || !isOnline ? undefined : trigger}
       disabled={isSyncing || !isOnline}
       title={syncFailed
-        ? (isZh ? '上次同步失败，点击重试' : 'Last sync failed – tap to retry')
+        ? (isZh ? '同步失败，60秒后自动重试；或点击立即重试' : 'Sync failed – will retry automatically in ~60s, or tap to retry now')
         : lastSyncedAt
         ? (isZh ? `上次同步：${lastSyncedAt.toLocaleString()}` : `Last synced: ${lastSyncedAt.toLocaleString()}`)
         : undefined}
