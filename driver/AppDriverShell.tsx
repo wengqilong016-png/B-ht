@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useState } from 'react';
 import {
-  PlusCircle, CreditCard, LogOut, Globe, Loader2, CloudOff,
-  Crown, ShieldCheck, AlertTriangle, History, Banknote, Settings
+  PlusCircle, CreditCard, LogOut, Globe, Loader2,
+  Crown, History, Banknote, Settings
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
+import { useSyncStatus } from '../hooks/useSyncStatus';
+import SyncStatusPill from '../shared/SyncStatusPill';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
@@ -36,7 +38,7 @@ interface AppDriverShellProps {
   filteredSettlements: DailySettlement[];
   unsyncedCount: number;
   activeDriverId: string | undefined;
-  syncOfflineData: { mutate: () => void; isPending: boolean };
+  syncOfflineData: { mutate: () => void; isPending: boolean; isError: boolean; isSuccess: boolean };
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };
@@ -60,6 +62,8 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
   const [view, setView] = useState<DriverView>('collect');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
+  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount });
+
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
@@ -76,18 +80,7 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => syncOfflineData.mutate()}
-                disabled={syncOfflineData.isPending || !isOnline}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-btn text-[9px] font-black uppercase transition-all ${
-                  !isOnline ? 'bg-rose-500/10 text-rose-400' :
-                  unsyncedCount > 0 ? 'bg-amber-500/20 text-amber-400 animate-pulse' :
-                  'bg-emerald-500/10 text-emerald-400'
-                }`}
-              >
-                {!isOnline ? <CloudOff size={11}/> : unsyncedCount > 0 ? <AlertTriangle size={11}/> : <ShieldCheck size={11}/>}
-                {!isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount}` : 'Synced'}
-              </button>
+              <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="dark" />
               <Suspense fallback={null}>
                 <PwaInstallPrompt variant="dark" lang={lang} />
               </Suspense>

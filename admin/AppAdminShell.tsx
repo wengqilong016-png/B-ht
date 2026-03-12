@@ -1,11 +1,13 @@
 import React, { Suspense, lazy, useState, useMemo } from 'react';
 import {
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain,
-  LogOut, Globe, Loader2, CloudOff,
-  CheckSquare, Crown, ShieldCheck, AlertTriangle,
+  LogOut, Globe, Loader2,
+  CheckSquare, Crown,
   MapPin, Store, Users, FileSpreadsheet, History, Settings
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
+import { useSyncStatus } from '../hooks/useSyncStatus';
+import SyncStatusPill from '../shared/SyncStatusPill';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const CollectionForm = lazy(() => import('../components/CollectionForm'));
@@ -42,7 +44,7 @@ interface AppAdminShellProps {
   filteredSettlements: DailySettlement[];
   unsyncedCount: number;
   activeDriverId: string | undefined;
-  syncOfflineData: { mutate: () => void; isPending: boolean };
+  syncOfflineData: { mutate: () => void; isPending: boolean; isError: boolean; isSuccess: boolean };
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };
@@ -66,6 +68,8 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
   const [view, setView] = useState<AdminView>('dashboard');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [aiContextId, setAiContextId] = useState<string>('');
+
+  const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount });
 
   const pendingSettlementCount = dailySettlements.filter(s => s.status === 'pending').length;
   const pendingExpenseCount = transactions.filter(t => t.expenses > 0 && t.expenseStatus === 'pending').length;
@@ -166,22 +170,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
         </nav>
 
         <div className="p-3 border-t border-slate-200 space-y-2">
-          <button
-            onClick={() => syncOfflineData.mutate()}
-            disabled={syncOfflineData.isPending || !isOnline}
-            className={`w-full flex items-center gap-2 px-3 py-2 rounded-subcard text-[9px] font-black uppercase transition-all border ${
-              syncOfflineData.isPending ? 'bg-slate-100 border-slate-200 text-slate-400' :
-              !isOnline ? 'bg-rose-50 border-rose-200 text-rose-500' :
-              unsyncedCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-600 animate-pulse' :
-              'bg-emerald-50 border-emerald-200 text-emerald-600'
-            }`}
-          >
-            {syncOfflineData.isPending ? <Loader2 size={12} className="animate-spin"/> :
-             !isOnline ? <CloudOff size={12}/> :
-             unsyncedCount > 0 ? <AlertTriangle size={12}/> :
-             <ShieldCheck size={12}/>}
-            <span>{syncOfflineData.isPending ? 'Syncing...' : !isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount} Pending` : 'Cloud Synced'}</span>
-          </button>
+          <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" fullWidth />
           <Suspense fallback={null}>
             <PwaInstallPrompt variant="light" lang={lang} />
           </Suspense>
@@ -218,22 +207,9 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={() => syncOfflineData.mutate()}
-                disabled={syncOfflineData.isPending || !isOnline}
-                className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-subcard text-[9px] font-black uppercase transition-all border ${
-                  syncOfflineData.isPending ? 'bg-white border-slate-200 text-slate-400 shadow-silicone-sm' :
-                  !isOnline ? 'bg-rose-50 border-rose-200 text-rose-500' :
-                  unsyncedCount > 0 ? 'bg-amber-50 border-amber-200 text-amber-700 animate-pulse' :
-                  'bg-emerald-50 border-emerald-200 text-emerald-600'
-                }`}
-              >
-                {syncOfflineData.isPending ? <Loader2 size={11} className="animate-spin"/> :
-                 !isOnline ? <CloudOff size={11}/> :
-                 unsyncedCount > 0 ? <AlertTriangle size={11}/> :
-                 <ShieldCheck size={11}/>}
-                {syncOfflineData.isPending ? 'Syncing' : !isOnline ? 'Offline' : unsyncedCount > 0 ? `${unsyncedCount} Pending` : 'Synced'}
-              </button>
+              <div className="hidden sm:flex">
+                <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" />
+              </div>
               <button onClick={() => onSetLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm"><Globe size={15}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-2 rounded-subcard bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm"><Settings size={15}/></button>
               <button onClick={onLogout} className="p-2 rounded-subcard bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
