@@ -121,7 +121,7 @@ const AdminMapPage: React.FC<Props> = ({ locations, drivers, transactions }) => 
              <div className="space-y-2">
                <div className="p-3 bg-orange-50 border border-orange-100 rounded-xl flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors">
                   <div>
-                    <p className="text-xs font-bold text-slate-800">GPS Deviation (>300m)</p>
+                    <p className="text-xs font-bold text-slate-800">GPS Deviation (&gt;300m)</p>
                     <p className="text-[10px] text-slate-500 mt-0.5">2 transactions found</p>
                   </div>
                   <span className="bg-orange-500 text-white text-[10px] font-black px-2 py-1 rounded">Review</span>

@@ -16,6 +16,7 @@ interface DashboardProps {
   currentUser: UserType;
   onUpdateDrivers: (drivers: Driver[]) => Promise<void>;
   onUpdateLocations: (locations: Location[]) => void;
+  onDeleteLocations?: (ids: string[]) => void;
   onUpdateTransaction: (txId: string, updates: Partial<Transaction>) => void;
   onNewTransaction: (tx: Transaction) => void;
   onSaveSettlement: (settlement: DailySettlement) => void;
@@ -310,7 +311,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                   </div>
                </div>
                <div className="bg-[#f5f7fa] p-6 rounded-[40px] shadow-silicone border border-white/80">
-                  <SmartInsights transactions={transactions} locations={locations} />
+                  <SmartInsights transactions={transactions} locations={locations} drivers={drivers} />
                </div>
              </>
            ) : revDrilldown === 'drivers' ? (
