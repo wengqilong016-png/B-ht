@@ -138,6 +138,50 @@ export interface DailySettlement {
 }
 
 /**
+ * Patch payload sent by a driver when requesting a location data update.
+ * Keys match the camelCase column names in the public.locations table.
+ */
+export interface LocationChangePatch {
+  name?: string;
+  area?: string;
+  machineId?: string;
+  coords?: { lat: number; lng: number };
+  ownerName?: string;
+  shopOwnerPhone?: string;
+  ownerPhotoUrl?: string;
+  machinePhotoUrl?: string;
+  assignedDriverId?: string;
+  commissionRate?: number;
+  initialStartupDebt?: number;
+  remainingStartupDebt?: number;
+  isNewOffice?: boolean;
+  lastRevenueDate?: string;
+  status?: 'active' | 'maintenance' | 'broken';
+}
+
+/**
+ * A driver's request to update a location's information.
+ * Persisted in public.location_change_requests; fields use camelCase to
+ * match the frontend domain model (DB row is snake_case).
+ */
+export interface LocationChangeRequest {
+  id: string;
+  locationId: string;
+  locationName?: string; // Joined client-side for display
+  requestedByAuthUserId: string;
+  requestedByDriverId?: string;
+  requestedByDriverName?: string; // Joined client-side for display
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  /** The proposed changes; only fields present in this object will be applied. */
+  patch: LocationChangePatch;
+  createdAt: string;
+  reviewedAt?: string;
+  reviewedByAuthUserId?: string;
+  reviewNote?: string;
+}
+
+/**
  * iOS-safe UUID generator: falls back to a timestamp+random string on iOS < 15.4
  * where crypto.randomUUID() is not available.
  */
@@ -353,7 +397,33 @@ export const TRANSLATIONS = {
     localPickerConfirm: '进入系统',
     localPickerSwitch: '切换司机',
     localPickerMode: '免认证模式',
-    localPickerEmptyError: '司机编号不能为空'
+    localPickerEmptyError: '司机编号不能为空',
+    // Location change request workflow
+    locationChangeRequest: '点位资料变更申请',
+    submitChangeRequest: '提交变更申请',
+    myChangeRequests: '我的申请',
+    changeRequestReason: '变更原因',
+    changeRequestReasonPlaceholder: '请说明变更原因（选填）...',
+    changeRequestPatch: '变更内容',
+    changeRequestStatus_pending: '待审核',
+    changeRequestStatus_approved: '已通过',
+    changeRequestStatus_rejected: '已驳回',
+    changeReview: '点位变更审核',
+    changeReviewPending: '待审核变更',
+    changeReviewDetail: '查看详情',
+    changeReviewApprove: '批准',
+    changeReviewReject: '驳回',
+    changeReviewNote: '审核备注',
+    changeReviewNotePlaceholder: '请输入审核意见（选填）...',
+    currentValue: '当前值',
+    proposedValue: '申请值',
+    noChangeRequests: '暂无变更申请',
+    noPendingRequests: '暂无待审核申请',
+    changeRequestSubmitted: '变更申请已提交',
+    changeRequestSubmitError: '提交失败，请重试',
+    selectFieldsToUpdate: '选择需要更新的字段',
+    offlineWarning: '当前处于离线状态，此操作需要网络连接',
+    devFallbackBanner: '⚠️ 正在使用共享开发数据库（Dev Fallback），请勿在正式环境使用'
   },
   sw: {
     login: 'Driver Login',
@@ -501,9 +571,43 @@ export const TRANSLATIONS = {
     localPickerConfirm: 'Enter System',
     localPickerSwitch: 'Switch Driver',
     localPickerMode: 'Auth-Free Mode',
-    localPickerEmptyError: 'Driver ID cannot be empty'
+    localPickerEmptyError: 'Driver ID cannot be empty',
+    // Location change request workflow
+    locationChangeRequest: 'Location Change Request',
+    submitChangeRequest: 'Submit Change Request',
+    myChangeRequests: 'My Requests',
+    changeRequestReason: 'Reason for Change',
+    changeRequestReasonPlaceholder: 'Describe the reason for this change (optional)...',
+    changeRequestPatch: 'Proposed Changes',
+    changeRequestStatus_pending: 'Pending Review',
+    changeRequestStatus_approved: 'Approved',
+    changeRequestStatus_rejected: 'Rejected',
+    changeReview: 'Location Change Review',
+    changeReviewPending: 'Pending Requests',
+    changeReviewDetail: 'View Details',
+    changeReviewApprove: 'Approve',
+    changeReviewReject: 'Reject',
+    changeReviewNote: 'Review Note',
+    changeReviewNotePlaceholder: 'Add a review note (optional)...',
+    currentValue: 'Current',
+    proposedValue: 'Proposed',
+    noChangeRequests: 'No change requests',
+    noPendingRequests: 'No pending requests',
+    changeRequestSubmitted: 'Change request submitted',
+    changeRequestSubmitError: 'Submission failed, please try again',
+    selectFieldsToUpdate: 'Select fields to update',
+    offlineWarning: 'You are offline. This action requires a network connection.',
+    devFallbackBanner: '⚠️ Using shared dev database (fallback). Do not use in production.'
   }
 };
+
+/**
+ * Safely reads any field from a Location by key name.
+ * Avoids repeated `as unknown as Record<string, unknown>` casts at call sites.
+ */
+export function getLocationField(loc: Location, key: string): unknown {
+  return (loc as unknown as Record<string, unknown>)[key];
+}
 
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;

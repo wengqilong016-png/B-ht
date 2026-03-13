@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock } from 'lucide-react';
+import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock, WifiOff } from 'lucide-react';
 import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
 import { supabase } from '../supabaseClient';
 import { changeUserPassword, updateUserEmail } from '../services/authService';
@@ -8,12 +8,13 @@ import { changeUserPassword, updateUserEmail } from '../services/authService';
 interface AccountSettingsProps {
   currentUser: UserType;
   lang: 'zh' | 'sw';
+  isOnline?: boolean;
   onClose: () => void;
   /** Called when the driver's phone is updated so parent can reflect it */
   onPhoneUpdated?: (driverId: string, phone: string) => void;
 }
 
-const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, onClose, onPhoneUpdated }) => {
+const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, isOnline = true, onClose, onPhoneUpdated }) => {
   const t = TRANSLATIONS[lang];
   const currentEmail = isLikelyEmail(currentUser.username)
     ? currentUser.username.trim()
@@ -38,6 +39,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) { setPwdStatus('error'); setPwdMsg(t.offlineWarning); return; }
     if (newPwd !== confirmPwd) {
       setPwdStatus('error');
       setPwdMsg(t.passwordMismatch);
@@ -63,6 +65,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) { setEmailStatus('error'); setEmailMsg(t.offlineWarning); return; }
     if (!newEmail.trim()) return;
     const target = newEmail.trim();
     setEmailStatus('loading');
@@ -80,6 +83,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
 
   const handleUpdatePhone = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isOnline) { setPhoneStatus('error'); setPhoneMsg(t.offlineWarning); return; }
     if (!newPhone.trim()) {
       setPhoneStatus('error');
       setPhoneMsg(t.updateError);
@@ -113,7 +117,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
     return null;
   };
 
-  const inputClass = "w-full bg-[#f0f2f5] border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400";
+  const inputClass = "w-full bg-[#f0f2f5] border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 disabled:opacity-50";
   const labelClass = "text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1.5";
   const sectionClass = "bg-[#f5f7fa] shadow-silicone rounded-2xl p-5 space-y-3";
   const submitClass = "w-full bg-silicone-gradient text-slate-700 font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed transition-all disabled:opacity-50 border border-white/40";
@@ -138,6 +142,14 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
           </button>
         </div>
 
+        {/* Offline warning banner */}
+        {!isOnline && (
+          <div className="flex items-center gap-2 px-5 py-3 bg-amber-50 border-b border-amber-200 text-amber-700 text-xs font-bold">
+            <WifiOff size={14} className="flex-shrink-0" />
+            <span>{t.offlineWarning}</span>
+          </div>
+        )}
+
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-6">
 
@@ -158,6 +170,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                   placeholder="••••••••"
                   minLength={6}
                   required
+                  disabled={!isOnline}
                 />
               </div>
               <div>
@@ -170,6 +183,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                   placeholder="••••••••"
                   minLength={6}
                   required
+                  disabled={!isOnline}
                 />
               </div>
               {pwdStatus !== 'idle' && (
@@ -178,7 +192,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                   <span>{pwdMsg}</span>
                 </div>
               )}
-              <button type="submit" disabled={pwdStatus === 'loading'} className={submitClass}>
+              <button type="submit" disabled={pwdStatus === 'loading' || !isOnline} className={submitClass}>
                 {pwdStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
               </button>
             </form>
@@ -237,6 +251,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                     className={inputClass}
                     placeholder="new@example.com"
                     required
+                    disabled={!isOnline}
                   />
                 </div>
                 {emailStatus === 'error' && (
@@ -245,7 +260,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                     <span>{emailMsg}</span>
                   </div>
                 )}
-                <button type="submit" disabled={emailStatus === 'loading'} className={submitClass}>
+                <button type="submit" disabled={emailStatus === 'loading' || !isOnline} className={submitClass}>
                   {emailStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
                 </button>
               </form>
@@ -269,6 +284,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                     className={inputClass}
                     placeholder="+255 6xx xxx xxxx"
                     required
+                    disabled={!isOnline}
                   />
                 </div>
                 {phoneStatus !== 'idle' && (
@@ -277,7 +293,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, on
                     <span>{phoneMsg}</span>
                   </div>
                 )}
-                <button type="submit" disabled={phoneStatus === 'loading'} className={submitClass}>
+                <button type="submit" disabled={phoneStatus === 'loading' || !isOnline} className={submitClass}>
                   {phoneStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Phone size={14} /> {t.saveChanges}</>}
                 </button>
               </form>
