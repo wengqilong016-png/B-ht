@@ -601,6 +601,14 @@ export const TRANSLATIONS = {
   }
 };
 
+/**
+ * Safely reads any field from a Location by key name.
+ * Avoids repeated `as unknown as Record<string, unknown>` casts at call sites.
+ */
+export function getLocationField(loc: Location, key: string): unknown {
+  return (loc as unknown as Record<string, unknown>)[key];
+}
+
 export function getDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371e3;
   const φ1 = lat1 * Math.PI / 180;

@@ -142,7 +142,10 @@ BEGIN
             "assignedDriverId"    = COALESCE(_patch->>'assignedDriverId',      "assignedDriverId"),
             status                = COALESCE(_patch->>'status',                status),
             "lastRevenueDate"     = COALESCE(_patch->>'lastRevenueDate',       "lastRevenueDate"),
-            -- numeric fields (safe cast; ignore if not present in patch)
+            -- numeric fields
+            -- Note: We use the jsonb `?` key-existence operator instead of COALESCE here.
+            -- COALESCE cannot distinguish between a missing key and a key explicitly set to NULL;
+            -- `?` lets us skip the field entirely when the driver did not include it in the patch.
             "commissionRate"      = CASE WHEN _patch ? 'commissionRate'
                                          THEN (_patch->>'commissionRate')::numeric
                                          ELSE "commissionRate" END,

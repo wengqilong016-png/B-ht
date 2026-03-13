@@ -14,7 +14,7 @@ import {
   CheckCircle, XCircle, Clock, ChevronDown, ChevronUp,
   Loader2, AlertCircle, RefreshCw, MapPin,
 } from 'lucide-react';
-import { Location, LocationChangeRequest, TRANSLATIONS } from '../../types';
+import { Location, LocationChangeRequest, TRANSLATIONS, getLocationField } from '../../types';
 import { supabase } from '../../supabaseClient';
 
 interface Props {
@@ -66,7 +66,7 @@ function formatValue(key: string, value: unknown): string {
 
 function getLocationValue(loc: Location | undefined, key: string): unknown {
   if (!loc) return undefined;
-  return (loc as unknown as Record<string, unknown>)[key];
+  return getLocationField(loc, key);
 }
 
 // ── Status badge ─────────────────────────────────────────────────────────────

@@ -16,7 +16,7 @@ import {
   AlertCircle, RefreshCw, MapPin,
 } from 'lucide-react';
 import {
-  Location, LocationChangePatch, LocationChangeRequest, TRANSLATIONS, User,
+  Location, LocationChangePatch, LocationChangeRequest, TRANSLATIONS, User, getLocationField,
 } from '../../types';
 import { supabase } from '../../supabaseClient';
 
@@ -235,7 +235,7 @@ const LocationChangeRequestForm: React.FC<Props> = ({ locations, currentUser, la
                   const label = lang === 'zh' ? field.labelZh : field.labelSw;
                   const checked = selectedFields.has(field.key);
                   const currentVal = selectedLocation
-                    ? (selectedLocation as unknown as Record<string, unknown>)[field.key]
+                    ? getLocationField(selectedLocation, field.key)
                     : undefined;
 
                   return (
@@ -284,7 +284,7 @@ const LocationChangeRequestForm: React.FC<Props> = ({ locations, currentUser, la
                               type={field.type === 'number' ? 'number' : 'text'}
                               value={fieldValues[field.key] ?? ''}
                               onChange={e => setFieldValues(prev => ({ ...prev, [field.key]: e.target.value }))}
-                              placeholder={field.type === 'coords' ? 'lat, lng  (e.g. -6.1234, 35.5678)' : ''}
+                              placeholder={field.type === 'coords' ? 'lat, lng (e.g. -6.1234, 35.5678)' : ''}
                               className={inputCls + ' bg-white'}
                               step={field.type === 'number' ? 'any' : undefined}
                               disabled={submitting}
