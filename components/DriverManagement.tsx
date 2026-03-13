@@ -6,7 +6,7 @@ import {
   UserCog, AlertCircle, ShieldCheck,
   Percent, Loader2,
   Calculator, Receipt, TrendingUp, BarChart3, LayoutGrid, ArrowUpDown, ArrowUp, ArrowDown,
-  Search, SlidersHorizontal, ChevronLeft, ChevronRight
+  Search, SlidersHorizontal, ChevronLeft, ChevronRight, Trash2, Coins
 } from 'lucide-react';
 import { Driver, Transaction, DailySettlement } from '../types';
 
@@ -35,13 +35,13 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
   const [form, setForm] = useState({
     name: '', username: '', phone: '',
     model: '', plate: '', dailyFloatingCoins: '10000', 
-    initialDebt: '0', baseSalary: '300000', commissionRate: '5'
+    initialDebt: '0', remainingDebt: '0', baseSalary: '300000', commissionRate: '5'
   });
 
   const resetForm = () => {
     setForm({
       name: '', username: '', phone: '',
-      model: '', plate: '', dailyFloatingCoins: '10000', initialDebt: '0',
+      model: '', plate: '', dailyFloatingCoins: '10000', initialDebt: '0', remainingDebt: '0',
       baseSalary: '300000', commissionRate: '5'
     });
     setEditingId(null);
@@ -57,6 +57,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
       plate: d.vehicleInfo?.plate || '',
       dailyFloatingCoins: (d.dailyFloatingCoins ?? 10000).toString(),
       initialDebt: (d.initialDebt ?? 0).toString(),
+      remainingDebt: (d.remainingDebt ?? 0).toString(),
       baseSalary: (d.baseSalary ?? 300000).toString(),
       commissionRate: ((d.commissionRate ?? 0.05) * 100).toString()
     });
@@ -93,7 +94,8 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
         };
 
         if (editingId) {
-          onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData } : d));
+          const remainingDebt = parseNum(form.remainingDebt);
+          onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData, remainingDebt } : d));
         } else {
           const newDriver: Driver = {
             id: `D-${Date.now()}`,
@@ -106,6 +108,11 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
         resetForm();
         setIsSaving(false);
     }, 600);
+  };
+
+  const handleDeleteDriver = (id: string) => {
+    if (!window.confirm('确认删除此司机账户？此操作不可撤销。\nDelete this driver? This cannot be undone.')) return;
+    onUpdateDrivers(drivers.filter(d => d.id !== id));
   };
 
   const toggleStatus = (id: string) => {
@@ -431,11 +438,14 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                     <span className="text-[9px] font-bold">{driver.phone}</span>
                   </div>
                   <div className="flex items-center gap-2">
+                    <button onClick={() => handleDeleteDriver(driver.id)} className="p-1.5 bg-rose-50 border border-rose-100 text-rose-400 rounded-xl text-[8px] font-black uppercase hover:bg-rose-100 transition-all">
+                      <Trash2 size={10}/>
+                    </button>
                     <button onClick={() => setSalaryId(driver.id)} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-[8px] font-black uppercase hover:bg-indigo-50 hover:border-indigo-200 hover:text-indigo-600 transition-all flex items-center gap-1">
                       <Calculator size={10} /> Payroll
                     </button>
                     <button onClick={() => openEdit(driver)} className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-[8px] font-black uppercase hover:bg-indigo-700 transition-all">
-                      View Details
+                      Edit
                     </button>
                   </div>
                 </div>
@@ -485,6 +495,7 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                            <th onClick={() => toggleSort('status')} className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase cursor-pointer hover:text-indigo-600 transition-colors text-right">Efficiency</th>
                            <th onClick={() => toggleSort('debt')} className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase cursor-pointer hover:text-indigo-600 transition-colors text-right">Debt <SortIndicator column="debt" /></th>
                            <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-center">Status</th>
+                           <th className="px-6 py-4 text-[9px] font-black text-slate-400 uppercase text-center">Actions</th>
                         </tr>
                      </thead>
                      <tbody className="divide-y divide-slate-50">
@@ -519,6 +530,12 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                                  <span className={`px-2 py-1 rounded-full text-[8px] font-black uppercase ${d.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
                                     {d.status}
                                  </span>
+                              </td>
+                              <td className="px-6 py-4 text-center">
+                                 <div className="flex items-center justify-center gap-2">
+                                    <button onClick={() => openEdit(d)} className="p-1.5 bg-indigo-50 rounded-lg text-indigo-600 hover:bg-indigo-100 transition-colors"><Pencil size={12}/></button>
+                                    <button onClick={() => handleDeleteDriver(d.id)} className="p-1.5 bg-rose-50 rounded-lg text-rose-500 hover:bg-rose-100 transition-colors"><Trash2 size={12}/></button>
+                                 </div>
                               </td>
                            </tr>
                         ))}
@@ -621,9 +638,18 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
                       </div>
                    </div>
                    <div className="space-y-1">
-                      <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">初始欠款 (如有)</label>
+                      <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">初始欠款 Initial Debt</label>
                       <input type="number" value={form.initialDebt} onChange={e => setForm({...form, initialDebt: e.target.value})} className="w-full bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-xs font-bold" />
                    </div>
+                   {editingId && (
+                     <div className="space-y-1">
+                       <label className="text-[8px] font-black text-rose-400 uppercase ml-1">当前欠款 Current Debt (可修改)</label>
+                       <div className="relative">
+                         <Coins size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300" />
+                         <input type="number" value={form.remainingDebt} onChange={e => setForm({...form, remainingDebt: e.target.value})} className="w-full bg-white border border-rose-100 rounded-xl pl-9 pr-4 py-3 text-sm font-black text-rose-600 outline-none" placeholder="0" />
+                       </div>
+                     </div>
+                   )}
                 </div>
              </div>
 

@@ -1,6 +1,10 @@
 import React from 'react';
-import { CheckCircle2, ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight } from 'lucide-react';
+import { CheckCircle2, ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight, Gift } from 'lucide-react';
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
+
+// Tip anomaly thresholds: warn if tip > TIP_WARNING_THRESHOLD and revenue < REVENUE_WARNING_THRESHOLD
+const TIP_WARNING_THRESHOLD = 2000;
+const REVENUE_WARNING_THRESHOLD = 40000;
 
 interface FinanceSummaryProps {
   selectedLocation: Location;
@@ -12,6 +16,7 @@ interface FinanceSummaryProps {
   coinExchange: string;
   ownerRetention: string;
   isOwnerRetaining: boolean;
+  tip: string;
   calculations: {
     diff: number;
     revenue: number;
@@ -27,6 +32,7 @@ interface FinanceSummaryProps {
   onUpdateCoinExchange: (val: string) => void;
   onUpdateOwnerRetention: (val: string) => void;
   onUpdateIsOwnerRetaining: (val: boolean) => void;
+  onUpdateTip: (val: string) => void;
   onNext: () => void;
   onBack: () => void;
 }
@@ -67,9 +73,9 @@ const WizardStepBar = ({ current, lang }: { current: string; lang: 'zh' | 'sw' }
 
 const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   selectedLocation, lang, currentScore, expenses, expenseType, expenseCategory,
-  coinExchange, ownerRetention, isOwnerRetaining, calculations,
+  coinExchange, ownerRetention, isOwnerRetaining, tip, calculations,
   onUpdateExpenses, onUpdateExpenseType, onUpdateExpenseCategory,
-  onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining,
+  onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining, onUpdateTip,
   onNext, onBack,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -221,6 +227,30 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             placeholder="0"
           />
         </div>
+      </div>
+
+      {/* Tip / Gratuity */}
+      <div className="bg-amber-50 p-4 rounded-subcard border border-amber-100">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-2 tracking-widest">
+            <Gift size={13} /> {lang === 'zh' ? '小费支出 (正常5万-6万给1000-2000)' : 'Tip / Gratuity (Normal 1000-2000 for 50k-60k rev)'}
+          </label>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-1 border-b border-amber-200 px-1 flex-1">
+            <span className="text-xs font-black text-amber-300">TZS</span>
+            <input
+              type="number"
+              value={tip}
+              onChange={e => onUpdateTip(e.target.value)}
+              className="w-full text-2xl font-black bg-transparent outline-none text-amber-900 placeholder:text-amber-200"
+              placeholder="0"
+            />
+          </div>
+        </div>
+        {parseInt(tip) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
+          <p className="text-[8px] font-black text-amber-600 uppercase mt-2">⚠️ {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue – confirm with admin'}</p>
+        )}
       </div>
 
       {/* Navigation */}

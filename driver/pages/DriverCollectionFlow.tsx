@@ -54,13 +54,14 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     }
 
     const expenseVal = parseInt(draft.expenses) || 0;
-    const netPayable = Math.max(0, revenue - finalRetention - expenseVal);
+    const tipVal = parseInt(draft.tip) || 0;
+    const netPayable = Math.max(0, revenue - finalRetention - expenseVal - tipVal);
     const exchangeVal = parseInt(draft.coinExchange) || 0;
     const initialFloat = currentDriver?.dailyFloatingCoins || 0;
     const remainingCoins = initialFloat + netPayable - exchangeVal;
 
     return { diff, revenue, commission: autoCommission, finalRetention, netPayable, remainingCoins, isCoinStockNegative: remainingCoins < 0 };
-  }, [selectedLocation, draft.currentScore, draft.coinExchange, draft.expenses, draft.ownerRetention, draft.isOwnerRetaining, currentDriver?.dailyFloatingCoins]);
+  }, [selectedLocation, draft.currentScore, draft.coinExchange, draft.expenses, draft.tip, draft.ownerRetention, draft.isOwnerRetaining, currentDriver?.dailyFloatingCoins]);
 
   // Auto-fill retention when conditions met
   useEffect(() => {
@@ -212,6 +213,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         coinExchange={draft.coinExchange}
         ownerRetention={draft.ownerRetention}
         isOwnerRetaining={draft.isOwnerRetaining}
+        tip={draft.tip}
         calculations={calculations}
         onUpdateExpenses={(v) => updateDraft({ expenses: v })}
         onUpdateExpenseType={(v) => updateDraft({ expenseType: v })}
@@ -219,6 +221,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         onUpdateCoinExchange={(v) => updateDraft({ coinExchange: v })}
         onUpdateOwnerRetention={(v) => updateDraft({ ownerRetention: v })}
         onUpdateIsOwnerRetaining={(v) => updateDraft({ isOwnerRetaining: v })}
+        onUpdateTip={(v) => updateDraft({ tip: v })}
         onNext={() => setStep('confirm')}
         onBack={() => setStep('capture')}
       />
@@ -239,6 +242,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       expenseType={draft.expenseType}
       expenseCategory={draft.expenseCategory}
       coinExchange={draft.coinExchange}
+      tip={draft.tip}
       draftTxId={draft.draftTxId}
       gpsCoords={draft.gpsCoords}
       gpsPermission={draft.gpsPermission}

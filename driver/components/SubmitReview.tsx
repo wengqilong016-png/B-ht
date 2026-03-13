@@ -18,6 +18,7 @@ interface SubmitReviewProps {
   expenseType: 'public' | 'private';
   expenseCategory: Transaction['expenseCategory'];
   coinExchange: string;
+  tip: string;
   draftTxId: string;
   gpsCoords: { lat: number; lng: number } | null;
   gpsPermission: 'prompt' | 'granted' | 'denied';
@@ -73,7 +74,7 @@ const WizardStepBar = ({ current, lang }: { current: string; lang: 'zh' | 'sw' }
 
 const SubmitReview: React.FC<SubmitReviewProps> = ({
   selectedLocation, currentDriver, lang, isOnline, currentScore, photoData,
-  aiReviewData, expenses, expenseType, expenseCategory, coinExchange, draftTxId,
+  aiReviewData, expenses, expenseType, expenseCategory, coinExchange, tip, draftTxId,
   gpsCoords, gpsPermission, calculations,
   onSubmit, onBack, onReset, onUpdateGps, onUpdateGpsPermission,
 }) => {
@@ -130,6 +131,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
       notes: [
         aiReviewData?.notes,
+        parseInt(tip) > 0 ? `[Tip: TZS ${parseInt(tip).toLocaleString()}]` : null,
         gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
       ].filter(Boolean).join(' ') || undefined
     };
@@ -202,6 +204,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           { label: t.revenue, value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
           { label: t.retention, value: `− TZS ${calculations.finalRetention.toLocaleString()}`, color: 'text-amber-600' },
           { label: t.expenses, value: `− TZS ${(parseInt(expenses) || 0).toLocaleString()}`, color: 'text-rose-500' },
+          ...(parseInt(tip) > 0 ? [{ label: lang === 'zh' ? '小费支出 Tip' : 'Tip / Gratuity', value: `− TZS ${(parseInt(tip) || 0).toLocaleString()}`, color: 'text-amber-500' }] : []),
           { label: t.exchange, value: `TZS ${(parseInt(coinExchange) || 0).toLocaleString()}`, color: 'text-emerald-600' },
           { label: t.coinStock, value: `${calculations.remainingCoins.toLocaleString()} ${t.coinUnit}`, color: calculations.isCoinStockNegative ? 'text-rose-600 font-black' : 'text-slate-500' },
         ].map((row) => (

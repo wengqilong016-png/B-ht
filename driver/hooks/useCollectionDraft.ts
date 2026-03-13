@@ -15,6 +15,7 @@ export interface CollectionDraft {
   coinExchange: string;
   ownerRetention: string;
   isOwnerRetaining: boolean;
+  tip: string;
   gpsCoords: { lat: number; lng: number } | null;
   gpsPermission: 'prompt' | 'granted' | 'denied';
   gpsSource: 'live' | 'exif' | 'estimated' | null;
@@ -39,6 +40,7 @@ const EMPTY_DRAFT: CollectionDraft = {
   coinExchange: '',
   ownerRetention: '',
   isOwnerRetaining: true,
+  tip: '',
   gpsCoords: null,
   gpsPermission: 'prompt',
   gpsSource: null,

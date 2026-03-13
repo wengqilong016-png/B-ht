@@ -4,7 +4,7 @@ import {
   ShieldCheck, Building2, User,
   Info, HandCoins, X, Coins, Wallet, 
   Loader2, CheckCircle2, AlertCircle,
-  CreditCard, PieChart, Check
+  CreditCard, PieChart, Check, Pencil, Save
 } from 'lucide-react';
 import { Driver, Location, User as UserType, TRANSLATIONS } from '../types';
 
@@ -13,10 +13,11 @@ interface DebtManagerProps {
   locations: Location[];
   currentUser: UserType;
   onUpdateLocations?: (locations: Location[]) => void;
+  onUpdateDrivers?: (drivers: Driver[]) => void;
   lang: 'zh' | 'sw';
 }
 
-const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUser, onUpdateLocations, lang }) => {
+const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUser, onUpdateLocations, onUpdateDrivers, lang }) => {
   const t = TRANSLATIONS[lang];
   const activeDriverId = currentUser.driverId ?? currentUser.id;
   
@@ -25,6 +26,10 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
   const [recoveryAmount, setRecoveryAmount] = useState<string>('');
   const [isActionLoading, setIsActionLoading] = useState(false);
   const [successPulse, setSuccessPulse] = useState<string | null>(null);
+
+  // Driver debt editing (admin only)
+  const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
+  const [driverEditForm, setDriverEditForm] = useState({ remainingDebt: '', dailyFloatingCoins: '' });
 
   // --- Data Calculations ---
   const startupDebtPoints = useMemo(() => locations.filter(l => {
@@ -83,6 +88,35 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
        } finally {
          setIsActionLoading(false);
        }
+    }
+  };
+
+  const openDriverEdit = (driver: Driver) => {
+    setEditingDriverId(driver.id);
+    setDriverEditForm({
+      remainingDebt: (driver.remainingDebt ?? 0).toString(),
+      dailyFloatingCoins: (driver.dailyFloatingCoins ?? 0).toString(),
+    });
+  };
+
+  const handleDriverDebtSave = async (driver: Driver) => {
+    if (!onUpdateDrivers) return;
+    setIsActionLoading(true);
+    const updated: Driver = {
+      ...driver,
+      remainingDebt: parseInt(driverEditForm.remainingDebt) || 0,
+      dailyFloatingCoins: parseInt(driverEditForm.dailyFloatingCoins) || 0,
+      isSynced: false,
+    };
+    try {
+      await onUpdateDrivers(drivers.map(d => d.id === driver.id ? updated : d));
+      setSuccessPulse(driver.id);
+      setTimeout(() => setSuccessPulse(null), 2000);
+    } catch (err) {
+      console.error("Failed to update driver", err);
+    } finally {
+      setIsActionLoading(false);
+      setEditingDriverId(null);
     }
   };
 
@@ -266,9 +300,11 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
             const recovered = driver.initialDebt - driver.remainingDebt;
             const progress = driver.initialDebt > 0 ? (recovered / driver.initialDebt) * 100 : 100;
             const isDebtFree = driver.remainingDebt === 0;
+            const isEditingThis = editingDriverId === driver.id;
+            const isPulsing = successPulse === driver.id;
 
             return (
-              <div key={driver.id} className={`rounded-[24px] border p-5 shadow-sm hover:shadow-md transition-all ${isDebtFree ? 'bg-white/50 border-slate-100' : 'bg-white border-slate-200'}`}>
+              <div key={driver.id} className={`rounded-[24px] border p-5 shadow-sm hover:shadow-md transition-all ${isDebtFree ? 'bg-white/50 border-slate-100' : 'bg-white border-slate-200'} ${isPulsing ? 'ring-2 ring-emerald-400/30' : ''}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base ${isDebtFree ? 'bg-slate-300' : 'bg-slate-900'}`}>
                     {driver.name.charAt(0)}
@@ -283,39 +319,85 @@ const DebtManager: React.FC<DebtManagerProps> = ({ drivers, locations, currentUs
                     </div>
                   </div>
                   {isDebtFree && <ShieldCheck size={16} className="text-emerald-400 shrink-0" />}
+                  {currentUser.role === 'admin' && onUpdateDrivers && (
+                    <button onClick={() => isEditingThis ? setEditingDriverId(null) : openDriverEdit(driver)} className="p-1.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shrink-0">
+                      {isEditingThis ? <X size={14}/> : <Pencil size={14}/>}
+                    </button>
+                  )}
                 </div>
 
                 <div className="space-y-3">
-                   <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 flex justify-between items-center">
-                      <div>
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Current Debt</p>
-                         <p className={`text-lg font-black ${isDebtFree ? 'text-emerald-600' : 'text-slate-900'}`}>TZS {driver.remainingDebt.toLocaleString()}</p>
-                      </div>
-                      <CreditCard size={16} className="text-slate-200" />
-                   </div>
+                   {isEditingThis ? (
+                     <div className="space-y-3 bg-slate-900 p-4 rounded-2xl animate-in slide-in-from-top-2">
+                       <p className="text-[9px] font-black text-indigo-400 uppercase">修改财务数据 Edit Financial Data</p>
+                       <div className="space-y-2">
+                         <div>
+                           <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">当前欠款 Current Debt (TZS)</label>
+                           <input
+                             type="number"
+                             value={driverEditForm.remainingDebt}
+                             onChange={e => setDriverEditForm(f => ({...f, remainingDebt: e.target.value}))}
+                             className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-sm font-black text-white outline-none focus:border-indigo-500"
+                           />
+                         </div>
+                         <div>
+                           <label className="text-[8px] font-black text-slate-400 uppercase mb-1 block">随身硬币 Coin Float (TZS)</label>
+                           <input
+                             type="number"
+                             value={driverEditForm.dailyFloatingCoins}
+                             onChange={e => setDriverEditForm(f => ({...f, dailyFloatingCoins: e.target.value}))}
+                             className="w-full bg-white/10 border border-white/20 rounded-xl px-3 py-2.5 text-sm font-black text-white outline-none focus:border-indigo-500"
+                           />
+                         </div>
+                       </div>
+                       <button
+                         onClick={() => handleDriverDebtSave(driver)}
+                         disabled={isActionLoading}
+                         className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase flex items-center justify-center gap-2"
+                       >
+                         {isActionLoading ? <Loader2 size={14} className="animate-spin"/> : <Save size={14}/>}
+                         Save Changes
+                       </button>
+                     </div>
+                   ) : (
+                     <>
+                       <div className="bg-slate-50 px-4 py-3 rounded-2xl border border-slate-100 flex justify-between items-center relative overflow-hidden">
+                          {isPulsing && <div className="absolute inset-0 bg-emerald-100/50 animate-pulse"></div>}
+                          <div className="relative z-10">
+                             <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Current Debt</p>
+                             <p className={`text-lg font-black ${isDebtFree ? 'text-emerald-600' : 'text-slate-900'}`}>TZS {driver.remainingDebt.toLocaleString()}</p>
+                          </div>
+                          <CreditCard size={16} className="text-slate-200 relative z-10" />
+                       </div>
 
-                   <div className="space-y-1.5">
-                      <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
-                        <span>Progress {progress.toFixed(0)}%</span>
-                      </div>
-                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                        <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${isDebtFree ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
-                          style={{ width: `${progress}%` }} 
-                        />
-                      </div>
-                   </div>
+                       <div className="space-y-1.5">
+                          <div className="flex justify-between text-[9px] font-black text-slate-400 uppercase">
+                            <span>Progress {progress.toFixed(0)}%</span>
+                          </div>
+                          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-1000 ${isDebtFree ? 'bg-emerald-500' : 'bg-indigo-500'}`} 
+                              style={{ width: `${progress}%` }} 
+                            />
+                          </div>
+                       </div>
 
-                   <div className="grid grid-cols-2 gap-2">
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Base Salary</p>
-                         <p className="text-[10px] font-bold text-slate-700">TZS {(driver.baseSalary ?? 300000).toLocaleString()}</p>
-                      </div>
-                      <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
-                         <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Commission</p>
-                         <p className="text-[10px] font-bold text-slate-700">{((driver.commissionRate ?? 0.05) * 100).toFixed(0)}%</p>
-                      </div>
-                   </div>
+                       <div className="grid grid-cols-3 gap-2">
+                          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                             <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Base Salary</p>
+                             <p className="text-[10px] font-bold text-slate-700">TZS {(driver.baseSalary ?? 300000).toLocaleString()}</p>
+                          </div>
+                          <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100">
+                             <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">Commission</p>
+                             <p className="text-[10px] font-bold text-slate-700">{((driver.commissionRate ?? 0.05) * 100).toFixed(0)}%</p>
+                          </div>
+                          <div className="p-2.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                             <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">Coins</p>
+                             <p className="text-[10px] font-bold text-emerald-700">{(driver.dailyFloatingCoins ?? 0).toLocaleString()}</p>
+                          </div>
+                       </div>
+                     </>
+                   )}
                 </div>
               </div>
             );

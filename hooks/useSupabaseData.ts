@@ -29,7 +29,7 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
   const { data: isOnline = false } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
-    refetchInterval: 30000, // 30 s — health-check interval (was 20 s)
+    refetchInterval: 15000, // 15 s — faster reconnection detection (was 30 s)
   });
 
   // 2. Core Data: Locations & Drivers - Critical for first paint
@@ -143,6 +143,16 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
       queryClient.invalidateQueries({ queryKey: ['aiLogs', userRoleRef.current ?? 'none'] });
     }
   }, [isOnline, queryClient]); // Only re-run when connectivity changes
+
+  // Listen for browser online event to immediately trigger a health check
+  // This speeds up reconnection after network outages (issue 2).
+  useEffect(() => {
+    const handleOnline = () => {
+      queryClient.invalidateQueries({ queryKey: ['dbHealth'] });
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [queryClient]);
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;

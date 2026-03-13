@@ -302,7 +302,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
                 <FinancialReports transactions={filteredTransactions} drivers={filteredDrivers} locations={filteredLocations} dailySettlements={filteredSettlements} lang={lang} />
               )}
               {view === 'debt' && (
-                <DebtManager drivers={filteredDrivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={(l) => updateLocations.mutate(l)} lang={lang} />
+                <DebtManager drivers={filteredDrivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={(l) => updateLocations.mutate(l)} onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)} lang={lang} />
               )}
               {view === 'ai' && !showDashboard && (
                 <AIHub
