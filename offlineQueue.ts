@@ -158,6 +158,8 @@ export async function flushQueue(
         await markSynced(tx.id);
         flushed++;
         onProgress?.(flushed, pending.length);
+      } else {
+        console.warn('[OfflineQueue] upsert error for', tx.id, ':', error.message);
       }
     } catch (e) {
       console.warn('[OfflineQueue] flush failed for', tx.id, e);

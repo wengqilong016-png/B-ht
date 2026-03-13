@@ -92,6 +92,9 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
     },
     enabled: !!locations.length, // Defer until core data is here
     staleTime: 1000 * 60 * 2,
+    // Admin: refresh every 2 min as a backstop for any missed Realtime events.
+    // Drivers only see their own filtered data, so background polling is skipped.
+    refetchInterval: !isDriver ? 1000 * 60 * 2 : false,
   });
 
   const { data: dailySettlements = [], isLoading: isLoadingSettlements } = useQuery({
@@ -195,6 +198,38 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
       supabase.removeChannel(channel);
     };
   }, [queryClient]);
+
+  // ─── Supabase Realtime: new driver transactions ──────────────────────────
+  // Subscribe to INSERT and UPDATE events on the transactions table so the
+  // admin dashboard sees driver-submitted collections the moment they land in
+  // Supabase — without waiting for the next periodic refetch window.
+  // The invalidation is intentionally coarse (refetch the whole query) rather
+  // than a cache patch so the result set stays correctly sorted/filtered.
+  useEffect(() => {
+    if (!supabase || isDriver) return;
+
+    const channel = supabase
+      .channel('transactions-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'transactions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'transactions' },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isDriver, queryClient, supabase]);
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;
