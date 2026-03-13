@@ -54,6 +54,13 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
+ * Maximum ms to wait for Supabase session/profile fetch on startup.
+ * If the server is unreachable or slow, we fall through to the login screen
+ * rather than showing the spinner forever.
+ */
+const AUTH_INIT_TIMEOUT_MS = 8000;
+
+/**
  * Manages session restoration and auth state changes.
  *
  * When VITE_DISABLE_AUTH=true the hook bypasses Supabase Auth entirely:
@@ -100,9 +107,20 @@ export function useAuthBootstrap() {
     }
 
     const loadUser = async () => {
-      const result = await restoreCurrentUserFromSession();
+      // Race the session/profile fetch against a timeout so a slow or
+      // unreachable Supabase server never leaves the app spinning forever.
+      let timeoutId: ReturnType<typeof setTimeout> | null = null;
+      const timeout = new Promise<{ success: false; error: 'Timeout' }>(
+        (resolve) => {
+          timeoutId = setTimeout(() => resolve({ success: false, error: 'Timeout' }), AUTH_INIT_TIMEOUT_MS);
+        }
+      );
+      const result = await Promise.race([restoreCurrentUserFromSession(), timeout]);
+      // Clear the timer so it doesn't fire after the race has already resolved.
+      if (timeoutId !== null) clearTimeout(timeoutId);
       if (!result.success) {
-        if ('error' in result && result.error !== 'No active session') {
+        const err = (result as { error: string }).error;
+        if (err !== 'No active session' && err !== 'Timeout') {
           await signOutCurrentUser();
         }
         dispatch({ type: 'FINISH_INITIALIZING' });
