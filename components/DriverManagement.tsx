@@ -15,9 +15,10 @@ interface DriverManagementProps {
   transactions: Transaction[];
   dailySettlements?: DailySettlement[];
   onUpdateDrivers: (drivers: Driver[]) => void;
+  onDeleteDrivers?: (ids: string[]) => void;
 }
 
-const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactions, dailySettlements = [], onUpdateDrivers }) => {
+const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactions, dailySettlements = [], onUpdateDrivers, onDeleteDrivers }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'analytics'>('grid');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -112,7 +113,11 @@ const DriverManagement: React.FC<DriverManagementProps> = ({ drivers, transactio
 
   const handleDeleteDriver = (id: string) => {
     if (!window.confirm('确认删除此司机账户？此操作不可撤销。\nDelete this driver? This cannot be undone.')) return;
-    onUpdateDrivers(drivers.filter(d => d.id !== id));
+    if (onDeleteDrivers) {
+      onDeleteDrivers([id]);
+    } else {
+      onUpdateDrivers(drivers.filter(d => d.id !== id));
+    }
   };
 
   const toggleStatus = (id: string) => {
