@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import {
   PlusCircle, CreditCard, LogOut, Globe, Loader2,
-  Crown, History, Banknote, Settings
+  Crown, History, Banknote, Settings, ClipboardList
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
 import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
@@ -13,6 +13,7 @@ const TransactionHistory = lazy(() => import('../components/TransactionHistory')
 const DebtManager = lazy(() => import('../components/DebtManager'));
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
+const LocationChangeRequestForm = lazy(() => import('../driver/components/LocationChangeRequestForm'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -21,7 +22,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type DriverView = 'collect' | 'settlement' | 'debt' | 'history';
+type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'requests';
 
 interface AppDriverShellProps {
   currentUser: User;
@@ -90,18 +91,19 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
             </div>
           </div>
 
-          {/* Driver 4-tab nav */}
-          <div className="flex border-t border-white/10">
+          {/* Driver nav tabs */}
+          <div className="flex border-t border-white/10 overflow-x-auto scrollbar-hide">
             {[
               { id: 'collect' as const, icon: <PlusCircle size={16}/>, label: t.collect },
               { id: 'settlement' as const, icon: <Banknote size={16}/>, label: t.dailySettlement },
               { id: 'debt' as const, icon: <CreditCard size={16}/>, label: t.debt },
               { id: 'history' as const, icon: <History size={16}/>, label: lang === 'sw' ? 'Historia' : '记录' },
+              { id: 'requests' as const, icon: <ClipboardList size={16}/>, label: lang === 'sw' ? 'Maombi' : '申请' },
             ].map((item) => (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
-                className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[9px] font-black uppercase transition-all ${
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[9px] font-black uppercase transition-all flex-shrink-0 min-w-[3.5rem] ${
                   view === item.id ? 'text-amber-400 border-b-2 border-amber-400' : 'text-slate-400'
                 }`}
               >
@@ -159,6 +161,14 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
               {view === 'history' && (
                 <TransactionHistory transactions={filteredTransactions} locations={locations} onAnalyze={() => {}} />
               )}
+              {view === 'requests' && (
+                <LocationChangeRequestForm
+                  locations={filteredLocations}
+                  currentUser={currentUser}
+                  lang={lang}
+                  isOnline={isOnline}
+                />
+              )}
             </Suspense>
           </div>
         </main>
@@ -168,6 +178,7 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
         <AccountSettings
           currentUser={currentUser}
           lang={lang}
+          isOnline={isOnline}
           onClose={() => setShowAccountSettings(false)}
           onPhoneUpdated={(driverId, phone) => {
             const updated = drivers.map(d => d.id === driverId ? { ...d, phone } : d);

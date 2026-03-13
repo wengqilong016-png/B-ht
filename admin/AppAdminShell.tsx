@@ -3,7 +3,7 @@ import {
   LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain,
   LogOut, Globe, Loader2,
   CheckSquare, Crown,
-  MapPin, Store, Users, FileSpreadsheet, History, Settings
+  MapPin, Store, Users, FileSpreadsheet, History, Settings, ClipboardList
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
 import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
@@ -19,6 +19,7 @@ const BillingReconciliation = lazy(() => import('../components/BillingReconcilia
 const DriverManagement = lazy(() => import('../components/DriverManagement'));
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
+const LocationChangeReview = lazy(() => import('./pages/LocationChangeReview'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -27,7 +28,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports';
+type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review';
 
 interface AppAdminShellProps {
   currentUser: User;
@@ -82,7 +83,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
     dashboard: 'Action Center', settlement: 'Settlement', map: 'Map & Routes',
     sites: 'Site Management', team: 'Team', billing: 'Billing',
     ai: 'AI Audit', collect: 'Collect', debt: 'Finance',
-    history: 'History', reports: 'Reports',
+    history: 'History', reports: 'Reports', 'change-review': 'Change Requests',
   };
 
   const adminNavItems = [
@@ -90,6 +91,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
     { id: 'settlement', icon: <CheckSquare size={18}/>, label: '审批中心', labelEn: 'Approvals', badge: totalApprovalBadge },
     { id: 'map', icon: <MapPin size={18}/>, label: '地图与轨迹', labelEn: 'Map & Routes' },
     { id: 'sites', icon: <Store size={18}/>, label: '网点管理', labelEn: 'Sites' },
+    { id: 'change-review', icon: <ClipboardList size={18}/>, label: '变更审核', labelEn: 'Change Req.' },
     { id: 'team', icon: <Users size={18}/>, label: '车队与薪资', labelEn: 'Fleet' },
     { id: 'billing', icon: <FileSpreadsheet size={18}/>, label: '月账单核对', labelEn: 'Billing' },
     { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
@@ -313,6 +315,12 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
                   onClearContext={() => setAiContextId('')}
                 />
               )}
+              {view === 'change-review' && (
+                <LocationChangeReview
+                  locations={locations}
+                  lang={lang}
+                />
+              )}
             </Suspense>
           </div>
         </main>
@@ -322,6 +330,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
         <AccountSettings
           currentUser={currentUser}
           lang={lang}
+          isOnline={isOnline}
           onClose={() => setShowAccountSettings(false)}
           onPhoneUpdated={(driverId, phone) => {
             const updated = drivers.map(d => d.id === driverId ? { ...d, phone } : d);
