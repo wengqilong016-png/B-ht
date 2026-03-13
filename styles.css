@@ -38,14 +38,18 @@
 
 /* ─── Low-Performance Device UI Degradation ─────────────────────────
    Applied by useDevicePerformance hook via data-perf="low" on <html>.
-   Removes costly paint operations so old Android devices stay smooth. */
+   Removes costly paint operations so old Android/32-bit devices stay smooth.
+   Targets: heavy shadows, all CSS animations, transitions, backdrop-blur,
+   complex gradients, will-change hints, and filter effects that cause
+   expensive compositing layers on underpowered GPU/CPU combos. */
 html[data-perf="low"] .shadow-silicone,
 html[data-perf="low"] .shadow-silicone-sm,
 html[data-perf="low"] .shadow-field,
 html[data-perf="low"] .shadow-field-md,
 html[data-perf="low"] [class*="shadow-xl"],
 html[data-perf="low"] [class*="shadow-2xl"],
-html[data-perf="low"] [class*="shadow-lg"] {
+html[data-perf="low"] [class*="shadow-lg"],
+html[data-perf="low"] [class*="shadow-md"] {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06) !important;
 }
 
@@ -63,7 +67,30 @@ html[data-perf="low"] [class*="backdrop-blur"] {
   background-color: rgba(255, 255, 255, 0.97) !important;
 }
 
+/* Disable background-image gradients that trigger full repaints on scroll */
+html[data-perf="low"] [class*="bg-gradient-"] {
+  background-image: none !important;
+}
+
+/* Remove will-change hints on known Tailwind utility classes — they promote
+   elements to GPU compositing layers which wastes VRAM on weak SoCs */
+html[data-perf="low"] [class*="will-change"] {
+  will-change: auto !important;
+}
+
+/* Disable CSS filter effects (drop-shadow, blur, etc.) */
+html[data-perf="low"] [class*="filter"],
+html[data-perf="low"] [class*="drop-shadow"] {
+  filter: none !important;
+}
+
 /* Medium tier: keep transitions but skip heavy shadows */
 html[data-perf="medium"] [class*="shadow-2xl"] {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
+}
+
+html[data-perf="medium"] [class*="backdrop-blur-xl"],
+html[data-perf="medium"] [class*="backdrop-blur-2xl"] {
+  backdrop-filter: blur(4px) !important;
+  -webkit-backdrop-filter: blur(4px) !important;
 }

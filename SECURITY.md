@@ -11,6 +11,7 @@
 | RLS 策略 | ✅ 已写入 SQL | 见 `setup_db.sql` Section 10 / migration `20240103000000_enable_rls.sql` |
 | `get_my_role()` 辅助函数 | ✅ 已写入 SQL | SECURITY DEFINER，避免 profiles 循环检查 |
 | 密码残留字段清理 | ✅ 已完成 | `sanitizeDriver()` 在写入 localStorage 前剥除 password 字段 |
+| **硬编码 Supabase 匿名密钥已移除** | ✅ 已完成 | `supabaseClient.ts` 不再包含任何硬编码凭证；必须通过 `.env.local` 提供 |
 
 ---
 
@@ -80,6 +81,22 @@ VALUES ('<driver_auth_user_id>', 'driver', 'Driver Name', 'D-XXX');
 -- 司机只应看到自己的交易（用 Supabase Auth 司机账号登录后验证）
 SELECT COUNT(*) FROM public.transactions;
 ```
+
+---
+
+## 二点五、必须在 Supabase 控制台启用 Realtime（司机在线状态实时推送）
+
+> ⚠️ 前端已订阅 `drivers` 表的 `UPDATE` 事件（`hooks/useSupabaseData.ts`），
+> 但必须在 Supabase 控制台手动开启该表的 Realtime 才能生效。
+
+### 操作步骤
+
+1. 登录 [Supabase 控制台](https://supabase.com) → 进入你的项目
+2. 左侧菜单选择 **Database → Replication**
+3. 在 **Supabase Realtime** 栏，将 `public.drivers` 表添加到已复制列表（Toggle = ON）
+4. 保存后，前端订阅即可收到司机 GPS / `lastActive` 更新，管理端无需等待轮询
+
+验证方法：让一名司机登录并打开 App，在管理端 Dashboard 观察该司机的 GPS 坐标是否在 30 秒内刷新。
 
 ---
 

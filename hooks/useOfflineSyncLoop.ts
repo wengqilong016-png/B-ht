@@ -5,6 +5,9 @@ import { supabase } from '../supabaseClient';
 /** Retry interval for background auto-sync while there are pending items. */
 const AUTO_SYNC_INTERVAL_MS = 60_000;
 
+/** GPS heartbeat interval for driver users (ms). */
+const GPS_HEARTBEAT_INTERVAL_MS = 30_000;
+
 interface UseOfflineSyncLoopOptions {
   isOnline: boolean;
   /** Number of local records not yet synced to Supabase. */
@@ -27,7 +30,8 @@ type SyncRegistration = ServiceWorkerRegistration & {
  *   2. Retries every 60 s while online with pending records and not already syncing.
  *   3. Listens for Service Worker `FLUSH_OFFLINE_QUEUE` messages.
  *   4. Registers a background-sync tag for browser-native flush on reconnect.
- *   5. Runs a 60-second GPS heartbeat for driver users while online.
+ *   5. Runs a 30-second GPS heartbeat for driver users while online, with an
+ *      immediate ping on mount so the admin sees the driver online instantly.
  *
  * All intervals and listeners are cleaned up on unmount.
  */
@@ -101,24 +105,35 @@ export function useOfflineSyncLoop({
   useEffect(() => {
     if (!isOnline || !supabase || currentUser?.role !== 'driver' || !activeDriverId) return;
 
-    const timer = setInterval(() => {
-      if ('geolocation' in navigator) {
-        navigator.geolocation.getCurrentPosition(
-          (pos) => {
-            const { latitude, longitude } = pos.coords;
-            supabase!
-              .from('drivers')
-              .update({
-                lastActive: new Date().toISOString(),
-                currentGps: { lat: latitude, lng: longitude },
-              })
-              .eq('id', activeDriverId);
-          },
-          () => {},
-          { enableHighAccuracy: false, timeout: 5000 }
-        );
-      }
-    }, 60000);
+    const pushHeartbeat = () => {
+      if (!('geolocation' in navigator)) return;
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          supabase!
+            .from('drivers')
+            .update({
+              lastActive: new Date().toISOString(),
+              currentGps: { lat: latitude, lng: longitude },
+            })
+            .eq('id', activeDriverId)
+            .then(({ error }) => {
+              if (error) console.warn('[GPS] Heartbeat update failed:', error.message);
+            });
+        },
+        (err) => console.warn('[GPS] Heartbeat position error:', err.message),
+        // maximumAge: allow browser-cached position up to 15 s old (fast on old phones).
+        // Keeping it at half the heartbeat interval (30 s) ensures the data never
+        // exceeds one full interval old when it reaches the server.
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 15000 }
+      );
+    };
+
+    // Fire once immediately so the admin sees the driver online right away
+    // without waiting for the first interval tick.
+    pushHeartbeat();
+
+    const timer = setInterval(pushHeartbeat, GPS_HEARTBEAT_INTERVAL_MS);
 
     return () => clearInterval(timer);
   }, [isOnline, currentUser, activeDriverId]);

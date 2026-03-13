@@ -13,6 +13,12 @@ const sanitizeDrivers = (driverList: any[]): Driver[] => {
   });
 };
 
+/** Max transactions fetched for admin users (full audit view). */
+const TX_LIMIT_ADMIN = 2000;
+/** Max transactions fetched for driver users (recent activity only).
+ * Kept lower to reduce memory/network load on older devices. */
+const TX_LIMIT_DRIVER = 500;
+
 /**
  * Central data-fetching hook backed by React Query + Supabase.
  *
@@ -61,16 +67,21 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
       }
       return (await localDB.get<Driver[]>(CONSTANTS.STORAGE_DRIVERS_KEY)) || [];
     },
-    staleTime: 1000 * 60 * 10,
+    // Keep at 2 min: the realtime subscription below applies live GPS patches,
+    // so full re-fetches only need to catch any missed events.
+    staleTime: 1000 * 60 * 2,
   });
 
   // 3. Heavy Data: Transactions, Settlements, Logs - Deferred loading
   // These only load if critical data is ready, or on demand.
+  // Driver accounts only load their own recent 500 transactions to reduce memory
+  // and network load on older devices.
   const { data: transactions = [], isLoading: isLoadingTxs } = useQuery({
     queryKey: ['transactions'],
     queryFn: async () => {
       if (isOnline && supabase) {
-        const { data, error } = await supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(2000); // 提升至2000条支持大规模回溯
+        const txLimit = isDriver ? TX_LIMIT_DRIVER : TX_LIMIT_ADMIN;
+        const { data, error } = await supabase.from('transactions').select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount').order('timestamp', { ascending: false }).limit(txLimit); // 提升至2000条支持大规模回溯
         if (!error && data) {
           const mapped = data.map(t => ({...t, isSynced: true})) as Transaction[];
           await localDB.set(CONSTANTS.STORAGE_TRANSACTIONS_KEY, mapped);
@@ -152,6 +163,37 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
     };
     window.addEventListener('online', handleOnline);
     return () => window.removeEventListener('online', handleOnline);
+  }, [queryClient]);
+
+  // ─── Supabase Realtime: driver GPS / status ───────────────────────────────
+  // Subscribe to UPDATE events on the drivers table so the admin dashboard
+  // receives driver GPS and lastActive changes in real-time — without waiting
+  // for the next React Query refetch window.
+  // The subscription is established once and torn down on unmount.
+  useEffect(() => {
+    if (!supabase) return;
+
+    const channel = supabase
+      .channel('drivers-realtime')
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'drivers' },
+        (payload) => {
+          const updated = payload.new as Record<string, any>;
+          queryClient.setQueryData<Driver[]>(['drivers'], (old = []) => {
+            // Only patch if the driver is already in the cache to avoid
+            // inserting incomplete records for newly created drivers.
+            if (!old.some(d => d.id === updated.id)) return old;
+            const sanitized = sanitizeDrivers([updated])[0];
+            return old.map(d => d.id === updated.id ? { ...d, ...sanitized } : d);
+          });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [queryClient]);
 
   // Main loading state now only reflects CORE data needed for first paint
