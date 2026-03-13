@@ -49,6 +49,7 @@ interface AppAdminShellProps {
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };
+  deleteDrivers: { mutate: (ids: string[]) => void };
   updateTransaction: { mutate: (args: { txId: string; updates: Partial<Transaction> }) => void };
   saveSettlement: { mutate: (s: DailySettlement) => void };
   logAI: { mutate: (l: AILog) => void };
@@ -61,7 +62,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
   locations, drivers, transactions, dailySettlements, aiLogs,
   filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
   unsyncedCount, activeDriverId,
-  syncOfflineData, updateDrivers, updateLocations, deleteLocations,
+  syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers,
   updateTransaction, saveSettlement, logAI,
   onSetLang, onLogout,
 }) => {
@@ -271,6 +272,7 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
                   transactions={filteredTransactions}
                   dailySettlements={filteredSettlements}
                   onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onDeleteDrivers={(ids) => deleteDrivers.mutate(ids)}
                 />
               )}
               {view === 'billing' && (

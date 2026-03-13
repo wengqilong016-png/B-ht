@@ -67,6 +67,18 @@ export function useSupabaseMutations(isOnline: boolean) {
     }
   });
 
+  const deleteDrivers = useMutation({
+    mutationFn: async (ids: string[]) => {
+      queryClient.setQueryData(['drivers'], (old: Driver[] = []) => old.filter(d => !ids.includes(d.id)));
+      if (isOnline && supabase) {
+        await supabase.from('drivers').delete().in('id', ids);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) queryClient.invalidateQueries({ queryKey: ['drivers'] });
+    }
+  });
+
   const updateTransaction = useMutation({
     mutationFn: async ({ txId, updates }: { txId: string; updates: Partial<Transaction> }) => {
       queryClient.setQueryData(['transactions'], (old: Transaction[] = []) =>
@@ -128,6 +140,7 @@ export function useSupabaseMutations(isOnline: boolean) {
     updateDrivers,
     updateLocations,
     deleteLocations,
+    deleteDrivers,
     updateTransaction,
     saveSettlement,
     logAI

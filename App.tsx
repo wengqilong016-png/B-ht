@@ -80,6 +80,7 @@ const App: React.FC = () => {
     updateDrivers,
     updateLocations,
     deleteLocations,
+    deleteDrivers,
     updateTransaction,
     saveSettlement,
     logAI
@@ -151,6 +152,7 @@ const App: React.FC = () => {
         updateDrivers={updateDrivers}
         updateLocations={updateLocations}
         deleteLocations={deleteLocations}
+        deleteDrivers={deleteDrivers}
         updateTransaction={updateTransaction}
         saveSettlement={saveSettlement}
         logAI={logAI}
