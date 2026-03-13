@@ -84,6 +84,31 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
   const pendingResetRequests = useMemo(() => transactions.filter(tx => tx.type === 'reset_request' && tx.approvalStatus === 'pending'), [transactions]);
   const pendingPayoutRequests = useMemo(() => transactions.filter(tx => tx.type === 'payout_request' && tx.approvalStatus === 'pending'), [transactions]);
 
+  // O(1) lookup maps built once per data change — used across multiple render sections
+  // to replace O(n) Array.find() calls inside render loops.
+  const driverMap = useMemo(() => new Map(drivers.map(d => [d.id, d])), [drivers]);
+  const locationMap = useMemo(() => new Map(locations.map(l => [l.id, l])), [locations]);
+
+  // Revenue drill-down: per-driver today stats, pre-computed so the JSX render
+  // loop doesn't filter/reduce the full transactions array for every driver on
+  // each render (O(n×m) → O(n+m)).
+  const todayDriverStats = useMemo(() => {
+    const txByDriver = new Map<string, Transaction[]>();
+    for (const t of transactions) {
+      if (!t.timestamp.startsWith(todayStr)) continue;
+      const arr = txByDriver.get(t.driverId);
+      if (arr) arr.push(t);
+      else txByDriver.set(t.driverId, [t]);
+    }
+    return drivers.map(driver => {
+      const driverTxs = txByDriver.get(driver.id) ?? [];
+      const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
+      const driverCommission = driverTxs.reduce((s, t) => s + t.ownerRetention, 0);
+      const driverNet = driverTxs.reduce((s, t) => s + t.netPayable, 0);
+      return { driver, driverTxs, driverRev, driverCommission, driverNet };
+    });
+  }, [drivers, transactions, todayStr]);
+
   // --- Payroll System ---
   const payrollStats = useMemo(() => {
     const months = Array.from(new Set(transactions.map(t => t.timestamp.substring(0, 7)))).sort().reverse();
@@ -360,12 +385,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                    <p className="text-[10px] text-slate-400 font-bold">Today's Revenue by Driver</p>
                  </div>
                </div>
-               {drivers.map(driver => {
-                  const driverDayStr = new Date().toISOString().split('T')[0];
-                  const driverTxs = transactions.filter(t => t.driverId === driver.id && t.timestamp.startsWith(driverDayStr));
-                  const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
-                  const driverCommission = driverTxs.reduce((s, t) => s + t.ownerRetention, 0);
-                  const driverNet = driverTxs.reduce((s, t) => s + t.netPayable, 0);
+               {todayDriverStats.map(({ driver, driverTxs, driverRev, driverCommission, driverNet }) => {
                   return (
                     <div key={driver.id} className="bg-white border border-slate-200 rounded-[28px] p-5">
                       <div className="flex items-center justify-between mb-3">
@@ -398,7 +418,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                       {driverTxs.length > 0 && (
                         <div className="space-y-2 border-t border-slate-50 pt-3">
                           {driverTxs.map(tx => {
-                            const loc = locations.find(l => l.id === tx.locationId);
+                            const loc = locationMap.get(tx.locationId);
                             return (
                               <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
                                 <div className="flex items-center gap-2">
@@ -728,7 +748,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                              <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{loc.machineId} • {loc.area}</p>
                              {loc.assignedDriverId && (
                                <p className="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">
-                                 {drivers.find(d => d.id === loc.assignedDriverId)?.name || loc.assignedDriverId}
+                                 {driverMap.get(loc.assignedDriverId)?.name || loc.assignedDriverId}
                                </p>
                              )}
                           </div>
@@ -880,7 +900,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {pendingExpenses.map(tx => {
-                        const driver = drivers.find(d => d.id === tx.driverId);
+                        const driver = driverMap.get(tx.driverId);
                         const categoryLabel = {
                           fuel: '⛽ Fuel',
                           repair: '🔧 Repair',
@@ -933,7 +953,7 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {anomalyTransactions.map(tx => {
-                        const driver = drivers.find(d => d.id === tx.driverId);
+                        const driver = driverMap.get(tx.driverId);
                         return (
                           <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-amber-200 shadow-sm">
                             <div className="flex items-center justify-between mb-3">
@@ -984,8 +1004,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {pendingResetRequests.map(tx => {
-                        const driver = drivers.find(d => d.id === tx.driverId);
-                        const loc = locations.find(l => l.id === tx.locationId);
+                        const driver = driverMap.get(tx.driverId);
+                        const loc = locationMap.get(tx.locationId);
                         return (
                           <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-purple-200 shadow-sm">
                             <div className="flex items-center justify-between mb-3">
@@ -1053,8 +1073,8 @@ const Dashboard: React.FC<DashboardProps> = React.memo(({ transactions, drivers,
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {pendingPayoutRequests.map(tx => {
-                        const driver = drivers.find(d => d.id === tx.driverId);
-                        const loc = locations.find(l => l.id === tx.locationId);
+                        const driver = driverMap.get(tx.driverId);
+                        const loc = locationMap.get(tx.locationId);
                         return (
                           <div key={tx.id} className="bg-white p-5 rounded-[24px] border-2 border-emerald-200 shadow-sm">
                             <div className="flex items-center justify-between mb-3">

@@ -23,7 +23,15 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, l
     return result.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
   }, [transactions, selectedLocation, showUnsyncedOnly]);
 
-  const unsyncedCount = transactions.filter(t => !t.isSynced).length;
+  // Memoized so the filter doesn't run on every render (e.g. when a sibling
+  // state like selectedLocation or viewMode changes).
+  const unsyncedCount = useMemo(() => transactions.filter(t => !t.isSynced).length, [transactions]);
+
+  // Memoized to avoid rebuilding the Set + Array on every render.
+  const locationNames = useMemo(
+    () => Array.from(new Set(transactions.map(tx => tx.locationName))).sort(),
+    [transactions]
+  );
 
   // Center for the interactive map background
   const mapCenter = useMemo(() => {
@@ -73,7 +81,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, l
               className="bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-black text-slate-700 outline-none uppercase appearance-none min-w-[150px] shadow-sm focus:ring-2 focus:ring-indigo-500/20 transition-all"
             >
               <option value="all">所有点位汇总</option>
-              {Array.from(new Set(transactions.map(tx => tx.locationName))).sort().map(loc => <option key={loc} value={loc}>{loc}</option>)}
+              {locationNames.map(loc => <option key={loc} value={loc}>{loc}</option>)}
             </select>
           </div>
         </div>

@@ -13,11 +13,30 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
   const insights = useMemo(() => {
     const now = new Date();
     const SEVEN_DAYS = 7 * 24 * 60 * 60 * 1000;
-    const pastWeekTxs = transactions.filter(t => (now.getTime() - new Date(t.timestamp).getTime()) < SEVEN_DAYS);
+    const nowTime = now.getTime();
+
+    // Pre-compute cutoff and pre-convert timestamps once (O(n)) rather than
+    // inside locations.map() (which would be O(n×m)).
+    const cutoff = nowTime - SEVEN_DAYS;
+    const pastWeekTxs = transactions.filter(t => new Date(t.timestamp).getTime() > cutoff);
+
+    // Group past-week transactions by locationId (O(n)) so each location can
+    // look up its own slice in O(1) instead of filtering the full list (O(n×m)).
+    // Sort each group by timestamp ascending once here so the per-location
+    // analysis logic doesn't have to re-sort on every iteration.
+    const txsByLocation = new Map<string, typeof pastWeekTxs>();
+    for (const t of pastWeekTxs) {
+      const arr = txsByLocation.get(t.locationId);
+      if (arr) arr.push(t);
+      else txsByLocation.set(t.locationId, [t]);
+    }
+    for (const arr of txsByLocation.values()) {
+      arr.sort((a, b) => a.timestamp < b.timestamp ? -1 : 1);
+    }
 
     // 聚合每台机器的 7 天数据
     const locStats = locations.map(loc => {
-      const locTxs = pastWeekTxs.filter(t => t.locationId === loc.id).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+      const locTxs = txsByLocation.get(loc.id) ?? [];
       
       let totalRevenue = 0;
       let trend: 'up' | 'down' | 'stable' = 'stable';
@@ -44,8 +63,8 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
            actionSuggestion = '建议缩短巡检周期至每日一次。';
         }
 
-        // 闲置检测
-        const daysSinceLastTx = Math.floor((now.getTime() - new Date(latestTx.timestamp).getTime()) / 86400000);
+        // 闲置检测 — reuse nowTime (pre-computed above) to avoid new Date() per item
+        const daysSinceLastTx = Math.floor((nowTime - new Date(latestTx.timestamp).getTime()) / 86400000);
         if (daysSinceLastTx > 2) {
            riskLevel = 'medium';
            warningMsg = `机器已静默 ${daysSinceLastTx} 天未产生收益。`;
