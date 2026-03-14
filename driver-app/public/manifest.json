@@ -1,0 +1,16 @@
+{
+  "name": "Bahati Driver App",
+  "short_name": "Bahati Driver",
+  "description": "Bahati Jackpots Driver Collection App",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
