@@ -7,27 +7,27 @@ interface LoginPageProps {
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!username.trim() || !password.trim()) return;
+    if (!email.trim() || !password.trim()) return;
 
     setIsLoading(true);
     setError('');
 
     try {
-      // Drivers use their username as email in Supabase Auth
+      // Sign in with email (Gmail) + password via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-        email: username.trim(),
+        email: email.trim().toLowerCase(),
         password: password.trim(),
       });
 
       if (authError || !authData.user) {
-        setError('用户名或密码错误 / Jina la mtumiaji au nenosiri si sahihi');
+        setError('邮箱或密码错误 / Barua pepe au nenosiri si sahihi');
         return;
       }
 
@@ -39,7 +39,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         .maybeSingle();
 
       if (profileError || !profile?.driver_id) {
-        setError('用户名或密码错误 / Jina la mtumiaji au nenosiri si sahihi');
+        setError('账户未关联司机信息，请联系管理员 / Akaunti haihusishwi na dereva, wasiliana na msimamizi');
         await supabase.auth.signOut();
         return;
       }
@@ -52,15 +52,15 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         .maybeSingle();
 
       if (driverError || !driver) {
-        setError('用户名或密码错误 / Jina la mtumiaji au nenosiri si sahihi');
+        setError('无法加载司机信息，请重试 / Imeshindwa kupakia taarifa za dereva, jaribu tena');
         await supabase.auth.signOut();
         return;
       }
 
       onLogin({
         id: driver.id,
-        name: driver.name || profile.display_name || username,
-        username: driver.username || username,
+        name: driver.name || profile.display_name || email,
+        username: driver.username || email,
         phone: driver.phone || '',
         remainingDebt: driver.remainingDebt ?? 0,
         dailyFloatingCoins: driver.dailyFloatingCoins ?? 0,
@@ -88,15 +88,16 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className="block text-sm text-slate-400 mb-1">
-              用户名 / Jina la Mtumiaji
+              邮箱 / Barua pepe
             </label>
             <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
-              autoComplete="username"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="example@gmail.com"
+              autoComplete="email"
               autoCapitalize="none"
+              inputMode="email"
               className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 text-base"
               style={{ minHeight: '48px' }}
               disabled={isLoading}
@@ -127,7 +128,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
           <button
             type="submit"
-            disabled={isLoading || !username.trim() || !password.trim()}
+            disabled={isLoading || !email.trim() || !password.trim()}
             className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-900 font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
             style={{ minHeight: '52px', fontSize: '16px' }}
           >
@@ -141,6 +142,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
             )}
           </button>
         </form>
+
+        <p className="text-center text-slate-500 text-xs mt-6">
+          请输入您的 Gmail 邮箱和密码登录<br />
+          Ingiza barua pepe ya Gmail na nenosiri lako
+        </p>
       </div>
     </div>
   );
