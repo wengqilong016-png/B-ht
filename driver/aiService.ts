@@ -10,7 +10,7 @@ export const recognizeScoreFromImage = async (base64Image: string): Promise<numb
   try {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    const prompt = '你是一个专业的博弈机数据审计员。请识别这张照片中博弈机屏幕上的数字（通常是当前分值）。只返回数字，不要有任何多余的文字。如果无法识别，请返回 0。';
+    const prompt = '你是一个专业的博弈机数据审计员。请识别这张照片中博弈机屏幕上的数字（通常是当前分值）。只返回数字，不要有任何多余的文字。如果无法识别，请只返回“无法识别”四个字，不要包含任何数字或其他内容。';
 
     const result = await model.generateContent([
       prompt,
