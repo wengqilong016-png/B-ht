@@ -1,6 +1,7 @@
-import React from 'react';
-import { CheckCircle2, ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { CheckCircle2, ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
+import { supabase } from '../../supabaseClient';
 
 interface FinanceSummaryProps {
   selectedLocation: Location;
@@ -74,6 +75,57 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
 
+  // Server-authoritative finance state (overrides local calculations when available)
+  const [authCalcs, setAuthCalcs] = useState<typeof calculations | null>(null);
+  const [isAuthoritative, setIsAuthoritative] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    if (!selectedLocation) return;
+
+    // Debounce RPC calls while the user is typing
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase.rpc('calculate_finance_v1', {
+          p_current_score:      parseInt(currentScore, 10) || 0,
+          p_previous_score:     selectedLocation.lastScore,
+          p_commission_rate:    selectedLocation.commissionRate ?? CONSTANTS.DEFAULT_PROFIT_SHARE,
+          p_expenses:           parseInt(expenses, 10) || 0,
+          p_coin_exchange:      parseInt(coinExchange, 10) || 0,
+          p_is_owner_retaining: isOwnerRetaining,
+          p_owner_retention:    isOwnerRetaining && ownerRetention !== ''
+                                  ? parseInt(ownerRetention, 10)
+                                  : null,
+        });
+        if (error) throw error;
+        if (data) {
+          setAuthCalcs({
+            diff:               data.diff,
+            revenue:            data.revenue,
+            commission:         data.commission,
+            finalRetention:     data.finalRetention,
+            netPayable:         data.netPayable,
+            // remainingCoins depends on driver float – keep local value
+            remainingCoins:     calculations.remainingCoins,
+            isCoinStockNegative: calculations.isCoinStockNegative,
+          });
+          setIsAuthoritative(true);
+        }
+      } catch {
+        // RPC unavailable (offline or function missing) – fall back silently
+        setAuthCalcs(null);
+        setIsAuthoritative(false);
+      }
+    }, 400);
+
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [currentScore, expenses, coinExchange, ownerRetention, isOwnerRetaining,
+      selectedLocation?.id, selectedLocation?.lastScore, selectedLocation?.commissionRate]);
+
+  // Use server values when available, otherwise use locally-computed fallback
+  const display = authCalcs ?? calculations;
+
   return (
     <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
       <WizardStepBar current="amounts" lang={lang} />
@@ -89,22 +141,27 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             {selectedLocation?.machineId} • {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
           </p>
         </div>
+        {/* Authoritative badge */}
+        <div className={`ml-auto flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-tag text-[8px] font-black uppercase ${isAuthoritative ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-50 text-amber-500'}`}>
+          {isAuthoritative ? <ShieldCheck size={10} /> : <AlertTriangle size={10} />}
+          {isAuthoritative ? (lang === 'sw' ? 'Server' : '服务器') : (lang === 'sw' ? 'Hali ya hewa' : '本地')}
+        </div>
       </div>
 
       {/* Revenue summary */}
-      <div className={`p-4 rounded-subcard text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+      <div className={`p-4 rounded-subcard text-white flex justify-between items-center ${display.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
         <div>
           <p className="text-[9px] font-black uppercase opacity-60">{t.formula}</p>
           <p className="text-[9px] font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
         </div>
         <div className="text-right">
-          {calculations.revenue > 50000 && (
+          {display.revenue > 50000 && (
             <div className="flex items-center gap-1 justify-end mb-1">
               <Trophy size={10} className="text-yellow-300" />
               <span className="text-[8px] font-black text-yellow-300 uppercase">High Value</span>
             </div>
           )}
-          <p className="text-2xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
+          <p className="text-2xl font-black">TZS {display.revenue.toLocaleString()}</p>
           <p className="text-[8px] opacity-60 uppercase">{t.revenue}</p>
         </div>
       </div>
@@ -142,7 +199,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             <ShieldAlert size={16} />
             <div className="flex-1">
               <p className="text-[10px] font-black uppercase">{t.fullCollect}</p>
-              <p className="text-[8px] font-bold opacity-80 mt-0.5">TZS {calculations.commission.toLocaleString()} recorded as debt</p>
+              <p className="text-[8px] font-bold opacity-80 mt-0.5">TZS {display.commission.toLocaleString()} recorded as debt</p>
             </div>
           </div>
         )}
