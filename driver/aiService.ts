@@ -1,6 +1,6 @@
-import { GoogleGenerativeAI } from '@google/genai';
+import { GoogleGenAI } from '@google/genai';
 
-const genAI = new GoogleGenerativeAI(import.meta.env.VITE_GEMINI_API_KEY);
+const genAI = new GoogleGenAI(import.meta.env.VITE_GEMINI_API_KEY);
 
 /**
  * 识别博弈机读数
