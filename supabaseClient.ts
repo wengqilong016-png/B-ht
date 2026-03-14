@@ -1,44 +1,24 @@
 import { createClient } from '@supabase/supabase-js';
 
+// Project credentials — the anon key is safe to include in client-side code;
+// it is protected by Supabase Row Level Security policies.
+// Override with VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY env vars when needed.
+const DEFAULT_SUPABASE_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
+const DEFAULT_SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjU4NDgsImV4cCI6MjA4NzIwMTg0OH0.MkLFBP9GIjY21tfWepQFyaCAC5KHCzUVcYOB43g4s4U';
+
 const envUrl = import.meta.env.VITE_SUPABASE_URL;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
 if (!envUrl || !envKey) {
-  if (import.meta.env.DEV && import.meta.env.VITE_ALLOW_DEV_FALLBACK === 'true') {
-    // Opt-in shared dev DB – only active when VITE_ALLOW_DEV_FALLBACK=true is
-    // explicitly set in .env.local. Displays a red banner in the UI.
-    // NOTE: Supply VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in .env.local
-    // instead of relying on this fallback path.
-    console.warn(
-      '[Bahati] ⚠️  VITE_ALLOW_DEV_FALLBACK=true but VITE_SUPABASE_URL / ' +
-      'VITE_SUPABASE_ANON_KEY are not set. ' +
-      'Please add them to .env.local — hardcoded credentials have been removed.',
-    );
-    throw new Error(
-      '[Bahati] Supabase configuration error: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing. ' +
-      'Set them in .env.local (copy .env.example as a template).',
-    );
-  } else if (import.meta.env.DEV) {
-    console.error(
-      '[Bahati] Supabase environment variables are missing. ' +
-      'Create a .env.local file with VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. ' +
-      'To use the shared dev DB set VITE_ALLOW_DEV_FALLBACK=true in .env.local.',
-    );
-    throw new Error(
-      '[Bahati] Supabase configuration error: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing.',
-    );
-  } else {
-    console.error(
-      '[Bahati] Supabase environment variables are missing in production. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY.',
-    );
-    throw new Error(
-      '[Bahati] Supabase configuration error: VITE_SUPABASE_URL or VITE_SUPABASE_ANON_KEY is missing in production build.',
-    );
-  }
+  console.warn(
+    '[Bahati] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set — using built-in project credentials. ' +
+    'Set these env vars to override.',
+  );
 }
 
-export const SUPABASE_URL = envUrl as string;
-export const SUPABASE_ANON_KEY = envKey as string;
+export const SUPABASE_URL: string = envUrl || DEFAULT_SUPABASE_URL;
+export const SUPABASE_ANON_KEY: string = envKey || DEFAULT_SUPABASE_ANON_KEY;
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
