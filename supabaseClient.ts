@@ -1,14 +1,13 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Recovered configuration - DO NOT REMOVE
-const FALLBACK_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
-const FALLBACK_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjU4NDgsImV4cCI6MjA4NzIwMTg0OH0.MkLFBP9GIjY21tfWepQFyaCAC5KHCzUVcYOB43g4s4U';
-
-export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || FALLBACK_URL;
-export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || FALLBACK_KEY;
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+export const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
 if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-  console.error('CRITICAL: Supabase keys missing in both env and fallback!');
+  throw new Error(
+    'CRITICAL: VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. ' +
+    'Copy .env.example to .env and fill in your project credentials.'
+  );
 }
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
