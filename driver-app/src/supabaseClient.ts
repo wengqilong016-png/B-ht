@@ -1,20 +1,32 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Use existing environment variables or fallback options
-const SUPABASE_URL = process.env.SUPABASE_URL || 'your_default_supabase_url';
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your_default_anon_key';
+const SUPABASE_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjU4NDgsImV4cCI6MjA4NzIwMTg0OH0.MkLFBP9GIjY21tfWepQFyaCAC5KHCzUVcYOB43g4s4U';
 
-// Restore ESM TypeScript implementation with env fallback
-const checkOnline = async () => {
-    // Logic to check online status
-};
-
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL || SUPABASE_URL,
+  import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
+  {
     auth: {
-        storageKey: 'bht-driver-auth',
-        persistSession: false,
-        autoRefreshToken: true,
+      storageKey: 'bht-driver-auth',
+      persistSession: true,
+      autoRefreshToken: true,
     },
-});
+  }
+);
 
-export { supabase, checkOnline };
+export default supabase;
+
+export async function checkOnline(): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('locations')
+      .select('id')
+      .limit(1)
+      .maybeSingle();
+    return !error;
+  } catch {
+    return false;
+  }
+}
