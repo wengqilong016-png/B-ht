@@ -9,6 +9,7 @@ export const supabase = createClient(
   import.meta.env.VITE_SUPABASE_ANON_KEY || SUPABASE_ANON_KEY,
   {
     auth: {
+      storageKey: 'bht-driver-auth',
       persistSession: true,
       autoRefreshToken: true,
     },

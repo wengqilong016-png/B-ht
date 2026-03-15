@@ -18,11 +18,12 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
+const Root = import.meta.env.DEV ? React.StrictMode : React.Fragment;
+
+ReactDOM.createRoot(rootElement).render(
+  <Root>
     <QueryClientProvider client={queryClient}>
       <App />
     </QueryClientProvider>
-  </React.StrictMode>
+  </Root>
 );
