@@ -1,5 +1,6 @@
 import React from 'react';
-import { CheckCircle2, ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight, Gift } from 'lucide-react';
+import { ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight, Gift } from 'lucide-react';
+import WizardStepBar from './WizardStepBar';
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
 
 // Tip anomaly thresholds: warn if tip > TIP_WARNING_THRESHOLD and revenue < REVENUE_WARNING_THRESHOLD
@@ -36,40 +37,6 @@ interface FinanceSummaryProps {
   onNext: () => void;
   onBack: () => void;
 }
-
-// Wizard step bar
-const WIZARD_STEPS = [
-  { key: 'capture',  labelZh: '拍照',     labelSw: 'Picha' },
-  { key: 'amounts',  labelZh: '金额',     labelSw: 'Fedha' },
-  { key: 'confirm',  labelZh: '提交',     labelSw: 'Wasilisha' },
-];
-
-const WizardStepBar = ({ current, lang }: { current: string; lang: 'zh' | 'sw' }) => {
-  const currentIdx = WIZARD_STEPS.findIndex(s => s.key === current);
-  return (
-    <div className="flex items-center gap-2 mb-5">
-      {WIZARD_STEPS.map((s, i) => {
-        const done = i < currentIdx;
-        const active = s.key === current;
-        return (
-          <React.Fragment key={s.key}>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-tag text-[9px] font-black uppercase transition-all ${
-              active ? 'bg-indigo-600 text-white' :
-              done    ? 'bg-emerald-100 text-emerald-600' :
-                        'bg-slate-100 text-slate-400'
-            }`}>
-              {done ? <CheckCircle2 size={10} /> : <span>{i + 2}</span>}
-              {lang === 'sw' ? s.labelSw : s.labelZh}
-            </div>
-            {i < WIZARD_STEPS.length - 1 && (
-              <div className={`flex-1 h-px ${done ? 'bg-emerald-300' : 'bg-slate-200'}`} />
-            )}
-          </React.Fragment>
-        );
-      })}
-    </div>
-  );
-};
 
 const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   selectedLocation, lang, currentScore, expenses, expenseType, expenseCategory,
