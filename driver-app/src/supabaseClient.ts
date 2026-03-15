@@ -1,13 +1,20 @@
-const SUPABASE_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
-const SUPABASE_ANON_KEY = 'YOUR_FULL_ANON_KEY'; // replace with actual key
+import { createClient } from '@supabase/supabase-js';
 
-const { createClient } = require('@supabase/supabase-js');
+// Use existing environment variables or fallback options
+const SUPABASE_URL = process.env.SUPABASE_URL || 'your_default_supabase_url';
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || 'your_default_anon_key';
 
-// Create Supabase client with env fallback
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, { auth: { storageKey: 'bht-driver-auth' } });
-
+// Restore ESM TypeScript implementation with env fallback
 const checkOnline = async () => {
-    // your existing online check implementation
+    // Logic to check online status
 };
 
-module.exports = { supabase, checkOnline };
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+    auth: {
+        storageKey: 'bht-driver-auth',
+        persistSession: false,
+        autoRefreshToken: true,
+    },
+});
+
+export { supabase, checkOnline };
