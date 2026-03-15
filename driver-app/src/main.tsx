@@ -1,12 +1,12 @@
 import React from 'react';
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import './index.css';
 
-const App = () => {
-  return (
-    <>
-      {/* Use StrictMode only in development */}
-      {process.env.NODE_ENV === 'development' ? <React.StrictMode><MainComponent /></React.StrictMode> : <MainComponent />}
-    </>
-  );
-};
+const Root = import.meta.env.DEV ? React.StrictMode : React.Fragment;
 
-export default App;
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <Root>
+    <App />
+  </Root>
+);
