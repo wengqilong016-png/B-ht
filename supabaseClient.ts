@@ -20,7 +20,13 @@ if (!envUrl || !envKey) {
 export const SUPABASE_URL: string = envUrl || DEFAULT_SUPABASE_URL;
 export const SUPABASE_ANON_KEY: string = envKey || DEFAULT_SUPABASE_ANON_KEY;
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storageKey: 'bht-main-auth',
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
 
 export const checkDbHealth = async (): Promise<boolean> => {
   try {
