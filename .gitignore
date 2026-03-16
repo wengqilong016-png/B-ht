@@ -23,5 +23,14 @@ dist-ssr
 *.sln
 *.sw?
 .env
+.env.local
+.env.*.local
 manage_users.js
 .vercel
+
+# Lock files — project uses npm (package-lock.json)
+pnpm-lock.yaml
+
+# Backup and credential files
+*.backup.json
+*_credentials*
