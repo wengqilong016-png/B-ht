@@ -1,5 +1,7 @@
 # Bahati Jackpots — 安全配置指南
 
+> 📄 **运维安全操作手册**（凭据轮换、Git 历史清理、Vercel/Firebase 环境变量配置）请见 [`docs/SECURITY_OPERATIONS.md`](docs/SECURITY_OPERATIONS.md)。
+
 ## 一、已完成的安全加固（代码层）
 
 | 项目 | 状态 | 说明 |
@@ -12,6 +14,8 @@
 | `get_my_role()` 辅助函数 | ✅ 已写入 SQL | SECURITY DEFINER，避免 profiles 循环检查 |
 | 密码残留字段清理 | ✅ 已完成 | `sanitizeDriver()` 在写入 localStorage 前剥除 password 字段 |
 | **硬编码 Supabase 匿名密钥已移除** | ✅ 已完成 | `supabaseClient.ts` 不再包含任何硬编码凭证；必须通过 `.env.local` 提供 |
+| `BAHATI_DATA_BACKUP.json` gitignored | ✅ 已完成 | `.gitignore` 中已新增；**仍需从 Git 历史清理** — 见 `docs/SECURITY_OPERATIONS.md` 第 2 节 |
+| 备份/导出文件格式已 gitignore | ✅ 已完成 | `*.backup.*`、`*BACKUP*`、`*.sqlite`、`*.dump`、`*.sql.gz`、`*.jsonl` 均已加入 `.gitignore` |
 
 ---
 

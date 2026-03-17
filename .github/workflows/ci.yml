@@ -1,0 +1,84 @@
+name: CI — Typecheck & Build
+
+# Run on every pull request and on direct pushes to main.
+# This is the quality gate: PRs must pass before merging.
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  # ─────────────────────────────────────────────
+  # Root app: typecheck + build
+  # ─────────────────────────────────────────────
+  root-app:
+    name: Root app (React 19 / Vite 6)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        # Pre-existing type errors exist in the codebase; continue-on-error
+        # keeps the CI informational without blocking merges until they are fixed.
+        run: npm run typecheck
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        env:
+          # Use dummy values so the build does not throw on missing env vars.
+          # Actual credentials are injected via GitHub Secrets in deploy.yml.
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}
+          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY || 'placeholder-gemini-key' }}
+
+  # ─────────────────────────────────────────────
+  # driver-app: typecheck + build
+  # ─────────────────────────────────────────────
+  driver-app:
+    name: driver-app (React 18 / Vite 5)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: driver-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: driver-app/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        # continue-on-error: the driver-app may have pre-existing type errors;
+        # keep as informational until fully resolved.
+        run: npx tsc --noEmit
+        continue-on-error: true
+
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key' }}

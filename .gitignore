@@ -25,12 +25,28 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+# Ignore all .env.* variants but keep the example file
+.env.*
+!.env.example
 manage_users.js
 .vercel
 
 # Lock files — project uses npm (package-lock.json)
 pnpm-lock.yaml
 
-# Backup and credential files
+# Backup and credential files — never commit data exports or dumps
 *.backup.json
+*.backup.*
+*BACKUP*
 *_credentials*
+BAHATI_DATA_BACKUP.json
+*.sqlite
+*.dump
+*.sql.gz
+*.jsonl
+
+# Supabase local dev temp files
+supabase/.temp/
+
+# Firebase local cache
+.firebase/
