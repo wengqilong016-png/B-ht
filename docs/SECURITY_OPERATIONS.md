@@ -33,6 +33,23 @@ treat those credentials as **compromised** and rotate them immediately.
 > ⚠️ This section describes steps that **must be performed manually** by a repository owner.
 > They require a local clone, write access, and a force-push. They are **not executed by this PR**.
 
+### 2.0 Immediate mitigation — remove from the current branch
+
+Even before scheduling a history rewrite, remove the file from `HEAD` so that **fresh clones
+stop pulling the 15.8 MB payload**:
+
+```bash
+# Run from a regular (non-mirror) clone
+git rm --cached BAHATI_DATA_BACKUP.json
+echo "BAHATI_DATA_BACKUP.json" >> .gitignore   # already ignored via *BACKUP* pattern
+git commit -m "chore: remove BAHATI_DATA_BACKUP.json from working tree"
+git push
+```
+
+> This commit alone does **not** erase the file from older commits — it only stops
+> new clones from checking it out. The full history rewrite (Section 2.2) is still
+> required to expunge the data entirely.
+
 ### 2.1 Why Git history cleaning is necessary
 
 Adding a file to `.gitignore` only prevents **future** commits. If `BAHATI_DATA_BACKUP.json`
@@ -54,8 +71,8 @@ cd B-ht-clean.git
 # 3. Remove the backup file from all history
 git filter-repo --path BAHATI_DATA_BACKUP.json --invert-paths
 
-# 4. Force-push the rewritten history
-git push --force
+# 4. Force-push all refs (branches + tags) back to origin
+git push --force --mirror origin
 
 # 5. Ask all collaborators to re-clone the repo
 #    (their local clones contain the old history and cannot be rebased on top safely)
