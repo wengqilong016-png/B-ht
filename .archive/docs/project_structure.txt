@@ -1,0 +1,226 @@
+-rw-r--r--  1 u0_a616 u0_a616     9407 Mar 10 20:51 ./App.tsx
+-rw-r--r--  1 u0_a616 u0_a616 15825992 Mar 10 20:51 ./BAHATI_DATA_BACKUP.json
+-rw-r--r--  1 u0_a616 u0_a616     2514 Mar 10 20:51 ./DEPLOYMENT.md
+-rw-r--r--  1 u0_a616 u0_a616      279 Mar 10 20:51 ./Dockerfile
+-rw-r--r--  1 u0_a616 u0_a616     4589 Mar 10 20:51 ./README.md
+-rw-r--r--  1 u0_a616 u0_a616     5595 Mar 10 20:51 ./SECURITY.md
+-rw-r--r--  1 u0_a616 u0_a616    19092 Mar 10 20:51 ./admin/AppAdminShell.tsx
+-rw-r--r--  1 u0_a616 u0_a616     4837 Mar 10 20:51 ./apply_rls.cjs
+-rw-r--r--  1 u0_a616 u0_a616     1217 Mar 10 20:51 ./check_data_loss.js
+-rw-r--r--  1 u0_a616 u0_a616    37848 Mar 10 20:51 ./components/AIHub.tsx
+-rw-r--r--  1 u0_a616 u0_a616    10954 Mar 10 20:51 ./components/AccountSettings.tsx
+-rw-r--r--  1 u0_a616 u0_a616    12976 Mar 10 20:51 ./components/BillingReconciliation.tsx
+-rw-r--r--  1 u0_a616 u0_a616     1263 Mar 10 20:51 ./components/CollectionForm.tsx
+-rw-r--r--  1 u0_a616 u0_a616    79331 Mar 10 20:51 ./components/Dashboard.tsx
+-rw-r--r--  1 u0_a616 u0_a616    18713 Mar 10 20:51 ./components/DebtManager.tsx
+-rw-r--r--  1 u0_a616 u0_a616    36080 Mar 10 20:51 ./components/DriverManagement.tsx
+-rw-r--r--  1 u0_a616 u0_a616    22945 Mar 10 20:51 ./components/FinancialReports.tsx
+-rw-r--r--  1 u0_a616 u0_a616    11069 Mar 10 20:51 ./components/LiveMap.tsx
+-rw-r--r--  1 u0_a616 u0_a616     7471 Mar 10 20:51 ./components/Login.tsx
+-rw-r--r--  1 u0_a616 u0_a616    15687 Mar 10 20:51 ./components/MachineRegistrationForm.tsx
+-rw-r--r--  1 u0_a616 u0_a616    14859 Mar 10 20:51 ./components/OfflineRouteMap.tsx
+-rw-r--r--  1 u0_a616 u0_a616     3008 Mar 10 20:51 ./components/PwaInstallPrompt.tsx
+-rw-r--r--  1 u0_a616 u0_a616     7106 Mar 10 20:51 ./components/RouteAuditMap.tsx
+-rw-r--r--  1 u0_a616 u0_a616     8869 Mar 10 20:51 ./components/SmartInsights.tsx
+-rw-r--r--  1 u0_a616 u0_a616     5721 Mar 10 20:51 ./components/SystemStatus.tsx
+-rw-r--r--  1 u0_a616 u0_a616    21928 Mar 10 20:51 ./components/TransactionHistory.tsx
+-rw-r--r--  1 u0_a616 u0_a616     9035 Mar 10 20:51 ./driver/AppDriverShell.tsx
+-rw-r--r--  1 u0_a616 u0_a616      329 Mar 10 20:51 ./env.d.ts
+-rw-r--r--  1 u0_a616 u0_a616      234 Mar 10 20:51 ./firebase.json
+-rw-r--r--  1 u0_a616 u0_a616     1494 Mar 10 20:51 ./fix_db_structure.js
+-rw-r--r--  1 u0_a616 u0_a616     3740 Mar 10 20:51 ./fix_rls_safe.sql
+-rw-r--r--  1 u0_a616 u0_a616     3623 Mar 10 20:51 ./get_credentials.cjs
+-rw-r--r--  1 u0_a616 u0_a616     2230 Mar 10 20:51 ./hooks/useDevicePerformance.ts
+-rw-r--r--  1 u0_a616 u0_a616     7158 Mar 10 20:51 ./hooks/useSupabaseData.ts
+-rw-r--r--  1 u0_a616 u0_a616     4917 Mar 10 20:51 ./hooks/useSupabaseMutations.ts
+-rw-r--r--  1 u0_a616 u0_a616     4403 Mar 10 20:51 ./index.html
+-rw-r--r--  1 u0_a616 u0_a616      692 Mar 10 20:51 ./index.tsx
+-rw-r--r--  1 u0_a616 u0_a616     1264 Mar 10 20:51 ./local_server.js
+-rw-r--r--  1 u0_a616 u0_a616      732 Mar 10 20:51 ./manifest.json
+-rw-r--r--  1 u0_a616 u0_a616      226 Mar 10 20:51 ./metadata.json
+-rw-r--r--  1 u0_a616 u0_a616     1114 Mar 10 20:51 ./notifications/README.md
+-rw-r--r--  1 u0_a616 u0_a616    10182 Mar 10 20:51 ./offlineQueue.ts
+-rw-r--r--  1 u0_a616 u0_a616   151419 Mar 10 20:51 ./package-lock.json
+-rw-r--r--  1 u0_a616 u0_a616      985 Mar 10 20:51 ./package.json
+-rw-r--r--  1 u0_a616 u0_a616    88207 Mar 10 20:51 ./pnpm-lock.yaml
+-rw-r--r--  1 u0_a616 u0_a616       80 Mar 10 20:51 ./postcss.config.js
+-rw-r--r--  1 u0_a616 u0_a616        0 Mar 10 20:51 ./project_structure.txt
+-rw-r--r--  1 u0_a616 u0_a616      732 Mar 10 20:51 ./public/manifest.json
+-rw-r--r--  1 u0_a616 u0_a616      123 Mar 10 20:51 ./public/robots.txt
+-rw-r--r--  1 u0_a616 u0_a616     1818 Mar 10 20:51 ./public/sw.js
+-rw-r--r--  1 u0_a616 u0_a616     3327 Mar 10 20:51 ./services/authService.ts
+-rw-r--r--  1 u0_a616 u0_a616     1067 Mar 10 20:51 ./services/localDB.ts
+-rw-r--r--  1 u0_a616 u0_a616     1128 Mar 10 20:51 ./services/translateService.ts
+-rw-r--r--  1 u0_a616 u0_a616    22780 Mar 10 20:51 ./setup_db.sql
+-rw-r--r--  1 u0_a616 u0_a616     1429 Mar 10 20:51 ./shared/AppRouterShell.tsx
+-rw-r--r--  1 u0_a616 u0_a616     2403 Mar 10 20:51 ./styles.css
+-rw-r--r--  1 u0_a616 u0_a616      565 Mar 10 20:51 ./styles/themes.css
+-rw-r--r--  1 u0_a616 u0_a616      696 Mar 10 20:51 ./styles/tokens.css
+-rw-r--r--  1 u0_a616 u0_a616     4651 Mar 10 20:51 ./supabase/config.toml
+-rw-r--r--  1 u0_a616 u0_a616     1252 Mar 10 20:51 ./supabaseClient.ts
+-rw-r--r--  1 u0_a616 u0_a616     1482 Mar 10 20:51 ./tailwind.config.js
+-rw-r--r--  1 u0_a616 u0_a616      563 Mar 10 20:51 ./tsconfig.json
+-rw-r--r--  1 u0_a616 u0_a616    15937 Mar 10 20:51 ./types.ts
+-rw-r--r--  1 u0_a616 u0_a616     3313 Mar 10 20:51 ./utils/imageUtils.ts
+-rw-r--r--  1 u0_a616 u0_a616      716 Mar 10 20:51 ./vercel.json
+-rw-r--r--  1 u0_a616 u0_a616      323 Mar 10 20:51 ./vite-env.d.ts
+-rw-r--r--  1 u0_a616 u0_a616     2081 Mar 10 20:51 ./vite.config.ts
+
+.:
+total 15920
+-rw-r--r-- 1 u0_a616 u0_a616     9407 Mar 10 20:51 App.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 15825992 Mar 10 20:51 BAHATI_DATA_BACKUP.json
+-rw-r--r-- 1 u0_a616 u0_a616     2514 Mar 10 20:51 DEPLOYMENT.md
+-rw-r--r-- 1 u0_a616 u0_a616      279 Mar 10 20:51 Dockerfile
+-rw-r--r-- 1 u0_a616 u0_a616     4589 Mar 10 20:51 README.md
+-rw-r--r-- 1 u0_a616 u0_a616     5595 Mar 10 20:51 SECURITY.md
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 admin
+-rw-r--r-- 1 u0_a616 u0_a616     4837 Mar 10 20:51 apply_rls.cjs
+-rw-r--r-- 1 u0_a616 u0_a616     1217 Mar 10 20:51 check_data_loss.js
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 components
+drwxr-xr-x 5 u0_a616 u0_a616     4096 Mar 10 20:51 driver
+-rw-r--r-- 1 u0_a616 u0_a616      329 Mar 10 20:51 env.d.ts
+-rw-r--r-- 1 u0_a616 u0_a616      234 Mar 10 20:51 firebase.json
+-rw-r--r-- 1 u0_a616 u0_a616     1494 Mar 10 20:51 fix_db_structure.js
+-rw-r--r-- 1 u0_a616 u0_a616     3740 Mar 10 20:51 fix_rls_safe.sql
+-rw-r--r-- 1 u0_a616 u0_a616     3623 Mar 10 20:51 get_credentials.cjs
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 hooks
+-rw-r--r-- 1 u0_a616 u0_a616     4403 Mar 10 20:51 index.html
+-rw-r--r-- 1 u0_a616 u0_a616      692 Mar 10 20:51 index.tsx
+-rw-r--r-- 1 u0_a616 u0_a616     1264 Mar 10 20:51 local_server.js
+-rw-r--r-- 1 u0_a616 u0_a616      732 Mar 10 20:51 manifest.json
+-rw-r--r-- 1 u0_a616 u0_a616      226 Mar 10 20:51 metadata.json
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 notifications
+-rw-r--r-- 1 u0_a616 u0_a616    10182 Mar 10 20:51 offlineQueue.ts
+-rw-r--r-- 1 u0_a616 u0_a616   151419 Mar 10 20:51 package-lock.json
+-rw-r--r-- 1 u0_a616 u0_a616      985 Mar 10 20:51 package.json
+-rw-r--r-- 1 u0_a616 u0_a616    88207 Mar 10 20:51 pnpm-lock.yaml
+-rw-r--r-- 1 u0_a616 u0_a616       80 Mar 10 20:51 postcss.config.js
+-rw-r--r-- 1 u0_a616 u0_a616     4096 Mar 10 20:51 project_structure.txt
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 public
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 services
+-rw-r--r-- 1 u0_a616 u0_a616    22780 Mar 10 20:51 setup_db.sql
+drwxr-xr-x 4 u0_a616 u0_a616     4096 Mar 10 20:51 shared
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 styles
+-rw-r--r-- 1 u0_a616 u0_a616     2403 Mar 10 20:51 styles.css
+drwxr-xr-x 4 u0_a616 u0_a616     4096 Mar 10 20:51 supabase
+-rw-r--r-- 1 u0_a616 u0_a616     1252 Mar 10 20:51 supabaseClient.ts
+-rw-r--r-- 1 u0_a616 u0_a616     1482 Mar 10 20:51 tailwind.config.js
+-rw-r--r-- 1 u0_a616 u0_a616      563 Mar 10 20:51 tsconfig.json
+-rw-r--r-- 1 u0_a616 u0_a616    15937 Mar 10 20:51 types.ts
+drwxr-xr-x 2 u0_a616 u0_a616     4096 Mar 10 20:51 utils
+-rw-r--r-- 1 u0_a616 u0_a616      716 Mar 10 20:51 vercel.json
+-rw-r--r-- 1 u0_a616 u0_a616      323 Mar 10 20:51 vite-env.d.ts
+-rw-r--r-- 1 u0_a616 u0_a616     2081 Mar 10 20:51 vite.config.ts
+
+./admin:
+total 20
+-rw-r--r-- 1 u0_a616 u0_a616 19092 Mar 10 20:51 AppAdminShell.tsx
+
+./components:
+total 340
+-rw-r--r-- 1 u0_a616 u0_a616 37848 Mar 10 20:51 AIHub.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 10954 Mar 10 20:51 AccountSettings.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 12976 Mar 10 20:51 BillingReconciliation.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  1263 Mar 10 20:51 CollectionForm.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 79331 Mar 10 20:51 Dashboard.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 18713 Mar 10 20:51 DebtManager.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 36080 Mar 10 20:51 DriverManagement.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 22945 Mar 10 20:51 FinancialReports.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 11069 Mar 10 20:51 LiveMap.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  7471 Mar 10 20:51 Login.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 15687 Mar 10 20:51 MachineRegistrationForm.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 14859 Mar 10 20:51 OfflineRouteMap.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  3008 Mar 10 20:51 PwaInstallPrompt.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  7106 Mar 10 20:51 RouteAuditMap.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  8869 Mar 10 20:51 SmartInsights.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  5721 Mar 10 20:51 SystemStatus.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 21928 Mar 10 20:51 TransactionHistory.tsx
+
+./driver:
+total 24
+-rw-r--r-- 1 u0_a616 u0_a616 9035 Mar 10 20:51 AppDriverShell.tsx
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 components
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 hooks
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 pages
+
+./driver/components:
+total 88
+-rw-r--r-- 1 u0_a616 u0_a616 11069 Mar 10 20:51 FinanceSummary.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 19868 Mar 10 20:51 MachineSelector.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  5805 Mar 10 20:51 PayoutRequest.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 21714 Mar 10 20:51 ReadingCapture.tsx
+-rw-r--r-- 1 u0_a616 u0_a616  5607 Mar 10 20:51 ResetRequest.tsx
+-rw-r--r-- 1 u0_a616 u0_a616 13153 Mar 10 20:51 SubmitReview.tsx
+
+./driver/hooks:
+total 8
+-rw-r--r-- 1 u0_a616 u0_a616 2758 Mar 10 20:51 useCollectionDraft.ts
+-rw-r--r-- 1 u0_a616 u0_a616 1228 Mar 10 20:51 usePerformanceMode.ts
+
+./driver/pages:
+total 12
+-rw-r--r-- 1 u0_a616 u0_a616 9342 Mar 10 20:51 DriverCollectionFlow.tsx
+
+./hooks:
+total 20
+-rw-r--r-- 1 u0_a616 u0_a616 2230 Mar 10 20:51 useDevicePerformance.ts
+-rw-r--r-- 1 u0_a616 u0_a616 7158 Mar 10 20:51 useSupabaseData.ts
+-rw-r--r-- 1 u0_a616 u0_a616 4917 Mar 10 20:51 useSupabaseMutations.ts
+
+./notifications:
+total 4
+-rw-r--r-- 1 u0_a616 u0_a616 1114 Mar 10 20:51 README.md
+
+./public:
+total 12
+-rw-r--r-- 1 u0_a616 u0_a616  732 Mar 10 20:51 manifest.json
+-rw-r--r-- 1 u0_a616 u0_a616  123 Mar 10 20:51 robots.txt
+-rw-r--r-- 1 u0_a616 u0_a616 1818 Mar 10 20:51 sw.js
+
+./services:
+total 12
+-rw-r--r-- 1 u0_a616 u0_a616 3327 Mar 10 20:51 authService.ts
+-rw-r--r-- 1 u0_a616 u0_a616 1067 Mar 10 20:51 localDB.ts
+-rw-r--r-- 1 u0_a616 u0_a616 1128 Mar 10 20:51 translateService.ts
+
+./shared:
+total 12
+-rw-r--r-- 1 u0_a616 u0_a616 1429 Mar 10 20:51 AppRouterShell.tsx
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 types
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 utils
+
+./shared/types:
+total 4
+-rw-r--r-- 1 u0_a616 u0_a616 496 Mar 10 20:51 notifications.ts
+
+./shared/utils:
+total 4
+-rw-r--r-- 1 u0_a616 u0_a616 1244 Mar 10 20:51 deviceProfile.ts
+
+./styles:
+total 8
+-rw-r--r-- 1 u0_a616 u0_a616 565 Mar 10 20:51 themes.css
+-rw-r--r-- 1 u0_a616 u0_a616 696 Mar 10 20:51 tokens.css
+
+./supabase:
+total 16
+-rw-r--r-- 1 u0_a616 u0_a616 4651 Mar 10 20:51 config.toml
+drwxr-xr-x 4 u0_a616 u0_a616 4096 Mar 10 20:51 functions
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 migrations
+
+./supabase/functions:
+total 8
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 _shared
+drwxr-xr-x 2 u0_a616 u0_a616 4096 Mar 10 20:51 create-driver
+
+./supabase/migrations:
+total 36
+-rw-r--r-- 1 u0_a616 u0_a616  6715 Mar 10 20:51 20240101000000_initial_schema.sql
+-rw-r--r-- 1 u0_a616 u0_a616 10482 Mar 10 20:51 20240103000000_enable_rls.sql
+-rw-r--r-- 1 u0_a616 u0_a616  6886 Mar 10 20:51 20240201000000_seed_auth_users.sql
+-rw-r--r-- 1 u0_a616 u0_a616  4693 Mar 10 20:51 20260309211110_new-migration.sql
+
+./utils:
+total 4
+-rw-r--r-- 1 u0_a616 u0_a616 3313 Mar 10 20:51 imageUtils.ts
