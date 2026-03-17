@@ -56,7 +56,23 @@ Adding a file to `.gitignore` only prevents **future** commits. If `BAHATI_DATA_
 (15.8 MB) or any credential file is already in the commit history, anyone who has cloned the
 repo can still access it via `git log` or the GitHub UI.
 
-### 2.2 Recommended tool: `git-filter-repo`
+### 2.2 Immediate mitigation: remove file from current branch (HEAD)
+
+Before performing a full history rewrite, immediately stop serving the file to **new clones**
+by removing it from the current branch while keeping the local copy:
+
+```bash
+# From a normal (non-mirror) clone of the main repo
+git rm --cached BAHATI_DATA_BACKUP.json
+git commit -m "Remove BAHATI_DATA_BACKUP.json from tracked files"
+git push
+```
+
+This ensures **future clones** of the default branch do not receive `BAHATI_DATA_BACKUP.json`,
+but it does **not** remove the file from **past commits**. To fully clean the history, you
+still need to follow the `git-filter-repo` steps below.
+
+### 2.3 Recommended tool: `git-filter-repo`
 
 `git-filter-repo` is the officially recommended replacement for `git filter-branch`.
 
