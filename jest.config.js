@@ -5,7 +5,7 @@ export default {
   moduleNameMapper: {
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
     '\\.(jpg|jpeg|png|gif|webp|svg)$': '<rootDir>/__mocks__/fileMock.js',
-    '^@/(.*)$': '<rootDir>/src/$1',
+    '^@/(.*)$': '<rootDir>/$1',
   },
   transform: {
     '^.+\\.tsx?$': ['ts-jest', {
@@ -21,9 +21,14 @@ export default {
   ],
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],
   collectCoverageFrom: [
-    'src/**/*.{ts,tsx}',
-    '!src/**/*.d.ts',
-    '!src/vite-env.d.ts',
+    '**/*.{ts,tsx}',
+    '!**/*.d.ts',
+    '!vite-env.d.ts',
+    '!node_modules/**',
+    '!dist/**',
+    '!driver-app/**',
+    '!supabase/**',
+    '!android/**',
   ],
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
