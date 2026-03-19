@@ -5,7 +5,7 @@ export interface Driver {
   phone: string;
   remainingDebt: number;
   dailyFloatingCoins: number;
-  status: string;
+  status: 'active' | 'inactive';
   currentGps?: { lat: number; lng: number };
 }
 
@@ -15,10 +15,10 @@ export interface Location {
   machineId: string;
   lastScore: number;
   area: string;
-  assignedDriverId: string;
+  assignedDriverId?: string;
   coords?: { lat: number; lng: number };
   commissionRate: number;
-  status: string;
+  status: 'active' | 'maintenance' | 'broken';
 }
 
 export interface Transaction {
@@ -35,13 +35,13 @@ export interface Transaction {
   netPayable: number;
   expenses: number;
   coinExchange: number;
-  notes: string;
+  notes?: string;
   gps?: { lat: number; lng: number };
   isSynced: boolean;
   localId?: string;
 }
 
-export const COIN_VALUE_TZS = 10;
+export const COIN_VALUE_TZS = 200;
 
 export function safeRandomUUID(): string {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {

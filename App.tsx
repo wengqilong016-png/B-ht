@@ -11,6 +11,15 @@ import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
 import { isAuthDisabled } from './utils/authMode';
+import type { Location, Driver, Transaction, DailySettlement } from './types';
+
+// ─── Local backup shape ────────────────────────────────────────────
+interface LocalBackupData {
+  locations: Location[];
+  drivers: Driver[];
+  transactions: Transaction[];
+  dailySettlements: DailySettlement[];
+}
 
 // ─── Error Boundary ────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
@@ -61,7 +70,7 @@ const App: React.FC = () => {
     isLoading: isDataLoading 
   } = useSupabaseData(userRole);
 
-  const [localBackup, setLocalBackup] = useState<any>(null);
+  const [localBackup, setLocalBackup] = useState<LocalBackupData | null>(null);
 
   useEffect(() => {
     fetch('/api/backup-data')
