@@ -31,9 +31,7 @@
     "node_modules",
     "dist",
     "supabase/functions",
-    "src/driver",
-    "src/admin",
-    "src/notifications",
-    "src/shared"
+    "driver-app",
+    "android"
   ]
 }
