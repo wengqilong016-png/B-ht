@@ -24,8 +24,7 @@ describe('safeRandomUUID()', () => {
 
   it('falls back to polyfill when crypto.randomUUID is unavailable', () => {
     const originalRandomUUID = crypto.randomUUID;
-    // @ts-expect-error — intentionally removing the method
-    crypto.randomUUID = undefined;
+    crypto.randomUUID = undefined as any;
 
     const id = safeRandomUUID();
     expect(UUID_RE.test(id)).toBe(true);

@@ -29,7 +29,7 @@ describe('Geolocation Service', () => {
         timestamp: Date.now()
       };
 
-      (Geolocation.getCurrentPosition as jest.Mock).mockResolvedValue(mockPosition);
+      (Geolocation.getCurrentPosition as jest.Mock<any>).mockResolvedValue(mockPosition);
 
       const result = await Geolocation.getCurrentPosition({
         enableHighAccuracy: true,
@@ -44,7 +44,7 @@ describe('Geolocation Service', () => {
 
     it('should handle geolocation errors', async () => {
       const mockError = new Error('Location permission denied');
-      (Geolocation.getCurrentPosition as jest.Mock).mockRejectedValue(mockError);
+      (Geolocation.getCurrentPosition as jest.Mock<any>).mockRejectedValue(mockError);
 
       await expect(Geolocation.getCurrentPosition()).rejects.toThrow('Location permission denied');
     });
@@ -55,7 +55,7 @@ describe('Geolocation Service', () => {
       const mockCallback = jest.fn();
       const mockWatchId = 'watch-123';
 
-      (Geolocation.watchPosition as jest.Mock).mockReturnValue(mockWatchId);
+      (Geolocation.watchPosition as jest.Mock<any>).mockReturnValue(mockWatchId);
 
       const watchId = Geolocation.watchPosition({
         enableHighAccuracy: true,
@@ -75,7 +75,7 @@ describe('Geolocation Service', () => {
   describe('clearWatch', () => {
     it('should clear position watch', () => {
       const mockWatchId = 'watch-123';
-      (Geolocation.clearWatch as jest.Mock).mockResolvedValue(undefined);
+      (Geolocation.clearWatch as jest.Mock<any>).mockResolvedValue(undefined);
 
       Geolocation.clearWatch({ id: mockWatchId });
 
@@ -90,10 +90,10 @@ describe('Geolocation Service', () => {
         coarseLocation: 'granted'
       };
 
-      (Geolocation.requestPermissions as jest.Mock).mockResolvedValue(mockPermissionsResult);
+      (Geolocation.requestPermissions as jest.Mock<any>).mockResolvedValue(mockPermissionsResult);
 
       const result = await Geolocation.requestPermissions({
-        permissions: ['location', 'locationAlways']
+        permissions: ['location', 'locationAlways'] as any
       });
 
       expect(result.location).toBe('granted');
@@ -106,7 +106,7 @@ describe('Geolocation Service', () => {
         coarseLocation: 'prompt'
       };
 
-      (Geolocation.checkPermissions as jest.Mock).mockResolvedValue(mockPermissions);
+      (Geolocation.checkPermissions as jest.Mock<any>).mockResolvedValue(mockPermissions);
 
       const result = await Geolocation.checkPermissions();
 

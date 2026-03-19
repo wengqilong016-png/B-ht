@@ -23,6 +23,7 @@ interface AppRouterShellProps {
   updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
   updateLocations: { mutate: (l: Location[]) => void };
   deleteLocations: { mutate: (ids: string[]) => void };
+  deleteDrivers: { mutate: (ids: string[]) => void };
   updateTransaction: { mutate: (args: { txId: string; updates: Partial<Transaction> }) => void };
   saveSettlement: { mutate: (s: DailySettlement) => void };
   logAI: { mutate: (l: AILog) => void };
