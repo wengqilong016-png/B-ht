@@ -2,5 +2,8 @@ node_modules/
 dist/
 .DS_Store
 *.local
+
+# Environment files — keep only .env.example in VCS
 .env
 .env.*
+!.env.example

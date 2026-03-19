@@ -33,17 +33,23 @@ manage_users.js
 
 # Lock files — project uses npm (package-lock.json)
 pnpm-lock.yaml
+yarn.lock
 
 # Backup and credential files — never commit data exports or dumps
+*backup*
+*BACKUP*
 *.backup.json
 *.backup.*
-*BACKUP*
 *_credentials*
 BAHATI_DATA_BACKUP.json
 *.sqlite
 *.dump
 *.sql.gz
 *.jsonl
+*.ndjson
+
+# Build / test cache artefacts
+coverage/
 
 # Supabase local dev temp files
 supabase/.temp/
