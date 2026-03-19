@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Receipt } from 'lucide-react';
 import { Transaction, Driver, Location, User as UserType, DailySettlement, AILog } from '../../types';
-import DriverManagement from '../DriverManagement';
+import DriverManagement from '../driver-management';
 import DashboardTabs from './DashboardTabs';
 import OverviewTab from './OverviewTab';
 import TrackingTab from './TrackingTab';
