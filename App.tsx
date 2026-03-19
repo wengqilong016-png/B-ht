@@ -7,6 +7,8 @@ import { useSupabaseMutations } from './hooks/useSupabaseMutations';
 import { useDevicePerformance } from './hooks/useDevicePerformance';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
+import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
+import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
@@ -56,6 +58,9 @@ const App: React.FC = () => {
 
   // Detect device performance tier and apply CSS degradation class to <html>.
   useDevicePerformance();
+
+  // ─── Supabase Realtime (enhancement over 20-second polling fallback) ─────
+  useRealtimeSubscription();
 
   const activeDriverId = currentUser?.driverId ?? currentUser?.id;
 
@@ -141,7 +146,7 @@ const App: React.FC = () => {
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
   return (
-    <>
+    <NotificationProvider>
       <AppRouterShell
         currentUser={currentUser}
         lang={lang}
@@ -169,7 +174,7 @@ const App: React.FC = () => {
         onLogout={handleLogout}
       />
       <Analytics />
-    </>
+    </NotificationProvider>
   );
 };
 
