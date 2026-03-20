@@ -8,77 +8,63 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/19ZXHne5Pl7SQ2J0RPJvTJi1lf01A0cU6
 
-## Supabase Database Setup
-
-Before running the app, you must create the required tables in your Supabase project.
-
-**Tables required:**
-
-| Table | Purpose |
-|---|---|
-| `locations` | Machine / store point-of-sale locations |
-| `drivers` | Driver accounts and debt information |
-| `transactions` | Revenue collection and expense records |
-| `daily_settlements` | End-of-day cash reconciliation records |
-| `ai_logs` | AI audit query and response history |
-| `notifications` | System notifications |
-
-**How to create the tables:**
-
-1. Open your [Supabase dashboard](https://supabase.com/dashboard) and select your project.
-2. Go to **SQL Editor** in the left sidebar.
-3. Copy the entire contents of [`setup_db.sql`](./setup_db.sql) and paste it into the editor.
-4. Click **Run** to execute the script.
-
-The script will create all required tables with the correct columns, indexes, and permissions.
-
-> **Note:** The script starts with `DROP TABLE IF EXISTS … CASCADE` statements to allow clean re-runs. Do **not** run it against a production database that already has data you want to keep.
+## 🚀 Supabase 数据库配置（3步完成）/ Supabase Setup (3 steps)
 
 ---
 
-## 修复 profiles 表（一键重建账号绑定）
+### 第一步 / Step 1 — 打开 SQL Editor / Open SQL Editor
 
-如果你执行了 `setup_db.sql` 或 `fix_rls_safe.sql` 导致 `public.profiles` 表被清空/重建，
-所有用户登录时会看到 **"Account exists but profile is not provisioned / 账号存在但未配置"** 的报错。
+打开 [Supabase Dashboard](https://supabase.com/dashboard)，选择你的项目，点击左侧 **SQL Editor**。
 
-使用以下任意一种方法自动修复：
+Open your [Supabase Dashboard](https://supabase.com/dashboard), select your project, click **SQL Editor** in the left sidebar.
 
-### 方法 A：SQL Migration（推荐，最快）
+---
 
-在 Supabase Dashboard → **SQL Editor** 中执行：
+### 第二步 / Step 2 — 复制粘贴并运行 / Copy, paste and run
 
-```sql
--- 文件路径: supabase/migrations/20260312000000_repair_profiles.sql
--- 也可以直接复制粘贴文件内容到 SQL Editor 运行
-```
+把 [`BAHATI_COMPLETE_SETUP.sql`](./BAHATI_COMPLETE_SETUP.sql) 的**全部内容**复制粘贴进去，点击 **Run**。
 
-或者直接在 SQL Editor 中粘贴下面的核心逻辑（同文件内容）：
+Copy the **entire contents** of [`BAHATI_COMPLETE_SETUP.sql`](./BAHATI_COMPLETE_SETUP.sql), paste it into the editor, click **Run**.
+
+> ⚠️ **此脚本会先删除再重建所有表！如有数据请先备份。**
+> ⚠️ **This script drops and recreates all tables. Back up any existing data first.**
+
+---
+
+### 第三步 / Step 3 — 用默认账号登录测试 / Log in with default accounts
+
+脚本执行成功后，可以用以下账号直接登录：
+
+After the script runs successfully, log in with these accounts:
+
+| 角色 Role | 邮箱 Email | 密码 Password |
+|---|---|---|
+| 管理员 Admin | `admin@bahati.com` | `admin` |
+| 司机 Driver 1 | `feilong@bahati.com` | `feilong` |
+| 司机 Driver 2 | `q@bahati.com` | `q` |
+| 司机 Driver 3 | `sudi@bahati.com` | `sudi` |
+| 司机 Driver 4 | `w@bahati.com` | `w` |
+
+🔐 **重要 / Important：第一次登录后立即修改密码！/ Change all passwords after first login!**
+
+---
+
+### 常见问题 / Troubleshooting
+
+**问题：登录报错 "Account exists but profile is not provisioned"**
+
+在 SQL Editor 中执行 `BAHATI_COMPLETE_SETUP.sql`，或者单独运行：
 
 ```sql
 DO $$
-DECLARE
-  r           RECORD;
-  v_driver    RECORD;
-  v_email_pfx TEXT;
-  v_role      TEXT;
-  v_driver_id TEXT;
-  v_display   TEXT;
+DECLARE r RECORD; v_driver RECORD; v_email_pfx TEXT; v_role TEXT; v_driver_id TEXT; v_display TEXT;
 BEGIN
-  FOR r IN
-    SELECT id, email, raw_user_meta_data FROM auth.users WHERE deleted_at IS NULL
-  LOOP
+  FOR r IN SELECT id, email, raw_user_meta_data FROM auth.users WHERE deleted_at IS NULL LOOP
     v_email_pfx := split_part(r.email, '@', 1);
-    SELECT id, name INTO v_driver FROM public.drivers
-      WHERE lower(username) = lower(v_email_pfx);
-    IF FOUND THEN
-      v_role := 'driver'; v_driver_id := v_driver.id; v_display := v_driver.name;
-    ELSE
-      v_role := 'admin'; v_driver_id := NULL;
-      v_display := COALESCE(
-        r.raw_user_meta_data->>'display_name',
-        r.raw_user_meta_data->>'full_name',
-        v_email_pfx
-      );
+    SELECT id, name INTO v_driver FROM public.drivers WHERE lower(username) = lower(v_email_pfx);
+    IF FOUND THEN v_role := 'driver'; v_driver_id := v_driver.id; v_display := v_driver.name;
+    ELSE v_role := 'admin'; v_driver_id := NULL;
+      v_display := COALESCE(r.raw_user_meta_data->>'display_name', r.raw_user_meta_data->>'full_name', v_email_pfx);
     END IF;
     INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
     VALUES (r.id, v_role, v_display, v_driver_id)
@@ -87,56 +73,24 @@ BEGIN
 END $$;
 ```
 
-脚本会：
-- 遍历所有 `auth.users`（已软删除的跳过）
-- 对每个用户，若 email 前缀匹配 `drivers.username` → 绑定 `driver` 角色
-- 否则默认绑定 `admin` 角色
-- 已存在的 profiles 行不覆盖（幂等，可重复执行）
+**问题：忘记密码 / Forgot password**
 
-### 方法 B：Node.js 脚本（适合批量/自动化）
+在 Supabase Dashboard → **Authentication → Users** 中选择用户 → **Send password reset** 或直接修改密码。
 
-```bash
-# 1. 准备环境变量（使用 service_role key，不要提交到版本库！）
-export SUPABASE_URL="https://<project-ref>.supabase.co"
-export SUPABASE_SERVICE_ROLE_KEY="eyJ..."   # 在 Supabase Dashboard → Settings → API 中获取
+---
 
-# 2. 安装依赖（已有则跳过）
-npm ci
+### 两个 APP 的区别 / What are the two apps?
 
-# 3. 预览将要执行的操作（不写入数据库）
-node scripts/repair_profiles.js --dry-run
+| | 管理员 APP (Admin) | 司机 APP (Driver) |
+|---|---|---|
+| **登录账号** | `admin@bahati.com` | `feilong@bahati.com` 等 |
+| **功能** | 查看所有点位、所有交易、管理司机、结账审批 | 收款、提交交易、查看自己的路线 |
+| **语言** | 中文 | Swahili |
 
-# 4. 确认无误后正式执行
-node scripts/repair_profiles.js
+两个 APP 是**同一个网址**，登录后系统根据账号角色自动跳转到对应界面。
 
-# 5. 若需要强制覆盖已有的 profiles 行
-node scripts/repair_profiles.js --overwrite
-```
+Both apps are **the same URL** — the system automatically routes to the admin or driver interface based on the account role after login.
 
-### 手动修复单个账号（SQL）
-
-```sql
--- 查询用户 UUID
-SELECT id, email FROM auth.users WHERE email = '你的邮箱@example.com';
-
--- 写入管理员 profile
-INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
-VALUES ('<上面查到的uuid>', 'admin', 'Admin', NULL)
-ON CONFLICT (auth_user_id) DO UPDATE
-  SET role = 'admin', display_name = 'Admin', driver_id = NULL;
-
--- 写入司机 profile（将 uuid 和 driver_id 替换为实际值）
-INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
-VALUES ('<uuid>', 'driver', 'Sudi', 'D-SUDI')
-ON CONFLICT (auth_user_id) DO UPDATE
-  SET role = 'driver', display_name = 'Sudi', driver_id = 'D-SUDI';
-```
-
-### ⚠️ 修复后的安全步骤
-
-1. **立即修改默认密码** — 所有账号（尤其是 `admin@bahati.com`）的默认密码极弱，请在 Supabase Dashboard → Authentication → Users 中强制重置，或通知各用户自行修改。
-2. **验证 RLS 已启用** — 在 SQL Editor 中运行 `SELECT tablename, rowsecurity FROM pg_tables WHERE schemaname='public';`，确认所有业务表的 `rowsecurity = true`。
-3. **不要在生产环境直接使用 `setup_db.sql`** — 该文件包含 `DROP TABLE … CASCADE`，每次运行都会清空所有数据和 profiles。如需升级数据库结构，请只运行文件末尾的"增量迁移"部分。
 
 ---
 
