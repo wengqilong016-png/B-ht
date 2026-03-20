@@ -122,7 +122,16 @@ export const changeUserPassword = async (newPassword: string) => {
   // Clear the "must change password" flag so the forced-change gate is lifted.
   // Uses a server-side SECURITY DEFINER function to avoid requiring a broad
   // UPDATE RLS policy on the profiles table.
-  await supabase.rpc('clear_my_must_change_password');
+  // Wrap in a timeout so a hung RPC never leaves the UI stuck in loading state.
+  try {
+    await withTimeout(
+      Promise.resolve(supabase.rpc('clear_my_must_change_password')),
+      10_000,
+    );
+  } catch {
+    // Non-fatal: password was already changed successfully. The flag will be
+    // re-checked on next login; ignore timeout/network errors here.
+  }
 
   return { success: true as const };
 };
