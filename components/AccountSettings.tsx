@@ -4,6 +4,7 @@ import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Cloc
 import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
 import { supabase } from '../supabaseClient';
 import { changeUserPassword, updateUserEmail } from '../services/authService';
+import { isPasswordStrong } from '../utils/passwordPolicy';
 
 interface AccountSettingsProps {
   currentUser: UserType;
@@ -45,9 +46,14 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
       setPwdMsg(t.passwordMismatch);
       return;
     }
-    if (newPwd.length < 6) {
+    if (newPwd.length < 8) {
       setPwdStatus('error');
       setPwdMsg(t.passwordTooShort);
+      return;
+    }
+    if (!isPasswordStrong(newPwd)) {
+      setPwdStatus('error');
+      setPwdMsg(t.passwordTooWeak);
       return;
     }
     setPwdStatus('loading');
@@ -168,7 +174,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                   onChange={e => { setNewPwd(e.target.value); setPwdStatus('idle'); }}
                   className={inputClass}
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
                   required
                   disabled={!isOnline}
                 />
@@ -181,7 +187,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                   onChange={e => { setConfirmPwd(e.target.value); setPwdStatus('idle'); }}
                   className={inputClass}
                   placeholder="••••••••"
-                  minLength={6}
+                  minLength={8}
                   required
                   disabled={!isOnline}
                 />

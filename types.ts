@@ -28,6 +28,12 @@ export interface User {
   name: string;
   // For driver-role users, this references public.drivers.id while User.id remains the auth user id.
   driverId?: string;
+  /**
+   * When true the app must show the ForcePasswordChange screen before granting
+   * access to any other view.  Cleared in the DB once the user sets a new
+   * password.  Defaults to false / undefined for existing sessions.
+   */
+  mustChangePassword?: boolean;
 }
 
 export interface AILog {

@@ -5,6 +5,7 @@ type UserProfileRow = {
   role: string;
   display_name: string | null;
   driver_id: string | null;
+  must_change_password: boolean | null;
 };
 
 const VALID_USER_ROLES = ['admin', 'driver'] as const;
@@ -28,7 +29,7 @@ export const fetchCurrentUserProfile = async (
 
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('role, display_name, driver_id')
+    .select('role, display_name, driver_id, must_change_password')
     .eq('auth_user_id', authUserId)
     .single<UserProfileRow>();
 
@@ -49,6 +50,7 @@ export const fetchCurrentUserProfile = async (
       role: profile.role,
       name: profile.display_name || fallbackIdentity,
       driverId: profile.driver_id || undefined,
+      mustChangePassword: profile.must_change_password === true,
     },
   };
 };
@@ -94,6 +96,12 @@ export const changeUserPassword = async (newPassword: string) => {
   if (error) {
     return { success: false as const, error: error.message };
   }
+
+  // Clear the "must change password" flag so the forced-change gate is lifted.
+  // Uses a server-side SECURITY DEFINER function to avoid requiring a broad
+  // UPDATE RLS policy on the profiles table.
+  await supabase.rpc('clear_my_must_change_password');
+
   return { success: true as const };
 };
 

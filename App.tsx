@@ -12,6 +12,7 @@ import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
 import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
+import ForcePasswordChange from './components/ForcePasswordChange';
 import { isAuthDisabled } from './utils/authMode';
 import type { Location, Driver, Transaction, DailySettlement } from './types';
 
@@ -142,6 +143,16 @@ const App: React.FC = () => {
       return <LocalDriverPicker onConfirm={handleLogin} lang="sw" />;
     }
     return <Login onLogin={handleLogin} lang={lang} onSetLang={setLang} />;
+  }
+
+  // ─── Force password change gate ──────────────────────────────────
+  if (currentUser.mustChangePassword) {
+    return (
+      <ForcePasswordChange
+        lang={lang}
+        onSuccess={() => handleLogin({ ...currentUser, mustChangePassword: false })}
+      />
+    );
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────

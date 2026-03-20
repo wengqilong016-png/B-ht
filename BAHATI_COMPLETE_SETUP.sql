@@ -13,15 +13,19 @@
 -- ⚠️  注意：此脚本会先删除并重建所有表。如果你已有数据，请先备份！
 -- ⚠️  WARNING: This script drops and recreates all tables. Back up your data first!
 --
--- 默认账号 / Default credentials after running this script:
---   管理员 Admin:   admin@bahati.com    密码/password: admin
---   司机  Driver1:  feilong@bahati.com  密码/password: feilong
---   司机  Driver2:  q@bahati.com        密码/password: q
---   司机  Driver3:  sudi@bahati.com     密码/password: sudi
---   司机  Driver4:  w@bahati.com        密码/password: w
+-- 账号列表 / Account credentials after running this script:
+--   初始密码统一 / Initial password for ALL accounts: Bahati2024
+--   ⚠️  所有账号首次登录时 APP 会强制要求修改密码！
+--   ⚠️  The app forces a password change on FIRST login for every account!
 --
--- 🔐 安全提示：请在第一次登录后立即修改所有默认密码！
--- 🔐 SECURITY: Please change all default passwords immediately after first login!
+--   管理员 Admin:  wengqilong016@gmail.com   (role: admin)
+--   司机 D-SOUDA:  Soudhamisi302@gmail.com   (role: driver)
+--   司机 D-DULLAH: dullahchimbu18@gmail.com  (role: driver)
+--   司机 D-JKOMBO: jkombo495@gmail.com       (role: driver)
+--   司机 D-MALIKI: Malikixking@gmail.com     (role: driver)
+--   司机 D-NURDIN: Nurdinyussuph@gmail.com   (role: driver)
+--   司机 D-RHAMIDU:Rhamidu433@gmail.com      (role: driver)
+--   司机 D-MTORO:  mtororamadhan2@gmail.com  (role: driver)
 -- ═══════════════════════════════════════════════════════════════════════════
 
 
@@ -105,11 +109,12 @@ CREATE TABLE public.drivers (
 
 -- 2-3. 用户身份资料表 Profiles (links auth.users → app role)
 CREATE TABLE public.profiles (
-    auth_user_id  UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    role          TEXT        NOT NULL CHECK (role IN ('admin', 'driver')),
-    display_name  TEXT,
-    driver_id     TEXT,
-    created_at    TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+    auth_user_id         UUID        PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    role                 TEXT        NOT NULL CHECK (role IN ('admin', 'driver')),
+    display_name         TEXT,
+    driver_id            TEXT,
+    must_change_password BOOLEAN     NOT NULL DEFAULT TRUE,
+    created_at           TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
 -- 2-4. 交易流水表 Transactions
@@ -613,10 +618,13 @@ INSERT INTO public.drivers (
     "initialDebt", "remainingDebt", "dailyFloatingCoins",
     "vehicleInfo", status, "baseSalary", "commissionRate"
 ) VALUES
-    ('D-FEILONG', 'Feilong', 'feilong', '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
-    ('D-Q',       'Q',       'q',       '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
-    ('D-SUDI',    'Sudi',    'sudi',    '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
-    ('D-W',       'W',       'w',       '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05)
+    ('D-SOUDA',   'Soudhamisi',   'soudhamisi302',  '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-DULLAH',  'Dullah',       'dullahchimbu18', '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-JKOMBO',  'Jkombo',       'jkombo495',      '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-MALIKI',  'Maliki',       'malikixking',    '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-NURDIN',  'Nurdin',       'nurdinyussuph',  '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-RHAMIDU', 'Rhamidu',      'rhamidu433',     '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05),
+    ('D-MTORO',   'Mtoro',        'mtororamadhan2', '', 0, 0, 10000, '{"model":"","plate":""}', 'active', 300000, 0.05)
 ON CONFLICT (id) DO NOTHING;
 
 
@@ -697,23 +705,34 @@ BEGIN
         WHERE id = v_uid;
     END IF;
 
-    -- Upsert profile
-    INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
-    VALUES (v_uid, p_role, p_display_name, p_driver_id)
+    -- Upsert profile (must_change_password = TRUE forces password change on first login)
+    INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id, must_change_password)
+    VALUES (v_uid, p_role, p_display_name, p_driver_id, TRUE)
     ON CONFLICT (auth_user_id) DO UPDATE
-        SET role         = EXCLUDED.role,
-            display_name = EXCLUDED.display_name,
-            driver_id    = EXCLUDED.driver_id;
+        SET role                 = EXCLUDED.role,
+            display_name         = EXCLUDED.display_name,
+            driver_id            = EXCLUDED.driver_id,
+            must_change_password = TRUE;
 
     RETURN v_uid;
 END $$;
 
--- 创建/重置账号 / Create or reset accounts
-SELECT _bahati_seed_user('admin@bahati.com',   'admin',   'admin',  'Admin',   NULL);
-SELECT _bahati_seed_user('feilong@bahati.com', 'feilong', 'driver', 'Feilong', 'D-FEILONG');
-SELECT _bahati_seed_user('q@bahati.com',       'q',       'driver', 'Q',       'D-Q');
-SELECT _bahati_seed_user('sudi@bahati.com',    'sudi',    'driver', 'Sudi',    'D-SUDI');
-SELECT _bahati_seed_user('w@bahati.com',       'w',       'driver', 'W',       'D-W');
+-- ─── 创建/重置真实生产账号 / Create or reset production accounts ──────────────
+-- 初始密码 / Initial password: Bahati2024
+-- APP 会在首次登录时强制要求修改密码（≥8位，含大小写字母和数字）
+-- The app forces a password change on first login (≥8 chars, upper+lower+digit)
+
+-- 管理员 / Admin
+SELECT _bahati_seed_user('wengqilong016@gmail.com',  'Bahati2024', 'admin',  'Admin',      NULL);
+
+-- 司机 / Drivers
+SELECT _bahati_seed_user('Soudhamisi302@gmail.com',  'Bahati2024', 'driver', 'Soudhamisi', 'D-SOUDA');
+SELECT _bahati_seed_user('dullahchimbu18@gmail.com', 'Bahati2024', 'driver', 'Dullah',     'D-DULLAH');
+SELECT _bahati_seed_user('jkombo495@gmail.com',      'Bahati2024', 'driver', 'Jkombo',     'D-JKOMBO');
+SELECT _bahati_seed_user('Malikixking@gmail.com',    'Bahati2024', 'driver', 'Maliki',     'D-MALIKI');
+SELECT _bahati_seed_user('Nurdinyussuph@gmail.com',  'Bahati2024', 'driver', 'Nurdin',     'D-NURDIN');
+SELECT _bahati_seed_user('Rhamidu433@gmail.com',     'Bahati2024', 'driver', 'Rhamidu',    'D-RHAMIDU');
+SELECT _bahati_seed_user('mtororamadhan2@gmail.com', 'Bahati2024', 'driver', 'Mtoro',      'D-MTORO');
 
 -- Cleanup temp function
 DROP FUNCTION IF EXISTS _bahati_seed_user(text, text, text, text, text);
