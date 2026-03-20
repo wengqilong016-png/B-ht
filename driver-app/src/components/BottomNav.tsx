@@ -1,4 +1,5 @@
 import React from 'react';
+import { Package, ClipboardList, User } from 'lucide-react';
 
 type Page = 'collect' | 'history' | 'profile';
 
@@ -7,33 +8,36 @@ interface BottomNavProps {
   onNavigate: (page: Page) => void;
 }
 
-const tabs: { page: Page; icon: string; zh: string; sw: string }[] = [
-  { page: 'collect', icon: '📦', zh: '收款', sw: 'Kukusanya' },
-  { page: 'history', icon: '📋', zh: '历史', sw: 'Historia' },
-  { page: 'profile', icon: '👤', zh: '我的', sw: 'Mimi' },
+const tabs: { page: Page; Icon: React.ComponentType<{ className?: string }>; label: string }[] = [
+  { page: 'collect', Icon: Package, label: '收款/Collect' },
+  { page: 'history', Icon: ClipboardList, label: '记录/History' },
+  { page: 'profile', Icon: User, label: '我的/Me' },
 ];
 
 export default function BottomNav({ currentPage, onNavigate }: BottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-slate-800 border-t border-slate-700 flex z-50">
-      {tabs.map((tab) => {
-        const isActive = currentPage === tab.page;
-        return (
-          <button
-            key={tab.page}
-            onClick={() => onNavigate(tab.page)}
-            className={`flex-1 flex flex-col items-center justify-center py-2 transition-colors ${
-              isActive ? 'text-amber-500' : 'text-slate-400'
-            }`}
-            style={{ minHeight: '56px', minWidth: '44px' }}
-          >
-            <span className="text-xl leading-none">{tab.icon}</span>
-            <span className="text-xs mt-1 font-medium">
-              {tab.zh}/{tab.sw}
-            </span>
-          </button>
-        );
-      })}
-    </nav>
+    <div className="fixed bottom-0 left-0 right-0 z-50">
+      <nav className="bg-slate-900/95 backdrop-blur-xl border-t border-slate-800 flex items-stretch">
+        {tabs.map(({ page, Icon, label }) => {
+          const isActive = currentPage === page;
+          return (
+            <button
+              key={page}
+              onClick={() => onNavigate(page)}
+              className={`flex-1 relative flex flex-col items-center justify-center gap-1 py-3 transition-all ${
+                isActive ? 'text-amber-400' : 'text-slate-500'
+              }`}
+              style={{ minHeight: '60px' }}
+            >
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-amber-400 rounded-full" />
+              )}
+              <Icon className="w-5 h-5" />
+              <span className="text-[9px] font-black uppercase tracking-wide">{label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
   );
 }
