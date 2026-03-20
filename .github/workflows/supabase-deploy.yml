@@ -13,6 +13,11 @@ on:
       - "supabase/migrations/**"
       - "supabase/config.toml"
 
+# Prevent concurrent migration runs so commits are applied serially in order.
+concurrency:
+  group: supabase-production-migrate
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
@@ -44,7 +49,7 @@ jobs:
       - name: Set up Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.x
+          version: latest
 
       - name: Link project
         run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
