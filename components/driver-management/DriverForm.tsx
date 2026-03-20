@@ -2,8 +2,9 @@ import React from 'react';
 import {
   User, Phone, Save, X, Truck,
   ShieldCheck, Percent, Loader2,
-  Banknote, Receipt, Coins
+  Banknote, Receipt, Coins, MapPin, ToggleLeft, ToggleRight
 } from 'lucide-react';
+import { Location } from '../../types';
 import InputField from './InputField';
 
 export interface DriverFormState {
@@ -17,6 +18,7 @@ export interface DriverFormState {
   remainingDebt: string;
   baseSalary: string;
   commissionRate: string;
+  status: 'active' | 'inactive';
 }
 
 interface DriverFormProps {
@@ -24,13 +26,17 @@ interface DriverFormProps {
   editingId: string | null;
   form: DriverFormState;
   isSaving: boolean;
+  locations?: Location[];
+  assignedLocationIds?: string[];
   onChange: (updates: Partial<DriverFormState>) => void;
+  onLocationToggle?: (locationId: string) => void;
   onSave: () => void;
   onClose: () => void;
 }
 
 const DriverForm: React.FC<DriverFormProps> = ({
-  isOpen, editingId, form, isSaving, onChange, onSave, onClose
+  isOpen, editingId, form, isSaving, locations = [], assignedLocationIds = [],
+  onChange, onLocationToggle, onSave, onClose
 }) => {
   if (!isOpen) return null;
 
@@ -52,6 +58,26 @@ const DriverForm: React.FC<DriverFormProps> = ({
           </div>
           <div>
             <InputField label="登录账号 USERNAME" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} />
+          </div>
+
+          {/* Status toggle */}
+          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">
+            <div>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
+              <p className="text-xs font-bold text-slate-700 mt-0.5">
+                {form.status === 'active' ? '在职 Active' : '停职 Inactive'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => onChange({ status: form.status === 'active' ? 'inactive' : 'active' })}
+              className={`transition-colors ${form.status === 'active' ? 'text-emerald-500' : 'text-slate-300'}`}
+            >
+              {form.status === 'active'
+                ? <ToggleRight size={36} />
+                : <ToggleLeft size={36} />
+              }
+            </button>
           </div>
 
           <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">
@@ -108,6 +134,43 @@ const DriverForm: React.FC<DriverFormProps> = ({
               </div>
             )}
           </div>
+
+          {/* Location assignment */}
+          {editingId && locations.length > 0 && onLocationToggle && (
+            <div className="p-5 bg-emerald-50/50 rounded-[28px] border border-emerald-100 space-y-3">
+              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+                <MapPin size={14} /> 分配机器点位 Assign Locations
+              </p>
+              <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                {locations.map(loc => {
+                  const isAssigned = assignedLocationIds.includes(loc.id);
+                  return (
+                    <button
+                      key={loc.id}
+                      type="button"
+                      onClick={() => onLocationToggle(loc.id)}
+                      className={`w-full flex items-center gap-3 p-2.5 rounded-xl border text-left transition-all ${
+                        isAssigned
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                          : 'bg-white border-slate-200 text-slate-500 hover:border-emerald-200 hover:bg-emerald-50/30'
+                      }`}
+                    >
+                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                        loc.status === 'active' ? 'bg-emerald-500' :
+                        loc.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-400'
+                      }`} />
+                      <span className="text-[10px] font-black uppercase truncate flex-1">{loc.name}</span>
+                      <span className="text-[8px] font-bold text-slate-400 flex-shrink-0">{loc.area}</span>
+                      {isAssigned && <span className="text-[8px] font-black text-emerald-600 flex-shrink-0">✓</span>}
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-[8px] font-bold text-emerald-500">
+                {assignedLocationIds.length} location(s) assigned to this driver
+              </p>
+            </div>
+          )}
         </div>
 
         <div className="p-6 border-t border-slate-100 bg-slate-50">

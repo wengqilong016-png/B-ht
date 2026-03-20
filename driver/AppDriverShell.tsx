@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import {
   PlusCircle, CreditCard, LogOut, Globe, Loader2,
-  Crown, History, Banknote, Settings, ClipboardList
+  Crown, History, Banknote, Settings, ClipboardList, UserCircle
 } from 'lucide-react';
 import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
 import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
@@ -14,6 +14,7 @@ const DebtManager = lazy(() => import('../components/DebtManager'));
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
 const LocationChangeRequestForm = lazy(() => import('../driver/components/LocationChangeRequestForm'));
+const DriverStatusPanel = lazy(() => import('../driver/components/DriverStatusPanel'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -22,7 +23,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'requests';
+type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'requests' | 'status';
 
 interface AppDriverShellProps {
   currentUser: User;
@@ -99,6 +100,7 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
               { id: 'debt' as const, icon: <CreditCard size={16}/>, label: t.debt },
               { id: 'history' as const, icon: <History size={16}/>, label: lang === 'sw' ? 'Historia' : '记录' },
               { id: 'requests' as const, icon: <ClipboardList size={16}/>, label: lang === 'sw' ? 'Maombi' : '申请' },
+              { id: 'status' as const, icon: <UserCircle size={16}/>, label: t.driverStatus },
             ].map((item) => (
               <button
                 key={item.id}
@@ -167,6 +169,14 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
                   currentUser={currentUser}
                   lang={lang}
                   isOnline={isOnline}
+                />
+              )}
+              {view === 'status' && (
+                <DriverStatusPanel
+                  driver={drivers.find(d => d.id === activeDriverId)}
+                  locations={locations}
+                  transactions={filteredTransactions}
+                  lang={lang}
                 />
               )}
             </Suspense>

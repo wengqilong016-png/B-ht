@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Driver, Transaction, DailySettlement } from '../../types';
+import { Driver, Location, Transaction, DailySettlement } from '../../types';
 import { useDriverManagement } from './hooks/useDriverManagement';
 import DriverSalaryModal from './DriverSalaryModal';
 import DriverToolbar, { SortField } from './DriverToolbar';
@@ -11,26 +11,30 @@ import { DriverWithStats } from './hooks/useDriverManagement';
 
 interface DriverManagementProps {
   drivers: Driver[];
+  locations?: Location[];
   transactions: Transaction[];
   dailySettlements?: DailySettlement[];
   onUpdateDrivers: (drivers: Driver[]) => void;
+  onUpdateLocations?: (locations: Location[]) => void;
   onDeleteDrivers?: (ids: string[]) => void;
 }
 
 const DEFAULT_FORM: DriverFormState = {
   name: '', username: '', phone: '',
   model: '', plate: '', dailyFloatingCoins: '10000',
-  initialDebt: '0', remainingDebt: '0', baseSalary: '300000', commissionRate: '5'
+  initialDebt: '0', remainingDebt: '0', baseSalary: '300000', commissionRate: '5',
+  status: 'active'
 };
 
 const DriverManagementPage: React.FC<DriverManagementProps> = ({
-  drivers, transactions, dailySettlements = [], onUpdateDrivers, onDeleteDrivers
+  drivers, locations = [], transactions, dailySettlements = [], onUpdateDrivers, onUpdateLocations, onDeleteDrivers
 }) => {
   const [viewMode, setViewMode] = useState<'grid' | 'analytics'>('grid');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [salaryId, setSalaryId] = useState<string | null>(null);
+  const [pendingLocationIds, setPendingLocationIds] = useState<string[]>([]);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState<SortField>('revenue');
@@ -88,6 +92,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
   const resetForm = () => {
     setForm(DEFAULT_FORM);
     setEditingId(null);
+    setPendingLocationIds([]);
     setIsFormOpen(false);
   };
 
@@ -102,10 +107,19 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
       initialDebt: (d.initialDebt ?? 0).toString(),
       remainingDebt: (d.remainingDebt ?? 0).toString(),
       baseSalary: (d.baseSalary ?? 300000).toString(),
-      commissionRate: ((d.commissionRate ?? 0.05) * 100).toString()
+      commissionRate: ((d.commissionRate ?? 0.05) * 100).toString(),
+      status: d.status ?? 'active'
     });
+    // Pre-populate assigned locations for this driver
+    setPendingLocationIds(locations.filter(l => l.assignedDriverId === d.id).map(l => l.id));
     setEditingId(d.id);
     setIsFormOpen(true);
+  };
+
+  const handleLocationToggle = (locationId: string) => {
+    setPendingLocationIds(prev =>
+      prev.includes(locationId) ? prev.filter(id => id !== locationId) : [...prev, locationId]
+    );
   };
 
   const handleSave = () => {
@@ -133,18 +147,33 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
         initialDebt: parseNum(form.initialDebt),
         vehicleInfo: { model: form.model, plate: form.plate },
         baseSalary: parsedBaseSalary === 0 ? 300000 : parsedBaseSalary,
-        commissionRate: (isNaN(parsedCommRate) ? 5 : parsedCommRate) / 100
+        commissionRate: (isNaN(parsedCommRate) ? 5 : parsedCommRate) / 100,
+        status: form.status
       };
 
       if (editingId) {
         const remainingDebt = parseNum(form.remainingDebt);
         onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData, remainingDebt } : d));
+        // Update location assignments if the handler is available
+        if (onUpdateLocations) {
+          const updatedLocations = locations.map(loc => {
+            if (pendingLocationIds.includes(loc.id)) {
+              return { ...loc, assignedDriverId: editingId };
+            }
+            if (loc.assignedDriverId === editingId) {
+              // Explicitly clear the assignment by omitting assignedDriverId
+              const { assignedDriverId: _removed, ...rest } = loc;
+              return rest as typeof loc;
+            }
+            return loc;
+          });
+          onUpdateLocations(updatedLocations);
+        }
       } else {
         const newDriver: Driver = {
           id: `D-${Date.now()}`,
           ...driverData,
           remainingDebt: driverData.initialDebt,
-          status: 'active'
         };
         onUpdateDrivers([...drivers, newDriver]);
       }
@@ -270,7 +299,10 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
         editingId={editingId}
         form={form}
         isSaving={isSaving}
+        locations={locations}
+        assignedLocationIds={pendingLocationIds}
         onChange={updates => setForm(prev => ({ ...prev, ...updates }))}
+        onLocationToggle={handleLocationToggle}
         onSave={handleSave}
         onClose={resetForm}
       />
