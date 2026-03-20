@@ -1,7 +1,10 @@
+// ⚠️  DO NOT hardcode the service_role key here — pass it via environment variable:
+//    SUPABASE_SERVICE_ROLE_KEY=<your_key> node fix_db_structure.js
+// Find the key in Supabase Dashboard → Settings → API → service_role (secret).
 import { createClient } from '@supabase/supabase-js'
 
 const url = 'https://yctsiudhicztvppddbvk.supabase.co'
-const serviceRole = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MTYyNTg0OCwiZXhwIjoyMDg3MjAxODQ4fQ.qcU7hekK-9EZhens0_j9obBXJfxT3gDYE9vEjczWIkM'
+const serviceRole = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supabase = createClient(url, serviceRole)
 
 async function fixTableStructure() {

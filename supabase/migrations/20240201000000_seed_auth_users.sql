@@ -3,15 +3,18 @@
 -- Reset admin account and initialize driver accounts with default passwords
 --
 -- ⚠️  安全提示 / SECURITY NOTICE:
--- This script sets WEAK default passwords. Instruct all users to change
--- their password on first login. Do NOT leave these defaults in production.
+-- This script sets WEAK default passwords. All seeded accounts have the
+-- must_change_password flag set to TRUE so users are forced to set a new
+-- password (min 8 chars, uppercase + lowercase + number) on first login.
+-- Do NOT deploy to production without running migration
+-- 20260320000000_admin_password_policy.sql first.
 --
 -- 默认账号 / Default credentials:
---   admin@bahati.com   → password: admin
---   feilong@bahati.com → password: feilong
---   q@bahati.com       → password: q
---   sudi@bahati.com    → password: sudi
---   w@bahati.com       → password: w
+--   admin@bahati.com   → password: admin   (MUST change on first login)
+--   feilong@bahati.com → password: feilong (MUST change on first login)
+--   q@bahati.com       → password: q       (MUST change on first login)
+--   sudi@bahati.com    → password: sudi    (MUST change on first login)
+--   w@bahati.com       → password: w       (MUST change on first login)
 --
 -- 使用方法 / Usage:
 --   Run this file in the Supabase SQL Editor (service_role context).
@@ -139,12 +142,13 @@ BEGIN
   END IF;
 
   -- 4. Upsert the application profile
-  INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)
-  VALUES (v_uid, p_role, p_display_name, p_driver_id)
+  INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id, must_change_password)
+  VALUES (v_uid, p_role, p_display_name, p_driver_id, TRUE)
   ON CONFLICT (auth_user_id) DO UPDATE
-    SET role         = EXCLUDED.role,
-        display_name = EXCLUDED.display_name,
-        driver_id    = EXCLUDED.driver_id;
+    SET role                 = EXCLUDED.role,
+        display_name         = EXCLUDED.display_name,
+        driver_id            = EXCLUDED.driver_id,
+        must_change_password = TRUE;
 
   RETURN v_uid;
 END $$;

@@ -4,13 +4,15 @@ import { Driver } from '../types';
 
 interface LoginPageProps {
   onLogin: (driver: Driver) => void;
+  onMustChangePassword: () => void;
 }
 
-export default function LoginPage({ onLogin }: LoginPageProps) {
+export default function LoginPage({ onLogin, onMustChangePassword }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isAdminBlocked, setIsAdminBlocked] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,9 +20,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     setIsLoading(true);
     setError('');
+    setIsAdminBlocked(false);
 
     try {
-      // Sign in with email (Gmail) + password via Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
         email: email.trim().toLowerCase(),
         password: password.trim(),
@@ -31,10 +33,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         return;
       }
 
-      // Load profile to get driver_id
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('driver_id, display_name, role')
+        .select('driver_id, display_name, role, must_change_password')
         .eq('auth_user_id', authData.user.id)
         .maybeSingle();
 
@@ -44,7 +45,19 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         return;
       }
 
-      // Load driver details
+      // Block admin accounts from the driver portal
+      if (profile.role === 'admin') {
+        await supabase.auth.signOut();
+        setIsAdminBlocked(true);
+        return;
+      }
+
+      // Force password change if required
+      if (profile.must_change_password) {
+        onMustChangePassword();
+        return;
+      }
+
       const { data: driver, error: driverError } = await supabase
         .from('drivers')
         .select('id, name, username, phone, remainingDebt, dailyFloatingCoins, status, currentGps')
@@ -75,20 +88,35 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center px-4 py-8">
-      <div className="w-full max-w-sm">
-        {/* Logo / Title */}
-        <div className="text-center mb-8">
-          <div className="text-5xl mb-3">🎰</div>
-          <h1 className="text-2xl font-bold text-amber-500">Bahati Jackpots</h1>
-          <p className="text-slate-400 text-sm mt-1">Driver App / Programu ya Dereva</p>
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center px-4 py-8">
+      <div className="w-full max-w-sm bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 p-8">
+        {/* Icon */}
+        <div className="flex flex-col items-center mb-6">
+          <div className="w-20 h-20 rounded-full bg-amber-500/20 border-2 border-amber-500/40 flex items-center justify-center mb-4">
+            <span className="text-4xl">🎰</span>
+          </div>
+          <h1 className="text-2xl font-black text-white tracking-tight">BAHATI JACKPOTS</h1>
+          <div className="mt-2 bg-amber-500/10 text-amber-400 text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full border border-amber-500/20">
+            🚗 Driver Portal / Kituo cha Dereva
+          </div>
         </div>
+
+        {/* Admin-blocked error */}
+        {isAdminBlocked && (
+          <div className="bg-red-950/60 border border-red-800/60 rounded-2xl px-4 py-3 text-red-300 text-xs font-medium mb-4">
+            <p className="mb-1">此通道仅限司机使用，管理员请访问管理后台</p>
+            <p>This portal is for drivers only. Admins please use the Admin Console.</p>
+            <p className="mt-2 text-red-400/60 text-[10px]">
+              如需管理后台链接请联系技术支持 / Contact support for the Admin Console link
+            </p>
+          </div>
+        )}
 
         {/* Login Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm text-slate-400 mb-1">
-              邮箱 / Barua pepe
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
+              邮箱 / Barua Pepe
             </label>
             <input
               type="email"
@@ -98,14 +126,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               autoComplete="email"
               autoCapitalize="none"
               inputMode="email"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 text-base"
-              style={{ minHeight: '48px' }}
+              className="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 w-full transition-all"
               disabled={isLoading}
             />
           </div>
 
           <div>
-            <label className="block text-sm text-slate-400 mb-1">
+            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block">
               密码 / Nenosiri
             </label>
             <input
@@ -114,14 +141,13 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
               autoComplete="current-password"
-              className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 text-slate-100 placeholder-slate-500 focus:outline-none focus:border-amber-500 text-base"
-              style={{ minHeight: '48px' }}
+              className="bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3.5 text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-500/50 focus:border-amber-500 w-full transition-all"
               disabled={isLoading}
             />
           </div>
 
           {error && (
-            <div className="bg-red-900/40 border border-red-700 rounded-lg px-4 py-3 text-red-300 text-sm">
+            <div className="bg-red-950/60 border border-red-800/60 rounded-2xl px-4 py-3 text-red-300 text-xs font-medium">
               {error}
             </div>
           )}
@@ -129,12 +155,11 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           <button
             type="submit"
             disabled={isLoading || !email.trim() || !password.trim()}
-            className="w-full bg-amber-500 hover:bg-amber-600 disabled:bg-slate-700 disabled:text-slate-500 text-slate-900 font-bold rounded-lg transition-colors flex items-center justify-center gap-2"
-            style={{ minHeight: '52px', fontSize: '16px' }}
+            className="w-full bg-amber-500 hover:bg-amber-400 active:bg-amber-600 text-slate-950 font-black rounded-2xl py-4 text-sm uppercase tracking-wide transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
           >
             {isLoading ? (
               <>
-                <span className="w-5 h-5 border-2 border-slate-900 border-t-transparent rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-slate-950 border-t-transparent rounded-full animate-spin" />
                 <span>登录中... / Inaingia...</span>
               </>
             ) : (
@@ -143,7 +168,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
           </button>
         </form>
 
-        <p className="text-center text-slate-500 text-xs mt-6">
+        <p className="text-slate-600 text-[10px] text-center mt-4">
           请输入您的 Gmail 邮箱和密码登录<br />
           Ingiza barua pepe ya Gmail na nenosiri lako
         </p>
