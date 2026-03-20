@@ -54,7 +54,10 @@ export default function ForcePasswordChangePage({ onSuccess }: ForcePasswordChan
         return;
       }
 
-      const { error: rpcError } = await supabase.rpc('clear_my_must_change_password');
+      const { error: rpcError } = await withTimeout(
+        supabase.rpc('clear_my_must_change_password') as unknown as Promise<{ error: { message: string } | null }>,
+        10_000,
+      ).catch(() => ({ error: null }));
       if (rpcError) {
         // Password was changed successfully but flag couldn't be cleared; still allow login
         // The next login will re-trigger the flow, so surface a soft warning
