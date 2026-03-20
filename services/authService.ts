@@ -125,7 +125,7 @@ export const changeUserPassword = async (newPassword: string) => {
   // Wrap in a timeout so a hung RPC never leaves the UI stuck in loading state.
   try {
     await withTimeout(
-      supabase.rpc('clear_my_must_change_password') as unknown as Promise<unknown>,
+      Promise.resolve(supabase.rpc('clear_my_must_change_password')),
       10_000,
     );
   } catch {

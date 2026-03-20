@@ -55,9 +55,24 @@ export default function ForcePasswordChangePage({ onSuccess }: ForcePasswordChan
       }
 
       const { error: rpcError } = await withTimeout(
-        supabase.rpc('clear_my_must_change_password') as unknown as Promise<{ error: { message: string } | null }>,
+        Promise.resolve(supabase.rpc('clear_my_must_change_password')),
         10_000,
-      ).catch(() => ({ error: null }));
+      ).catch((err: unknown) => {
+        const isTimeout =
+          err != null && typeof err === 'object' && (err as { timedOut?: boolean }).timedOut === true;
+        const message =
+          err instanceof Error
+            ? err.message
+            : isTimeout
+            ? 'RPC timeout while clearing must-change-password flag'
+            : 'Unknown RPC error while clearing must-change-password flag';
+        console.warn(
+          '[ForcePasswordChange] RPC clear_my_must_change_password threw:',
+          isTimeout ? '(timeout)' : '',
+          err,
+        );
+        return { error: { message } };
+      }) as { error: { message: string } | null };
       if (rpcError) {
         // Password was changed successfully but flag couldn't be cleared; still allow login
         // The next login will re-trigger the flow, so surface a soft warning
