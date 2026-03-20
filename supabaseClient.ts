@@ -30,9 +30,15 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 export const checkDbHealth = async (): Promise<boolean> => {
   try {
-    const { error } = await supabase.from('locations').select('id').limit(1);
-    return !error;
-  } catch (err) {
+    // Ping the Supabase REST API root with a short timeout.
+    // Any valid HTTP response (including 4xx/5xx when RLS blocks anonymous access)
+    // means the server is reachable — only a network failure returns false.
+    const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+      headers: { apikey: SUPABASE_ANON_KEY },
+      signal: AbortSignal.timeout(5000),
+    });
+    return res.ok || res.status >= 100;
+  } catch {
     return false;
   }
 };

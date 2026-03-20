@@ -269,9 +269,11 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
               {view === 'team' && (
                 <DriverManagement
                   drivers={filteredDrivers}
+                  locations={locations}
                   transactions={filteredTransactions}
                   dailySettlements={filteredSettlements}
                   onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onUpdateLocations={(l) => updateLocations.mutate(l)}
                   onDeleteDrivers={(ids) => deleteDrivers.mutate(ids)}
                 />
               )}
