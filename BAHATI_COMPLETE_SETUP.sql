@@ -13,6 +13,11 @@
 -- ⚠️  注意：此脚本会先删除并重建所有表。如果你已有数据，请先备份！
 -- ⚠️  WARNING: This script drops and recreates all tables. Back up your data first!
 --
+-- 🔄  已有数据库（增量更新）/ Existing database (incremental update only):
+--     只需在 Supabase SQL Editor 中运行以下文件即可，无需运行本脚本：
+--     Run ONLY the migration below in Supabase SQL Editor — do NOT run this file:
+--     → supabase/migrations/20260320000000_admin_password_policy.sql
+--
 -- 账号列表 / Account credentials after running this script:
 --   初始密码统一 / Initial password for ALL accounts: Bahati2024
 --   ⚠️  所有账号首次登录时 APP 会强制要求修改密码！
