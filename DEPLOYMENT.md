@@ -72,6 +72,34 @@ npm run dev     # local development server (http://localhost:3000)
 > **Use `npm ci` (not `npm install`) for reproducible installs.**
 > `.env.local` is listed in `.gitignore` and will not be committed to the repository.
 
+## Automatic Supabase Migration Deployment
+
+The workflow `.github/workflows/supabase-deploy.yml` automatically applies any new
+migration files in `supabase/migrations/` to the **production** Supabase project
+whenever a commit that touches those files is merged (pushed) to `main`.
+
+### Required GitHub Secrets
+
+Add these three secrets under **Repository → Settings → Secrets and variables → Actions**:
+
+| Secret | Where to find it |
+|---|---|
+| `SUPABASE_ACCESS_TOKEN` | [supabase.com/account/tokens](https://supabase.com/dashboard/account/tokens) → Generate new token |
+| `SUPABASE_DB_PASSWORD` | Supabase Dashboard → **Settings → Database → Database password** |
+| `SUPABASE_PROJECT_ID` | Supabase Dashboard → **Settings → General → Reference ID** (e.g. `yctsiudhicztvppddbvk`) |
+
+> ⚠️ `SUPABASE_DB_PASSWORD` grants full database access. Treat it like a root password —
+> rotate it immediately if you believe it has been compromised (Supabase Dashboard →
+> **Settings → Database → Reset database password**).
+
+Once set, the workflow runs automatically — no manual steps needed.  Any SQL file
+added under `supabase/migrations/` and merged to `main` will be pushed to the live
+database within seconds.
+
+> **PR preview branches:** The `supabase-preview.yml` workflow handles `db push` for
+> each pull request independently, so migrations are verified against a preview
+> environment before hitting production.
+
 ## Security
 
 See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
