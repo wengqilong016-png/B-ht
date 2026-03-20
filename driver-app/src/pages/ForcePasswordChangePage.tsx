@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { supabase } from '../supabaseClient';
 import { validatePassword } from '../utils/passwordPolicy';
+import { withTimeout } from '../utils/timeout';
+
+/** Maximum ms to wait for Supabase Auth to process the password update. */
+const UPDATE_TIMEOUT_MS = 15_000;
 
 interface ForcePasswordChangePageProps {
   onSuccess: () => void;
@@ -31,9 +35,22 @@ export default function ForcePasswordChangePage({ onSuccess }: ForcePasswordChan
 
     setIsLoading(true);
     try {
-      const { error: updateError } = await supabase.auth.updateUser({ password: newPassword });
-      if (updateError) {
-        setError(updateError.message || '密码更新失败，请重试 / Failed to update password, please try again');
+      let updateResult: Awaited<ReturnType<typeof supabase.auth.updateUser>>;
+      try {
+        updateResult = await withTimeout(
+          supabase.auth.updateUser({ password: newPassword }),
+          UPDATE_TIMEOUT_MS,
+        );
+      } catch (e) {
+        const isTimeout = e != null && typeof e === 'object' && (e as { timedOut?: boolean }).timedOut;
+        setError(isTimeout
+          ? '请求超时，请检查网络连接后重试 / Request timed out — please check your connection'
+          : '密码更新失败，请重试 / Password update failed, please try again');
+        return;
+      }
+
+      if (updateResult.error) {
+        setError(updateResult.error.message || '密码更新失败，请重试 / Failed to update password, please try again');
         return;
       }
 
