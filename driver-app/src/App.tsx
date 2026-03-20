@@ -36,7 +36,6 @@ export default function App() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineBannerDismissed, setOfflineBannerDismissed] = useState(false);
   const [mustChangePassword, setMustChangePassword] = useState(false);
-  const [pendingDriverId, setPendingDriverId] = useState<string>('');
 
   const gpsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const healthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -82,7 +81,7 @@ export default function App() {
 
     if (profileFlags?.must_change_password && driver) {
       setMustChangePassword(true);
-      setPendingDriverId(driver.id);
+      
       return true;
     }
     return false;
@@ -114,7 +113,7 @@ export default function App() {
       if (event === 'SIGNED_OUT' || !session) {
         setCurrentUser(null);
         setMustChangePassword(false);
-        setPendingDriverId('');
+        
         return;
       }
       if (session?.user) {
@@ -188,8 +187,7 @@ export default function App() {
     setCurrentUser(driver);
   }, []);
 
-  const handleMustChangePassword = useCallback((driverId: string, _authUserId: string) => {
-    setPendingDriverId(driverId);
+  const handleMustChangePassword = useCallback(() => {
     setMustChangePassword(true);
   }, []);
 
@@ -218,7 +216,7 @@ export default function App() {
       <ForcePasswordChangePage
         onSuccess={() => {
           setMustChangePassword(false);
-          setPendingDriverId('');
+          
           // Re-trigger session check so currentUser is set after password change
           supabase.auth.getSession().then(({ data }) => {
             const user = data.session?.user;
