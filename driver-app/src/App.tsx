@@ -3,6 +3,7 @@ import { supabase, checkOnline } from './supabaseClient';
 import { Driver } from './types';
 import { flushQueue } from './offlineQueue';
 import LoginPage from './pages/LoginPage';
+import ForcePasswordChangePage from './pages/ForcePasswordChangePage';
 import CollectPage from './pages/CollectPage';
 import HistoryPage from './pages/HistoryPage';
 import ProfilePage from './pages/ProfilePage';
@@ -34,6 +35,8 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState<Page>('collect');
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [offlineBannerDismissed, setOfflineBannerDismissed] = useState(false);
+  const [mustChangePassword, setMustChangePassword] = useState(false);
+  const [pendingDriverId, setPendingDriverId] = useState<string>('');
 
   const gpsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const healthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -69,6 +72,22 @@ export default function App() {
     };
   }, []);
 
+  // Check must_change_password for a session user; returns true if forced change needed
+  const checkMustChangePassword = useCallback(async (authUserId: string, driver: Driver | null): Promise<boolean> => {
+    const { data: profileFlags } = await supabase
+      .from('profiles')
+      .select('must_change_password, driver_id')
+      .eq('auth_user_id', authUserId)
+      .maybeSingle();
+
+    if (profileFlags?.must_change_password && driver) {
+      setMustChangePassword(true);
+      setPendingDriverId(driver.id);
+      return true;
+    }
+    return false;
+  }, []);
+
   // Auth init
   useEffect(() => {
     let mounted = true;
@@ -79,7 +98,10 @@ export default function App() {
 
       if (sessionUser && mounted) {
         const driver = await loadDriverProfile(sessionUser.id);
-        if (mounted) setCurrentUser(driver);
+        if (mounted) {
+          const forced = await checkMustChangePassword(sessionUser.id, driver);
+          if (!forced) setCurrentUser(driver);
+        }
       }
 
       if (mounted) setIsLoading(false);
@@ -91,11 +113,16 @@ export default function App() {
       if (!mounted) return;
       if (event === 'SIGNED_OUT' || !session) {
         setCurrentUser(null);
+        setMustChangePassword(false);
+        setPendingDriverId('');
         return;
       }
       if (session?.user) {
         const driver = await loadDriverProfile(session.user.id);
-        if (mounted) setCurrentUser(driver);
+        if (mounted) {
+          const forced = await checkMustChangePassword(session.user.id, driver);
+          if (!forced) setCurrentUser(driver);
+        }
       }
     });
 
@@ -103,7 +130,7 @@ export default function App() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [loadDriverProfile]);
+  }, [loadDriverProfile, checkMustChangePassword]);
 
   // Online detection
   useEffect(() => {
@@ -161,6 +188,11 @@ export default function App() {
     setCurrentUser(driver);
   }, []);
 
+  const handleMustChangePassword = useCallback((driverId: string, _authUserId: string) => {
+    setPendingDriverId(driverId);
+    setMustChangePassword(true);
+  }, []);
+
   const handleLogout = useCallback(async () => {
     await supabase.auth.signOut();
     setCurrentUser(null);
@@ -181,8 +213,28 @@ export default function App() {
     );
   }
 
+  if (mustChangePassword) {
+    return (
+      <ForcePasswordChangePage
+        onSuccess={() => {
+          setMustChangePassword(false);
+          setPendingDriverId('');
+          // Re-trigger session check so currentUser is set after password change
+          supabase.auth.getSession().then(({ data }) => {
+            const user = data.session?.user;
+            if (user) {
+              loadDriverProfile(user.id).then((driver) => {
+                if (driver) setCurrentUser(driver);
+              });
+            }
+          });
+        }}
+      />
+    );
+  }
+
   if (!currentUser) {
-    return <LoginPage onLogin={handleLogin} />;
+    return <LoginPage onLogin={handleLogin} onMustChangePassword={handleMustChangePassword} />;
   }
 
   const renderPage = () => {
