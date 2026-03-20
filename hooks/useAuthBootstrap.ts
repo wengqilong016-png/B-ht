@@ -132,6 +132,15 @@ export function useAuthBootstrap() {
     loadUser();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // USER_UPDATED fires when the user changes their password or email via
+      // supabase.auth.updateUser().  ForcePasswordChange handles its own
+      // completion flow (RPC clear + onSuccess callback).  Re-fetching the
+      // profile here races against the RPC that clears must_change_password:
+      // a stale "true" response arriving after onSuccess would re-lock the user
+      // on the force-change screen.  Skip this event — the component's own
+      // success path sets the correct user state.
+      if (_event === 'USER_UPDATED') return;
+
       if (!session?.user) {
         dispatch({ type: 'LOGOUT' });
         return;

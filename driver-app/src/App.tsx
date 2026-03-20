@@ -116,6 +116,12 @@ export default function App() {
         
         return;
       }
+      // USER_UPDATED fires when supabase.auth.updateUser() is called (e.g. by
+      // ForcePasswordChangePage).  Re-checking must_change_password here races
+      // against the clear_my_must_change_password RPC: a stale "true" response
+      // arriving after onSuccess fires would re-lock the user on the change
+      // screen.  Skip — ForcePasswordChangePage handles its own state transition.
+      if (event === 'USER_UPDATED') return;
       if (session?.user) {
         const driver = await loadDriverProfile(session.user.id);
         if (mounted) {
