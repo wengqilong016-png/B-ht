@@ -1,17 +1,10 @@
 import React, { useState } from 'react';
 import { ShieldAlert } from 'lucide-react';
 import { supabase } from '../supabaseClient';
+import { validatePassword } from '../utils/passwordPolicy';
 
 interface ForcePasswordChangePageProps {
   onSuccess: () => void;
-}
-
-function validatePassword(pwd: string): string | null {
-  if (pwd.length < 8) return '密码至少8位 / Password must be at least 8 characters';
-  if (!/[A-Z]/.test(pwd)) return '密码须包含大写字母 / Must contain an uppercase letter';
-  if (!/[a-z]/.test(pwd)) return '密码须包含小写字母 / Must contain a lowercase letter';
-  if (!/[0-9]/.test(pwd)) return '密码须包含数字 / Must contain a number';
-  return null;
 }
 
 export default function ForcePasswordChangePage({ onSuccess }: ForcePasswordChangePageProps) {

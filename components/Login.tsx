@@ -42,6 +42,15 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
       return;
     }
 
+    // Admin-only gate: drivers must use the dedicated Driver App
+    if (result.user.role !== 'admin') {
+      await signOutCurrentUser();
+      setError(lang === 'zh'
+        ? '此入口仅供管理员使用，请前往司机专用 APP 登录'
+        : 'This console is for admins only. Drivers please use the Driver App.');
+      return;
+    }
+
     onLogin(result.user);
   };
 
@@ -93,9 +102,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
            </div>
         </div>
 
-        <div className="text-center mb-10 space-y-2">
+        <div className="text-center mb-6 space-y-2">
           <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase">BAHATI <span className="text-indigo-600">JACKPOTS</span></h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
+          {/* Admin-only badge */}
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full shadow-silicone-sm">
+            <Crown size={9} className="text-indigo-500" fill="currentColor" />
+            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">
+              {lang === 'zh' ? '管理员专用入口' : 'Admin Console Only'}
+            </span>
+          </div>
         </div>
 
         <div className="bg-[#f5f7fa] p-10 rounded-[40px] shadow-silicone border border-white/60 w-full space-y-8">
@@ -112,11 +128,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               </label>
               <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400" placeholder="••••••••" required />
             </div>
-            
+
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-center gap-3 shadow-silicone-sm">
-                 <AlertCircle size={16} className="text-rose-500" />
-                 <span className="text-rose-600 text-xs font-bold">{error}</span>
+              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col gap-2 shadow-silicone-sm">
+                 <div className="flex items-start gap-3">
+                   <AlertCircle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+                   <span className="text-rose-600 text-xs font-bold leading-relaxed">{error}</span>
+                 </div>
               </div>
             )}
 
@@ -124,7 +142,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               {isLoading ? <Loader2 size={20} className="animate-spin text-indigo-600" /> : <span className="flex items-center gap-2">{t.loginBtn} <ArrowRight size={20} /></span>}
             </button>
 
-            {/* Environment status placeholder — reserved for future connection diagnostics */}
             <div className="text-center">
               <p className={`text-[8px] font-bold uppercase tracking-widest ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'offline' ? 'text-rose-400' : 'text-slate-300'}`}>
                 {dbStatus === 'online' ? '● Connected' : dbStatus === 'offline' ? '● Offline' : '● Checking...'}

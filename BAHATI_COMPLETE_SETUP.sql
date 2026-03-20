@@ -113,7 +113,7 @@ CREATE TABLE public.profiles (
     role                 TEXT        NOT NULL CHECK (role IN ('admin', 'driver')),
     display_name         TEXT,
     driver_id            TEXT,
-    must_change_password BOOLEAN     NOT NULL DEFAULT TRUE,
+    must_change_password BOOLEAN     NOT NULL DEFAULT FALSE,
     created_at           TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -286,6 +286,21 @@ BEGIN
     RETURN coalesce(_is_admin, false);
 END;
 $$;
+
+-- 4-4. 清除当前用户的"强制修改密码"标志 / Clear must_change_password for current user
+-- Called by the app after the user successfully sets a new password.
+-- Uses SECURITY DEFINER so no permissive UPDATE policy is needed on profiles.
+CREATE OR REPLACE FUNCTION public.clear_my_must_change_password()
+RETURNS VOID LANGUAGE sql SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+    UPDATE public.profiles
+    SET must_change_password = FALSE
+    WHERE auth_user_id = auth.uid();
+$$;
+
+REVOKE EXECUTE ON FUNCTION public.clear_my_must_change_password() FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.clear_my_must_change_password() TO authenticated;
 
 -- 4-4. 管理员审批点位变更申请 / Admin approves/rejects a location change request
 CREATE OR REPLACE FUNCTION public.apply_location_change_request(

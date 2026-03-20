@@ -4,7 +4,7 @@ import { Driver } from '../types';
 
 interface LoginPageProps {
   onLogin: (driver: Driver) => void;
-  onMustChangePassword: (driverId: string, authUserId: string) => void;
+  onMustChangePassword: () => void;
 }
 
 export default function LoginPage({ onLogin, onMustChangePassword }: LoginPageProps) {
@@ -54,12 +54,7 @@ export default function LoginPage({ onLogin, onMustChangePassword }: LoginPagePr
 
       // Force password change if required
       if (profile.must_change_password) {
-        if (profile.driver_id) {
-          onMustChangePassword(profile.driver_id, authData.user.id);
-        } else {
-          setError('账户配置异常，请联系管理员 / Account configuration error, contact support');
-          await supabase.auth.signOut();
-        }
+        onMustChangePassword();
         return;
       }
 
