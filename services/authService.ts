@@ -1,5 +1,9 @@
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
+import { withTimeout } from '../utils/timeout';
+
+/** Maximum ms to wait for a Supabase Auth mutation (updateUser, etc.). */
+const AUTH_MUTATION_TIMEOUT_MS = 15_000;
 
 type UserProfileRow = {
   role: string;
@@ -92,9 +96,27 @@ export const changeUserPassword = async (newPassword: string) => {
   if (!supabase) {
     return { success: false as const, error: 'Supabase not configured' };
   }
-  const { error } = await supabase.auth.updateUser({ password: newPassword });
-  if (error) {
-    return { success: false as const, error: error.message };
+
+  // Wrap updateUser in a timeout so a slow or unresponsive Supabase Auth
+  // service never leaves the UI stuck in a permanent loading state.
+  let updateResult: Awaited<ReturnType<typeof supabase.auth.updateUser>>;
+  try {
+    updateResult = await withTimeout(
+      supabase.auth.updateUser({ password: newPassword }),
+      AUTH_MUTATION_TIMEOUT_MS,
+    );
+  } catch (e) {
+    const isTimeout = e != null && typeof e === 'object' && (e as { timedOut?: boolean }).timedOut;
+    return {
+      success: false as const,
+      error: isTimeout
+        ? '请求超时，请检查网络连接后重试 / Request timed out — please check your connection and try again'
+        : '密码更新失败，请重试 / Password update failed, please try again',
+    };
+  }
+
+  if (updateResult.error) {
+    return { success: false as const, error: updateResult.error.message };
   }
 
   // Clear the "must change password" flag so the forced-change gate is lifted.
