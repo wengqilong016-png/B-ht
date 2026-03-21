@@ -3,6 +3,7 @@ import { useEffect, useRef } from 'react';
 import { supabase, checkDbHealth } from '../supabaseClient';
 import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
+import { isAuthDisabled } from '../utils/authMode';
 
 // Helper to sanitize drivers
 const sanitizeDrivers = (driverList: any[]): Driver[] => {
@@ -30,10 +31,13 @@ const TX_LIMIT_DRIVER = 500;
 export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined) {
   const queryClient = useQueryClient();
   const isDriver = userRole === 'driver';
-  // Only make authenticated Supabase requests when the user is logged in.
+  // Only make authenticated Supabase requests when the user is logged in via
+  // Supabase Auth. In auth-disabled mode (VITE_DISABLE_AUTH=true) the app uses
+  // a local driver identity with no Supabase session, so Supabase requests
+  // would get 401/403 errors. Excluding that mode prevents the noise.
   // When userRole is null/undefined (pre-auth or after logout) the queries
   // fall through to localDB so the 401 flood caused by expired tokens is avoided.
-  const isAuthenticated = !!userRole;
+  const isAuthenticated = !isAuthDisabled() && !!userRole;
 
   // 1. Health check - High priority
   const { data: isOnline = false } = useQuery({

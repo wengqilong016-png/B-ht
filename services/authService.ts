@@ -66,15 +66,38 @@ export const restoreCurrentUserFromSession = async (): Promise<
     return { success: false, error: 'Supabase not configured' };
   }
 
-  // Use getUser() instead of getSession() to validate the token against the
-  // Supabase Auth server on every startup. getSession() only reads from local
-  // storage and may return an expired session, causing a flood of 401 errors
-  // as the app tries to fetch data with a stale access token.
-  // getUser() will attempt a token refresh if needed; if the refresh token is
-  // also invalid ("Refresh Token Not Found"), it returns an error so we can
-  // show the login screen before making any data requests.
+  // Try to validate the token against the Supabase Auth server via getUser().
+  // This catches expired/invalidated refresh tokens ("Refresh Token Not Found")
+  // and returns a clean error before any data requests fire.
+  //
+  // If getUser() fails due to a network/connectivity problem (the device is
+  // offline or the server is unreachable) we fall back to getSession(), which
+  // reads the cached session from localStorage. This preserves offline usability
+  // for users who have a valid session token that hasn't actually been revoked.
   const { data: userData, error: userError } = await supabase.auth.getUser();
-  if (userError || !userData.user) {
+
+  if (userError) {
+    // Distinguish network failures from real auth errors. Supabase surfaces
+    // network issues as "Failed to fetch" or similar fetch-level strings.
+    const isNetworkError =
+      userError.message?.toLowerCase().includes('fetch') ||
+      userError.message?.toLowerCase().includes('network');
+
+    if (isNetworkError) {
+      // Offline path: trust the locally-cached session.
+      const { data: sessionData } = await supabase.auth.getSession();
+      const sessionUser = sessionData.session?.user;
+      if (!sessionUser) {
+        return { success: false, error: 'No active session' };
+      }
+      return fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
+    }
+
+    // Auth error (e.g. invalid/expired refresh token) — clear and show login.
+    return { success: false, error: 'No active session' };
+  }
+
+  if (!userData.user) {
     return { success: false, error: 'No active session' };
   }
 
