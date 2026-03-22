@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { supabase, checkOnline } from './supabaseClient';
 import { Driver } from './types';
 import { flushQueue } from './offlineQueue';
@@ -40,16 +40,16 @@ export default function App() {
   const gpsTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const healthTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Load driver profile from drivers table
-  const loadDriverProfile = useCallback(async (authUserId: string): Promise<Driver | null> => {
-    // First get driver_id from profiles table
+  // Load driver profile from drivers table (also returns mustChangePassword flag)
+  const loadDriverProfile = useCallback(async (authUserId: string): Promise<{ driver: Driver | null; mustChangePassword: boolean }> => {
+    // Get driver_id, display_name, and must_change_password from profiles in one query
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('driver_id, display_name')
+      .select('driver_id, display_name, must_change_password')
       .eq('auth_user_id', authUserId)
       .maybeSingle();
 
-    if (profileError || !profile?.driver_id) return null;
+    if (profileError || !profile?.driver_id) return { driver: null, mustChangePassword: false };
 
     const { data: driver, error: driverError } = await supabase
       .from('drivers')
@@ -57,34 +57,21 @@ export default function App() {
       .eq('id', profile.driver_id)
       .maybeSingle();
 
-    if (driverError || !driver) return null;
+    if (driverError || !driver) return { driver: null, mustChangePassword: false };
 
     return {
-      id: driver.id,
-      name: driver.name || profile.display_name || '',
-      username: driver.username || '',
-      phone: driver.phone || '',
-      remainingDebt: driver.remainingDebt ?? 0,
-      dailyFloatingCoins: driver.dailyFloatingCoins ?? 0,
-      status: driver.status || 'active',
-      currentGps: driver.currentGps,
+      driver: {
+        id: driver.id,
+        name: driver.name || profile.display_name || '',
+        username: driver.username || '',
+        phone: driver.phone || '',
+        remainingDebt: driver.remainingDebt ?? 0,
+        dailyFloatingCoins: driver.dailyFloatingCoins ?? 0,
+        status: driver.status || 'active',
+        currentGps: driver.currentGps,
+      },
+      mustChangePassword: profile.must_change_password === true,
     };
-  }, []);
-
-  // Check must_change_password for a session user; returns true if forced change needed
-  const checkMustChangePassword = useCallback(async (authUserId: string, driver: Driver | null): Promise<boolean> => {
-    const { data: profileFlags } = await supabase
-      .from('profiles')
-      .select('must_change_password, driver_id')
-      .eq('auth_user_id', authUserId)
-      .maybeSingle();
-
-    if (profileFlags?.must_change_password && driver) {
-      setMustChangePassword(true);
-      
-      return true;
-    }
-    return false;
   }, []);
 
   // Auth init
@@ -96,10 +83,13 @@ export default function App() {
       const sessionUser = sessionData.session?.user;
 
       if (sessionUser && mounted) {
-        const driver = await loadDriverProfile(sessionUser.id);
+        const { driver, mustChangePassword: forceChange } = await loadDriverProfile(sessionUser.id);
         if (mounted) {
-          const forced = await checkMustChangePassword(sessionUser.id, driver);
-          if (!forced) setCurrentUser(driver);
+          if (forceChange && driver) {
+            setMustChangePassword(true);
+          } else {
+            setCurrentUser(driver);
+          }
         }
       }
 
@@ -123,10 +113,13 @@ export default function App() {
       // screen.  Skip — ForcePasswordChangePage handles its own state transition.
       if (event === 'USER_UPDATED') return;
       if (session?.user) {
-        const driver = await loadDriverProfile(session.user.id);
+        const { driver, mustChangePassword: forceChange } = await loadDriverProfile(session.user.id);
         if (mounted) {
-          const forced = await checkMustChangePassword(session.user.id, driver);
-          if (!forced) setCurrentUser(driver);
+          if (forceChange && driver) {
+            setMustChangePassword(true);
+          } else {
+            setCurrentUser(driver);
+          }
         }
       }
     });
@@ -135,7 +128,7 @@ export default function App() {
       mounted = false;
       authListener.subscription.unsubscribe();
     };
-  }, [loadDriverProfile, checkMustChangePassword]);
+  }, [loadDriverProfile]);
 
   // Online detection
   useEffect(() => {
@@ -206,6 +199,25 @@ export default function App() {
     setCurrentUser(updated);
   }, []);
 
+  const pageElement = useMemo(() => {
+    if (!currentUser) return null;
+    switch (currentPage) {
+      case 'collect':
+        return <CollectPage driver={currentUser} isOnline={isOnline} />;
+      case 'history':
+        return <HistoryPage driver={currentUser} isOnline={isOnline} />;
+      case 'profile':
+        return (
+          <ProfilePage
+            driver={currentUser}
+            isOnline={isOnline}
+            onLogout={handleLogout}
+            onUserUpdate={handleUserUpdate}
+          />
+        );
+    }
+  }, [currentPage, currentUser, isOnline, handleLogout, handleUserUpdate]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-slate-900">
@@ -227,7 +239,7 @@ export default function App() {
           supabase.auth.getSession().then(({ data }) => {
             const user = data.session?.user;
             if (user) {
-              loadDriverProfile(user.id).then((driver) => {
+              loadDriverProfile(user.id).then(({ driver }) => {
                 if (driver) setCurrentUser(driver);
               });
             }
@@ -241,30 +253,12 @@ export default function App() {
     return <LoginPage onLogin={handleLogin} onMustChangePassword={handleMustChangePassword} />;
   }
 
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'collect':
-        return <CollectPage driver={currentUser} isOnline={isOnline} />;
-      case 'history':
-        return <HistoryPage driver={currentUser} isOnline={isOnline} />;
-      case 'profile':
-        return (
-          <ProfilePage
-            driver={currentUser}
-            isOnline={isOnline}
-            onLogout={handleLogout}
-            onUserUpdate={handleUserUpdate}
-          />
-        );
-    }
-  };
-
   return (
     <div className="flex flex-col min-h-screen bg-slate-900 text-slate-100">
       {!isOnline && !offlineBannerDismissed && (
         <OfflineBanner onDismiss={() => setOfflineBannerDismissed(true)} />
       )}
-      <main className="flex-1 overflow-y-auto pb-20">{renderPage()}</main>
+      <main className="flex-1 overflow-y-auto pb-20">{pageElement}</main>
       <BottomNav currentPage={currentPage} onNavigate={setCurrentPage} />
     </div>
   );

@@ -7,6 +7,19 @@ interface LoginPageProps {
   onMustChangePassword: () => void;
 }
 
+const resolveAuthError = (message: string): string => {
+  if (message.includes('Invalid login credentials')) {
+    return '邮箱或密码错误 / Barua pepe au nenosiri si sahihi';
+  }
+  if (message.includes('Too many requests')) {
+    return '登录尝试太多，请稍后再试 / Majaribio mengi, subiri kidogo';
+  }
+  if (message.includes('Email not confirmed')) {
+    return '邮箱未验证，请联系管理员 / Barua pepe haijathibitishwa, wasiliana na msimamizi';
+  }
+  return '登录失败，请重试 / Imeshindwa kuingia, jaribu tena';
+};
+
 export default function LoginPage({ onLogin, onMustChangePassword }: LoginPageProps) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -29,7 +42,7 @@ export default function LoginPage({ onLogin, onMustChangePassword }: LoginPagePr
       });
 
       if (authError || !authData.user) {
-        setError('邮箱或密码错误 / Barua pepe au nenosiri si sahihi');
+        setError(resolveAuthError(authError?.message || ''));
         return;
       }
 
@@ -40,7 +53,7 @@ export default function LoginPage({ onLogin, onMustChangePassword }: LoginPagePr
         .maybeSingle();
 
       if (profileError || !profile?.driver_id) {
-        setError('账户未关联司机信息，请联系管理员 / Akaunti haihusishwi na dereva, wasiliana na msimamizi');
+        setError('账号未配置，请联系管理员 / Akaunti haijasanidiwa, wasiliana na msimamizi');
         await supabase.auth.signOut();
         return;
       }
@@ -65,7 +78,7 @@ export default function LoginPage({ onLogin, onMustChangePassword }: LoginPagePr
         .maybeSingle();
 
       if (driverError || !driver) {
-        setError('无法加载司机信息，请重试 / Imeshindwa kupakia taarifa za dereva, jaribu tena');
+        setError('司机信息丢失，请联系管理员 / Taarifa za dereva hazipo, wasiliana na msimamizi');
         await supabase.auth.signOut();
         return;
       }

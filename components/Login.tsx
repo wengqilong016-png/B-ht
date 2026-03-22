@@ -19,14 +19,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
   const t = TRANSLATIONS[lang];
 
-  const resolveLoginError = (message: string) => {
-    if (message === 'Profile not found') {
-      return t.profileNotProvisioned;
+  const resolveSupabaseLoginError = (rawError: string, language: 'zh' | 'sw'): string => {
+    const zh = language === 'zh';
+    if (rawError.includes('Invalid login credentials')) {
+      return zh ? '邮箱或密码错误，请重试' : 'Wrong email or password. Please try again.';
     }
-    if (message === 'Invalid user role') {
-      return t.invalidAccountRole;
+    if (rawError.includes('Email not confirmed')) {
+      return zh ? '邮箱尚未验证，请检查收件箱' : 'Email not verified. Check your inbox.';
     }
-    return t.loginError;
+    if (rawError.includes('User not found')) {
+      return zh ? '账号不存在，请联系管理员' : 'Account not found. Contact admin.';
+    }
+    if (rawError.includes('Too many requests')) {
+      return zh ? '登录尝试次数过多，请稍后再试' : 'Too many attempts. Please wait and retry.';
+    }
+    if (rawError.includes('Profile not found')) {
+      return zh
+        ? '账号存在但未配置权限，请联系管理员重新运行 SQL 初始化脚本'
+        : 'Account exists but not provisioned. Ask admin to re-run the setup SQL.';
+    }
+    if (rawError.includes('Invalid user role')) {
+      return zh ? '账号角色配置错误，请联系管理员' : 'Invalid account role. Contact admin.';
+    }
+    return zh ? '登录失败，请检查网络后重试' : 'Login failed. Check your connection and retry.';
   };
 
   useEffect(() => {
@@ -38,7 +53,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
     if (!result.success) {
       await signOutCurrentUser();
-      setError(resolveLoginError('error' in result ? (result as any).error : 'Unknown error'));
+      setError(resolveSupabaseLoginError('error' in result ? (result as { error: string }).error : 'Unknown error', lang));
       return;
     }
 
@@ -67,7 +82,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
       const loginResult = await signInWithEmailPassword(email, password);
       if (!loginResult.success) {
-        setError(t.loginFailed);
+        setError(resolveSupabaseLoginError(loginResult.error || 'Login failed', lang));
         return;
       }
 
@@ -135,6 +150,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
                    <AlertCircle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
                    <span className="text-rose-600 text-xs font-bold leading-relaxed">{error}</span>
                  </div>
+                 {error.includes('SQL') && (
+                   <p className="text-slate-400 text-[10px] pl-7 leading-relaxed">
+                     {lang === 'zh'
+                       ? '请前往 Supabase Dashboard → SQL Editor，重新运行设置脚本'
+                       : 'Go to Supabase Dashboard → SQL Editor and re-run the setup script.'}
+                   </p>
+                 )}
               </div>
             )}
 

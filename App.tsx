@@ -82,7 +82,7 @@ const App: React.FC = () => {
     fetch('/api/backup-data')
       .then(res => res.json())
       .then(data => setLocalBackup(data))
-      .catch(() => console.log('Local backup API not available'));
+      .catch(() => console.warn('Local backup API not available'));
   }, []);
 
   const locations = useMemo(() => cloudLocations.length > 0 ? cloudLocations : (localBackup?.locations || []), [cloudLocations, localBackup]);
