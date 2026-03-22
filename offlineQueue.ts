@@ -114,12 +114,19 @@ function generateOperationId(): string {
  *                  accepting locally-computed values.
  */
 export async function enqueueTransaction(tx: Transaction, rawInput?: CollectionSubmissionInput): Promise<void> {
+  // Strip photoUrl from the stored rawInput copy to avoid duplicating the
+  // (potentially large) base64 payload that is already on tx.photoUrl.
+  // During replay, flushQueue reconstructs photoUrl from the stored tx entry.
+  const storedRawInput: CollectionSubmissionInput | undefined = rawInput
+    ? { ...rawInput, photoUrl: null }
+    : undefined;
+
   const meta: QueueMeta = {
     operationId: generateOperationId(),
     entityVersion: Date.now(),
     _queuedAt: new Date().toISOString(),
     retryCount: 0,
-    rawInput,
+    rawInput: storedRawInput,
   };
 
   try {
@@ -175,7 +182,16 @@ export async function getAllQueuedTransactions(): Promise<Transaction[]> {
 }
 
 // ── Mark as synced ────────────────────────────────────────────────────────────
-export async function markSynced(id: string): Promise<void> {
+/**
+ * Mark a queued entry as synced.
+ *
+ * When `authoritativeData` is provided (e.g. the server-returned transaction
+ * from a successful `submitCollection` replay), its fields are merged into the
+ * stored entry so locally-computed finance values are replaced by the
+ * server-authoritative values before the entry is marked synced.
+ */
+export async function markSynced(id: string, authoritativeData?: Partial<Transaction>): Promise<void> {
+  const update = { ...authoritativeData, isSynced: true };
   try {
     const db    = await openDB();
     const tx_db = db.transaction(STORE_TX, 'readwrite');
@@ -187,7 +203,7 @@ export async function markSynced(id: string): Promise<void> {
     });
     if (item) {
       await new Promise<void>((res, rej) => {
-        const r = store.put({ ...item, isSynced: true });
+        const r = store.put({ ...item, ...update });
         r.onsuccess = () => res();
         r.onerror   = () => rej(r.error);
       });
@@ -195,7 +211,7 @@ export async function markSynced(id: string): Promise<void> {
     db.close();
   } catch {
     const raw  = localStorage.getItem('bahati_offline_queue') || '[]';
-    const list = (JSON.parse(raw) as Transaction[]).map(t => t.id === id ? { ...t, isSynced: true } : t);
+    const list = (JSON.parse(raw) as Transaction[]).map(t => t.id === id ? { ...t, ...update } : t);
     try { localStorage.setItem('bahati_offline_queue', JSON.stringify(list)); } catch (_) {}
   }
 }
@@ -227,7 +243,15 @@ export async function pruneOldSynced(daysOld = 7): Promise<void> {
  * Collection entries that carry `rawInput` are replayed through the
  * server-authoritative `submit_collection_v2` entrypoint (via the injected
  * `options.submitCollection` callback) so finance values are always
- * recomputed on the server.  Other entry types fall back to a direct upsert.
+ * recomputed on the server.  If `submitCollection` is not provided for a
+ * collection entry, the entry is dead-lettered immediately (permanent error)
+ * rather than falling back to a direct upsert of locally-computed values.
+ * Only non-collection / legacy entries without `rawInput` use the direct
+ * upsert fallback.
+ *
+ * On success, the authoritative transaction returned by the server is written
+ * back into the queued entry so locally-computed finance values are replaced
+ * by the persisted row before the entry is marked synced.
  *
  * Duplicate `txId` replay: the server's ON CONFLICT DO NOTHING semantics
  * cause it to return the already-persisted row, which this function treats
@@ -266,13 +290,38 @@ export async function flushQueue(
 
     try {
       // ── Collection replay path ───────────────────────────────────────────
-      // When the entry has raw inputs AND a submitCollection callback is
-      // provided, route through the server-authoritative RPC so finance is
-      // recomputed on the server (not blindly accepting locally-cached values).
-      if (entry.rawInput && options?.submitCollection) {
-        const result = await options.submitCollection(entry.rawInput);
+      // When the entry has rawInput, it MUST be replayed through the
+      // server-authoritative submitCollection callback so finance is
+      // recomputed on the server.  If the callback is not provided, this is
+      // treated as a permanent replay-path misconfiguration — dead-letter the
+      // entry immediately instead of silently falling back to a direct upsert
+      // of locally-computed finance values.
+      if (entry.rawInput) {
+        if (!options?.submitCollection) {
+          await recordRetryFailure(
+            tx.id,
+            'submitCollection callback unavailable for collection replay',
+            'permanent',
+          );
+          continue;
+        }
+
+        // Reconstruct photoUrl from the stored tx entry rather than rawInput,
+        // since photoUrl is stripped from rawInput at enqueue time to avoid
+        // storing duplicate base64 payloads.
+        const replayInput: CollectionSubmissionInput = {
+          ...entry.rawInput,
+          photoUrl: entry.rawInput.photoUrl ?? (entry.photoUrl ?? null),
+        };
+
+        const result = await options.submitCollection(replayInput);
         if (result.success) {
-          await markSynced(tx.id);
+          // Write the server-authoritative transaction back into the queued
+          // entry so locally-computed finance values are replaced by the
+          // persisted row before marking synced.  This also handles duplicate
+          // txId replay: the server returns the already-persisted row and we
+          // treat that as a success.
+          await markSynced(tx.id, result.transaction);
           flushed++;
           options.onProgress?.(flushed, pending.length);
         } else {
@@ -282,7 +331,7 @@ export async function flushQueue(
         continue;
       }
 
-      // ── Generic upsert fallback (non-collection or no submitCollection) ──
+      // ── Generic upsert fallback (non-collection / legacy entries without rawInput) ──
       const { error } = await supabaseClient
         .from('transactions')
         .upsert({ ...tx, isSynced: true });

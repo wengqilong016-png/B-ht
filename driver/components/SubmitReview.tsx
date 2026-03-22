@@ -97,8 +97,10 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       isOwnerRetaining,
       // Pass the explicit override if the driver entered one; null means
       // "let the server fall back to commission rate as retention".
+      // Use an explicit NaN check so that an entry of "0" is forwarded as 0
+      // rather than being coerced to null by the `|| null` idiom.
       ownerRetention:   isOwnerRetaining && ownerRetention !== ''
-                          ? parseInt(ownerRetention) || null
+                          ? (v => isNaN(v) ? null : v)(parseInt(ownerRetention, 10))
                           : null,
       coinExchange:     parseInt(coinExchange) || 0,
       gps:              resolvedGps.lat === 0 && resolvedGps.lng === 0 ? null : resolvedGps,
