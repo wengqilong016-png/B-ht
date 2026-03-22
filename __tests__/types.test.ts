@@ -4,7 +4,11 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
-import { safeRandomUUID, isLikelyEmail, getDistance, CONSTANTS } from '../types';
+import {
+  safeRandomUUID, isLikelyEmail, getDistance, CONSTANTS,
+  ApprovalStatus, ExpenseStatus, PaymentStatus, SettlementStatus,
+  TransactionType, LocationStatus,
+} from '../types';
 
 // ── safeRandomUUID ─────────────────────────────────────────────────────────────
 
@@ -91,5 +95,48 @@ describe('CONSTANTS', () => {
   it('STORAGE_NOTIFICATIONS_KEY is defined and non-empty', () => {
     expect(typeof CONSTANTS.STORAGE_NOTIFICATIONS_KEY).toBe('string');
     expect(CONSTANTS.STORAGE_NOTIFICATIONS_KEY.length).toBeGreaterThan(0);
+  });
+});
+
+// ── Domain Constants ─────────────────────────────────────────────────────────
+
+describe('Domain status constants', () => {
+  it('ApprovalStatus has all expected values', () => {
+    expect(ApprovalStatus.AUTO_APPROVED).toBe('auto-approved');
+    expect(ApprovalStatus.PENDING).toBe('pending');
+    expect(ApprovalStatus.APPROVED).toBe('approved');
+    expect(ApprovalStatus.REJECTED).toBe('rejected');
+  });
+
+  it('ExpenseStatus has all expected values', () => {
+    expect(ExpenseStatus.PENDING).toBe('pending');
+    expect(ExpenseStatus.APPROVED).toBe('approved');
+    expect(ExpenseStatus.REJECTED).toBe('rejected');
+  });
+
+  it('PaymentStatus has all expected values', () => {
+    expect(PaymentStatus.UNPAID).toBe('unpaid');
+    expect(PaymentStatus.PENDING).toBe('pending');
+    expect(PaymentStatus.PAID).toBe('paid');
+    expect(PaymentStatus.REJECTED).toBe('rejected');
+  });
+
+  it('SettlementStatus has all expected values', () => {
+    expect(SettlementStatus.PENDING).toBe('pending');
+    expect(SettlementStatus.CONFIRMED).toBe('confirmed');
+    expect(SettlementStatus.REJECTED).toBe('rejected');
+  });
+
+  it('TransactionType has all expected values', () => {
+    expect(TransactionType.COLLECTION).toBe('collection');
+    expect(TransactionType.EXPENSE).toBe('expense');
+    expect(TransactionType.RESET_REQUEST).toBe('reset_request');
+    expect(TransactionType.PAYOUT_REQUEST).toBe('payout_request');
+  });
+
+  it('LocationStatus has all expected values', () => {
+    expect(LocationStatus.ACTIVE).toBe('active');
+    expect(LocationStatus.MAINTENANCE).toBe('maintenance');
+    expect(LocationStatus.BROKEN).toBe('broken');
   });
 });

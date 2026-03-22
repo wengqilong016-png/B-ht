@@ -31,21 +31,31 @@ Copy the **entire contents** of [`BAHATI_COMPLETE_SETUP.sql`](./BAHATI_COMPLETE_
 
 ---
 
-### 第三步 / Step 3 — 用默认账号登录测试 / Log in with default accounts
+### 第三步 / Step 3 — 创建测试账号 / Create test accounts
 
-脚本执行成功后，可以用以下账号直接登录：
+数据库建好后，通过 Supabase Dashboard → **Authentication → Users** 手动创建用户，或使用 Edge Function `create-driver` 创建司机账号。
 
-After the script runs successfully, log in with these accounts:
+After the database is set up, create users manually via Supabase Dashboard → **Authentication → Users**, or use the `create-driver` Edge Function to create driver accounts.
 
-| 角色 Role | 邮箱 Email | 密码 Password |
-|---|---|---|
-| 管理员 Admin | `admin@bahati.com` | `admin` |
-| 司机 Driver 1 | `feilong@bahati.com` | `feilong` |
-| 司机 Driver 2 | `q@bahati.com` | `q` |
-| 司机 Driver 3 | `sudi@bahati.com` | `sudi` |
-| 司机 Driver 4 | `w@bahati.com` | `w` |
+> ⚠️ **不要在生产环境使用弱密码。所有账号都必须使用强密码。**
+> ⚠️ **Do not use weak passwords in production. All accounts must use strong passwords.**
 
-🔐 **重要 / Important：第一次登录后立即修改密码！/ Change all passwords after first login!**
+#### 本地开发测试账号 / Local Development Test Accounts
+
+仅用于本地开发环境。运行 `BAHATI_COMPLETE_SETUP.sql` 后会自动创建以下测试用户。**切勿将这些账号用于生产部署。**
+
+These accounts are for local development only. They are created automatically when you run `BAHATI_COMPLETE_SETUP.sql`. **Never use these accounts for production deployments.**
+
+| 角色 Role | 邮箱 Email |
+|---|---|
+| 管理员 Admin | `admin@bahati.com` |
+| 司机 Driver 1 | `feilong@bahati.com` |
+| 司机 Driver 2 | `q@bahati.com` |
+| 司机 Driver 3 | `sudi@bahati.com` |
+| 司机 Driver 4 | `w@bahati.com` |
+
+> 💡 默认密码在 SQL seed 脚本中定义，请在登录后立即修改。
+> 💡 Default passwords are defined in the SQL seed script — change them immediately after first login.
 
 ---
 
