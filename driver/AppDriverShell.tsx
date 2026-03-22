@@ -3,9 +3,12 @@ import {
   PlusCircle, CreditCard, LogOut, Globe, Loader2,
   Crown, History, Banknote, Settings, ClipboardList, UserCircle
 } from 'lucide-react';
-import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
-import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
+import { TRANSLATIONS } from '../types';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
+import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../contexts/DataContext';
+import { useMutations } from '../contexts/MutationContext';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
@@ -25,41 +28,18 @@ const LoadingFallback = () => (
 
 type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'requests' | 'status';
 
-interface AppDriverShellProps {
-  currentUser: User;
-  lang: 'zh' | 'sw';
-  isOnline: boolean;
-  locations: Location[];
-  drivers: Driver[];
-  transactions: Transaction[];
-  dailySettlements: DailySettlement[];
-  aiLogs: AILog[];
-  filteredLocations: Location[];
-  filteredDrivers: Driver[];
-  filteredTransactions: Transaction[];
-  filteredSettlements: DailySettlement[];
-  unsyncedCount: number;
-  activeDriverId: string | undefined;
-  syncOfflineData: SyncMutationHandle;
-  updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
-  updateLocations: { mutate: (l: Location[]) => void };
-  deleteLocations: { mutate: (ids: string[]) => void };
-  updateTransaction: { mutate: (args: { txId: string; updates: Partial<Transaction> }) => void };
-  saveSettlement: { mutate: (s: DailySettlement) => void };
-  logAI: { mutate: (l: AILog) => void };
-  onSetLang: (lang: 'zh' | 'sw') => void;
-  onLogout: () => void;
-}
-
-const AppDriverShell: React.FC<AppDriverShellProps> = ({
-  currentUser, lang, isOnline,
-  locations, drivers, transactions, dailySettlements, aiLogs,
-  filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
-  unsyncedCount, activeDriverId,
-  syncOfflineData, updateDrivers, updateLocations, deleteLocations,
-  updateTransaction, saveSettlement, logAI,
-  onSetLang, onLogout,
-}) => {
+const AppDriverShell: React.FC = () => {
+  const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
+  const {
+    isOnline,
+    locations, drivers, transactions, dailySettlements, aiLogs,
+    filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
+    unsyncedCount,
+  } = useAppData();
+  const {
+    syncOfflineData, updateDrivers, updateLocations, deleteLocations,
+    updateTransaction, saveSettlement, logAI,
+  } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<DriverView>('collect');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -86,9 +66,9 @@ const AppDriverShell: React.FC<AppDriverShellProps> = ({
               <Suspense fallback={null}>
                 <PwaInstallPrompt variant="dark" lang={lang} />
               </Suspense>
-              <button onClick={() => onSetLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white/10 text-white hover:bg-white/20"><Globe size={15}/></button>
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white/10 text-white hover:bg-white/20"><Globe size={15}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-2 rounded-subcard bg-white/10 text-white hover:bg-white/20"><Settings size={15}/></button>
-              <button onClick={onLogout} className="p-2 rounded-subcard bg-rose-500/20 text-rose-400"><LogOut size={15}/></button>
+              <button onClick={handleLogout} className="p-2 rounded-subcard bg-rose-500/20 text-rose-400"><LogOut size={15}/></button>
             </div>
           </div>
 
