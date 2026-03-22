@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrainCircuit, Volume2, ScanLine, Brain, Languages, Mic } from 'lucide-react';
+import { BrainCircuit, Volume2, ScanLine, Brain, Languages, Mic, Key } from 'lucide-react';
+import { CONSTANTS } from '../../types';
 
 export interface TtsConfig {
   lang: string;
@@ -7,6 +8,8 @@ export interface TtsConfig {
 }
 
 interface AIConfigPanelProps {
+  apiKey: string;
+  setApiKey: (v: string) => void;
   useOCR: boolean;
   setUseOCR: (v: boolean) => void;
   useDeepThink: boolean;
@@ -16,9 +19,27 @@ interface AIConfigPanelProps {
 }
 
 const AIConfigPanel: React.FC<AIConfigPanelProps> = ({
-  useOCR, setUseOCR, useDeepThink, setUseDeepThink, ttsConfig, setTtsConfig
+  apiKey, setApiKey, useOCR, setUseOCR, useDeepThink, setUseDeepThink, ttsConfig, setTtsConfig
 }) => (
   <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm animate-in slide-in-from-top-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+    {/* API Key */}
+    <div className="md:col-span-2 space-y-2">
+      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><Key size={12} /> 🔑 Gemini API Key</p>
+      <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-xl px-3 py-1.5">
+        <Key size={14} className="text-slate-400 shrink-0" />
+        <input
+          type="password"
+          value={apiKey}
+          onChange={e => {
+            setApiKey(e.target.value);
+            localStorage.setItem(CONSTANTS.GEMINI_KEY_STORAGE, e.target.value);
+          }}
+          placeholder="粘贴 Gemini API Key…"
+          className="bg-transparent text-[10px] font-bold text-slate-700 outline-none w-full placeholder:text-slate-400"
+        />
+      </div>
+    </div>
+    {/* Analysis Mode */}
     <div className="space-y-2">
       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1"><BrainCircuit size={12} /> 识别模式 Analysis Mode</p>
       <div className="flex flex-wrap gap-2">
