@@ -14,6 +14,7 @@
 
 import { Transaction } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
+import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
 
 const DB_NAME    = 'bahati_offline_db';
 const DB_VERSION = 2;
@@ -36,6 +37,33 @@ export interface QueueMeta {
   lastError?: string;
   /** Earliest ISO-8601 timestamp at which the next retry is allowed */
   nextRetryAt?: string;
+  /**
+   * Raw collection inputs captured at enqueue time.
+   * When present, replay routes through `submit_collection_v2` instead of a
+   * direct upsert so the server remains the authority for finance computation.
+   */
+  rawInput?: CollectionSubmissionInput;
+  /**
+   * Error category from the most-recent flush attempt.
+   *   'transient' — network / server error; safe to retry.
+   *   'permanent' — validation / auth / not-found; retry will not help.
+   */
+  lastErrorCategory?: 'transient' | 'permanent';
+}
+
+/**
+ * Options for `flushQueue`.
+ */
+export interface FlushOptions {
+  /**
+   * When provided, collection entries that carry `rawInput` are replayed
+   * through this callback instead of a direct Supabase upsert.
+   * Inject `submitCollectionV2` from `services/collectionSubmissionService`
+   * at the call site.
+   */
+  submitCollection?: (input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>;
+  /** Called after each successful individual flush. */
+  onProgress?: (flushed: number, total: number) => void;
 }
 
 // ── Open / init ───────────────────────────────────────────────────────────────
@@ -76,12 +104,22 @@ function generateOperationId(): string {
 }
 
 // ── Enqueue (save when offline) ───────────────────────────────────────────────
-export async function enqueueTransaction(tx: Transaction): Promise<void> {
+/**
+ * Enqueue a transaction for later replay when connectivity is restored.
+ *
+ * @param tx        The locally-computed transaction (used for optimistic UI).
+ * @param rawInput  The raw collection inputs captured at submission time.
+ *                  When provided, replay will call `submit_collection_v2`
+ *                  so the server recomputes finance authoritatively instead of
+ *                  accepting locally-computed values.
+ */
+export async function enqueueTransaction(tx: Transaction, rawInput?: CollectionSubmissionInput): Promise<void> {
   const meta: QueueMeta = {
     operationId: generateOperationId(),
     entityVersion: Date.now(),
     _queuedAt: new Date().toISOString(),
     retryCount: 0,
+    rawInput,
   };
 
   try {
@@ -183,9 +221,28 @@ export async function pruneOldSynced(daysOld = 7): Promise<void> {
 }
 
 // ── Flush queue → Supabase (called by App on reconnect) ──────────────────────
+/**
+ * Replay all pending offline entries against the server.
+ *
+ * Collection entries that carry `rawInput` are replayed through the
+ * server-authoritative `submit_collection_v2` entrypoint (via the injected
+ * `options.submitCollection` callback) so finance values are always
+ * recomputed on the server.  Other entry types fall back to a direct upsert.
+ *
+ * Duplicate `txId` replay: the server's ON CONFLICT DO NOTHING semantics
+ * cause it to return the already-persisted row, which this function treats
+ * as a successful sync and marks the local entry synced.
+ *
+ * Error categorization:
+ *   - 'permanent' errors (auth, not-found, validation) dead-letter the entry
+ *     immediately (retryCount jumps to MAX_RETRIES) so they stop consuming
+ *     retry budget and remain visible for admin inspection.
+ *   - 'transient' errors (network, server-side 5xx) apply exponential backoff
+ *     and will be retried on the next flush call.
+ */
 export async function flushQueue(
   supabaseClient: SupabaseClient,
-  onProgress?: (flushed: number, total: number) => void
+  options?: FlushOptions,
 ): Promise<number> {
   const pending = await getPendingTransactions();
   if (pending.length === 0) return 0;
@@ -208,27 +265,71 @@ export async function flushQueue(
     }
 
     try {
+      // ── Collection replay path ───────────────────────────────────────────
+      // When the entry has raw inputs AND a submitCollection callback is
+      // provided, route through the server-authoritative RPC so finance is
+      // recomputed on the server (not blindly accepting locally-cached values).
+      if (entry.rawInput && options?.submitCollection) {
+        const result = await options.submitCollection(entry.rawInput);
+        if (result.success) {
+          await markSynced(tx.id);
+          flushed++;
+          options.onProgress?.(flushed, pending.length);
+        } else {
+          const category = classifyError(result.error);
+          await recordRetryFailure(tx.id, result.error, category);
+        }
+        continue;
+      }
+
+      // ── Generic upsert fallback (non-collection or no submitCollection) ──
       const { error } = await supabaseClient
         .from('transactions')
         .upsert({ ...tx, isSynced: true });
       if (!error) {
         await markSynced(tx.id);
         flushed++;
-        onProgress?.(flushed, pending.length);
+        options?.onProgress?.(flushed, pending.length);
       } else {
-        console.warn('[OfflineQueue] upsert error for', tx.id, ':', error.message);
-        await recordRetryFailure(tx.id, error.message);
+        const category = classifyError(error.message);
+        await recordRetryFailure(tx.id, error.message, category);
       }
     } catch (e) {
-      console.warn('[OfflineQueue] flush failed for', tx.id, e);
-      await recordRetryFailure(tx.id, e instanceof Error ? e.message : String(e));
+      const msg = e instanceof Error ? e.message : String(e);
+      await recordRetryFailure(tx.id, msg, classifyError(msg));
     }
   }
   return flushed;
 }
 
+/**
+ * Classify a flush error as 'permanent' or 'transient'.
+ *
+ * Permanent errors will never succeed on retry (auth failure, not-found,
+ * validation).  The entry is dead-lettered immediately.
+ * Transient errors may succeed once connectivity or the server recovers.
+ */
+export function classifyError(msg: string): 'transient' | 'permanent' {
+  const lower = msg.toLowerCase();
+  const permanentSignals = [
+    'forbidden',
+    'authentication required',
+    'not found',
+    'invalid',
+    'permission denied',
+    'unauthorized',
+    'violates',        // DB constraint violations (foreign key, check, etc.)
+  ];
+  if (permanentSignals.some(s => lower.includes(s))) return 'permanent';
+  return 'transient';
+}
+
 /** Update retry metadata with exponential backoff after a flush failure. */
-async function recordRetryFailure(id: string, errorMessage: string): Promise<void> {
+async function recordRetryFailure(
+  id: string,
+  errorMessage: string,
+  category: 'transient' | 'permanent' = 'transient',
+): Promise<void> {
   try {
     const db    = await openDB();
     const txDb  = db.transaction(STORE_TX, 'readwrite');
@@ -239,14 +340,23 @@ async function recordRetryFailure(id: string, errorMessage: string): Promise<voi
       r.onerror   = () => rej(r.error);
     });
     if (item) {
-      const newRetry = (item.retryCount ?? 0) + 1;
-      const backoffMs = BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+      // Permanent errors skip to MAX_RETRIES so the entry is dead-lettered
+      // on the next flush pass and stops consuming retry budget.
+      const newRetry = category === 'permanent'
+        ? MAX_RETRIES
+        : (item.retryCount ?? 0) + 1;
+      const backoffMs = category === 'permanent'
+        ? 0
+        : BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
       await new Promise<void>((res, rej) => {
         const r = store.put({
           ...item,
           retryCount: newRetry,
           lastError: errorMessage,
-          nextRetryAt: new Date(Date.now() + backoffMs).toISOString(),
+          lastErrorCategory: category,
+          nextRetryAt: backoffMs > 0
+            ? new Date(Date.now() + backoffMs).toISOString()
+            : undefined,
         });
         r.onsuccess = () => res();
         r.onerror   = () => rej(r.error);
@@ -254,7 +364,32 @@ async function recordRetryFailure(id: string, errorMessage: string): Promise<voi
     }
     db.close();
   } catch {
-    // Best effort — localStorage entries won't get retry tracking
+    // IDB unavailable — update localStorage fallback with retry/dead-letter metadata
+    try {
+      const raw  = localStorage.getItem('bahati_offline_queue') || '[]';
+      const list = JSON.parse(raw) as Array<Transaction & Partial<QueueMeta>>;
+      const updated = list.map(t => {
+        if (t.id !== id) return t;
+        const newRetry = category === 'permanent'
+          ? MAX_RETRIES
+          : (t.retryCount ?? 0) + 1;
+        const backoffMs = category === 'permanent'
+          ? 0
+          : BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+        return {
+          ...t,
+          retryCount: newRetry,
+          lastError: errorMessage,
+          lastErrorCategory: category,
+          nextRetryAt: backoffMs > 0
+            ? new Date(Date.now() + backoffMs).toISOString()
+            : undefined,
+        };
+      });
+      localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
+    } catch (_) {
+      // Truly best-effort
+    }
   }
 }
 

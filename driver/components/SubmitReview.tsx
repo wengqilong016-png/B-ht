@@ -6,6 +6,7 @@ import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, ge
 import type { AIReviewData } from '../hooks/useCollectionDraft';
 import { createCollectionTransaction } from '../../utils/transactionBuilder';
 import { submitCollectionV2 } from '../../services/collectionSubmissionService';
+import type { CollectionSubmissionInput } from '../../services/collectionSubmissionService';
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
 
@@ -82,6 +83,34 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
     ].filter(Boolean).join(' ') || null;
 
+    // ── Single source of truth for raw collection inputs ─────────────────
+    // Both the online write path and offline replay path use this same shape,
+    // so the server always receives consistent raw inputs regardless of how
+    // the submission reached it (direct or via queue replay).
+    const rawInput: CollectionSubmissionInput = {
+      txId:             draftTxId,
+      locationId:       selectedLocation!.id,
+      driverId:         currentDriver.id,
+      currentScore:     userScore,
+      expenses:         expenseValue,
+      tip:              parseInt(tip) || 0,
+      isOwnerRetaining,
+      // Pass the explicit override if the driver entered one; null means
+      // "let the server fall back to commission rate as retention".
+      ownerRetention:   isOwnerRetaining && ownerRetention !== ''
+                          ? parseInt(ownerRetention) || null
+                          : null,
+      coinExchange:     parseInt(coinExchange) || 0,
+      gps:              resolvedGps.lat === 0 && resolvedGps.lng === 0 ? null : resolvedGps,
+      photoUrl:         photoData || null,
+      aiScore:          recognizedScore ?? null,
+      anomalyFlag:      isAnomaly,
+      notes,
+      expenseType:      expenseValue > 0 ? expenseType : null,
+      expenseCategory:  expenseValue > 0 ? expenseCategory : null,
+      reportedStatus,
+    };
+
     let tx: Transaction;
 
     // ── Server-authoritative write path (online) ─────────────────────────
@@ -90,29 +119,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     // normalized transaction row. The frontend no longer acts as the authority
     // for revenue / commission / netPayable on the write path.
     if (isOnline) {
-      const result = await submitCollectionV2({
-        txId:              draftTxId,
-        locationId:        selectedLocation!.id,
-        driverId:          currentDriver.id,
-        currentScore:      userScore,
-        expenses:          expenseValue,
-        tip:               parseInt(tip) || 0,
-        isOwnerRetaining,
-        // Pass the explicit override if the driver entered one; null means
-        // "let the server fall back to commission rate as retention".
-        ownerRetention:    isOwnerRetaining && ownerRetention !== ''
-                             ? parseInt(ownerRetention) || null
-                             : null,
-        coinExchange:      parseInt(coinExchange) || 0,
-        gps:               resolvedGps.lat === 0 && resolvedGps.lng === 0 ? null : resolvedGps,
-        photoUrl:          photoData || null,
-        aiScore:           recognizedScore ?? null,
-        anomalyFlag:       isAnomaly,
-        notes,
-        expenseType:       expenseValue > 0 ? expenseType : null,
-        expenseCategory:   expenseValue > 0 ? expenseCategory : null,
-        reportedStatus,
-      });
+      const result = await submitCollectionV2(rawInput);
 
       if (result.success) {
         // Server returned the normalized, persisted transaction.
@@ -131,7 +138,9 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
     // ── Offline / fallback write path ─────────────────────────────────────
     // Build the transaction locally using client-computed finance values and
-    // enqueue it for sync once connectivity is restored.
+    // enqueue it for sync once connectivity is restored.  rawInput is stored
+    // alongside so replay routes through submit_collection_v2 (not a blind
+    // upsert of locally-computed finance values).
     tx = createCollectionTransaction(
       selectedLocation!,
       currentDriver,
@@ -160,7 +169,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     tx.aiScore = recognizedScore;
     tx.reportedStatus = reportedStatus;
 
-    try { await enqueueTransaction(tx); } catch (e) { console.warn('[SubmitReview] IDB enqueue failed:', e); }
+    try { await enqueueTransaction(tx, rawInput); } catch (e) { console.warn('[SubmitReview] IDB enqueue failed:', e); }
     onSubmit(tx);
     setStatus('idle');
 
