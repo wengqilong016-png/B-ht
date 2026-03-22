@@ -131,3 +131,103 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 - Credential rotation steps
 - Removing sensitive files from Git history
 - Setting environment variables in CI/CD
+
+---
+
+## Deployment Checklist — Stages 1 through 8.1
+
+Use this checklist when deploying a release that includes any changes from
+stages 1 through 8.1.  Run each step in order.
+
+### Pre-deploy
+
+- [ ] Run `npm run build` locally — confirm zero TypeScript errors.
+- [ ] Run `npm test -- --coverage` — confirm all tests pass and coverage does
+      not regress.
+- [ ] Confirm all required migrations are present in `supabase/migrations/`
+      (see table below).
+- [ ] Confirm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and
+      `VITE_GEMINI_API_KEY` are set in the deployment platform (Vercel /
+      Firebase).
+- [ ] Check [status.supabase.com](https://status.supabase.com) — no active
+      incidents.
+
+### Migration verification
+
+| Stage | Migration file | Key objects created |
+|-------|---------------|---------------------|
+| 1/2 | `20260322073000_calculate_finance_v2.sql` | `calculate_finance_v2()` function |
+| 2   | `20260322090000_submit_collection_v2.sql` | `submit_collection_v2()` function |
+| 6   | `20260322150000_fleet_queue_snapshots.sql` | `queue_health_reports` table |
+| 8   | `20260322200000_health_alerts.sql` | `health_alerts` table, `generate_health_alerts()` function |
+| 8.1 | `20260322200001_health_alerts_harden.sql` | RLS hardening, index improvements |
+
+Confirm each migration is applied:
+
+```sql
+SELECT version, name, executed_at
+FROM supabase_migrations.schema_migrations
+ORDER BY executed_at DESC
+LIMIT 10;
+```
+
+### Post-deploy verification
+
+**Finance preview (Stage 1/2)**
+- [ ] Open the Collect form, enter a score above `lastScore` for any site.
+- [ ] Confirm the finance summary updates in real time (server preview path).
+- [ ] Toggle offline (DevTools → Network → Offline) — summary should still
+      update using the local fallback.
+
+**Server-authoritative write path (Stage 2)**
+- [ ] Submit a test collection as a driver.
+- [ ] Confirm the transaction appears in Admin → History with
+      `isSynced: true`.
+- [ ] Verify `source = 'server'` on the transaction record in Supabase.
+
+**Offline queue and replay (Stage 3)**
+- [ ] Set DevTools → Offline, submit a collection.
+- [ ] Confirm Admin → Local Queue Diagnostics shows the item as pending.
+- [ ] Restore network.  Within 20 seconds the item should sync and disappear
+      from the queue.
+
+**Fleet-wide diagnostics (Stage 6)**
+- [ ] Open Admin → Fleet-Wide Diagnostics.
+- [ ] Confirm the active driver list is visible and no snapshots are stale.
+- [ ] Run: `SELECT COUNT(*) FROM queue_health_reports;` — expect > 0 rows.
+
+**Health alerts (Stage 8 / 8.1)**
+- [ ] Open Admin → Health Alerts.
+- [ ] Confirm the panel loads without errors.
+- [ ] Run `SELECT generate_health_alerts();` in SQL Editor to verify the
+      function exists and executes without error.
+- [ ] Confirm pg_cron job `generate_health_alerts` is scheduled:
+
+```sql
+SELECT jobname, schedule, command, active
+FROM cron.job
+WHERE jobname = 'generate_health_alerts';
+```
+
+### Rollback
+
+If any post-deploy check fails:
+
+1. Revert the deployment to the previous build in the hosting platform.
+2. Run `supabase db push --dry-run` to inspect what would be rolled back.
+3. Manually revert only the specific migration that introduced the issue;
+   do not roll back migrations that older features depend on.
+4. Open an incident in the team channel with the failing check and the
+   relevant Supabase log output.
+
+---
+
+## Operator Runbook
+
+See [docs/RUNBOOK.md](docs/RUNBOOK.md) for:
+
+- Daily operations checklist
+- Stage-by-stage verification procedures
+- Manual replay instructions for dead-letter items
+- Common troubleshooting scenarios
+- Escalation and contact matrix
