@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, Wallet } from 'lucide-react';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
+import { createPayoutRequestTransaction } from '../../utils/transactionBuilder';
 
 interface PayoutRequestProps {
   location: Location;
@@ -32,26 +33,18 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
       return;
     }
 
-    const gps = gpsCoords || { lat: 0, lng: 0 };
-    const tx: Transaction = {
-      id: `PAY-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      locationId: location.id,
-      locationName: location.name,
-      driverId: currentDriver.id,
-      driverName: currentDriver.name,
-      previousScore: location.lastScore,
-      currentScore: location.lastScore,
-      revenue: 0, commission: 0, ownerRetention: 0,
-      debtDeduction: 0, startupDebtDeduction: 0,
-      expenses: 0, coinExchange: 0, extraIncome: 0,
-      netPayable: 0,
-      gps, dataUsageKB: 40, isSynced: false,
-      type: 'payout_request',
-      approvalStatus: 'pending',
-      payoutAmount: parsedPayoutAmount,
-      notes: lang === 'zh' ? `店主分红提现: TZS ${parsedPayoutAmount.toLocaleString()}` : `Owner dividend payout: TZS ${parsedPayoutAmount.toLocaleString()}`
-    };
+    const notes = lang === 'zh'
+      ? `店主分红提现: TZS ${parsedPayoutAmount.toLocaleString()}`
+      : `Owner dividend payout: TZS ${parsedPayoutAmount.toLocaleString()}`;
+
+    const tx = createPayoutRequestTransaction(
+      location,
+      currentDriver,
+      gpsCoords,
+      parsedPayoutAmount,
+      notes
+    );
+
     onSubmit(tx);
     alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
   };

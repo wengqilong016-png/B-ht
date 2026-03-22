@@ -1,0 +1,149 @@
+import { Transaction, Location, Driver } from '../types';
+
+/**
+ * Common fields shared across all transaction types
+ */
+interface BaseTransactionFields {
+  locationId: string;
+  locationName: string;
+  driverId: string;
+  driverName: string;
+  previousScore: number;
+  currentScore: number;
+  gps: { lat: number; lng: number };
+  isSynced: boolean;
+}
+
+/**
+ * Creates base transaction fields from location and driver data
+ */
+function createBaseTransaction(
+  location: Location,
+  driver: Driver,
+  gpsCoords: { lat: number; lng: number } | null
+): BaseTransactionFields {
+  return {
+    locationId: location.id,
+    locationName: location.name,
+    driverId: driver.id,
+    driverName: driver.name,
+    previousScore: location.lastScore,
+    currentScore: location.lastScore,
+    gps: gpsCoords || { lat: 0, lng: 0 },
+    isSynced: false,
+  };
+}
+
+/**
+ * Creates default financial fields for transactions
+ */
+function createDefaultFinancials() {
+  return {
+    revenue: 0,
+    commission: 0,
+    ownerRetention: 0,
+    debtDeduction: 0,
+    startupDebtDeduction: 0,
+    expenses: 0,
+    coinExchange: 0,
+    extraIncome: 0,
+    netPayable: 0,
+  };
+}
+
+/**
+ * Creates a payout request transaction
+ */
+export function createPayoutRequestTransaction(
+  location: Location,
+  driver: Driver,
+  gpsCoords: { lat: number; lng: number } | null,
+  payoutAmount: number,
+  notes: string
+): Transaction {
+  return {
+    id: `PAY-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    ...createBaseTransaction(location, driver, gpsCoords),
+    ...createDefaultFinancials(),
+    dataUsageKB: 40,
+    type: 'payout_request',
+    approvalStatus: 'pending',
+    payoutAmount,
+    notes,
+  };
+}
+
+/**
+ * Creates a reset request transaction
+ */
+export function createResetRequestTransaction(
+  location: Location,
+  driver: Driver,
+  gpsCoords: { lat: number; lng: number } | null,
+  photoUrl: string,
+  notes: string
+): Transaction {
+  return {
+    id: `RST-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    ...createBaseTransaction(location, driver, gpsCoords),
+    ...createDefaultFinancials(),
+    photoUrl,
+    dataUsageKB: 80,
+    type: 'reset_request',
+    approvalStatus: 'pending',
+    notes,
+  };
+}
+
+/**
+ * Creates a collection transaction
+ */
+export function createCollectionTransaction(
+  location: Location,
+  driver: Driver,
+  gpsCoords: { lat: number; lng: number } | null,
+  currentScore: number,
+  options: {
+    txId?: string;
+    revenue?: number;
+    commission?: number;
+    ownerRetention?: number;
+    debtDeduction?: number;
+    startupDebtDeduction?: number;
+    expenses?: number;
+    coinExchange?: number;
+    extraIncome?: number;
+    netPayable?: number;
+    photoUrl?: string;
+    dataUsageKB?: number;
+    notes?: string;
+    anomalyFlag?: boolean;
+  } = {}
+): Transaction {
+  const base = createBaseTransaction(location, driver, gpsCoords);
+  const financials = createDefaultFinancials();
+
+  return {
+    id: options.txId || `TX-${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    ...base,
+    currentScore,
+    revenue: options.revenue ?? financials.revenue,
+    commission: options.commission ?? financials.commission,
+    ownerRetention: options.ownerRetention ?? financials.ownerRetention,
+    debtDeduction: options.debtDeduction ?? financials.debtDeduction,
+    startupDebtDeduction: options.startupDebtDeduction ?? financials.startupDebtDeduction,
+    expenses: options.expenses ?? financials.expenses,
+    coinExchange: options.coinExchange ?? financials.coinExchange,
+    extraIncome: options.extraIncome ?? financials.extraIncome,
+    netPayable: options.netPayable ?? financials.netPayable,
+    photoUrl: options.photoUrl,
+    dataUsageKB: options.dataUsageKB ?? 100,
+    type: 'collection',
+    approvalStatus: 'approved',
+    notes: options.notes,
+    anomalyFlag: options.anomalyFlag,
+  };
+}

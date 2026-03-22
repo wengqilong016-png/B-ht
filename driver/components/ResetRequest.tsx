@@ -2,6 +2,7 @@ import React, { useRef, useState } from 'react';
 import { ArrowRight, RefreshCw, Camera, CheckCircle2 } from 'lucide-react';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
+import { createResetRequestTransaction } from '../../utils/transactionBuilder';
 
 interface ResetRequestProps {
   location: Location;
@@ -37,26 +38,15 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
       return;
     }
 
-    const gps = gpsCoords || { lat: 0, lng: 0 };
-    const tx: Transaction = {
-      id: `RST-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      locationId: location.id,
-      locationName: location.name,
-      driverId: currentDriver.id,
-      driverName: currentDriver.name,
-      previousScore: location.lastScore,
-      currentScore: location.lastScore,
-      revenue: 0, commission: 0, ownerRetention: 0,
-      debtDeduction: 0, startupDebtDeduction: 0,
-      expenses: 0, coinExchange: 0, extraIncome: 0,
-      netPayable: 0,
-      gps, photoUrl: resetPhotoData,
-      dataUsageKB: 80, isSynced: false,
-      type: 'reset_request',
-      approvalStatus: 'pending',
-      notes: lang === 'zh' ? '9999爆机重置申请' : '9999 overflow reset request'
-    };
+    const notes = lang === 'zh' ? '9999爆机重置申请' : '9999 overflow reset request';
+    const tx = createResetRequestTransaction(
+      location,
+      currentDriver,
+      gpsCoords,
+      resetPhotoData,
+      notes
+    );
+
     onSubmit(tx);
     alert(lang === 'zh' ? '✅ 重置申请已提交，等待老板审批' : '✅ Reset request submitted, awaiting approval');
   };
