@@ -276,6 +276,7 @@ describe('replayDeadLetterItem — collection replay (rawInput present)', () => 
     expect(entry?.isSynced).toBe(false);
     expect(entry?.retryCount).toBe(MAX_RETRIES); // dead-letter state preserved
     expect(entry?.lastError).toBe('Network request failed');
+    expect(entry?.lastErrorCategory).toBe('transient');
   });
 
   it('rejects collection replay when submitCollection callback is not supplied', async () => {
@@ -345,5 +346,6 @@ describe('replayDeadLetterItem — direct upsert fallback (no rawInput)', () => 
     expect(entry?.isSynced).toBe(false);
     expect(entry?.retryCount).toBe(MAX_RETRIES);
     expect(entry?.lastError).toBe('Service Unavailable');
+    expect(entry?.lastErrorCategory).toBe('transient');
   });
 });

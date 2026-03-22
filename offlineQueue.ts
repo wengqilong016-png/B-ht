@@ -618,7 +618,7 @@ export async function replayDeadLetterItem(
         // Cast to narrow the union: TypeScript's control flow narrowing is not
         // reliably applied to discriminated unions in this project's tsconfig.
         const failureResult = result as { success: false; error: string };
-        await _updateDeadLetterError(id, failureResult.error);
+        await _updateDeadLetterError(id, failureResult.error, classifyError(failureResult.error));
         return { success: false, error: failureResult.error };
       }
     }
@@ -632,20 +632,25 @@ export async function replayDeadLetterItem(
       return { success: true };
     }
 
-    await _updateDeadLetterError(id, error.message);
+    await _updateDeadLetterError(id, error.message, classifyError(error.message));
     return { success: false, error: error.message };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
-    await _updateDeadLetterError(id, msg);
+    await _updateDeadLetterError(id, msg, classifyError(msg));
     return { success: false, error: msg };
   }
 }
 
 /**
- * Update the lastError field of a dead-letter entry without changing its
- * retryCount (keeps it in dead-letter state after a failed manual replay).
+ * Update the lastError and lastErrorCategory fields of a dead-letter entry
+ * without changing its retryCount (keeps it in dead-letter state after a
+ * failed manual replay).
  */
-async function _updateDeadLetterError(id: string, errorMessage: string): Promise<void> {
+async function _updateDeadLetterError(
+  id: string,
+  errorMessage: string,
+  errorCategory: 'transient' | 'permanent',
+): Promise<void> {
   try {
     const db    = await openDB();
     const txDb  = db.transaction(STORE_TX, 'readwrite');
@@ -657,7 +662,7 @@ async function _updateDeadLetterError(id: string, errorMessage: string): Promise
     });
     if (item) {
       await new Promise<void>((res, rej) => {
-        const r = store.put({ ...item, lastError: errorMessage });
+        const r = store.put({ ...item, lastError: errorMessage, lastErrorCategory: errorCategory });
         r.onsuccess = () => res();
         r.onerror   = () => rej(r.error);
       });
@@ -667,7 +672,9 @@ async function _updateDeadLetterError(id: string, errorMessage: string): Promise
     try {
       const raw  = localStorage.getItem('bahati_offline_queue') || '[]';
       const list = JSON.parse(raw) as Array<Transaction & Partial<QueueMeta>>;
-      const updated = list.map(t => t.id === id ? { ...t, lastError: errorMessage } : t);
+      const updated = list.map(t =>
+        t.id === id ? { ...t, lastError: errorMessage, lastErrorCategory: errorCategory } : t,
+      );
       localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
     } catch (_) {
       // Truly best-effort
