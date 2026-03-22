@@ -100,7 +100,7 @@ const App: React.FC = () => {
     updateTransaction,
     saveSettlement,
     logAI
-  } = useSupabaseMutations(isOnline);
+  } = useSupabaseMutations(isOnline, currentUser);
 
   const unsyncedCount = useMemo(
     () =>

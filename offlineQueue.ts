@@ -12,7 +12,7 @@
  *   - Retry-aware: exponential backoff with dead-letter visibility
  */
 
-import { Transaction } from './types';
+import { Transaction, safeRandomUUID } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
 
@@ -679,6 +679,108 @@ async function _updateDeadLetterError(
     } catch (_) {
       // Truly best-effort
     }
+  }
+}
+
+// ── Fleet-wide queue health reporting ────────────────────────────────────────
+
+const DEVICE_ID_KEY = 'bahati_device_id';
+
+/**
+ * Returns a stable per-device identifier persisted in localStorage.
+ * A new UUID is generated on first call and reused on subsequent visits.
+ */
+export function getOrCreateDeviceId(): string {
+  try {
+    let id = localStorage.getItem(DEVICE_ID_KEY);
+    if (!id) {
+      id = safeRandomUUID();
+      localStorage.setItem(DEVICE_ID_KEY, id);
+    }
+    return id;
+  } catch {
+    // In environments without localStorage (e.g. tests with no storage) fall back
+    // to a session-scoped value.
+    return `ephemeral-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+/**
+ * Dead-letter item summary stored inside queue_health_reports.dead_letter_items.
+ * Contains only the fields needed for admin visibility — no raw user data.
+ */
+export interface DeadLetterSummaryItem {
+  txId: string;
+  operationId?: string;
+  lastError?: string;
+  lastErrorCategory?: 'transient' | 'permanent';
+  retryCount: number;
+  locationId: string;
+  locationName?: string;
+  queuedAt?: string;
+}
+
+/**
+ * Reports the current local queue health to Supabase so admins can view
+ * fleet-wide aggregated diagnostics without accessing each device directly.
+ *
+ * Upserts one row per `(deviceId, driverId)` pair into `queue_health_reports`.
+ * Safe to call fire-and-forget after every successful flush; errors are logged
+ * but never re-thrown to avoid disrupting the sync path.
+ *
+ * @param supabaseClient  Authenticated Supabase client.
+ * @param driverId        The driver whose queue is being reported.
+ * @param driverName      Human-readable name for admin display.
+ * @param deviceId        Optional stable device ID; auto-created when omitted.
+ */
+export async function reportQueueHealthToServer(
+  supabaseClient: SupabaseClient,
+  driverId: string,
+  driverName: string,
+  deviceId?: string,
+): Promise<void> {
+  try {
+    const id = deviceId ?? getOrCreateDeviceId();
+    const [summary, deadItems] = await Promise.all([
+      getQueueHealthSummary(),
+      getDeadLetterItems(),
+    ]);
+
+    const deadLetterItems: DeadLetterSummaryItem[] = deadItems.map((tx) => {
+      const meta = tx as Transaction & Partial<QueueMeta>;
+      return {
+        txId: tx.id,
+        operationId: meta.operationId,
+        lastError: meta.lastError,
+        lastErrorCategory: meta.lastErrorCategory,
+        retryCount: meta.retryCount ?? 0,
+        locationId: tx.locationId,
+        locationName: tx.locationName,
+        queuedAt: meta._queuedAt,
+      };
+    });
+
+    const row = {
+      id: `${id}--${driverId}`,
+      device_id: id,
+      driver_id: driverId,
+      driver_name: driverName,
+      pending_count: summary.pending,
+      retry_waiting_count: summary.retryWaiting,
+      dead_letter_count: summary.deadLetter,
+      dead_letter_items: deadLetterItems,
+      reported_at: new Date().toISOString(),
+    };
+
+    const { error } = await supabaseClient
+      .from('queue_health_reports')
+      .upsert(row, { onConflict: 'id' });
+
+    if (error) {
+      console.warn('[reportQueueHealthToServer] Upsert failed:', error.message);
+    }
+  } catch (err) {
+    console.warn('[reportQueueHealthToServer] Unexpected error:', err);
   }
 }
 

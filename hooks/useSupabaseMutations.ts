@@ -1,11 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
 import { localDB } from '../services/localDB';
-import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
-import { flushQueue } from '../offlineQueue';
+import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog, User } from '../types';
+import { flushQueue, reportQueueHealthToServer } from '../offlineQueue';
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
 
-export function useSupabaseMutations(isOnline: boolean) {
+export function useSupabaseMutations(isOnline: boolean, currentUser?: User | null) {
   const queryClient = useQueryClient();
 
   const syncOfflineData = useMutation({
@@ -15,6 +15,10 @@ export function useSupabaseMutations(isOnline: boolean) {
       // 1. Flush offline queue (IndexedDB)
       try {
         await flushQueue(supabase, { submitCollection: submitCollectionV2 });
+        // Report queue health for fleet-wide diagnostics (driver devices only).
+        if (currentUser?.role === 'driver' && currentUser.driverId) {
+          reportQueueHealthToServer(supabase, currentUser.driverId, currentUser.name).catch(() => {});
+        }
       } catch (e) {
         console.warn('[Sync] OfflineQueue flush error:', e);
       }
