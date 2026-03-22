@@ -100,6 +100,30 @@ database within seconds.
 > each pull request independently, so migrations are verified against a preview
 > environment before hitting production.
 
+## Supabase Authentication Settings (Production)
+
+After deploying, manually sync the following settings in **Supabase Dashboard → Authentication → Settings**:
+
+| Setting | Value | Reason |
+|---|---|---|
+| **JWT Expiry** | `604800` (7 days) | Prevents frequent logouts for drivers and admins on slow networks |
+| **Refresh Token Reuse Interval** | `60` seconds | Tolerates brief network interruptions without invalidating sessions |
+
+> ⚠️ `supabase/config.toml` only controls the local development environment. Production JWT expiry **must** be set manually in the Supabase Dashboard — it does not update automatically from `config.toml`.
+
+To verify the production settings are applied, log in to Supabase Dashboard → **Authentication → Settings** and confirm **JWT Expiry** shows `604800`.
+
+### Disable Force-Password-Change (one-time)
+
+If users are being prompted to change their password on every login, run the following in **Supabase Dashboard → SQL Editor**:
+
+```sql
+-- scripts/disable_force_password_change.sql
+UPDATE public.profiles SET must_change_password = FALSE;
+```
+
+This script is also saved at `scripts/disable_force_password_change.sql` for reference.
+
 ## Security
 
 See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:

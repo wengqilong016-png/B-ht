@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 import { withTimeout } from '../utils/timeout';
 
 /** Maximum ms to wait for a Supabase Auth mutation (updateUser, etc.). */
-const AUTH_MUTATION_TIMEOUT_MS = 15_000;
+const AUTH_MUTATION_TIMEOUT_MS = 30_000;
 
 type UserProfileRow = {
   role: string;
