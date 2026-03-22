@@ -129,6 +129,30 @@ const App: React.FC = () => {
       : drivers.filter(d => d.id === activeDriverId),
   }), [activeDriverId, currentUser, locations, transactions, dailySettlements, drivers]);
 
+  // ─── useMemo hooks must always run before any early returns ──────
+  const authValue = useMemo(
+    () => ({ currentUser, userRole: currentUser?.role ?? 'driver', lang, setLang, handleLogout, activeDriverId }),
+    [currentUser, lang, setLang, handleLogout, activeDriverId]
+  );
+
+  const dataValue = useMemo(
+    () => ({
+      isOnline,
+      locations, drivers, transactions, dailySettlements, aiLogs,
+      filteredLocations: filteredData.locations,
+      filteredDrivers: filteredData.drivers,
+      filteredTransactions: filteredData.transactions,
+      filteredSettlements: filteredData.dailySettlements,
+      unsyncedCount,
+    }),
+    [isOnline, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
+  );
+
+  const mutationValue = useMemo(
+    () => ({ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }),
+    [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
+  );
+
   // ─── Loading / Login screens ─────────────────────────────────────
   if (isInitializing || (isDataLoading && !currentUser)) {
     return (
@@ -157,28 +181,6 @@ const App: React.FC = () => {
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
-  const authValue = useMemo(
-    () => ({ currentUser, userRole: currentUser.role, lang, setLang, handleLogout, activeDriverId }),
-    [currentUser, lang, setLang, handleLogout, activeDriverId]
-  );
-
-  const dataValue = useMemo(
-    () => ({
-      isOnline,
-      locations, drivers, transactions, dailySettlements, aiLogs,
-      filteredLocations: filteredData.locations,
-      filteredDrivers: filteredData.drivers,
-      filteredTransactions: filteredData.transactions,
-      filteredSettlements: filteredData.dailySettlements,
-      unsyncedCount,
-    }),
-    [isOnline, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
-  );
-
-  const mutationValue = useMemo(
-    () => ({ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }),
-    [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
-  );
 
   return (
     <NotificationProvider>
