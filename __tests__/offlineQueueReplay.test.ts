@@ -6,7 +6,7 @@
  *   - Duplicate txId replay (server returns persisted row) is treated as success
  *   - Permanent errors dead-letter entries immediately
  *   - Transient errors apply exponential backoff
- *   - Entries without rawInput fall back to direct upsert
+ *   - Collection entries with rawInput without a submitCollection callback are dead-lettered
  *   - classifyError correctly categorizes error messages
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
@@ -139,7 +139,7 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
       transaction: { ...tx, isSynced: true } as any,
       source: 'server',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(successResult);
 
     const flushed = await flushQueue(makeSupabaseStub(), { submitCollection });
@@ -172,7 +172,7 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
       transaction: persistedRow as any,
       source: 'server',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(duplicateResult);
 
     const flushed = await flushQueue(makeSupabaseStub(), { submitCollection });
@@ -180,11 +180,15 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
     // Must be treated as success even though finance values differ
     expect(flushed).toBe(1);
     const all = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
-    expect(all.find((t: any) => t.id === tx.id)?.isSynced).toBe(true);
+    const stored = all.find((t: any) => t.id === tx.id);
+    expect(stored?.isSynced).toBe(true);
+    // Authoritative server values must be written back to the stored entry
+    expect(stored?.revenue).toBe(18000);
+    expect(stored?.netPayable).toBe(15000);
   });
 
-  it('falls back to direct upsert when no submitCollection is provided', async () => {
-    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+  it('dead-letters a collection entry (does not upsert) when submitCollection callback is absent', async () => {
+    const { enqueueTransaction, flushQueue, getDeadLetterItems } = await import('../offlineQueue');
 
     const tx = makeTx();
     const rawInput = makeRawInput(tx.id);
@@ -193,11 +197,14 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
     const upsertMock = jest.fn().mockResolvedValue({ error: null });
     const supabase = { from: () => ({ upsert: upsertMock }) } as any;
 
-    // No submitCollection option → should fall back to upsert
+    // No submitCollection option → collection entry must NOT fall back to a direct upsert
     const flushed = await flushQueue(supabase);
 
-    expect(flushed).toBe(1);
-    expect(upsertMock).toHaveBeenCalledTimes(1);
+    expect(flushed).toBe(0);
+    expect(upsertMock).not.toHaveBeenCalled();
+    // Entry is dead-lettered immediately (permanent failure)
+    const deadLetters = await getDeadLetterItems();
+    expect(deadLetters.some(d => d.id === tx.id)).toBe(true);
   });
 
   it('falls back to direct upsert for entries without rawInput', async () => {
@@ -209,11 +216,11 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
 
     const upsertMock = jest.fn().mockResolvedValue({ error: null });
     const supabase = { from: () => ({ upsert: upsertMock }) } as any;
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>();
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>();
 
     const flushed = await flushQueue(supabase, { submitCollection });
 
-    // submitCollection must NOT be called; direct upsert handles it
+    // submitCollection must NOT be called; direct upsert handles non-collection entries
     expect(submitCollection).not.toHaveBeenCalled();
     expect(upsertMock).toHaveBeenCalledTimes(1);
     expect(flushed).toBe(1);
@@ -232,7 +239,7 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
       transaction: {} as any,
       source: 'server',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(successResult);
     const onProgress = jest.fn();
 
@@ -258,7 +265,7 @@ describe('flushQueue — error categorization', () => {
       success: false,
       error: 'Location not found: loc-1',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(permanentError);
 
     await flushQueue(makeSupabaseStub(), { submitCollection });
@@ -279,7 +286,7 @@ describe('flushQueue — error categorization', () => {
       success: false,
       error: 'Network request failed',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(transientError);
 
     await flushQueue(makeSupabaseStub(), { submitCollection });
@@ -306,7 +313,7 @@ describe('flushQueue — error categorization', () => {
     all[0].retryCount = 5; // MAX_RETRIES
     localStorage.setItem('bahati_offline_queue', JSON.stringify(all));
 
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>();
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>();
     const flushed = await flushQueue(makeSupabaseStub(), { submitCollection });
 
     // Dead-letter entries must not be replayed
@@ -338,7 +345,7 @@ describe('offline-to-online transition', () => {
       transaction: {} as any,
       source: 'server',
     };
-    const submitCollection = jest.fn<() => Promise<CollectionSubmissionResult>>()
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
       .mockResolvedValue(successResult);
 
     const flushed = await flushQueue(makeSupabaseStub(), { submitCollection });
