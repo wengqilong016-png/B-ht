@@ -4,6 +4,7 @@ import WizardStepBar from './WizardStepBar';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS } from '../../types';
 import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../../offlineQueue';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
+import { createCollectionTransaction } from '../../utils/transactionBuilder';
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
 
@@ -70,38 +71,39 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     const recognizedScore = aiReviewData?.score ? parseInt(aiReviewData.score) : undefined;
     const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
 
-    const tx: Transaction = {
-      id: draftTxId || `TX-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      locationId: selectedLocation!.id,
-      locationName: selectedLocation!.name,
-      driverId: currentDriver.id,
-      driverName: currentDriver.name,
-      previousScore: selectedLocation!.lastScore,
-      currentScore: userScore,
-      revenue: calculations.revenue,
-      commission: calculations.commission,
-      ownerRetention: calculations.finalRetention,
-      debtDeduction: 0, startupDebtDeduction: 0,
-      expenses: expenseValue,
-      expenseType: expenseValue > 0 ? expenseType : undefined,
-      expenseCategory: expenseValue > 0 ? expenseCategory : undefined,
-      expenseStatus: expenseValue > 0 ? 'pending' : undefined,
-      coinExchange: parseInt(coinExchange) || 0, extraIncome: 0,
-      netPayable: calculations.netPayable,
-      gps: resolvedGps,
-      photoUrl: photoData || undefined,
-      dataUsageKB: 120, isSynced: false,
-      paymentStatus: 'paid',
-      aiScore: recognizedScore,
-      isAnomaly: isAnomaly,
-      reportedStatus: (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any,
-      notes: [
-        aiReviewData?.notes,
-        parseInt(tip) > 0 ? `[Tip: TZS ${parseInt(tip).toLocaleString()}]` : null,
-        gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
-      ].filter(Boolean).join(' ') || undefined
-    };
+    const notes = [
+      aiReviewData?.notes,
+      parseInt(tip) > 0 ? `[Tip: TZS ${parseInt(tip).toLocaleString()}]` : null,
+      gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
+    ].filter(Boolean).join(' ') || undefined;
+
+    const tx = createCollectionTransaction(
+      selectedLocation!,
+      currentDriver,
+      resolvedGps,
+      userScore,
+      {
+        txId: draftTxId,
+        revenue: calculations.revenue,
+        commission: calculations.commission,
+        ownerRetention: calculations.finalRetention,
+        expenses: expenseValue,
+        coinExchange: parseInt(coinExchange) || 0,
+        netPayable: calculations.netPayable,
+        photoUrl: photoData || undefined,
+        dataUsageKB: 120,
+        notes,
+        anomalyFlag: isAnomaly,
+      }
+    );
+
+    // Override some collection-specific fields not handled by builder
+    tx.expenseType = expenseValue > 0 ? expenseType : undefined;
+    tx.expenseCategory = expenseValue > 0 ? expenseCategory : undefined;
+    tx.expenseStatus = expenseValue > 0 ? 'pending' : undefined;
+    tx.paymentStatus = 'paid';
+    tx.aiScore = recognizedScore;
+    tx.reportedStatus = (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any;
 
     try { await enqueueTransaction(tx); } catch (e) { console.warn('[SubmitReview] IDB enqueue failed:', e); }
     onSubmit(tx);
