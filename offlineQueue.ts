@@ -318,8 +318,7 @@ export function classifyError(msg: string): 'transient' | 'permanent' {
     'invalid',
     'permission denied',
     'unauthorized',
-    'violates',        // DB constraint violations
-    'duplicate',       // unexpected duplicate outside idempotency flow
+    'violates',        // DB constraint violations (foreign key, check, etc.)
   ];
   if (permanentSignals.some(s => lower.includes(s))) return 'permanent';
   return 'transient';

@@ -147,8 +147,9 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
     expect(flushed).toBe(1);
     expect(submitCollection).toHaveBeenCalledTimes(1);
     // The callback receives the original raw inputs, not the local transaction
-    expect((submitCollection.mock.calls[0] as [CollectionSubmissionInput])[0].txId).toBe(tx.id);
-    expect((submitCollection.mock.calls[0] as [CollectionSubmissionInput])[0].currentScore).toBe(200);
+    const callArg = (submitCollection.mock.calls[0] as [CollectionSubmissionInput])[0];
+    expect(callArg.txId).toBe(tx.id);
+    expect(callArg.currentScore).toBe(200);
 
     // Entry should now be marked synced
     const all = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
