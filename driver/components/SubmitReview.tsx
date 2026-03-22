@@ -5,6 +5,7 @@ import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS } from '../../ty
 import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../../offlineQueue';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
 import { createCollectionTransaction } from '../../utils/transactionBuilder';
+import { submitCollectionV2 } from '../../services/collectionSubmissionService';
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
 
@@ -24,6 +25,9 @@ interface SubmitReviewProps {
   draftTxId: string;
   gpsCoords: { lat: number; lng: number } | null;
   gpsPermission: 'prompt' | 'granted' | 'denied';
+  /** Raw owner-retention inputs — forwarded to the server write path as-is. */
+  isOwnerRetaining: boolean;
+  ownerRetention: string;
   calculations: {
     diff: number;
     revenue: number;
@@ -43,7 +47,7 @@ interface SubmitReviewProps {
 const SubmitReview: React.FC<SubmitReviewProps> = ({
   selectedLocation, currentDriver, lang, isOnline, currentScore, photoData,
   aiReviewData, expenses, expenseType, expenseCategory, coinExchange, tip, draftTxId,
-  gpsCoords, gpsPermission, calculations,
+  gpsCoords, gpsPermission, isOwnerRetaining, ownerRetention, calculations,
   onSubmit, onBack, onReset, onUpdateGps, onUpdateGpsPermission,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -70,14 +74,65 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     const userScore = parseInt(currentScore) || (selectedLocation?.lastScore || 0);
     const recognizedScore = aiReviewData?.score ? parseInt(aiReviewData.score) : undefined;
     const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
+    const reportedStatus = (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as 'active' | 'maintenance' | 'broken';
 
     const notes = [
       aiReviewData?.notes,
       parseInt(tip) > 0 ? `[Tip: TZS ${parseInt(tip).toLocaleString()}]` : null,
       gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
-    ].filter(Boolean).join(' ') || undefined;
+    ].filter(Boolean).join(' ') || null;
 
-    const tx = createCollectionTransaction(
+    let tx: Transaction;
+
+    // ── Server-authoritative write path (online) ─────────────────────────
+    // When online, delegate finance computation and persistence to the server.
+    // The server recomputes all finance fields from raw inputs and returns the
+    // normalized transaction row. The frontend no longer acts as the authority
+    // for revenue / commission / netPayable on the write path.
+    if (isOnline) {
+      const result = await submitCollectionV2({
+        txId:              draftTxId,
+        locationId:        selectedLocation!.id,
+        driverId:          currentDriver.id,
+        currentScore:      userScore,
+        expenses:          expenseValue,
+        tip:               parseInt(tip) || 0,
+        isOwnerRetaining,
+        // Pass the explicit override if the driver entered one; null means
+        // "let the server fall back to commission rate as retention".
+        ownerRetention:    isOwnerRetaining && ownerRetention !== ''
+                             ? parseInt(ownerRetention) || null
+                             : null,
+        coinExchange:      parseInt(coinExchange) || 0,
+        gps:               resolvedGps.lat === 0 && resolvedGps.lng === 0 ? null : resolvedGps,
+        photoUrl:          photoData || null,
+        aiScore:           recognizedScore ?? null,
+        anomalyFlag:       isAnomaly,
+        notes,
+        expenseType:       expenseValue > 0 ? expenseType : null,
+        expenseCategory:   expenseValue > 0 ? expenseCategory : null,
+        reportedStatus,
+      });
+
+      if (result.success) {
+        // Server returned the normalized, persisted transaction.
+        tx = result.transaction;
+        onSubmit(tx);
+        setStatus('idle');
+        alert(lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
+        onReset();
+        return;
+      }
+
+      // Server call failed while online — fall through to local path with a
+      // warning so the driver's work is never lost.
+      console.warn('[SubmitReview] submit_collection_v2 failed, falling back to local path:', result.error);
+    }
+
+    // ── Offline / fallback write path ─────────────────────────────────────
+    // Build the transaction locally using client-computed finance values and
+    // enqueue it for sync once connectivity is restored.
+    tx = createCollectionTransaction(
       selectedLocation!,
       currentDriver,
       resolvedGps,
@@ -92,26 +147,26 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         netPayable: calculations.netPayable,
         photoUrl: photoData || undefined,
         dataUsageKB: 120,
-        notes,
+        notes: notes || undefined,
         anomalyFlag: isAnomaly,
       }
     );
 
-    // Override some collection-specific fields not handled by builder
+    // Override collection-specific fields not handled by builder
     tx.expenseType = expenseValue > 0 ? expenseType : undefined;
     tx.expenseCategory = expenseValue > 0 ? expenseCategory : undefined;
     tx.expenseStatus = expenseValue > 0 ? 'pending' : undefined;
     tx.paymentStatus = 'paid';
     tx.aiScore = recognizedScore;
-    tx.reportedStatus = (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as any;
+    tx.reportedStatus = reportedStatus;
 
     try { await enqueueTransaction(tx); } catch (e) { console.warn('[SubmitReview] IDB enqueue failed:', e); }
     onSubmit(tx);
     setStatus('idle');
 
-    const savedMsg = !isOnline
-      ? (lang === 'zh' ? '✅ 离线已保存！恢复网络后自动上传。' : '✅ Saved offline! Will auto-upload when connected.')
-      : (lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
+    const savedMsg = lang === 'zh'
+      ? '✅ 离线已保存！恢复网络后自动上传。'
+      : '✅ Saved offline! Will auto-upload when connected.';
     alert(savedMsg);
     onReset();
   };

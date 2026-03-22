@@ -262,6 +262,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       draftTxId={draft.draftTxId}
       gpsCoords={draft.gpsCoords}
       gpsPermission={draft.gpsPermission}
+      isOwnerRetaining={draft.isOwnerRetaining}
+      ownerRetention={draft.ownerRetention}
       calculations={financeResult}
       onSubmit={onSubmit}
       onBack={() => setStep('amounts')}
