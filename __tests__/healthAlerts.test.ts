@@ -23,9 +23,10 @@
  *     - High-pending alert does NOT fire at exactly HIGH_PENDING_THRESHOLD (requires >)
  */
 
-import { describe, it, expect } from '@jest/globals';
+import { describe, it, expect, jest } from '@jest/globals';
 import {
   generateAlertsFromSnapshots,
+  fetchPersistedAlerts,
   DEAD_LETTER_ALERT_THRESHOLD,
   HIGH_RETRY_WAITING_THRESHOLD,
   HIGH_PENDING_THRESHOLD,
@@ -227,5 +228,108 @@ describe('generateAlertsFromSnapshots', () => {
     const ts = new Date(alerts[0].detectedAt).getTime();
     expect(ts).toBeGreaterThanOrEqual(before);
     expect(ts).toBeLessThanOrEqual(after);
+  });
+});
+
+// ── fetchPersistedAlerts ──────────────────────────────────────────────────────
+
+/** Build a minimal Supabase client stub that returns persisted alert rows. */
+function makeAlertClientStub(
+  rows: Record<string, unknown>[],
+  queryError: { message: string } | null = null,
+) {
+  return {
+    from: jest.fn().mockReturnValue({
+      select: jest.fn().mockReturnValue({
+        is: jest.fn().mockReturnValue({
+          order: jest.fn().mockResolvedValue({
+            data: queryError ? null : rows,
+            error: queryError,
+          }),
+        }),
+      }),
+    }),
+  } as any;
+}
+
+/** Build a raw DB row as Supabase would return it from `health_alerts`. */
+function makeAlertRow(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+  return {
+    id: 'dead_letter_items--device-abc--drv-1',
+    alert_type: 'dead_letter_items',
+    severity: 'critical',
+    device_id: 'device-abc',
+    driver_id: 'drv-1',
+    driver_name: 'Ali Hassan',
+    message: 'Ali Hassan: 1 dead-letter item — manual replay required',
+    detected_at: new Date().toISOString(),
+    ...overrides,
+  };
+}
+
+describe('fetchPersistedAlerts', () => {
+  it('returns an empty array when the health_alerts table has no active rows', async () => {
+    const client = makeAlertClientStub([]);
+    const alerts = await fetchPersistedAlerts(client);
+    expect(alerts).toEqual([]);
+  });
+
+  it('maps DB columns to HealthAlert fields correctly', async () => {
+    const row = makeAlertRow();
+    const client = makeAlertClientStub([row]);
+    const alerts = await fetchPersistedAlerts(client);
+
+    expect(alerts).toHaveLength(1);
+    const alert = alerts[0];
+    expect(alert.id).toBe(row['id']);
+    expect(alert.type).toBe(row['alert_type']);
+    expect(alert.severity).toBe(row['severity']);
+    expect(alert.deviceId).toBe(row['device_id']);
+    expect(alert.driverId).toBe(row['driver_id']);
+    expect(alert.driverName).toBe(row['driver_name']);
+    expect(alert.message).toBe(row['message']);
+    expect(alert.detectedAt).toBe(row['detected_at']);
+  });
+
+  it('sorts returned alerts: critical first, warning second, info last', async () => {
+    const rows = [
+      makeAlertRow({ id: 'high_pending--dev-a--drv-a', alert_type: 'high_pending', severity: 'info', driver_name: 'A' }),
+      makeAlertRow({ id: 'stale_snapshot--dev-b--drv-b', alert_type: 'stale_snapshot', severity: 'warning', driver_name: 'B' }),
+      makeAlertRow({ id: 'dead_letter_items--dev-c--drv-c', alert_type: 'dead_letter_items', severity: 'critical', driver_name: 'C' }),
+    ];
+    const client = makeAlertClientStub(rows);
+    const alerts = await fetchPersistedAlerts(client);
+
+    expect(alerts[0].severity).toBe('critical');
+    expect(alerts[1].severity).toBe('warning');
+    expect(alerts[2].severity).toBe('info');
+  });
+
+  it('sorts within the same severity by driverName', async () => {
+    const rows = [
+      makeAlertRow({ id: 'dead_letter_items--dev-z', alert_type: 'dead_letter_items', severity: 'critical', driver_name: 'Zawadi Ngugi' }),
+      makeAlertRow({ id: 'dead_letter_items--dev-a', alert_type: 'dead_letter_items', severity: 'critical', driver_name: 'Amina Salim' }),
+      makeAlertRow({ id: 'dead_letter_items--dev-m', alert_type: 'dead_letter_items', severity: 'critical', driver_name: 'Mohamed Juma' }),
+    ];
+    const client = makeAlertClientStub(rows);
+    const alerts = await fetchPersistedAlerts(client);
+
+    const names = alerts.map((a) => a.driverName);
+    expect(names).toEqual(['Amina Salim', 'Mohamed Juma', 'Zawadi Ngugi']);
+  });
+
+  it('throws a descriptive error when the Supabase query fails', async () => {
+    const client = makeAlertClientStub([], { message: 'permission denied' });
+    await expect(fetchPersistedAlerts(client)).rejects.toThrow('Health alerts query failed: permission denied');
+  });
+
+  it('queries only unresolved (resolved_at IS NULL) alerts', async () => {
+    const client = makeAlertClientStub([]);
+    await fetchPersistedAlerts(client);
+
+    // Verify .is('resolved_at', null) was called on the query chain
+    const fromCall = (client.from as ReturnType<typeof jest.fn>).mock.results[0].value;
+    const selectCall = fromCall.select.mock.results[0].value;
+    expect(selectCall.is).toHaveBeenCalledWith('resolved_at', null);
   });
 });

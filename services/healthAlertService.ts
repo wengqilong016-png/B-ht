@@ -1,11 +1,25 @@
 /**
  * healthAlertService.ts
  *
- * Stage-8: passive background health alert generation.
+ * Stage-8: background health alert generation and persistence.
  *
- * Derives actionable alerts from fleet-wide device snapshots stored in the
- * `queue_health_reports` table.  All alert generation is read-only — this
- * module never writes to the database.
+ * Two complementary paths:
+ *
+ *   1. Server-side (background):
+ *      The `generate_health_alerts()` SQL function (see migration
+ *      20260322200000_health_alerts.sql) runs every 15 minutes via pg_cron.
+ *      It reads `queue_health_reports`, applies the same threshold logic,
+ *      and upserts active alerts into the `health_alerts` table.  Alerts
+ *      are resolved automatically when the triggering condition clears.
+ *
+ *   2. Client-side (read):
+ *      `fetchPersistedAlerts()` reads the `health_alerts` table so the
+ *      admin UI always shows alerts that were generated in the background,
+ *      not just on the current page-view.
+ *
+ *   3. Pure helper (tests / server function parity):
+ *      `generateAlertsFromSnapshots()` remains a side-effect-free function
+ *      used in tests and to keep client logic aligned with the SQL thresholds.
  *
  * Alert types
  * ───────────
@@ -18,6 +32,7 @@
  * magic numbers.
  */
 
+import type { SupabaseClient } from '@supabase/supabase-js';
 import type { DeviceQueueSnapshot } from './fleetDiagnosticsService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -54,6 +69,9 @@ export const HIGH_RETRY_WAITING_THRESHOLD = 5;
 
 /** Devices with more than this many pending items trigger an info alert. */
 export const HIGH_PENDING_THRESHOLD = 20;
+
+/** Severity ordering used for sorting in both `generateAlertsFromSnapshots` and `fetchPersistedAlerts`. */
+const SEVERITY_ORDER: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
 
 // ── Core generation function ──────────────────────────────────────────────────
 
@@ -136,9 +154,59 @@ export function generateAlertsFromSnapshots(
   }
 
   // Sort: critical first, warning second, info last; within tier sort by driver name
-  const severityOrder: Record<AlertSeverity, number> = { critical: 0, warning: 1, info: 2 };
   alerts.sort((a, b) => {
-    const sev = severityOrder[a.severity] - severityOrder[b.severity];
+    const sev = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
+    return sev !== 0 ? sev : a.driverName.localeCompare(b.driverName);
+  });
+
+  return alerts;
+}
+
+// ── Persisted alert reader ────────────────────────────────────────────────────
+
+/**
+ * Fetches active (unresolved) health alerts from the `health_alerts` table.
+ *
+ * Alerts in this table are written by the `generate_health_alerts()` SQL
+ * function which runs every 15 minutes via pg_cron — they exist independently
+ * of whether any admin has the HealthAlerts page open.
+ *
+ * Returns alerts sorted by severity (critical → warning → info) then by
+ * driverName, matching the ordering of `generateAlertsFromSnapshots`.
+ *
+ * Requires admin role (enforced by Supabase RLS on `health_alerts`).
+ *
+ * @throws Error when the Supabase query fails (network error, auth).
+ */
+export async function fetchPersistedAlerts(
+  supabaseClient: SupabaseClient,
+): Promise<HealthAlert[]> {
+  const { data, error } = await supabaseClient
+    .from('health_alerts')
+    .select('id, alert_type, severity, device_id, driver_id, driver_name, message, detected_at')
+    .is('resolved_at', null)
+    .order('detected_at', { ascending: false });
+
+  if (error) {
+    throw new Error(`Health alerts query failed: ${error.message}`);
+  }
+
+  const rows: Array<Record<string, unknown>> = data ?? [];
+
+  const alerts: HealthAlert[] = rows.map((row) => ({
+    id: String(row['id'] ?? ''),
+    type: String(row['alert_type'] ?? '') as AlertType,
+    severity: String(row['severity'] ?? '') as AlertSeverity,
+    deviceId: String(row['device_id'] ?? ''),
+    driverId: String(row['driver_id'] ?? ''),
+    driverName: String(row['driver_name'] ?? ''),
+    message: String(row['message'] ?? ''),
+    detectedAt: String(row['detected_at'] ?? ''),
+  }));
+
+  // Re-apply client-side sort so callers don't depend on DB ordering.
+  alerts.sort((a, b) => {
+    const sev = SEVERITY_ORDER[a.severity] - SEVERITY_ORDER[b.severity];
     return sev !== 0 ? sev : a.driverName.localeCompare(b.driverName);
   });
 
