@@ -8,15 +8,35 @@
  *   - Falls back gracefully if IDB is unavailable
  *   - Each queued item ≤ ~150KB (photo already resized before submission)
  *   - Background-sync-compatible: provides a `flushQueue()` for sync events
+ *   - Idempotent: each queued item carries an operationId and entityVersion
+ *   - Retry-aware: exponential backoff with dead-letter visibility
  */
 
 import { Transaction } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 const DB_NAME    = 'bahati_offline_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_TX   = 'pending_transactions';
 const MS_PER_DAY = 86_400_000;
+const MAX_RETRIES = 5;
+const BASE_BACKOFF_MS = 2_000; // 2 s → 4 s → 8 s → 16 s → 32 s
+
+/** Metadata attached to every queued entry for idempotent, retry-aware sync. */
+export interface QueueMeta {
+  /** Unique operation identifier (used as idempotency key on the server side) */
+  operationId: string;
+  /** Monotonic version — lets the server discard stale overwrites */
+  entityVersion: number;
+  /** ISO-8601 timestamp when the item was first enqueued */
+  _queuedAt: string;
+  /** Number of flush attempts so far */
+  retryCount: number;
+  /** ISO-8601 timestamp of the last sync error (if any) */
+  lastError?: string;
+  /** Earliest ISO-8601 timestamp at which the next retry is allowed */
+  nextRetryAt?: string;
+}
 
 // ── Open / init ───────────────────────────────────────────────────────────────
 function openDB(): Promise<IDBDatabase> {
@@ -33,6 +53,14 @@ function openDB(): Promise<IDBDatabase> {
         store.createIndex('driverId',  'driverId',  { unique: false });
         store.createIndex('timestamp', 'timestamp', { unique: false });
         store.createIndex('isSynced',  'isSynced',  { unique: false });
+        store.createIndex('retryCount', 'retryCount', { unique: false });
+      } else {
+        // v1 → v2 migration: add retryCount index if missing
+        const txn = (e.target as IDBOpenDBRequest).transaction!;
+        const store = txn.objectStore(STORE_TX);
+        if (!store.indexNames.contains('retryCount')) {
+          store.createIndex('retryCount', 'retryCount', { unique: false });
+        }
       }
     };
     req.onsuccess = () => resolve(req.result);
@@ -40,13 +68,27 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
+/** Generate a short unique operation ID */
+function generateOperationId(): string {
+  const ts = Date.now().toString(36);
+  const rand = Math.random().toString(36).slice(2, 8);
+  return `op-${ts}-${rand}`;
+}
+
 // ── Enqueue (save when offline) ───────────────────────────────────────────────
 export async function enqueueTransaction(tx: Transaction): Promise<void> {
+  const meta: QueueMeta = {
+    operationId: generateOperationId(),
+    entityVersion: Date.now(),
+    _queuedAt: new Date().toISOString(),
+    retryCount: 0,
+  };
+
   try {
     const db    = await openDB();
     const store = db.transaction(STORE_TX, 'readwrite').objectStore(STORE_TX);
     await new Promise<void>((resolve, reject) => {
-      const req = store.put({ ...tx, isSynced: false, _queuedAt: new Date().toISOString() });
+      const req = store.put({ ...tx, isSynced: false, ...meta });
       req.onsuccess = () => resolve();
       req.onerror   = () => reject(req.error);
     });
@@ -56,7 +98,7 @@ export async function enqueueTransaction(tx: Transaction): Promise<void> {
     console.warn('[OfflineQueue] IDB unavailable, falling back to localStorage', err);
     const raw  = localStorage.getItem('bahati_offline_queue') || '[]';
     const list = JSON.parse(raw) as Transaction[];
-    const updated = [...list.filter(t => t.id !== tx.id), { ...tx, isSynced: false }];
+    const updated = [...list.filter(t => t.id !== tx.id), { ...tx, isSynced: false, ...meta }];
     try { localStorage.setItem('bahati_offline_queue', JSON.stringify(updated)); } catch (_) {}
   }
 }
@@ -148,8 +190,23 @@ export async function flushQueue(
   const pending = await getPendingTransactions();
   if (pending.length === 0) return 0;
 
+  const now = Date.now();
   let flushed = 0;
+
   for (const tx of pending) {
+    const entry = tx as Transaction & Partial<QueueMeta>;
+
+    // Skip items whose backoff period hasn't elapsed yet
+    if (entry.nextRetryAt && new Date(entry.nextRetryAt).getTime() > now) {
+      continue;
+    }
+
+    // Skip dead-letter items (exceeded max retries) — they remain visible to admins
+    const retryCount = entry.retryCount ?? 0;
+    if (retryCount >= MAX_RETRIES) {
+      continue;
+    }
+
     try {
       const { error } = await supabaseClient
         .from('transactions')
@@ -160,12 +217,58 @@ export async function flushQueue(
         onProgress?.(flushed, pending.length);
       } else {
         console.warn('[OfflineQueue] upsert error for', tx.id, ':', error.message);
+        await recordRetryFailure(tx.id, error.message);
       }
     } catch (e) {
       console.warn('[OfflineQueue] flush failed for', tx.id, e);
+      await recordRetryFailure(tx.id, e instanceof Error ? e.message : String(e));
     }
   }
   return flushed;
+}
+
+/** Update retry metadata with exponential backoff after a flush failure. */
+async function recordRetryFailure(id: string, errorMessage: string): Promise<void> {
+  try {
+    const db    = await openDB();
+    const txDb  = db.transaction(STORE_TX, 'readwrite');
+    const store = txDb.objectStore(STORE_TX);
+    const item  = await new Promise<(Transaction & Partial<QueueMeta>) | undefined>((res, rej) => {
+      const r = store.get(id);
+      r.onsuccess = () => res(r.result);
+      r.onerror   = () => rej(r.error);
+    });
+    if (item) {
+      const newRetry = (item.retryCount ?? 0) + 1;
+      const backoffMs = BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+      await new Promise<void>((res, rej) => {
+        const r = store.put({
+          ...item,
+          retryCount: newRetry,
+          lastError: errorMessage,
+          nextRetryAt: new Date(Date.now() + backoffMs).toISOString(),
+        });
+        r.onsuccess = () => res();
+        r.onerror   = () => rej(r.error);
+      });
+    }
+    db.close();
+  } catch {
+    // Best effort — localStorage entries won't get retry tracking
+  }
+}
+
+/** Get transactions that have exceeded max retries (dead-letter items). */
+export async function getDeadLetterItems(): Promise<Transaction[]> {
+  try {
+    const all = await getAllQueuedTransactions();
+    return all.filter(tx => {
+      const entry = tx as Transaction & Partial<QueueMeta>;
+      return !entry.isSynced && (entry.retryCount ?? 0) >= MAX_RETRIES;
+    });
+  } catch {
+    return [];
+  }
 }
 
 // ── Queue size (for badge display) ───────────────────────────────────────────

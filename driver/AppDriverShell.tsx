@@ -122,7 +122,7 @@ const AppDriverShell: React.FC = () => {
                   dailySettlements={filteredSettlements}
                   aiLogs={aiLogs}
                   currentUser={currentUser}
-                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
                   onUpdateLocations={(l) => updateLocations.mutate(l)}
                   onDeleteLocations={(ids) => deleteLocations.mutate(ids)}
                   onUpdateTransaction={(id, updates) => updateTransaction.mutate({txId: id, updates})}
