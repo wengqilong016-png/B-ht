@@ -1,75 +1,44 @@
--- Stage-8: persistent health alerts table and background alert-generation function.
+-- Stage-8 hardening: forward-only migration that applies safety improvements to
+-- the objects created in 20260322200000_health_alerts.sql.
 --
--- Overview
--- ────────
--- alert storage: `health_alerts` table, one row per (alert-type, source-snapshot)
--- generation:    `generate_health_alerts()` SQL function — reads `queue_health_reports`,
---                applies the same threshold logic as the TypeScript service layer, and
---                upserts into `health_alerts`.  Resolves alerts that are no longer triggered.
--- scheduling:    pg_cron fires `generate_health_alerts()` every 15 minutes so alerts
---                exist in the database independently of any admin session.
+-- If migration 20260322200000 has already been applied to an environment,
+-- this migration picks up where it left off without touching the original
+-- migration file (which would cause Supabase CLI checksum drift).
 --
--- Row identity: id = '{alert_type}--{snapshot_id}' (matches the TypeScript deterministic ID).
--- Only active (unresolved) alerts have resolved_at = NULL.
+-- Changes applied here
+-- ────────────────────
+-- 1. ADD CHECK constraint on alert_type (was missing from original table DDL).
+-- 2. CREATE INDEX for per-device alert lookups.
+-- 3. CREATE OR REPLACE FUNCTION with SET search_path = public, pg_temp
+--    (SECURITY DEFINER functions should pin search_path to prevent hijacking).
+-- 4. REVOKE/GRANT execute permissions (restrict from PUBLIC; grant to postgres
+--    and service_role only, matching the pg_cron and Edge Function callers).
+-- 5. Re-schedule the pg_cron job inside a compatibility DO block so the
+--    migration succeeds on self-hosted Postgres instances without pg_cron.
+-- 6. Bootstrap: invoke the function immediately so alerts are available at once.
 
--- ── Table ─────────────────────────────────────────────────────────────────────
+-- ── 1. CHECK constraint on alert_type ─────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS public.health_alerts (
-    id           TEXT        PRIMARY KEY,               -- '{type}--{snapshot_id}'
-    alert_type   TEXT        NOT NULL,
-    severity     TEXT        NOT NULL
-                             CHECK (severity IN ('critical', 'warning', 'info')),
-    device_id    TEXT        NOT NULL,
-    driver_id    TEXT        NOT NULL,
-    driver_name  TEXT,
-    message      TEXT        NOT NULL,
-    detected_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    resolved_at  TIMESTAMPTZ,                            -- NULL = active; non-NULL = resolved
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+ALTER TABLE public.health_alerts
+    ADD CONSTRAINT IF NOT EXISTS health_alerts_alert_type_check
+    CHECK (alert_type IN ('dead_letter_items', 'stale_snapshot', 'high_retry_waiting', 'high_pending'));
 
-CREATE INDEX IF NOT EXISTS health_alerts_severity_idx
-    ON public.health_alerts (severity);
+-- ── 2. Per-device index ────────────────────────────────────────────────────────
 
-CREATE INDEX IF NOT EXISTS health_alerts_detected_at_idx
-    ON public.health_alerts (detected_at DESC);
+CREATE INDEX IF NOT EXISTS health_alerts_device_id_idx
+    ON public.health_alerts (device_id);
 
--- Partial index to make "fetch active alerts" fast.
-CREATE INDEX IF NOT EXISTS health_alerts_active_idx
-    ON public.health_alerts (detected_at DESC)
-    WHERE resolved_at IS NULL;
-
--- ── Row-Level Security ────────────────────────────────────────────────────────
-
-ALTER TABLE public.health_alerts ENABLE ROW LEVEL SECURITY;
-
--- Admins may read all rows (active and resolved).
-CREATE POLICY ha_admin_select ON public.health_alerts
-    FOR SELECT TO authenticated
-    USING (
-        EXISTS (
-            SELECT 1 FROM public.profiles
-             WHERE auth_user_id = auth.uid()
-               AND role = 'admin'
-        )
-    );
-
--- ── Server-side alert generation function ────────────────────────────────────
+-- ── 3. Hardened generate_health_alerts() function ─────────────────────────────
 --
--- Thresholds mirror the TypeScript constants in healthAlertService.ts:
---   DEAD_LETTER_ALERT_THRESHOLD  = 1
---   HIGH_RETRY_WAITING_THRESHOLD = 5
---   HIGH_PENDING_THRESHOLD       = 20
---   STALE_THRESHOLD_MS           = 7,200,000  (2 hours)
---
--- SECURITY DEFINER: runs as the function owner (postgres) so it can bypass
--- RLS to write to health_alerts without requiring an authenticated session.
--- This is correct for a cron-invoked server-side function.
+-- Identical logic to the original; adds:
+--   SET search_path = public, pg_temp  (prevents search-path hijacking for
+--                                        SECURITY DEFINER functions)
 
 CREATE OR REPLACE FUNCTION public.generate_health_alerts()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     c_stale_ms         CONSTANT BIGINT   := 7200000; -- 2 hours in milliseconds
@@ -204,20 +173,44 @@ BEGIN
 END;
 $$;
 
--- ── pg_cron scheduling ────────────────────────────────────────────────────────
+-- ── 4. Execute permissions ─────────────────────────────────────────────────────
 --
--- Requires the pg_cron extension (enabled by default on Supabase hosted projects).
--- The job runs every 15 minutes so alerts exist in the database regardless of
--- whether any admin has the HealthAlerts page open.
+-- Revoke default PUBLIC execute grant and restrict to the roles that actually
+-- need to call this function:
+--   • postgres     — the role pg_cron uses to invoke scheduled jobs
+--   • service_role — Supabase service-role key / Edge Functions
+
+REVOKE EXECUTE ON FUNCTION public.generate_health_alerts() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.generate_health_alerts() TO postgres;
+GRANT EXECUTE ON FUNCTION public.generate_health_alerts() TO service_role;
+
+-- ── 5. pg_cron re-scheduling ───────────────────────────────────────────────────
 --
--- Idempotent: unschedule any pre-existing job with this name before re-creating.
+-- Wrapped in a DO block so this migration completes on self-hosted Postgres
+-- instances where pg_cron is not installed.
+-- Unschedules any existing job with this name before re-creating, so this
+-- block is idempotent regardless of what the original migration left behind.
 
-SELECT cron.unschedule(jobid)
-  FROM cron.job
- WHERE jobname = 'generate-health-alerts';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        PERFORM cron.unschedule(jobid)
+          FROM cron.job
+         WHERE jobname = 'generate-health-alerts';
 
-SELECT cron.schedule(
-    'generate-health-alerts',
-    '*/15 * * * *',
-    'SELECT public.generate_health_alerts()'
-);
+        PERFORM cron.schedule(
+            'generate-health-alerts',
+            '*/15 * * * *',
+            'SELECT public.generate_health_alerts()'
+        );
+    END IF;
+END;
+$$;
+
+-- ── 6. Bootstrap ───────────────────────────────────────────────────────────────
+--
+-- Run once immediately so alerts are populated as soon as the migration is
+-- applied, rather than waiting up to 15 minutes for the first scheduled run.
+
+SELECT public.generate_health_alerts();
