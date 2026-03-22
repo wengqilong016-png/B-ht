@@ -1,24 +1,20 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Project credentials — the anon key is safe to include in client-side code;
-// it is protected by Supabase Row Level Security policies.
-// Override with VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY env vars when needed.
-const DEFAULT_SUPABASE_URL = 'https://yctsiudhicztvppddbvk.supabase.co';
-const DEFAULT_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InljdHNpdWRoaWN6dHZwcGRkYnZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzE2MjU4NDgsImV4cCI6MjA4NzIwMTg0OH0.MkLFBP9GIjY21tfWepQFyaCAC5KHCzUVcYOB43g4s4U';
-
-const envUrl = import.meta.env.VITE_SUPABASE_URL;
-const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+// Supabase credentials MUST be provided via environment variables.
+// See .env.example for the required variables and docs/SECURITY_OPERATIONS.md
+// for how to configure them in each deployment target (Vercel, GitHub Actions, local).
+const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 if (!envUrl || !envKey) {
-  console.warn(
-    '[Bahati] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set — using built-in project credentials. ' +
-    'Set these env vars to override.',
+  console.error(
+    '[Bahati] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. ' +
+    'Copy .env.example to .env.local and fill in your Supabase project credentials.',
   );
 }
 
-export const SUPABASE_URL: string = envUrl || DEFAULT_SUPABASE_URL;
-export const SUPABASE_ANON_KEY: string = envKey || DEFAULT_SUPABASE_ANON_KEY;
+export const SUPABASE_URL: string = envUrl ?? '';
+export const SUPABASE_ANON_KEY: string = envKey ?? '';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

@@ -39,16 +39,21 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     
-    <!-- Location Permissions for GPS functionality -->
+    <!-- Location: Fine + Coarse for GPS collection & driver heartbeat tracking -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Background location: required for driver GPS heartbeat while app is backgrounded.
+         The app must display a persistent notification explaining background location use
+         and comply with Google Play policy on background location access. -->
     <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
     
-    <!-- Camera Permission for photo functionality -->
+    <!-- Camera: used for machine reading photo capture -->
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-feature android:name="android.hardware.camera" android:required="false" />
     
-    <!-- Storage Permissions -->
-    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    <!-- Storage: scoped storage on Android 10+; legacy READ for older devices only -->
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+                     android:maxSdkVersion="32" />
+    <!-- Android 13+ granular media permission (images only, for photo capture fallback) -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
 </manifest>
