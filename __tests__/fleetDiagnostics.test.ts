@@ -310,3 +310,126 @@ describe('reportQueueHealthToServer', () => {
     expect(row.dead_letter_items[0].locationName).toBe('Dead Location');
   });
 });
+
+// ── post-replay fleet health reporting ────────────────────────────────────────
+
+describe('post-replay fleet health reporting', () => {
+  it('reports zero dead-letter count after a successful replay clears the item', async () => {
+    const {
+      reportQueueHealthToServer,
+      enqueueTransaction,
+      replayDeadLetterItem,
+    } = await import('../offlineQueue');
+
+    const tx = {
+      id: 'tx-replay-fleet',
+      timestamp: new Date().toISOString(),
+      locationId: 'loc-2',
+      locationName: 'Replay Location',
+      driverId: 'drv-replay',
+      driverName: 'Replay Driver',
+      previousScore: 0,
+      currentScore: 50,
+      revenue: 10000,
+      commission: 1500,
+      ownerRetention: 1500,
+      debtDeduction: 0,
+      startupDebtDeduction: 0,
+      expenses: 0,
+      coinExchange: 0,
+      extraIncome: 0,
+      netPayable: 7000,
+      gps: { lat: -6.8, lng: 39.3 },
+      dataUsageKB: 5,
+      isSynced: false,
+      type: 'payout_request', // no rawInput needed — uses direct upsert path
+    } as any;
+    await enqueueTransaction(tx);
+
+    // Dead-letter the item
+    const raw = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    raw[0].retryCount = MAX_RETRIES;
+    raw[0].lastError = 'Upsert failed';
+    raw[0].lastErrorCategory = 'transient';
+    localStorage.setItem('bahati_offline_queue', JSON.stringify(raw));
+
+    // Before replay: fleet snapshot should show 1 dead-letter item
+    const upsertBeforeMock = jest.fn().mockResolvedValue({ error: null });
+    const clientBefore = { from: jest.fn().mockReturnValue({ upsert: upsertBeforeMock }) } as any;
+    await reportQueueHealthToServer(clientBefore, 'drv-replay', 'Replay Driver', 'dev-replay');
+    const [rowBefore] = upsertBeforeMock.mock.calls[0] as any[];
+    expect(rowBefore.dead_letter_count).toBe(1);
+
+    // Replay the dead-letter item successfully
+    const replayClient = {
+      from: jest.fn().mockReturnValue({ upsert: jest.fn().mockResolvedValue({ error: null }) }),
+    } as any;
+    const replayResult = await replayDeadLetterItem(tx.id, { supabaseClient: replayClient });
+    expect(replayResult.success).toBe(true);
+
+    // After replay: fleet snapshot should report 0 dead-letter items
+    const upsertAfterMock = jest.fn().mockResolvedValue({ error: null });
+    const clientAfter = { from: jest.fn().mockReturnValue({ upsert: upsertAfterMock }) } as any;
+    await reportQueueHealthToServer(clientAfter, 'drv-replay', 'Replay Driver', 'dev-replay');
+    const [rowAfter] = upsertAfterMock.mock.calls[0] as any[];
+    expect(rowAfter.dead_letter_count).toBe(0);
+    expect(rowAfter.dead_letter_items).toHaveLength(0);
+  });
+
+  it('still reports the item as dead-letter after a failed replay', async () => {
+    const {
+      reportQueueHealthToServer,
+      enqueueTransaction,
+      replayDeadLetterItem,
+    } = await import('../offlineQueue');
+
+    const tx = {
+      id: 'tx-replay-fail',
+      timestamp: new Date().toISOString(),
+      locationId: 'loc-3',
+      locationName: 'Fail Location',
+      driverId: 'drv-fail',
+      driverName: 'Fail Driver',
+      previousScore: 0,
+      currentScore: 80,
+      revenue: 15000,
+      commission: 2000,
+      ownerRetention: 2000,
+      debtDeduction: 0,
+      startupDebtDeduction: 0,
+      expenses: 0,
+      coinExchange: 0,
+      extraIncome: 0,
+      netPayable: 11000,
+      gps: { lat: -6.8, lng: 39.3 },
+      dataUsageKB: 5,
+      isSynced: false,
+      type: 'payout_request',
+    } as any;
+    await enqueueTransaction(tx);
+
+    // Dead-letter the item
+    const raw = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    raw[0].retryCount = MAX_RETRIES;
+    raw[0].lastError = 'Original error';
+    raw[0].lastErrorCategory = 'permanent';
+    localStorage.setItem('bahati_offline_queue', JSON.stringify(raw));
+
+    // Replay with a Supabase error — replay fails
+    const replayClient = {
+      from: jest.fn().mockReturnValue({
+        upsert: jest.fn().mockResolvedValue({ error: { message: 'DB unavailable' } }),
+      }),
+    } as any;
+    const replayResult = await replayDeadLetterItem(tx.id, { supabaseClient: replayClient });
+    expect(replayResult.success).toBe(false);
+
+    // After failed replay: fleet snapshot still shows 1 dead-letter item
+    const upsertAfterMock = jest.fn().mockResolvedValue({ error: null });
+    const clientAfter = { from: jest.fn().mockReturnValue({ upsert: upsertAfterMock }) } as any;
+    await reportQueueHealthToServer(clientAfter, 'drv-fail', 'Fail Driver', 'dev-fail');
+    const [rowAfter] = upsertAfterMock.mock.calls[0] as any[];
+    expect(rowAfter.dead_letter_count).toBe(1);
+    expect(rowAfter.dead_letter_items).toHaveLength(1);
+  });
+});
