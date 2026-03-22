@@ -58,7 +58,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
  * If the server is unreachable or slow, we fall through to the login screen
  * rather than showing the spinner forever.
  */
-const AUTH_INIT_TIMEOUT_MS = 8000;
+const AUTH_INIT_TIMEOUT_MS = 20000;
 
 /**
  * Manages session restoration and auth state changes.
