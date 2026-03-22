@@ -1,5 +1,10 @@
-import React, { useState, useMemo, useEffect } from 'react';
-import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, AILog } from '../../types';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { Location, Driver, Transaction, CONSTANTS, AILog } from '../../types';
+import {
+  calculateCollectionFinanceLocal,
+  calculateCollectionFinancePreview,
+  type FinanceCalculationResult,
+} from '../../services/financeCalculator';
 import { useCollectionDraft } from '../hooks/useCollectionDraft';
 import MachineSelector from '../components/MachineSelector';
 import ReadingCapture from '../components/ReadingCapture';
@@ -38,30 +43,40 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     [draft.selectedLocId, locations]
   );
 
-  // Calculations (single source of truth)
-  const calculations = useMemo(() => {
-    if (!selectedLocation) return { diff: 0, revenue: 0, commission: 0, finalRetention: 0, netPayable: 0, remainingCoins: 0, isCoinStockNegative: false };
+  // Finance preview state — starts with local calc, upgrades to server result when available
+  const [financeResult, setFinanceResult] = useState<FinanceCalculationResult>(() =>
+    calculateCollectionFinanceLocal({
+      selectedLocation: null,
+      currentScore: '', expenses: '', coinExchange: '',
+      ownerRetention: '', isOwnerRetaining: false, tip: '',
+      initialFloat: 0,
+    })
+  );
 
-    const score = parseInt(draft.currentScore) || 0;
-    const diff = Math.max(0, score - selectedLocation.lastScore);
-    const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
-    const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
-    const autoCommission = Math.floor(revenue * rate);
+  const financeInput = useMemo(() => ({
+    selectedLocation,
+    currentScore: draft.currentScore,
+    expenses: draft.expenses,
+    coinExchange: draft.coinExchange,
+    ownerRetention: draft.ownerRetention,
+    isOwnerRetaining: draft.isOwnerRetaining,
+    tip: draft.tip,
+    initialFloat: currentDriver?.dailyFloatingCoins || 0,
+  }), [selectedLocation, draft.currentScore, draft.expenses, draft.coinExchange, draft.ownerRetention, draft.isOwnerRetaining, draft.tip, currentDriver?.dailyFloatingCoins]);
 
-    let finalRetention = 0;
-    if (draft.isOwnerRetaining) {
-      finalRetention = draft.ownerRetention !== '' ? parseInt(draft.ownerRetention) : autoCommission;
-    }
+  const requestIdRef = useRef<number>(0);
+  useEffect(() => {
+    // Apply local calc immediately so UI stays responsive
+    setFinanceResult(calculateCollectionFinanceLocal(financeInput));
 
-    const expenseVal = parseInt(draft.expenses) || 0;
-    const tipVal = parseInt(draft.tip) || 0;
-    const netPayable = Math.max(0, revenue - finalRetention - expenseVal - tipVal);
-    const exchangeVal = parseInt(draft.coinExchange) || 0;
-    const initialFloat = currentDriver?.dailyFloatingCoins || 0;
-    const remainingCoins = initialFloat + netPayable - exchangeVal;
-
-    return { diff, revenue, commission: autoCommission, finalRetention, netPayable, remainingCoins, isCoinStockNegative: remainingCoins < 0 };
-  }, [selectedLocation, draft.currentScore, draft.coinExchange, draft.expenses, draft.tip, draft.ownerRetention, draft.isOwnerRetaining, currentDriver?.dailyFloatingCoins]);
+    // Then attempt server preview; fall back silently on failure
+    // Use a monotonic request id so that only the most recent async response is applied.
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
+    calculateCollectionFinancePreview(financeInput).then(result => {
+      if (requestId === requestIdRef.current) setFinanceResult(result);
+    });
+  }, [financeInput]);
 
   // Auto-fill retention when conditions met
   useEffect(() => {
@@ -194,8 +209,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         onUpdateGpsPermission={(perm) => updateDraft({ gpsPermission: perm })}
         onNext={() => setStep('amounts')}
         onBack={handleBackToSelection}
-        revenue={calculations.revenue}
-        diff={calculations.diff}
+        revenue={financeResult.revenue}
+        diff={financeResult.diff}
       />
     );
   }
@@ -214,7 +229,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         ownerRetention={draft.ownerRetention}
         isOwnerRetaining={draft.isOwnerRetaining}
         tip={draft.tip}
-        calculations={calculations}
+        calculations={financeResult}
+        previewSource={financeResult.source}
         onUpdateExpenses={(v) => updateDraft({ expenses: v })}
         onUpdateExpenseType={(v) => updateDraft({ expenseType: v })}
         onUpdateExpenseCategory={(v) => updateDraft({ expenseCategory: v })}
@@ -246,7 +262,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       draftTxId={draft.draftTxId}
       gpsCoords={draft.gpsCoords}
       gpsPermission={draft.gpsPermission}
-      calculations={calculations}
+      calculations={financeResult}
       onSubmit={onSubmit}
       onBack={() => setStep('amounts')}
       onReset={handleFullReset}

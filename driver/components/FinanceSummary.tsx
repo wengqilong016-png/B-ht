@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowRight, HandCoins, Banknote, Coins, ShieldAlert, Trophy, ChevronRight, Gift } from 'lucide-react';
 import WizardStepBar from './WizardStepBar';
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
+import type { FinanceCalculationSource } from '../../services/financeCalculator';
 
 // Tip anomaly thresholds: warn if tip > TIP_WARNING_THRESHOLD and revenue < REVENUE_WARNING_THRESHOLD
 const TIP_WARNING_THRESHOLD = 2000;
@@ -36,6 +37,7 @@ interface FinanceSummaryProps {
   onUpdateTip: (val: string) => void;
   onNext: () => void;
   onBack: () => void;
+  previewSource?: FinanceCalculationSource;
 }
 
 const FinanceSummary: React.FC<FinanceSummaryProps> = ({
@@ -43,7 +45,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   coinExchange, ownerRetention, isOwnerRetaining, tip, calculations,
   onUpdateExpenses, onUpdateExpenseType, onUpdateExpenseCategory,
   onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining, onUpdateTip,
-  onNext, onBack,
+  onNext, onBack, previewSource,
 }) => {
   const t = TRANSLATIONS[lang];
 
@@ -69,6 +71,14 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
         <div>
           <p className="text-[9px] font-black uppercase opacity-60">{t.formula}</p>
           <p className="text-[9px] font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
+          {previewSource && (
+            <span
+              className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wide ${previewSource === 'server' ? 'bg-white/20 text-white' : 'bg-white/10 text-white/50'}`}
+              title={previewSource === 'server' ? 'Preview calculated by server' : 'Preview calculated locally'}
+            >
+              {previewSource === 'server' ? '⬡ server' : '◎ local'}
+            </span>
+          )}
         </div>
         <div className="text-right">
           {calculations.revenue > 50000 && (
