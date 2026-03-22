@@ -1,11 +1,17 @@
 /**
  * HealthAlerts
  * ──────────────────────────────────────────────────────────────────────────────
- * Passive background health alert panel for admins.
+ * Background health alert panel for admins.
  *
- * Derives alerts on-the-fly from the fleet snapshot data in `queue_health_reports`
- * and surfaces them in priority order (critical → warning → info).  Nothing in
- * this panel writes to the database — it is intentionally read-only.
+ * Alerts shown here are **generated in the background** by the
+ * `generate_health_alerts()` SQL function, which runs every 15 minutes via
+ * pg_cron (see migration 20260322200000_health_alerts.sql).  They are persisted
+ * in the `health_alerts` Supabase table so they exist independently of whether
+ * any admin has this page open.
+ *
+ * This panel reads from `health_alerts` and surfaces active (unresolved) alerts
+ * in priority order (critical → warning → info).  Nothing in this panel writes
+ * to the database — it is intentionally read-only.
  *
  * Alert conditions surfaced:
  *   • Dead-letter items: one or more queued items failed max retries (critical)
@@ -23,11 +29,10 @@ import {
 } from 'lucide-react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
-  getFleetDiagnostics,
   STALE_THRESHOLD_MS,
 } from '../../services/fleetDiagnosticsService';
 import {
-  generateAlertsFromSnapshots,
+  fetchPersistedAlerts,
   DEAD_LETTER_ALERT_THRESHOLD,
   HIGH_RETRY_WAITING_THRESHOLD,
   HIGH_PENDING_THRESHOLD,
@@ -119,9 +124,9 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
       return;
     }
     try {
-      const summary = await getFleetDiagnostics(client);
-      setAlerts(generateAlertsFromSnapshots(summary.snapshots));
-      setLastFetchedAt(summary.fetchedAt);
+      const result = await fetchPersistedAlerts(client);
+      setAlerts(result);
+      setLastFetchedAt(new Date().toISOString());
       setFetchError(null);
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : String(err));
@@ -170,8 +175,9 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
             )}
           </div>
           <p className="mt-1 text-[11px] text-slate-500 max-w-xl leading-relaxed">
-            Proactively surfaces stale device snapshots and unhealthy queue states
-            across the fleet. Alerts are <strong className="text-slate-700">informational only</strong> —
+            Alerts are generated <strong className="text-slate-700">in the background every 15 minutes</strong> by
+            a server-side scheduled function and persisted in the database — they exist independently
+            of this page. Alerts are <strong className="text-slate-700">informational only</strong> —
             no automatic remediation is performed.
           </p>
         </div>
@@ -204,7 +210,7 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
       {loading && (
         <div className="flex items-center gap-3 p-6 rounded-2xl border border-slate-200 bg-white text-slate-400">
           <Loader2 size={20} className="animate-spin text-indigo-500" />
-          <span className="text-sm">Fetching fleet snapshot data…</span>
+          <span className="text-sm">Reading persisted health alerts…</span>
         </div>
       )}
 
@@ -225,8 +231,8 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
           <CheckCircle2 size={32} className="text-emerald-400" />
           <p className="text-sm font-semibold text-slate-600">No active alerts</p>
           <p className="text-xs text-center max-w-xs">
-            All reporting devices are within healthy thresholds. Alerts will appear here
-            automatically when conditions degrade.
+            All reporting devices are within healthy thresholds. The background
+            scheduler runs every 15 minutes — new alerts will appear here automatically.
           </p>
         </div>
       )}
@@ -269,10 +275,10 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
       {lastFetchedAt && (
         <p className="text-[11px] text-slate-400">
           <Clock size={11} className="inline mr-1" />
-          Last checked:{' '}
+          Last read:{' '}
           <span className="font-mono">{new Date(lastFetchedAt).toLocaleTimeString()}</span>
           {' '}· auto-refreshes every {POLL_INTERVAL_MS / 1000}s ·{' '}
-          <strong className="text-slate-500">Read-only</strong> — no automatic remediation.
+          <strong className="text-slate-500">Background-generated</strong> — runs every 15 min via pg_cron.
         </p>
       )}
     </div>
