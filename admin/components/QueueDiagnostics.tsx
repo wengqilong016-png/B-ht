@@ -22,6 +22,7 @@ import {
   getQueueHealthSummary,
   getDeadLetterItems,
   replayDeadLetterItem,
+  reportQueueHealthToServer,
   getReplayIneligibilityReason,
   MAX_RETRIES,
   type QueueHealthSummary,
@@ -168,8 +169,18 @@ const QueueDiagnostics: React.FC = () => {
       submitCollection: submitCollectionV2,
     });
     setReplayState(s => ({ ...s, [entry.id]: result }));
-    // Refresh diagnostics so the list reflects any state change.
+    // Refresh local diagnostics so the list reflects any state change.
     refresh();
+    // Re-report queue health to fleet snapshot so the admin fleet-wide view
+    // reflects the updated dead-letter count immediately after replay,
+    // rather than waiting for the next driver sync cycle.
+    if (entry.driverId) {
+      reportQueueHealthToServer(
+        supabase,
+        entry.driverId,
+        entry.driverName ?? 'Unknown',
+      ).catch(() => {});
+    }
   }, [refresh]);
 
   const dismissReplayOutcome = useCallback((id: string) => {
