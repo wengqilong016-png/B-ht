@@ -8,6 +8,7 @@
  *   • Dead-letter item list with actionable metadata per entry:
  *       – operationId, last error message, error category badge,
  *         retry count, and earliest next-retry timestamp.
+ *       – Manual replay button (eligible items only).
  *
  * Auto-refreshes every 30 seconds; a manual Refresh button is also provided.
  */
@@ -15,16 +16,21 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, RefreshCw,
-  Inbox, XCircle, Loader2,
+  Inbox, XCircle, Loader2, RotateCcw,
 } from 'lucide-react';
 import {
   getQueueHealthSummary,
   getDeadLetterItems,
+  replayDeadLetterItem,
+  getReplayIneligibilityReason,
   MAX_RETRIES,
   type QueueHealthSummary,
   type QueueMeta,
+  type ManualReplayResult,
 } from '../../offlineQueue';
 import { Transaction } from '../../types';
+import { supabase } from '../../supabaseClient';
+import { submitCollectionV2 } from '../../services/collectionSubmissionService';
 
 type DeadLetterEntry = Transaction & Partial<QueueMeta>;
 
@@ -88,6 +94,36 @@ const ErrorCategoryBadge: React.FC<ErrorCategoryBadgeProps> = ({ category }) => 
   );
 };
 
+// ── Replay outcome banner ──────────────────────────────────────────────────────
+
+interface ReplayOutcomeBannerProps {
+  result: ManualReplayResult;
+  onDismiss: () => void;
+}
+const ReplayOutcomeBanner: React.FC<ReplayOutcomeBannerProps> = ({ result, onDismiss }) => {
+  if (result.success) {
+    return (
+      <div className="flex items-start gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+        <CheckCircle2 size={15} className="text-emerald-600 shrink-0 mt-0.5" />
+        <p className="text-xs font-semibold text-emerald-800 flex-1">Replay succeeded — entry marked synced.</p>
+        <button onClick={onDismiss} className="text-emerald-500 hover:text-emerald-700 text-xs font-bold ml-2">✕</button>
+      </div>
+    );
+  }
+  // Destructure after narrowing to avoid union-type access issues.
+  const { error: replayError } = result as { success: false; error: string };
+  return (
+    <div className="flex items-start gap-2 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3">
+      <XCircle size={15} className="text-rose-600 shrink-0 mt-0.5" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-rose-800">Replay failed — entry remains in dead-letter.</p>
+        <p className="text-[11px] text-rose-600 mt-0.5 break-all">{replayError}</p>
+      </div>
+      <button onClick={onDismiss} className="text-rose-400 hover:text-rose-600 text-xs font-bold ml-2">✕</button>
+    </div>
+  );
+};
+
 // ── Main component ─────────────────────────────────────────────────────────────
 
 const QueueDiagnostics: React.FC = () => {
@@ -95,6 +131,8 @@ const QueueDiagnostics: React.FC = () => {
   const [deadItems, setDeadItems] = useState<DeadLetterEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  /** Per-entry replay state: id → 'replaying' | ManualReplayResult */
+  const [replayState, setReplayState] = useState<Record<string, 'replaying' | ManualReplayResult>>({});
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -118,6 +156,29 @@ const QueueDiagnostics: React.FC = () => {
     const timer = setInterval(refresh, POLL_INTERVAL_MS);
     return () => clearInterval(timer);
   }, [refresh]);
+
+  const handleReplay = useCallback(async (entry: DeadLetterEntry) => {
+    if (!supabase) {
+      setReplayState(s => ({ ...s, [entry.id]: { success: false, error: 'Supabase not configured on this device' } }));
+      return;
+    }
+    setReplayState(s => ({ ...s, [entry.id]: 'replaying' }));
+    const result = await replayDeadLetterItem(entry.id, {
+      supabaseClient: supabase,
+      submitCollection: submitCollectionV2,
+    });
+    setReplayState(s => ({ ...s, [entry.id]: result }));
+    // Refresh diagnostics so the list reflects any state change.
+    refresh();
+  }, [refresh]);
+
+  const dismissReplayOutcome = useCallback((id: string) => {
+    setReplayState(s => {
+      const next = { ...s };
+      delete next[id];
+      return next;
+    });
+  }, []);
 
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading && !summary) {
@@ -223,53 +284,86 @@ const QueueDiagnostics: React.FC = () => {
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {deadItems.map(entry => (
-              <div key={entry.id} className="px-5 py-4 space-y-2">
-                {/* Row 1: IDs */}
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                  <span className="font-mono text-[11px] text-slate-500 bg-slate-50 rounded px-1.5 py-0.5 border border-slate-200">
-                    tx: {entry.id}
-                  </span>
-                  {entry.operationId && (
-                    <span className="font-mono text-[11px] text-slate-400">
-                      op: {entry.operationId}
+            {deadItems.map(entry => {
+              const entryReplayState = replayState[entry.id];
+              const isReplaying = entryReplayState === 'replaying';
+              const replayResult = typeof entryReplayState === 'object' ? entryReplayState : null;
+              const ineligible = getReplayIneligibilityReason(entry);
+
+              return (
+                <div key={entry.id} className="px-5 py-4 space-y-2">
+                  {/* Row 1: IDs */}
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                    <span className="font-mono text-[11px] text-slate-500 bg-slate-50 rounded px-1.5 py-0.5 border border-slate-200">
+                      tx: {entry.id}
                     </span>
-                  )}
-                  <span className="text-[11px] text-slate-400">
-                    Queued: {formatISOShort(entry._queuedAt)}
-                  </span>
-                </div>
+                    {entry.operationId && (
+                      <span className="font-mono text-[11px] text-slate-400">
+                        op: {entry.operationId}
+                      </span>
+                    )}
+                    <span className="text-[11px] text-slate-400">
+                      Queued: {formatISOShort(entry._queuedAt)}
+                    </span>
+                  </div>
 
-                {/* Row 2: Error */}
-                <div className="flex items-start gap-2">
-                  <Inbox size={13} className="text-slate-400 mt-0.5 shrink-0" />
-                  <p className="text-xs text-slate-600 leading-snug break-all">
-                    {entry.lastError ?? '(no error message recorded)'}
-                  </p>
-                </div>
+                  {/* Row 2: Error */}
+                  <div className="flex items-start gap-2">
+                    <Inbox size={13} className="text-slate-400 mt-0.5 shrink-0" />
+                    <p className="text-xs text-slate-600 leading-snug break-all">
+                      {entry.lastError ?? '(no error message recorded)'}
+                    </p>
+                  </div>
 
-                {/* Row 3: Metadata badges */}
-                <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
-                  <span className="flex items-center gap-1">
-                    Category: <ErrorCategoryBadge category={entry.lastErrorCategory} />
-                  </span>
-                  <span>Retries: <strong>{entry.retryCount ?? 0}</strong></span>
-                  {entry.nextRetryAt && (
+                  {/* Row 3: Metadata badges + replay button */}
+                  <div className="flex flex-wrap items-center gap-3 text-xs text-slate-500">
+                    <span className="flex items-center gap-1">
+                      Category: <ErrorCategoryBadge category={entry.lastErrorCategory} />
+                    </span>
+                    <span>Retries: <strong>{entry.retryCount ?? 0}</strong></span>
+                    {entry.nextRetryAt && (
+                      <span>
+                        Next retry: <strong>{formatRelativeTime(entry.nextRetryAt)}</strong>
+                        {' '}
+                        <span className="text-slate-400">({formatISOShort(entry.nextRetryAt)})</span>
+                      </span>
+                    )}
                     <span>
-                      Next retry: <strong>{formatRelativeTime(entry.nextRetryAt)}</strong>
-                      {' '}
-                      <span className="text-slate-400">({formatISOShort(entry.nextRetryAt)})</span>
+                      Location: <strong>{entry.locationName ?? entry.locationId}</strong>
                     </span>
+                    <span>
+                      Driver: <strong>{entry.driverName ?? entry.driverId}</strong>
+                    </span>
+
+                    {/* Replay button */}
+                    <div className="ml-auto">
+                      {ineligible ? (
+                        <span className="text-[10px] text-slate-400 italic">Not replayable: {ineligible}</span>
+                      ) : (
+                        <button
+                          onClick={() => handleReplay(entry)}
+                          disabled={isReplaying || replayResult?.success === true}
+                          className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-[11px] font-bold text-indigo-700 hover:bg-indigo-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          aria-label={`Replay dead-letter entry ${entry.id}`}
+                        >
+                          {isReplaying
+                            ? <><Loader2 size={11} className="animate-spin" /> Replaying…</>
+                            : <><RotateCcw size={11} /> Replay</>}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Row 4: Replay outcome banner */}
+                  {replayResult && (
+                    <ReplayOutcomeBanner
+                      result={replayResult}
+                      onDismiss={() => dismissReplayOutcome(entry.id)}
+                    />
                   )}
-                  <span>
-                    Location: <strong>{entry.locationName ?? entry.locationId}</strong>
-                  </span>
-                  <span>
-                    Driver: <strong>{entry.driverName ?? entry.driverId}</strong>
-                  </span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -278,8 +372,8 @@ const QueueDiagnostics: React.FC = () => {
       <p className="text-[11px] text-slate-400 leading-relaxed">
         <strong className="text-slate-500">Dead-letter</strong> entries have exceeded the maximum retry budget
         ({MAX_RETRIES} failures) and will not be replayed automatically.
-        Review the error details above, resolve the underlying issue, then ask the
-        driver to re-submit or contact support to purge the entry.
+        Use the <strong className="text-slate-500">Replay</strong> button to attempt a single manual re-submission
+        through the server-authoritative path.  On failure the entry stays visible here with the latest error details.
       </p>
     </div>
   );
