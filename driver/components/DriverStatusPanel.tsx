@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  User, Truck, Banknote, Percent, MapPin, Clock,
+  User, Truck, Banknote, Percent, Clock,
   CheckCircle, XCircle, TrendingUp, AlertCircle
 } from 'lucide-react';
 import { Driver, Location, Transaction, TRANSLATIONS } from '../../types';
@@ -28,7 +28,6 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = ({
     );
   }
 
-  const assignedLocations = locations.filter(l => l.assignedDriverId === driver.id);
   const recentTx = transactions
     .filter(tx => tx.driverId === driver.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
@@ -155,33 +154,6 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = ({
         )}
       </div>
 
-      {/* Assigned machines */}
-      <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
-          <MapPin size={12} /> {t.assignedMachines}
-          <span className="ml-auto bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full text-[8px] font-black">
-            {assignedLocations.length}
-          </span>
-        </p>
-        {assignedLocations.length === 0 ? (
-          <p className="text-xs font-bold text-slate-400">{t.noAssignedMachines}</p>
-        ) : (
-          <div className="space-y-2">
-            {assignedLocations.map(loc => (
-              <div key={loc.id} className="flex items-center justify-between py-1.5">
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                    loc.status === 'active' ? 'bg-emerald-500' :
-                    loc.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-500'
-                  }`} />
-                  <p className="text-xs font-bold text-slate-800 truncate">{loc.name}</p>
-                </div>
-                <span className="text-[9px] font-black text-slate-400 uppercase flex-shrink-0 ml-2">{loc.area}</span>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
     </div>
   );
 };

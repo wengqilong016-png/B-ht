@@ -57,15 +57,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
       return;
     }
 
-    // Admin-only gate: drivers must use the dedicated Driver App
-    if (result.user.role !== 'admin') {
-      await signOutCurrentUser();
-      setError(lang === 'zh'
-        ? '此入口仅供管理员使用，请前往司机专用 APP 登录'
-        : 'This console is for admins only. Drivers please use the Driver App.');
-      return;
-    }
-
     onLogin(result.user);
   };
 
@@ -120,13 +111,6 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
         <div className="text-center mb-6 space-y-2">
           <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase">BAHATI <span className="text-indigo-600">JACKPOTS</span></h1>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
-          {/* Admin-only badge */}
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 border border-indigo-100 rounded-full shadow-silicone-sm">
-            <Crown size={9} className="text-indigo-500" fill="currentColor" />
-            <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">
-              {lang === 'zh' ? '管理员专用入口' : 'Admin Console Only'}
-            </span>
-          </div>
         </div>
 
         <div className="bg-[#f5f7fa] p-10 rounded-[40px] shadow-silicone border border-white/60 w-full space-y-8">
