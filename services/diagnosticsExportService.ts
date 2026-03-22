@@ -97,6 +97,10 @@ export interface FleetExportPayload {
   /** Scope label — always 'fleet' for this payload. */
   scope: 'fleet';
   filtersApplied?: ExportFilters;
+  /**
+   * Summary computed from the **filtered** device subset.
+   * Use these counts for support triage of the exported set.
+   */
   summary: {
     totalDevicesReporting: number;
     currentDevicesReporting: number;
@@ -106,10 +110,21 @@ export interface FleetExportPayload {
     currentRetryWaiting: number;
     totalDeadLetter: number;
     currentDeadLetter: number;
-    /** How many stale snapshots are included. */
+    /** How many stale snapshots are included in the filtered set. */
     staleSnapshotCount: number;
     /** Source summary fetchedAt timestamp. */
     dataFetchedAt: string;
+  };
+  /**
+   * Unfiltered fleet-wide totals included for provenance.
+   * These reflect the full fleet state at the time of export, regardless of
+   * any filters applied.  Do not use these as counts for the exported subset.
+   */
+  globalSummary: {
+    totalDevicesReporting: number;
+    totalPending: number;
+    totalRetryWaiting: number;
+    totalDeadLetter: number;
   };
   /** Per-device entries after filters have been applied. */
   devices: FleetDeviceEntry[];
@@ -181,6 +196,27 @@ export function applyFleetSnapshotFilters(
 // ── Payload builders ──────────────────────────────────────────────────────────
 
 /**
+ * Narrow a dead-letter item list to only those matching the requested error state.
+ * Returns the original array unchanged when no errorState filter is requested, or
+ * when errorState is 'dead-letter'/'any-error' (all items qualify by definition).
+ */
+function filterDeadLetterItemsByErrorState(
+  items: DeadLetterSummaryItem[],
+  errorState: ExportFilters['errorState'],
+): DeadLetterSummaryItem[] {
+  if (!errorState) return items;
+  switch (errorState) {
+    case 'transient':
+      return items.filter((i) => i.lastErrorCategory === 'transient');
+    case 'permanent':
+      return items.filter((i) => i.lastErrorCategory === 'permanent');
+    case 'dead-letter':
+    case 'any-error':
+      return items;
+  }
+}
+
+/**
  * Build a support-friendly local export payload from the current dead-letter
  * items and queue health summary.
  *
@@ -241,6 +277,7 @@ export function buildFleetExportPayload(
     : fleetSummary.snapshots;
 
   const staleSnapshotCount = filteredSnapshots.filter((s) => s.isStale).length;
+  const currentFilteredSnapshots = filteredSnapshots.filter((s) => !s.isStale);
 
   const devices: FleetDeviceEntry[] = filteredSnapshots.map((snap) => ({
     deviceId: snap.deviceId,
@@ -251,7 +288,7 @@ export function buildFleetExportPayload(
     deadLetterCount: snap.deadLetterCount,
     isStale: snap.isStale,
     reportedAt: snap.reportedAt,
-    deadLetterItems: snap.deadLetterItems,
+    deadLetterItems: filterDeadLetterItemsByErrorState(snap.deadLetterItems, filters?.errorState),
   }));
 
   return {
@@ -260,16 +297,22 @@ export function buildFleetExportPayload(
     scope: 'fleet',
     ...(filters ? { filtersApplied: filters } : {}),
     summary: {
-      totalDevicesReporting: fleetSummary.totalDevicesReporting,
-      currentDevicesReporting: fleetSummary.currentDevicesReporting,
-      totalPending: fleetSummary.totalPending,
-      currentPending: fleetSummary.currentPending,
-      totalRetryWaiting: fleetSummary.totalRetryWaiting,
-      currentRetryWaiting: fleetSummary.currentRetryWaiting,
-      totalDeadLetter: fleetSummary.totalDeadLetter,
-      currentDeadLetter: fleetSummary.currentDeadLetter,
+      totalDevicesReporting: filteredSnapshots.length,
+      currentDevicesReporting: currentFilteredSnapshots.length,
+      totalPending: filteredSnapshots.reduce((acc, s) => acc + s.pendingCount, 0),
+      currentPending: currentFilteredSnapshots.reduce((acc, s) => acc + s.pendingCount, 0),
+      totalRetryWaiting: filteredSnapshots.reduce((acc, s) => acc + s.retryWaitingCount, 0),
+      currentRetryWaiting: currentFilteredSnapshots.reduce((acc, s) => acc + s.retryWaitingCount, 0),
+      totalDeadLetter: filteredSnapshots.reduce((acc, s) => acc + s.deadLetterCount, 0),
+      currentDeadLetter: currentFilteredSnapshots.reduce((acc, s) => acc + s.deadLetterCount, 0),
       staleSnapshotCount,
       dataFetchedAt: fleetSummary.fetchedAt,
+    },
+    globalSummary: {
+      totalDevicesReporting: fleetSummary.totalDevicesReporting,
+      totalPending: fleetSummary.totalPending,
+      totalRetryWaiting: fleetSummary.totalRetryWaiting,
+      totalDeadLetter: fleetSummary.totalDeadLetter,
     },
     devices,
     totalDevicesBeforeFilter,

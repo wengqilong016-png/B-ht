@@ -277,6 +277,45 @@ describe('buildFleetExportPayload', () => {
     expect(payload.totalDevicesBeforeFilter).toBe(2);
     expect(payload.summary.totalDevicesReporting).toBe(2);
     expect(payload.summary.dataFetchedAt).toBe(fleet.fetchedAt);
+    expect(payload.globalSummary.totalDevicesReporting).toBe(fleet.totalDevicesReporting);
+  });
+
+  it('filtered summary counts are recomputed from the filtered device subset (not global totals)', () => {
+    const snapshots = [
+      makeSnapshot({ id: 'a--drv-1', deviceId: 'a', driverId: 'drv-1', pendingCount: 3, deadLetterCount: 1 }),
+      makeSnapshot({ id: 'b--drv-2', deviceId: 'b', driverId: 'drv-2', pendingCount: 5, deadLetterCount: 2 }),
+    ];
+    const fleet = makeFleetSummary(snapshots);
+    const payload = buildFleetExportPayload(fleet, { driverId: 'drv-1' });
+
+    // Only device 'a' is included in the filtered set
+    expect(payload.devices).toHaveLength(1);
+    expect(payload.summary.totalDevicesReporting).toBe(1);
+    expect(payload.summary.totalPending).toBe(3);
+    expect(payload.summary.totalDeadLetter).toBe(1);
+
+    // globalSummary must still reflect unfiltered fleet totals
+    expect(payload.globalSummary.totalDevicesReporting).toBe(2);
+    expect(payload.globalSummary.totalPending).toBe(8);
+    expect(payload.globalSummary.totalDeadLetter).toBe(3);
+  });
+
+  it('globalSummary always reflects the full unfiltered fleet', () => {
+    const snapshots = [
+      makeSnapshot({ id: 'a--drv-1', deviceId: 'a', driverId: 'drv-1', pendingCount: 2 }),
+      makeSnapshot({ id: 'b--drv-2', deviceId: 'b', driverId: 'drv-2', pendingCount: 4 }),
+    ];
+    const fleet = makeFleetSummary(snapshots);
+
+    // With filter
+    const filtered = buildFleetExportPayload(fleet, { driverId: 'drv-1' });
+    expect(filtered.globalSummary.totalDevicesReporting).toBe(2);
+    expect(filtered.globalSummary.totalPending).toBe(6);
+
+    // Without filter
+    const unfiltered = buildFleetExportPayload(fleet);
+    expect(unfiltered.globalSummary.totalDevicesReporting).toBe(2);
+    expect(unfiltered.globalSummary.totalPending).toBe(6);
   });
 
   it('filters snapshots by driverId', () => {
@@ -363,6 +402,46 @@ describe('buildFleetExportPayload', () => {
 
     expect(payload.devices).toHaveLength(1);
     expect(payload.devices[0].deviceId).toBe('b');
+  });
+
+  it('errorState filter narrows nested deadLetterItems in each device entry', () => {
+    const snapshots = [
+      makeSnapshot({
+        id: 'a--drv-1', deviceId: 'a', deadLetterCount: 2,
+        deadLetterItems: [
+          { txId: 'tx-t', retryCount: 5, locationId: 'loc-1', lastErrorCategory: 'transient' },
+          { txId: 'tx-p', retryCount: 5, locationId: 'loc-2', lastErrorCategory: 'permanent' },
+        ],
+      }),
+    ];
+    const fleet = makeFleetSummary(snapshots);
+
+    // transient filter: device is included (has transient item), but only transient deadLetterItems exported
+    const transientPayload = buildFleetExportPayload(fleet, { errorState: 'transient' });
+    expect(transientPayload.devices).toHaveLength(1);
+    expect(transientPayload.devices[0].deadLetterItems).toHaveLength(1);
+    expect(transientPayload.devices[0].deadLetterItems[0].txId).toBe('tx-t');
+
+    // permanent filter: device is included (has permanent item), but only permanent deadLetterItems exported
+    const permanentPayload = buildFleetExportPayload(fleet, { errorState: 'permanent' });
+    expect(permanentPayload.devices).toHaveLength(1);
+    expect(permanentPayload.devices[0].deadLetterItems).toHaveLength(1);
+    expect(permanentPayload.devices[0].deadLetterItems[0].txId).toBe('tx-p');
+  });
+
+  it('errorState=dead-letter and any-error preserve all nested deadLetterItems', () => {
+    const items = [
+      { txId: 'tx-t', retryCount: 5, locationId: 'loc-1', lastErrorCategory: 'transient' as const },
+      { txId: 'tx-p', retryCount: 5, locationId: 'loc-2', lastErrorCategory: 'permanent' as const },
+    ];
+    const snapshots = [makeSnapshot({ id: 'a--drv-1', deviceId: 'a', deadLetterCount: 2, deadLetterItems: items })];
+    const fleet = makeFleetSummary(snapshots);
+
+    const dlPayload = buildFleetExportPayload(fleet, { errorState: 'dead-letter' });
+    expect(dlPayload.devices[0].deadLetterItems).toHaveLength(2);
+
+    const anyPayload = buildFleetExportPayload(fleet, { errorState: 'any-error' });
+    expect(anyPayload.devices[0].deadLetterItems).toHaveLength(2);
   });
 
   it('combines driverId and deviceId filters (AND logic)', () => {
