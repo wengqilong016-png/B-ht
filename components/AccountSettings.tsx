@@ -5,6 +5,8 @@ import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
 import { supabase } from '../supabaseClient';
 import { changeUserPassword, updateUserEmail } from '../services/authService';
 import { isPasswordStrong } from '../utils/passwordPolicy';
+import { useFormStatus } from '../hooks/useFormStatus';
+import { StatusIcon as StatusIconComponent } from './common/StatusIcon';
 
 interface AccountSettingsProps {
   currentUser: UserType;
@@ -24,104 +26,85 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
   // Password section
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
-  const [pwdStatus, setPwdStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [pwdMsg, setPwdMsg] = useState('');
+  const pwdForm = useFormStatus();
 
   // Email section
   const [newEmail, setNewEmail] = useState('');
-  const [emailStatus, setEmailStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [emailMsg, setEmailMsg] = useState('');
+  const emailForm = useFormStatus();
   const [submittedEmail, setSubmittedEmail] = useState('');
 
   // Phone section (stored in drivers table)
   const [newPhone, setNewPhone] = useState('');
-  const [phoneStatus, setPhoneStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
-  const [phoneMsg, setPhoneMsg] = useState('');
+  const phoneForm = useFormStatus();
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOnline) { setPwdStatus('error'); setPwdMsg(t.offlineWarning); return; }
+    if (!isOnline) { pwdForm.setError(t.offlineWarning); return; }
     if (newPwd !== confirmPwd) {
-      setPwdStatus('error');
-      setPwdMsg(t.passwordMismatch);
+      pwdForm.setError(t.passwordMismatch);
       return;
     }
     if (newPwd.length < 8) {
-      setPwdStatus('error');
-      setPwdMsg(t.passwordTooShort);
+      pwdForm.setError(t.passwordTooShort);
       return;
     }
     if (!isPasswordStrong(newPwd)) {
-      setPwdStatus('error');
-      setPwdMsg(t.passwordTooWeak);
+      pwdForm.setError(t.passwordTooWeak);
       return;
     }
-    setPwdStatus('loading');
+    pwdForm.setLoading();
     const result = await changeUserPassword(newPwd);
     if (result.success) {
-      setPwdStatus('ok');
-      setPwdMsg(t.updateSuccess);
+      pwdForm.setSuccess(t.updateSuccess);
       setNewPwd('');
       setConfirmPwd('');
     } else {
-      setPwdStatus('error');
-      setPwdMsg(result.error ?? t.updateError);
+      pwdForm.setError(result.error ?? t.updateError);
     }
   };
 
   const handleChangeEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOnline) { setEmailStatus('error'); setEmailMsg(t.offlineWarning); return; }
+    if (!isOnline) { emailForm.setError(t.offlineWarning); return; }
     if (!newEmail.trim()) return;
     const target = newEmail.trim();
-    setEmailStatus('loading');
+    emailForm.setLoading();
     const result = await updateUserEmail(target);
     if (result.success) {
       setSubmittedEmail(target);
-      setEmailStatus('ok');
-      setEmailMsg(t.emailConfirmationSent);
+      emailForm.setSuccess(t.emailConfirmationSent);
       setNewEmail('');
     } else {
-      setEmailStatus('error');
-      setEmailMsg(result.error ?? t.updateError);
+      emailForm.setError(result.error ?? t.updateError);
     }
   };
 
   const handleUpdatePhone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!isOnline) { setPhoneStatus('error'); setPhoneMsg(t.offlineWarning); return; }
+    if (!isOnline) { phoneForm.setError(t.offlineWarning); return; }
     if (!newPhone.trim()) {
-      setPhoneStatus('error');
-      setPhoneMsg(t.updateError);
+      phoneForm.setError(t.updateError);
       return;
     }
     if (!currentUser.driverId || !supabase) {
-      setPhoneStatus('error');
-      setPhoneMsg(t.updateError);
+      phoneForm.setError(t.updateError);
       return;
     }
-    setPhoneStatus('loading');
+    phoneForm.setLoading();
     const { error } = await supabase
       .from('drivers')
       .update({ phone: newPhone.trim() })
       .eq('id', currentUser.driverId);
     if (error) {
-      setPhoneStatus('error');
-      setPhoneMsg(error.message || t.updateError);
+      phoneForm.setError(error.message || t.updateError);
     } else {
-      setPhoneStatus('ok');
-      setPhoneMsg(t.updateSuccess);
+      phoneForm.setSuccess(t.updateSuccess);
       onPhoneUpdated?.(currentUser.driverId, newPhone.trim());
       setNewPhone('');
     }
   };
 
-  const StatusIcon: React.FC<{ status: 'idle' | 'loading' | 'ok' | 'error' }> = ({ status }) => {
-    if (status === 'loading') return <Loader2 size={14} className="animate-spin text-indigo-400" />;
-    if (status === 'ok') return <CheckCircle size={14} className="text-emerald-400" />;
-    if (status === 'error') return <AlertCircle size={14} className="text-rose-400" />;
-    return null;
-  };
+  const StatusIcon = StatusIconComponent;
 
   const inputClass = "w-full bg-[#f0f2f5] border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 disabled:opacity-50";
   const labelClass = "text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 mb-1.5";
@@ -171,7 +154,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                 <input
                   type="password"
                   value={newPwd}
-                  onChange={e => { setNewPwd(e.target.value); setPwdStatus('idle'); }}
+                  onChange={e => { setNewPwd(e.target.value); pwdForm.reset(); }}
                   className={inputClass}
                   placeholder="••••••••"
                   minLength={8}
@@ -184,7 +167,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                 <input
                   type="password"
                   value={confirmPwd}
-                  onChange={e => { setConfirmPwd(e.target.value); setPwdStatus('idle'); }}
+                  onChange={e => { setConfirmPwd(e.target.value); pwdForm.reset(); }}
                   className={inputClass}
                   placeholder="••••••••"
                   minLength={8}
@@ -192,14 +175,14 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                   disabled={!isOnline}
                 />
               </div>
-              {pwdStatus !== 'idle' && (
-                <div className={`flex items-center gap-2 text-xs font-bold ${pwdStatus === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  <StatusIcon status={pwdStatus} />
-                  <span>{pwdMsg}</span>
+              {!pwdForm.isIdle && (
+                <div className={`flex items-center gap-2 text-xs font-bold ${pwdForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
+                  <StatusIcon status={pwdForm.status} />
+                  <span>{pwdForm.message}</span>
                 </div>
               )}
-              <button type="submit" disabled={pwdStatus === 'loading' || !isOnline} className={submitClass}>
-                {pwdStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
+              <button type="submit" disabled={pwdForm.isLoading || !isOnline} className={submitClass}>
+                {pwdForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
               </button>
             </form>
           </div>
@@ -223,7 +206,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
             </div>
 
             {/* Pending confirmation panel – shown instead of the form after a successful request */}
-            {emailStatus === 'ok' ? (
+            {emailForm.isSuccess ? (
               <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
                 <div className="flex items-center gap-2">
                   <Clock size={14} className="text-amber-500 flex-shrink-0" />
@@ -240,7 +223,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                 </p>
                 <button
                   type="button"
-                  onClick={() => { setEmailStatus('idle'); setSubmittedEmail(''); setNewEmail(''); }}
+                  onClick={() => { emailForm.reset(); setSubmittedEmail(''); setNewEmail(''); }}
                   className="text-[10px] text-indigo-500 font-black underline underline-offset-2 hover:text-indigo-700 transition-colors"
                 >
                   {t.emailSubmitAnotherRequest} →
@@ -253,21 +236,21 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                   <input
                     type="email"
                     value={newEmail}
-                    onChange={e => { setNewEmail(e.target.value); setEmailStatus('idle'); }}
+                    onChange={e => { setNewEmail(e.target.value); emailForm.reset(); }}
                     className={inputClass}
                     placeholder="new@example.com"
                     required
                     disabled={!isOnline}
                   />
                 </div>
-                {emailStatus === 'error' && (
+                {emailForm.isError && (
                   <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
                     <AlertCircle size={14} className="text-rose-400" />
-                    <span>{emailMsg}</span>
+                    <span>{emailForm.message}</span>
                   </div>
                 )}
-                <button type="submit" disabled={emailStatus === 'loading' || !isOnline} className={submitClass}>
-                  {emailStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
+                <button type="submit" disabled={emailForm.isLoading || !isOnline} className={submitClass}>
+                  {emailForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
                 </button>
               </form>
             )}
@@ -286,21 +269,21 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                   <input
                     type="tel"
                     value={newPhone}
-                    onChange={e => { setNewPhone(e.target.value); setPhoneStatus('idle'); }}
+                    onChange={e => { setNewPhone(e.target.value); phoneForm.reset(); }}
                     className={inputClass}
                     placeholder="+255 6xx xxx xxxx"
                     required
                     disabled={!isOnline}
                   />
                 </div>
-                {phoneStatus !== 'idle' && (
-                  <div className={`flex items-center gap-2 text-xs font-bold ${phoneStatus === 'ok' ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    <StatusIcon status={phoneStatus} />
-                    <span>{phoneMsg}</span>
+                {!phoneForm.isIdle && (
+                  <div className={`flex items-center gap-2 text-xs font-bold ${phoneForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    <StatusIcon status={phoneForm.status} />
+                    <span>{phoneForm.message}</span>
                   </div>
                 )}
-                <button type="submit" disabled={phoneStatus === 'loading' || !isOnline} className={submitClass}>
-                  {phoneStatus === 'loading' ? <Loader2 size={16} className="animate-spin" /> : <><Phone size={14} /> {t.saveChanges}</>}
+                <button type="submit" disabled={phoneForm.isLoading || !isOnline} className={submitClass}>
+                  {phoneForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Phone size={14} /> {t.saveChanges}</>}
                 </button>
               </form>
             </div>
