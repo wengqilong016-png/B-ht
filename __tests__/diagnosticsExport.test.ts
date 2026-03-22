@@ -477,6 +477,35 @@ describe('buildFleetExportPayload', () => {
     expect(payload.devices).toHaveLength(0);
     expect(payload.totalDevicesBeforeFilter).toBe(1);
   });
+
+  it('errorState-specific fleet export keeps summary dead-letter totals aligned with exported nested items', () => {
+    const snapshots = [
+      makeSnapshot({
+        id: 'a--drv-1',
+        deviceId: 'a',
+        deadLetterCount: 2,
+        deadLetterItems: [
+          { txId: 'tx-t', retryCount: 5, locationId: 'loc-1', lastErrorCategory: 'transient' },
+          { txId: 'tx-p', retryCount: 5, locationId: 'loc-2', lastErrorCategory: 'permanent' },
+        ],
+      }),
+    ];
+    const fleet = makeFleetSummary(snapshots);
+
+    const transientPayload = buildFleetExportPayload(fleet, { errorState: 'transient' });
+    expect(transientPayload.devices).toHaveLength(1);
+    expect(transientPayload.devices[0].deadLetterItems).toHaveLength(1);
+    expect(transientPayload.devices[0].deadLetterCount).toBe(1);
+    expect(transientPayload.summary.totalDeadLetter).toBe(1);
+    expect(transientPayload.summary.currentDeadLetter).toBe(1);
+
+    const permanentPayload = buildFleetExportPayload(fleet, { errorState: 'permanent' });
+    expect(permanentPayload.devices).toHaveLength(1);
+    expect(permanentPayload.devices[0].deadLetterItems).toHaveLength(1);
+    expect(permanentPayload.devices[0].deadLetterCount).toBe(1);
+    expect(permanentPayload.summary.totalDeadLetter).toBe(1);
+    expect(permanentPayload.summary.currentDeadLetter).toBe(1);
+  });
 });
 
 // ── applyLocalFilters ─────────────────────────────────────────────────────────

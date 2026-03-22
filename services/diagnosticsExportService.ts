@@ -276,20 +276,30 @@ export function buildFleetExportPayload(
     ? applyFleetSnapshotFilters(fleetSummary.snapshots, filters)
     : fleetSummary.snapshots;
 
-  const staleSnapshotCount = filteredSnapshots.filter((s) => s.isStale).length;
-  const currentFilteredSnapshots = filteredSnapshots.filter((s) => !s.isStale);
+  const devices: FleetDeviceEntry[] = filteredSnapshots.map((snap) => {
+    const filteredDeadLetterItems =
+      filterDeadLetterItemsByErrorState(snap.deadLetterItems, filters?.errorState);
 
-  const devices: FleetDeviceEntry[] = filteredSnapshots.map((snap) => ({
-    deviceId: snap.deviceId,
-    driverId: snap.driverId,
-    driverName: snap.driverName,
-    pendingCount: snap.pendingCount,
-    retryWaitingCount: snap.retryWaitingCount,
-    deadLetterCount: snap.deadLetterCount,
-    isStale: snap.isStale,
-    reportedAt: snap.reportedAt,
-    deadLetterItems: filterDeadLetterItemsByErrorState(snap.deadLetterItems, filters?.errorState),
-  }));
+    const exportDeadLetterCount =
+      filters?.errorState === 'transient' || filters?.errorState === 'permanent'
+        ? filteredDeadLetterItems.length
+        : snap.deadLetterCount;
+
+    return {
+      deviceId: snap.deviceId,
+      driverId: snap.driverId,
+      driverName: snap.driverName,
+      pendingCount: snap.pendingCount,
+      retryWaitingCount: snap.retryWaitingCount,
+      deadLetterCount: exportDeadLetterCount,
+      isStale: snap.isStale,
+      reportedAt: snap.reportedAt,
+      deadLetterItems: filteredDeadLetterItems,
+    };
+  });
+
+  const staleSnapshotCount = devices.filter((d) => d.isStale).length;
+  const currentDevices = devices.filter((d) => !d.isStale);
 
   return {
     schemaVersion: 1,
@@ -297,14 +307,14 @@ export function buildFleetExportPayload(
     scope: 'fleet',
     ...(filters ? { filtersApplied: filters } : {}),
     summary: {
-      totalDevicesReporting: filteredSnapshots.length,
-      currentDevicesReporting: currentFilteredSnapshots.length,
-      totalPending: filteredSnapshots.reduce((acc, s) => acc + s.pendingCount, 0),
-      currentPending: currentFilteredSnapshots.reduce((acc, s) => acc + s.pendingCount, 0),
-      totalRetryWaiting: filteredSnapshots.reduce((acc, s) => acc + s.retryWaitingCount, 0),
-      currentRetryWaiting: currentFilteredSnapshots.reduce((acc, s) => acc + s.retryWaitingCount, 0),
-      totalDeadLetter: filteredSnapshots.reduce((acc, s) => acc + s.deadLetterCount, 0),
-      currentDeadLetter: currentFilteredSnapshots.reduce((acc, s) => acc + s.deadLetterCount, 0),
+      totalDevicesReporting: devices.length,
+      currentDevicesReporting: currentDevices.length,
+      totalPending: devices.reduce((acc, d) => acc + d.pendingCount, 0),
+      currentPending: currentDevices.reduce((acc, d) => acc + d.pendingCount, 0),
+      totalRetryWaiting: devices.reduce((acc, d) => acc + d.retryWaitingCount, 0),
+      currentRetryWaiting: currentDevices.reduce((acc, d) => acc + d.retryWaitingCount, 0),
+      totalDeadLetter: devices.reduce((acc, d) => acc + d.deadLetterCount, 0),
+      currentDeadLetter: currentDevices.reduce((acc, d) => acc + d.deadLetterCount, 0),
       staleSnapshotCount,
       dataFetchedAt: fleetSummary.fetchedAt,
     },
