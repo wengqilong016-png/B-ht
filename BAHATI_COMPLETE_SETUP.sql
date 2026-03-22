@@ -249,7 +249,7 @@ CREATE INDEX idx_transactions_timestamp         ON public.transactions("timestam
 CREATE INDEX idx_transactions_locationId        ON public.transactions("locationId");
 CREATE INDEX idx_transactions_driverId          ON public.transactions("driverId");
 CREATE INDEX idx_transactions_driver_timestamp  ON public.transactions("driverId", "timestamp" ASC);
-CREATE INDEX idx_transactions_driver_date       ON public.transactions("driverId", (DATE("timestamp")));
+CREATE INDEX idx_transactions_driver_date       ON public.transactions("driverId", ("timestamp"::date));
 CREATE INDEX idx_daily_settlements_driver_date  ON public.daily_settlements("driverId", "date");
 CREATE INDEX idx_lcr_status_created_at          ON public.location_change_requests(status, created_at DESC);
 CREATE INDEX idx_lcr_location_id_created_at     ON public.location_change_requests(location_id, created_at DESC);
