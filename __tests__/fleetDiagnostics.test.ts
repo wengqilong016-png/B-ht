@@ -121,15 +121,17 @@ describe('getFleetDiagnostics', () => {
   it('preserves snapshot ordering returned by Supabase (newest-first)', async () => {
     const now = Date.now();
     const rows = [
-      makeRow({ id: 'dev-a--drv-1', device_id: 'dev-a', reported_at: new Date(now - 1000).toISOString() }),
-      makeRow({ id: 'dev-b--drv-2', device_id: 'dev-b', reported_at: new Date(now - 5000).toISOString() }),
+      // newest-first, as Supabase would return with ORDER BY reported_at DESC
       makeRow({ id: 'dev-c--drv-3', device_id: 'dev-c', reported_at: new Date(now).toISOString() }),
+      makeRow({ id: 'dev-a--drv-1', device_id: 'dev-a', reported_at: new Date(now - 1000).toISOString() }),
+      // oldest
+      makeRow({ id: 'dev-b--drv-2', device_id: 'dev-b', reported_at: new Date(now - 5000).toISOString() }),
     ];
     const client = makeSupabaseStub(rows);
     const result = await getFleetDiagnostics(client);
 
     // Order is preserved exactly as returned (newest-first from Supabase)
-    expect(result.snapshots.map(s => s.deviceId)).toEqual(['dev-a', 'dev-b', 'dev-c']);
+    expect(result.snapshots.map(s => s.deviceId)).toEqual(['dev-c', 'dev-a', 'dev-b']);
   });
 
   it('forwards dead_letter_items JSONB array as DeadLetterSummaryItem[]', async () => {
@@ -231,7 +233,7 @@ describe('reportQueueHealthToServer', () => {
     expect(row.retry_waiting_count).toBe(0);
     expect(row.dead_letter_count).toBe(0);
     expect(Array.isArray(row.dead_letter_items)).toBe(true);
-    expect(typeof row.reported_at).toBe('string');
+    expect(row.reported_at).toBeUndefined();
   });
 
   it('uses a stable device ID from localStorage when none is provided', async () => {

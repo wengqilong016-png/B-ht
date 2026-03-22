@@ -769,7 +769,7 @@ export async function reportQueueHealthToServer(
       retry_waiting_count: summary.retryWaiting,
       dead_letter_count: summary.deadLetter,
       dead_letter_items: deadLetterItems,
-      reported_at: new Date().toISOString(),
+      // reported_at is set server-side by trigger to avoid clock-skew issues.
     };
 
     const { error } = await supabaseClient

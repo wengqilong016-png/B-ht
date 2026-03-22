@@ -11,7 +11,7 @@
 CREATE TABLE IF NOT EXISTS public.queue_health_reports (
     id                  TEXT        PRIMARY KEY,
     device_id           TEXT        NOT NULL,
-    driver_id           TEXT        REFERENCES public.drivers(id),
+    driver_id           TEXT        NOT NULL REFERENCES public.drivers(id) ON DELETE CASCADE,
     driver_name         TEXT,
     pending_count       INTEGER     NOT NULL DEFAULT 0,
     retry_waiting_count INTEGER     NOT NULL DEFAULT 0,
@@ -25,6 +25,22 @@ CREATE INDEX IF NOT EXISTS queue_health_reports_driver_idx
 
 CREATE INDEX IF NOT EXISTS queue_health_reports_reported_at_idx
     ON public.queue_health_reports (reported_at DESC);
+
+-- ── Server-side reported_at ───────────────────────────────────────────────────
+-- Always overwrite reported_at with the server clock so that skewed device
+-- clocks cannot affect ordering or stale-detection in the admin UI.
+
+CREATE OR REPLACE FUNCTION public.set_queue_health_reported_at()
+RETURNS TRIGGER LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.reported_at := NOW();
+    RETURN NEW;
+END;
+$$;
+
+CREATE TRIGGER trg_queue_health_reported_at
+    BEFORE INSERT OR UPDATE ON public.queue_health_reports
+    FOR EACH ROW EXECUTE FUNCTION public.set_queue_health_reported_at();
 
 -- ── Row-Level Security ────────────────────────────────────────────────────────
 
@@ -53,6 +69,7 @@ CREATE POLICY qhr_driver_insert ON public.queue_health_reports
     );
 
 -- Drivers (and admins) may update rows for their own driver_id.
+-- WITH CHECK prevents re-labelling rows to a different driver/device pair.
 CREATE POLICY qhr_driver_update ON public.queue_health_reports
     FOR UPDATE TO authenticated
     USING (
@@ -61,4 +78,12 @@ CREATE POLICY qhr_driver_update ON public.queue_health_reports
              WHERE p.auth_user_id = auth.uid()
                AND (p.role = 'admin' OR p.driver_id = driver_id)
         )
+    )
+    WITH CHECK (
+        EXISTS (
+            SELECT 1 FROM public.profiles p
+             WHERE p.auth_user_id = auth.uid()
+               AND (p.role = 'admin' OR p.driver_id = driver_id)
+        )
+        AND id = device_id || '--' || driver_id
     );

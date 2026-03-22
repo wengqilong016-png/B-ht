@@ -63,7 +63,9 @@ export async function getFleetDiagnostics(
 ): Promise<FleetDiagnosticsSummary> {
   const { data, error } = await supabaseClient
     .from('queue_health_reports')
-    .select('*')
+    .select(
+      'id, device_id, driver_id, driver_name, pending_count, retry_waiting_count, dead_letter_count, dead_letter_items, reported_at',
+    )
     .order('reported_at', { ascending: false });
 
   if (error) {
