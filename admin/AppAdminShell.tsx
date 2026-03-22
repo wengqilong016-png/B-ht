@@ -4,7 +4,7 @@ import {
   LogOut, Globe, Loader2,
   CheckSquare, Crown,
   MapPin, Store, Users, FileSpreadsheet, History, Settings, ClipboardList,
-  Activity, Radio,
+  Activity, Radio, Bell,
 } from 'lucide-react';
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -26,6 +26,7 @@ const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
 const LocationChangeReview = lazy(() => import('./pages/LocationChangeReview'));
 const QueueDiagnostics = lazy(() => import('./components/QueueDiagnostics'));
 const FleetDiagnostics = lazy(() => import('./components/FleetDiagnostics'));
+const HealthAlerts = lazy(() => import('./components/HealthAlerts'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -34,7 +35,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics';
+type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts';
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -69,6 +70,7 @@ const AppAdminShell: React.FC = () => {
     history: 'History', reports: 'Reports', 'change-review': 'Change Requests',
     diagnostics: 'Local Queue Diagnostics',
     'fleet-diagnostics': 'Fleet-Wide Diagnostics',
+    'health-alerts': 'Health Alerts',
   };
 
   const adminNavItems = [
@@ -82,6 +84,7 @@ const AppAdminShell: React.FC = () => {
     { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
     { id: 'diagnostics', icon: <Activity size={18}/>, label: '本地队列诊断', labelEn: 'Local Queue' },
     { id: 'fleet-diagnostics', icon: <Radio size={18}/>, label: '车队健康', labelEn: 'Fleet Diag.' },
+    { id: 'health-alerts', icon: <Bell size={18}/>, label: '健康告警', labelEn: 'Alerts' },
   ];
 
   const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {
@@ -316,6 +319,9 @@ const AppAdminShell: React.FC = () => {
               )}
               {view === 'fleet-diagnostics' && (
                 <FleetDiagnostics />
+              )}
+              {view === 'health-alerts' && (
+                <HealthAlerts />
               )}
             </Suspense>
           </div>
