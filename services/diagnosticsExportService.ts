@@ -69,6 +69,12 @@ export interface LocalExportPayload {
   scope: 'local';
   /** Filters that were applied when building this export (undefined = none). */
   filtersApplied?: ExportFilters;
+  /**
+   * Optional support case reference.  When set, the export is linked to a
+   * specific investigation.  Use `addCaseIdToExportPayload` from
+   * `supportCaseService` to attach a case ID after building the payload.
+   */
+  caseId?: string;
   summary: QueueHealthSummary;
   deadLetterItems: LocalDeadLetterEntry[];
   /** Informational: total dead-letter items before filters were applied. */
@@ -97,6 +103,12 @@ export interface FleetExportPayload {
   /** Scope label — always 'fleet' for this payload. */
   scope: 'fleet';
   filtersApplied?: ExportFilters;
+  /**
+   * Optional support case reference.  When set, the export is linked to a
+   * specific investigation.  Use `addCaseIdToExportPayload` from
+   * `supportCaseService` to attach a case ID after building the payload.
+   */
+  caseId?: string;
   /**
    * Summary computed from the **filtered** device subset.
    * Use these counts for support triage of the exported set.

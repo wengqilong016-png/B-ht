@@ -27,6 +27,7 @@ const LocationChangeReview = lazy(() => import('./pages/LocationChangeReview'));
 const QueueDiagnostics = lazy(() => import('./components/QueueDiagnostics'));
 const FleetDiagnostics = lazy(() => import('./components/FleetDiagnostics'));
 const HealthAlerts = lazy(() => import('./components/HealthAlerts'));
+const AuditTrail = lazy(() => import('./components/AuditTrail'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -35,7 +36,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts';
+type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts' | 'audit-trail';
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -71,6 +72,7 @@ const AppAdminShell: React.FC = () => {
     diagnostics: 'Local Queue Diagnostics',
     'fleet-diagnostics': 'Fleet-Wide Diagnostics',
     'health-alerts': 'Health Alerts',
+    'audit-trail': 'Support Audit Trail',
   };
 
   const adminNavItems = [
@@ -85,6 +87,7 @@ const AppAdminShell: React.FC = () => {
     { id: 'diagnostics', icon: <Activity size={18}/>, label: '本地队列诊断', labelEn: 'Local Queue' },
     { id: 'fleet-diagnostics', icon: <Radio size={18}/>, label: '车队健康', labelEn: 'Fleet Diag.' },
     { id: 'health-alerts', icon: <Bell size={18}/>, label: '健康告警', labelEn: 'Alerts' },
+    { id: 'audit-trail', icon: <ClipboardList size={18}/>, label: '审计日志', labelEn: 'Audit Trail' },
   ];
 
   const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {
@@ -322,6 +325,9 @@ const AppAdminShell: React.FC = () => {
               )}
               {view === 'health-alerts' && (
                 <HealthAlerts />
+              )}
+              {view === 'audit-trail' && (
+                <AuditTrail />
               )}
             </Suspense>
           </div>
