@@ -128,6 +128,23 @@ describe('offlineQueue — localStorage fallback', () => {
     expect(found?.isSynced).toBe(true);
   });
 
+  it('enqueueTransaction includes QueueMeta fields', async () => {
+    const { enqueueTransaction } = await import('../offlineQueue');
+    const tx = makeTx();
+    await enqueueTransaction(tx);
+
+    const list = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    expect(list).toHaveLength(1);
+    const entry = list[0];
+    expect(entry.operationId).toBeDefined();
+    expect(typeof entry.operationId).toBe('string');
+    expect(entry.operationId).toMatch(/^op-/);
+    expect(entry.entityVersion).toBeDefined();
+    expect(typeof entry.entityVersion).toBe('number');
+    expect(entry._queuedAt).toBeDefined();
+    expect(entry.retryCount).toBe(0);
+  });
+
   it('getQueueSize reflects the number of pending transactions', async () => {
     const { enqueueTransaction, getQueueSize } = await import('../offlineQueue');
     expect(await getQueueSize()).toBe(0);

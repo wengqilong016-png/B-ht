@@ -230,7 +230,7 @@ const AppAdminShell: React.FC = () => {
                   dailySettlements={filteredSettlements}
                   aiLogs={aiLogs}
                   currentUser={currentUser}
-                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
                   onUpdateLocations={(l) => updateLocations.mutate(l)}
                   onDeleteLocations={(ids) => deleteLocations.mutate(ids)}
                   onUpdateTransaction={(id, updates) => updateTransaction.mutate({txId: id, updates})}
@@ -251,7 +251,7 @@ const AppAdminShell: React.FC = () => {
                   locations={locations}
                   transactions={filteredTransactions}
                   dailySettlements={filteredSettlements}
-                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)}
+                  onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
                   onUpdateLocations={(l) => updateLocations.mutate(l)}
                   onDeleteDrivers={(ids) => deleteDrivers.mutate(ids)}
                 />
@@ -285,7 +285,7 @@ const AppAdminShell: React.FC = () => {
                 <FinancialReports transactions={filteredTransactions} drivers={filteredDrivers} locations={filteredLocations} dailySettlements={filteredSettlements} lang={lang} />
               )}
               {view === 'debt' && (
-                <DebtManager drivers={filteredDrivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={(l) => updateLocations.mutate(l)} onUpdateDrivers={(d) => updateDrivers.mutateAsync(d)} lang={lang} />
+                <DebtManager drivers={filteredDrivers} locations={filteredLocations} currentUser={currentUser} onUpdateLocations={(l) => updateLocations.mutate(l)} onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})} lang={lang} />
               )}
               {view === 'ai' && !showDashboard && (
                 <AIHub
