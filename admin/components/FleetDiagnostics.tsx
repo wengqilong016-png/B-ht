@@ -23,7 +23,7 @@ import {
   Activity, AlertTriangle, CheckCircle2, Clock, Loader2,
   RefreshCw, Server, Wifi, XCircle,
 } from 'lucide-react';
-import { supabase } from '../../supabaseClient';
+import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
   getFleetDiagnostics,
   type FleetDiagnosticsSummary,
@@ -198,7 +198,7 @@ const FleetDiagnostics: React.FC = () => {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
 
   const refresh = useCallback(async () => {
-    if (!supabase) {
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
       setError('Supabase is not configured on this device.');
       setLoading(false);
       return;
