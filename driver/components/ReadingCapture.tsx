@@ -4,6 +4,16 @@ import WizardStepBar from './WizardStepBar';
 import { Location, Driver, TRANSLATIONS, AILog } from '../../types';
 import { GoogleGenAI } from '@google/genai';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
+import { usePerformanceMode } from '../hooks/usePerformanceMode';
+import {
+  compressCanvasImage,
+  getOptimalVideoConstraints,
+  getOptimalScanInterval,
+  getOptimalAIImageSize,
+  getOptimalEvidenceWidth,
+  clearCanvasMemory,
+  getMinimumAICallInterval,
+} from '../utils/imageOptimization';
 
 interface ReadingCaptureProps {
   selectedLocation: Location;
@@ -34,6 +44,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   onNext, onBack, revenue, diff,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { isLowPerformance } = usePerformanceMode();
 
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'review'>('idle');
@@ -42,6 +53,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const scanIntervalRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
+  const lastScanTimeRef = useRef<number>(0);
 
   const requestGps = () => {
     if (!navigator.geolocation) return;
@@ -65,13 +77,14 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     setScannerStatus('scanning');
     onUpdateAiReview(null);
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
-      });
+      const videoConstraints = getOptimalVideoConstraints(isLowPerformance);
+      const stream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
-        scanIntervalRef.current = window.setInterval(captureAndAnalyze, 1500);
+
+        const scanInterval = getOptimalScanInterval(isLowPerformance);
+        scanIntervalRef.current = window.setInterval(captureAndAnalyze, scanInterval);
       }
     } catch {
       alert(lang === 'zh' ? "Cannot access camera" : "Camera access denied");
@@ -87,6 +100,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     setIsScannerOpen(false);
     setScannerStatus('idle');
     isProcessingRef.current = false;
+    lastScanTimeRef.current = 0; // Reset debounce timer
   };
 
   const takeManualPhoto = () => {
@@ -98,17 +112,27 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     const ctx = canvas.getContext('2d');
     if (ctx) {
       ctx.drawImage(video, 0, 0);
-      const base64 = canvas.toDataURL('image/jpeg', 0.7);
+      const base64 = compressCanvasImage(canvas, isLowPerformance);
       onUpdateAiReview({ score: '', condition: 'Normal', notes: '', image: base64 });
       setScannerStatus('review');
       if (scanIntervalRef.current) clearInterval(scanIntervalRef.current);
+
+      clearCanvasMemory(canvas);
     }
   };
 
   const captureAndAnalyze = async () => {
     if (!videoRef.current || !canvasRef.current || isProcessingRef.current) return;
     if (videoRef.current.readyState !== 4) return;
+
+    // Debounce to prevent rapid API calls
+    const now = Date.now();
+    const minInterval = getMinimumAICallInterval(isLowPerformance);
+    if (now - lastScanTimeRef.current < minInterval) return;
+
     isProcessingRef.current = true;
+    lastScanTimeRef.current = now;
+
     const canvas = canvasRef.current;
     const video = videoRef.current;
     const ctx = canvas.getContext('2d');
@@ -120,11 +144,13 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     const cropSize = minDim * 0.55;
     const sx = (vw - cropSize) / 2;
     const sy = (vh - cropSize) / 2;
-    const TARGET_SIZE = 512;
+
+    const TARGET_SIZE = getOptimalAIImageSize(isLowPerformance);
     canvas.width = TARGET_SIZE;
     canvas.height = TARGET_SIZE;
     ctx.drawImage(video, sx, sy, cropSize, cropSize, 0, 0, TARGET_SIZE, TARGET_SIZE);
-    const base64Image = canvas.toDataURL('image/jpeg', 0.6).split(',')[1];
+
+    const base64Image = compressCanvasImage(canvas, isLowPerformance, { quality: isLowPerformance ? 0.5 : 0.6 }).split(',')[1];
 
     try {
       const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
@@ -150,11 +176,13 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
 
       if (detectedScore && detectedScore.length >= 1) {
         const evidenceCanvas = document.createElement('canvas');
-        evidenceCanvas.width = 640;
-        evidenceCanvas.height = 640 * (vh / vw);
+        const evidenceWidth = getOptimalEvidenceWidth(isLowPerformance);
+        evidenceCanvas.width = evidenceWidth;
+        evidenceCanvas.height = evidenceWidth * (vh / vw);
         const evidenceCtx = evidenceCanvas.getContext('2d');
         evidenceCtx?.drawImage(video, 0, 0, evidenceCanvas.width, evidenceCanvas.height);
-        const finalImage = evidenceCanvas.toDataURL('image/jpeg', 0.7);
+
+        const finalImage = compressCanvasImage(evidenceCanvas, isLowPerformance);
 
         onUpdateAiReview({
           score: detectedScore,
@@ -177,6 +205,8 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
           relatedLocationId: selectedLocation?.id,
           relatedTransactionId: draftTxId,
         });
+
+        clearCanvasMemory(canvas);
       }
     } catch (e: any) {
       if (e.message.includes("API Key") || e.message.includes("403")) {
