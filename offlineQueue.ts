@@ -20,7 +20,7 @@ const DB_NAME    = 'bahati_offline_db';
 const DB_VERSION = 2;
 const STORE_TX   = 'pending_transactions';
 const MS_PER_DAY = 86_400_000;
-const MAX_RETRIES = 5;
+export const MAX_RETRIES = 5;
 const BASE_BACKOFF_MS = 2_000; // 2 s → 4 s → 8 s → 16 s → 32 s
 
 /** Metadata attached to every queued entry for idempotent, retry-aware sync. */
@@ -462,6 +462,52 @@ export async function getQueueSize(): Promise<number> {
     return pending.length;
   } catch {
     return 0;
+  }
+}
+
+// ── Queue health summary (for diagnostics / operator view) ────────────────────
+
+/**
+ * Breakdown of queued entry states for operator/support visibility.
+ *
+ *   pending      – not synced, within retry budget, not currently in backoff.
+ *   retryWaiting – not synced, within retry budget, but backoff timer has not
+ *                  yet elapsed; will be retried on the next flush pass.
+ *   deadLetter   – not synced, exceeded max retries; will NOT be auto-retried
+ *                  and must be inspected or manually resolved.
+ */
+export interface QueueHealthSummary {
+  pending: number;
+  retryWaiting: number;
+  deadLetter: number;
+}
+
+/**
+ * Compute a point-in-time health summary of the offline queue.
+ * Returns zeros if the queue cannot be read.
+ */
+export async function getQueueHealthSummary(): Promise<QueueHealthSummary> {
+  try {
+    const all = await getAllQueuedTransactions();
+    const now = Date.now();
+    let pending = 0;
+    let retryWaiting = 0;
+    let deadLetter = 0;
+    for (const tx of all) {
+      const entry = tx as Transaction & Partial<QueueMeta>;
+      if (entry.isSynced) continue;
+      const retryCount = entry.retryCount ?? 0;
+      if (retryCount >= MAX_RETRIES) {
+        deadLetter++;
+      } else if (entry.nextRetryAt && new Date(entry.nextRetryAt).getTime() > now) {
+        retryWaiting++;
+      } else {
+        pending++;
+      }
+    }
+    return { pending, retryWaiting, deadLetter };
+  } catch {
+    return { pending: 0, retryWaiting: 0, deadLetter: 0 };
   }
 }
 
