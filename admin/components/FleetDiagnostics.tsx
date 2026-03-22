@@ -26,13 +26,14 @@ import {
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
   getFleetDiagnostics,
+  STALE_THRESHOLD_MS,
   type FleetDiagnosticsSummary,
   type DeviceQueueSnapshot,
   type DeadLetterSummaryItem,
 } from '../../services/fleetDiagnosticsService';
 
 const POLL_INTERVAL_MS = 60_000;
-const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000; // 2 hours
+// STALE_THRESHOLD_MS is imported from the service to stay in sync.
 
 // ── Small helpers ─────────────────────────────────────────────────────────────
 
@@ -131,7 +132,7 @@ interface SnapshotCardProps {
 const SnapshotCard: React.FC<SnapshotCardProps> = ({ snapshot }) => {
   const [expanded, setExpanded] = useState(false);
   const hasDeadLetter = snapshot.deadLetterCount > 0;
-  const isStale = Date.now() - new Date(snapshot.reportedAt).getTime() > STALE_THRESHOLD_MS;
+  const { isStale } = snapshot;
 
   return (
     <div className={`rounded-2xl border overflow-hidden ${
@@ -290,34 +291,87 @@ const FleetDiagnostics: React.FC = () => {
       )}
 
       {/* ── Aggregate summary cards ──────────────────────────────────────── */}
-      {summary && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <SummaryCard
-            label="Devices Reporting"
-            count={summary.totalDevicesReporting}
-            icon={<Activity size={20} className="text-slate-500" />}
-            colorClass="bg-slate-50 border-slate-200 text-slate-700"
-          />
-          <SummaryCard
-            label="Total Pending"
-            count={summary.totalPending}
-            icon={<Clock size={20} className="text-indigo-500" />}
-            colorClass="bg-indigo-50 border-indigo-200 text-indigo-800"
-          />
-          <SummaryCard
-            label="Retry Waiting"
-            count={summary.totalRetryWaiting}
-            icon={<AlertTriangle size={20} className="text-amber-500" />}
-            colorClass="bg-amber-50 border-amber-200 text-amber-800"
-          />
-          <SummaryCard
-            label="Dead Letter"
-            count={summary.totalDeadLetter}
-            icon={<XCircle size={20} className="text-rose-500" />}
-            colorClass="bg-rose-50 border-rose-200 text-rose-800"
-          />
-        </div>
-      )}
+      {summary && (() => {
+        const staleCount = summary.totalDevicesReporting - summary.currentDevicesReporting;
+        const hasStale = staleCount > 0;
+        return (
+          <div className="space-y-2">
+            {/* Current (non-stale) totals — primary row */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-[11px] font-black uppercase tracking-widest text-emerald-700">
+                Current
+              </span>
+              <span className="text-[10px] text-slate-400">(snapshots &lt; 2 h old)</span>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <SummaryCard
+                label="Devices Reporting"
+                count={summary.currentDevicesReporting}
+                icon={<Activity size={20} className="text-slate-500" />}
+                colorClass="bg-slate-50 border-slate-200 text-slate-700"
+              />
+              <SummaryCard
+                label="Total Pending"
+                count={summary.currentPending}
+                icon={<Clock size={20} className="text-indigo-500" />}
+                colorClass="bg-indigo-50 border-indigo-200 text-indigo-800"
+              />
+              <SummaryCard
+                label="Retry Waiting"
+                count={summary.currentRetryWaiting}
+                icon={<AlertTriangle size={20} className="text-amber-500" />}
+                colorClass="bg-amber-50 border-amber-200 text-amber-800"
+              />
+              <SummaryCard
+                label="Dead Letter"
+                count={summary.currentDeadLetter}
+                icon={<XCircle size={20} className="text-rose-500" />}
+                colorClass="bg-rose-50 border-rose-200 text-rose-800"
+              />
+            </div>
+
+            {/* Including-stale totals — secondary row, only shown when stale snapshots exist */}
+            {hasStale && (
+              <>
+                <div className="flex items-center gap-2 mt-4 mb-1">
+                  <span className="text-[11px] font-black uppercase tracking-widest text-amber-600">
+                    Including Stale
+                  </span>
+                  <span className="text-[10px] text-slate-400">
+                    (+{staleCount} stale snapshot{staleCount !== 1 ? 's' : ''} &gt; 2 h old — may not reflect current state)
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  <SummaryCard
+                    label="Devices Reporting"
+                    count={summary.totalDevicesReporting}
+                    icon={<Activity size={20} className="text-slate-400" />}
+                    colorClass="bg-amber-50/60 border-amber-200 text-amber-700 opacity-75"
+                  />
+                  <SummaryCard
+                    label="Total Pending"
+                    count={summary.totalPending}
+                    icon={<Clock size={20} className="text-amber-400" />}
+                    colorClass="bg-amber-50/60 border-amber-200 text-amber-700 opacity-75"
+                  />
+                  <SummaryCard
+                    label="Retry Waiting"
+                    count={summary.totalRetryWaiting}
+                    icon={<AlertTriangle size={20} className="text-amber-400" />}
+                    colorClass="bg-amber-50/60 border-amber-200 text-amber-700 opacity-75"
+                  />
+                  <SummaryCard
+                    label="Dead Letter"
+                    count={summary.totalDeadLetter}
+                    icon={<XCircle size={20} className="text-amber-500" />}
+                    colorClass="bg-amber-50/60 border-amber-200 text-amber-700 opacity-75"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        );
+      })()}
 
       {/* ── Per-device snapshot grid ─────────────────────────────────────── */}
       {summary && summary.snapshots.length === 0 ? (

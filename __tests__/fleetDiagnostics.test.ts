@@ -21,6 +21,7 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 import {
   getFleetDiagnostics,
+  STALE_THRESHOLD_MS,
   type FleetDiagnosticsSummary,
   type DeviceQueueSnapshot,
 } from '../services/fleetDiagnosticsService';
@@ -69,6 +70,10 @@ describe('getFleetDiagnostics', () => {
     expect(result.totalPending).toBe(0);
     expect(result.totalRetryWaiting).toBe(0);
     expect(result.totalDeadLetter).toBe(0);
+    expect(result.currentDevicesReporting).toBe(0);
+    expect(result.currentPending).toBe(0);
+    expect(result.currentRetryWaiting).toBe(0);
+    expect(result.currentDeadLetter).toBe(0);
     expect(result.snapshots).toHaveLength(0);
     expect(result.fetchedAt).toBeTruthy();
   });
@@ -94,6 +99,8 @@ describe('getFleetDiagnostics', () => {
     expect(snap.deadLetterCount).toBe(1);
     expect(snap.deadLetterItems).toHaveLength(1);
     expect(snap.deadLetterItems[0].txId).toBe('tx-1');
+    // Recent snapshot should not be stale
+    expect(snap.isStale).toBe(false);
   });
 
   it('aggregates totals across multiple device snapshots', async () => {
@@ -105,10 +112,16 @@ describe('getFleetDiagnostics', () => {
     const client = makeSupabaseStub(rows);
     const result = await getFleetDiagnostics(client);
 
+    // All three snapshots are fresh (just created), so current == total
     expect(result.totalDevicesReporting).toBe(3);
     expect(result.totalPending).toBe(3);       // 2 + 0 + 1
     expect(result.totalRetryWaiting).toBe(3);  // 1 + 2 + 0
     expect(result.totalDeadLetter).toBe(4);    // 0 + 3 + 1
+
+    expect(result.currentDevicesReporting).toBe(3);
+    expect(result.currentPending).toBe(3);
+    expect(result.currentRetryWaiting).toBe(3);
+    expect(result.currentDeadLetter).toBe(4);
   });
 
   it('throws a descriptive error when the Supabase query fails', async () => {
@@ -165,6 +178,73 @@ describe('getFleetDiagnostics', () => {
     const client = makeSupabaseStub([row]);
     const result = await getFleetDiagnostics(client);
     expect(result.snapshots[0].deadLetterItems).toEqual([]);
+  });
+
+  it('marks snapshots older than STALE_THRESHOLD_MS as isStale=true', async () => {
+    const now = Date.now();
+    const staleAge = STALE_THRESHOLD_MS + 60_000; // 1 min past the threshold
+    const rows = [
+      makeRow({ id: 'fresh--drv-1', device_id: 'fresh', reported_at: new Date(now - 1000).toISOString() }),
+      makeRow({ id: 'stale--drv-2', device_id: 'stale', reported_at: new Date(now - staleAge).toISOString() }),
+    ];
+    const client = makeSupabaseStub(rows);
+    const result = await getFleetDiagnostics(client);
+
+    const freshSnap = result.snapshots.find((s) => s.deviceId === 'fresh')!;
+    const staleSnap = result.snapshots.find((s) => s.deviceId === 'stale')!;
+    expect(freshSnap.isStale).toBe(false);
+    expect(staleSnap.isStale).toBe(true);
+  });
+
+  it('excludes stale snapshots from current* totals but includes them in total* totals', async () => {
+    const now = Date.now();
+    const staleAge = STALE_THRESHOLD_MS + 60_000;
+    const rows = [
+      // Two fresh snapshots
+      makeRow({
+        id: 'fresh-a--drv-1', device_id: 'fresh-a', driver_id: 'drv-1',
+        pending_count: 3, retry_waiting_count: 1, dead_letter_count: 2,
+        reported_at: new Date(now - 1000).toISOString(),
+      }),
+      makeRow({
+        id: 'fresh-b--drv-2', device_id: 'fresh-b', driver_id: 'drv-2',
+        pending_count: 1, retry_waiting_count: 0, dead_letter_count: 0,
+        reported_at: new Date(now - 5000).toISOString(),
+      }),
+      // One stale snapshot — should be excluded from current* totals
+      makeRow({
+        id: 'stale-c--drv-3', device_id: 'stale-c', driver_id: 'drv-3',
+        pending_count: 10, retry_waiting_count: 5, dead_letter_count: 7,
+        reported_at: new Date(now - staleAge).toISOString(),
+      }),
+    ];
+    const client = makeSupabaseStub(rows);
+    const result = await getFleetDiagnostics(client);
+
+    // Current totals — stale snapshot excluded
+    expect(result.currentDevicesReporting).toBe(2);
+    expect(result.currentPending).toBe(4);        // 3 + 1
+    expect(result.currentRetryWaiting).toBe(1);   // 1 + 0
+    expect(result.currentDeadLetter).toBe(2);     // 2 + 0
+
+    // Grand totals — stale snapshot included
+    expect(result.totalDevicesReporting).toBe(3);
+    expect(result.totalPending).toBe(14);         // 3 + 1 + 10
+    expect(result.totalRetryWaiting).toBe(6);     // 1 + 0 + 5
+    expect(result.totalDeadLetter).toBe(9);       // 2 + 0 + 7
+
+    // All three snapshots are still in the list
+    expect(result.snapshots).toHaveLength(3);
+  });
+
+  it('sets isStale=true when reportedAt is missing/empty', async () => {
+    const row = makeRow({ reported_at: '' });
+    const client = makeSupabaseStub([row]);
+    const result = await getFleetDiagnostics(client);
+    expect(result.snapshots[0].isStale).toBe(true);
+    // Missing-timestamp snapshot is treated as stale and excluded from current totals
+    expect(result.currentDevicesReporting).toBe(0);
+    expect(result.totalDevicesReporting).toBe(1);
   });
 });
 
