@@ -20,7 +20,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Activity, AlertTriangle, CheckCircle2, Clock, Loader2,
+  Activity, AlertTriangle, CheckCircle2, Clock, Download, Loader2,
   RefreshCw, Server, Wifi, XCircle,
 } from 'lucide-react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
@@ -31,6 +31,12 @@ import {
   type DeviceQueueSnapshot,
   type DeadLetterSummaryItem,
 } from '../../services/fleetDiagnosticsService';
+import {
+  buildFleetExportPayload,
+  triggerJSONDownload,
+  buildExportFilename,
+  type ExportFilters,
+} from '../../services/diagnosticsExportService';
 
 const POLL_INTERVAL_MS = 60_000;
 // STALE_THRESHOLD_MS is imported from the service to stay in sync.
@@ -197,6 +203,11 @@ const FleetDiagnostics: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
+  const [exporting, setExporting] = useState(false);
+  /** Export filter controls */
+  const [filterDriverId, setFilterDriverId] = useState('');
+  const [filterDeviceId, setFilterDeviceId] = useState('');
+  const [filterErrorState, setFilterErrorState] = useState<ExportFilters['errorState'] | ''>('');
 
   const refresh = useCallback(async () => {
     if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
@@ -225,6 +236,29 @@ const FleetDiagnostics: React.FC = () => {
     return () => clearInterval(timer);
   }, [refresh]);
 
+  const handleClearFilters = useCallback(() => {
+    setFilterDriverId('');
+    setFilterDeviceId('');
+    setFilterErrorState('');
+  }, []);
+
+  const handleExport = useCallback(() => {
+    if (!summary) return;
+    setExporting(true);
+    try {
+      const filters: ExportFilters = {};
+      if (filterDriverId.trim()) filters.driverId = filterDriverId.trim();
+      if (filterDeviceId.trim()) filters.deviceId = filterDeviceId.trim();
+      if (filterErrorState) filters.errorState = filterErrorState;
+      const hasFilters = Object.keys(filters).length > 0;
+      const payload = buildFleetExportPayload(summary, hasFilters ? filters : undefined);
+      const filename = buildExportFilename('fleet', payload.exportedAt);
+      triggerJSONDownload(payload, filename);
+    } finally {
+      setExporting(false);
+    }
+  }, [summary, filterDriverId, filterDeviceId, filterErrorState]);
+
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading && !summary) {
     return (
@@ -252,16 +286,83 @@ const FleetDiagnostics: React.FC = () => {
             </p>
           )}
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors"
-          aria-label="Refresh fleet diagnostics"
-        >
-          {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={!summary || exporting}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+            aria-label="Export fleet diagnostics as JSON"
+          >
+            {exporting
+              ? <Loader2 size={13} className="animate-spin" />
+              : <Download size={13} />}
+            Export
+          </button>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            aria-label="Refresh fleet diagnostics"
+          >
+            {loading ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />}
+            Refresh
+          </button>
+        </div>
       </div>
+
+      {/* ── Export filter controls ───────────────────────────────────────── */}
+      {summary && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Export Filters (optional)</p>
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 min-w-[140px]">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Driver ID</span>
+              <input
+                type="text"
+                value={filterDriverId}
+                onChange={(e) => setFilterDriverId(e.target.value)}
+                placeholder="e.g. drv-123"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+            </label>
+            <label className="flex flex-col gap-1 min-w-[140px]">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Device ID</span>
+              <input
+                type="text"
+                value={filterDeviceId}
+                onChange={(e) => setFilterDeviceId(e.target.value)}
+                placeholder="e.g. dev-abc"
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+            </label>
+            <label className="flex flex-col gap-1 min-w-[140px]">
+              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Error State</span>
+              <select
+                value={filterErrorState}
+                onChange={(e) => setFilterErrorState(e.target.value as ExportFilters['errorState'] | '')}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              >
+                <option value="">All</option>
+                <option value="dead-letter">Dead-letter only</option>
+                <option value="transient">Transient errors</option>
+                <option value="permanent">Permanent errors</option>
+                <option value="any-error">Any error</option>
+              </select>
+            </label>
+            {(filterDriverId || filterDeviceId || filterErrorState) && (
+              <button
+                onClick={handleClearFilters}
+                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-[10px] font-semibold text-slate-500 hover:bg-slate-100 transition-colors"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          <p className="text-[10px] text-slate-400">
+            Filters are applied to the export only — they do not affect the display above.
+          </p>
+        </div>
+      )}
 
       {/* ── Scope notice ────────────────────────────────────────────────── */}
       <div className="rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 flex items-start gap-3">
