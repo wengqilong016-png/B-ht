@@ -219,7 +219,7 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
         <div className="flex items-start gap-3 p-4 rounded-2xl border border-rose-200 bg-rose-50 text-rose-800">
           <XCircle size={18} className="flex-shrink-0 mt-0.5 text-rose-600" />
           <div>
-            <p className="text-sm font-bold">Failed to fetch fleet data</p>
+            <p className="text-sm font-bold">Failed to fetch health alerts</p>
             <p className="text-xs mt-0.5 font-mono">{fetchError}</p>
           </div>
         </div>
