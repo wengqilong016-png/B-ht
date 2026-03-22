@@ -157,19 +157,34 @@ const App: React.FC = () => {
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
+  const authValue = useMemo(
+    () => ({ currentUser, userRole: currentUser.role, lang, setLang, handleLogout, activeDriverId }),
+    [currentUser, lang, setLang, handleLogout, activeDriverId]
+  );
+
+  const dataValue = useMemo(
+    () => ({
+      isOnline,
+      locations, drivers, transactions, dailySettlements, aiLogs,
+      filteredLocations: filteredData.locations,
+      filteredDrivers: filteredData.drivers,
+      filteredTransactions: filteredData.transactions,
+      filteredSettlements: filteredData.dailySettlements,
+      unsyncedCount,
+    }),
+    [isOnline, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
+  );
+
+  const mutationValue = useMemo(
+    () => ({ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }),
+    [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
+  );
+
   return (
     <NotificationProvider>
-      <AuthProvider value={{ currentUser, userRole: currentUser.role, lang, setLang, handleLogout, activeDriverId }}>
-        <DataProvider value={{
-          isOnline,
-          locations, drivers, transactions, dailySettlements, aiLogs,
-          filteredLocations: filteredData.locations,
-          filteredDrivers: filteredData.drivers,
-          filteredTransactions: filteredData.transactions,
-          filteredSettlements: filteredData.dailySettlements,
-          unsyncedCount,
-        }}>
-          <MutationProvider value={{ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }}>
+      <AuthProvider value={authValue}>
+        <DataProvider value={dataValue}>
+          <MutationProvider value={mutationValue}>
             <AppRouterShell />
           </MutationProvider>
         </DataProvider>
