@@ -10,6 +10,7 @@ import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
 import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
+import { AuthProvider, DataProvider, MutationProvider } from './contexts';
 import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
 import ForcePasswordChange from './components/ForcePasswordChange';
@@ -156,34 +157,38 @@ const App: React.FC = () => {
   }
 
   // ─── Role routing via AppRouterShell ─────────────────────────────
+  const authValue = useMemo(
+    () => ({ currentUser, userRole: currentUser.role, lang, setLang, handleLogout, activeDriverId }),
+    [currentUser, lang, setLang, handleLogout, activeDriverId]
+  );
+
+  const dataValue = useMemo(
+    () => ({
+      isOnline,
+      locations, drivers, transactions, dailySettlements, aiLogs,
+      filteredLocations: filteredData.locations,
+      filteredDrivers: filteredData.drivers,
+      filteredTransactions: filteredData.transactions,
+      filteredSettlements: filteredData.dailySettlements,
+      unsyncedCount,
+    }),
+    [isOnline, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
+  );
+
+  const mutationValue = useMemo(
+    () => ({ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }),
+    [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
+  );
+
   return (
     <NotificationProvider>
-      <AppRouterShell
-        currentUser={currentUser}
-        lang={lang}
-        isOnline={isOnline}
-        locations={locations}
-        drivers={drivers}
-        transactions={transactions}
-        dailySettlements={dailySettlements}
-        aiLogs={aiLogs}
-        filteredLocations={filteredData.locations}
-        filteredDrivers={filteredData.drivers}
-        filteredTransactions={filteredData.transactions}
-        filteredSettlements={filteredData.dailySettlements}
-        unsyncedCount={unsyncedCount}
-        activeDriverId={activeDriverId}
-        syncOfflineData={syncOfflineData}
-        updateDrivers={updateDrivers}
-        updateLocations={updateLocations}
-        deleteLocations={deleteLocations}
-        deleteDrivers={deleteDrivers}
-        updateTransaction={updateTransaction}
-        saveSettlement={saveSettlement}
-        logAI={logAI}
-        onSetLang={setLang}
-        onLogout={handleLogout}
-      />
+      <AuthProvider value={authValue}>
+        <DataProvider value={dataValue}>
+          <MutationProvider value={mutationValue}>
+            <AppRouterShell />
+          </MutationProvider>
+        </DataProvider>
+      </AuthProvider>
       <Analytics />
     </NotificationProvider>
   );
