@@ -511,6 +511,170 @@ export async function getQueueHealthSummary(): Promise<QueueHealthSummary> {
   }
 }
 
+// ── Manual replay of dead-letter items ───────────────────────────────────────
+
+/**
+ * Replay eligibility rules for dead-letter items.
+ *
+ * An item is eligible for manual replay when ALL of the following hold:
+ *   1. It is not already synced.
+ *   2. Its retryCount has reached MAX_RETRIES (it is in dead-letter state).
+ *
+ * Collection entries (with rawInput) use the server-authoritative
+ * submit_collection_v2 path when a submitCollection callback is supplied.
+ * Entries without rawInput fall back to a direct upsert.
+ *
+ * Returns null when the item is eligible, or a human-readable reason string
+ * when it is not.
+ */
+export function getReplayIneligibilityReason(
+  entry: Transaction & Partial<QueueMeta>,
+): string | null {
+  if (entry.isSynced) return 'already synced';
+  if ((entry.retryCount ?? 0) < MAX_RETRIES) return 'not in dead-letter state';
+  return null; // eligible
+}
+
+/** Options for a manual replay attempt. */
+export interface ManualReplayOptions {
+  /**
+   * Server-authoritative collection submission callback.
+   * Required for entries that carry rawInput (collection transactions).
+   * Inject `submitCollectionV2` from `services/collectionSubmissionService`.
+   */
+  submitCollection?: (input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>;
+  /** Supabase client used for the direct-upsert fallback path. */
+  supabaseClient: SupabaseClient;
+}
+
+/** Discriminated result returned by `replayDeadLetterItem`. */
+export type ManualReplayResult =
+  | { success: true; transaction?: Transaction }
+  | { success: false; error: string };
+
+/**
+ * Manually replay a single dead-letter queue entry.
+ *
+ * Routing:
+ *   - Collection entries (rawInput present) → submitCollection callback when
+ *     supplied, otherwise returns an eligibility error without touching state.
+ *   - Non-collection / legacy entries (no rawInput) → direct upsert via
+ *     supabaseClient.
+ *
+ * On success:
+ *   The entry is marked synced; server-authoritative finance values are merged
+ *   back into the stored entry (same as the normal flush path).
+ *
+ * On failure:
+ *   The entry remains in dead-letter state with lastError updated to the new
+ *   error so the operator can see the most-recent failure reason.
+ *   retryCount is NOT reset so the item stays visible in the dead-letter list.
+ */
+export async function replayDeadLetterItem(
+  id: string,
+  options: ManualReplayOptions,
+): Promise<ManualReplayResult> {
+  // Load the target entry
+  let entry: (Transaction & Partial<QueueMeta>) | undefined;
+  try {
+    const all = await getAllQueuedTransactions();
+    entry = all.find(t => t.id === id) as (Transaction & Partial<QueueMeta>) | undefined;
+  } catch {
+    return { success: false, error: 'Failed to read queue entry' };
+  }
+
+  if (!entry) {
+    return { success: false, error: 'Queue entry not found' };
+  }
+
+  const ineligible = getReplayIneligibilityReason(entry);
+  if (ineligible) {
+    return { success: false, error: `Not eligible for replay: ${ineligible}` };
+  }
+
+  try {
+    // ── Collection replay path ───────────────────────────────────────────────
+    if (entry.rawInput) {
+      if (!options.submitCollection) {
+        return {
+          success: false,
+          error: 'submitCollection callback required to replay a collection entry through the authoritative path',
+        };
+      }
+
+      // Reconstruct photoUrl from the stored tx entry (stripped from rawInput at enqueue time).
+      const replayInput: CollectionSubmissionInput = {
+        ...entry.rawInput,
+        photoUrl: entry.rawInput.photoUrl ?? (entry.photoUrl ?? null),
+      };
+
+      const result = await options.submitCollection(replayInput);
+      if (result.success) {
+        await markSynced(id, result.transaction);
+        return { success: true, transaction: result.transaction };
+      } else {
+        // Failure: update lastError while keeping the entry in dead-letter state.
+        // retryCount stays at MAX_RETRIES so the item remains visible for the operator.
+        // Cast to narrow the union: TypeScript's control flow narrowing is not
+        // reliably applied to discriminated unions in this project's tsconfig.
+        const failureResult = result as { success: false; error: string };
+        await _updateDeadLetterError(id, failureResult.error);
+        return { success: false, error: failureResult.error };
+      }
+    }
+
+    // ── Direct upsert fallback (non-collection / legacy entries) ────────────
+    const { error } = await options.supabaseClient
+      .from('transactions')
+      .upsert({ ...entry, isSynced: true });
+    if (!error) {
+      await markSynced(id);
+      return { success: true };
+    }
+
+    await _updateDeadLetterError(id, error.message);
+    return { success: false, error: error.message };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await _updateDeadLetterError(id, msg);
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Update the lastError field of a dead-letter entry without changing its
+ * retryCount (keeps it in dead-letter state after a failed manual replay).
+ */
+async function _updateDeadLetterError(id: string, errorMessage: string): Promise<void> {
+  try {
+    const db    = await openDB();
+    const txDb  = db.transaction(STORE_TX, 'readwrite');
+    const store = txDb.objectStore(STORE_TX);
+    const item  = await new Promise<(Transaction & Partial<QueueMeta>) | undefined>((res, rej) => {
+      const r = store.get(id);
+      r.onsuccess = () => res(r.result);
+      r.onerror   = () => rej(r.error);
+    });
+    if (item) {
+      await new Promise<void>((res, rej) => {
+        const r = store.put({ ...item, lastError: errorMessage });
+        r.onsuccess = () => res();
+        r.onerror   = () => rej(r.error);
+      });
+    }
+    db.close();
+  } catch {
+    try {
+      const raw  = localStorage.getItem('bahati_offline_queue') || '[]';
+      const list = JSON.parse(raw) as Array<Transaction & Partial<QueueMeta>>;
+      const updated = list.map(t => t.id === id ? { ...t, lastError: errorMessage } : t);
+      localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
+    } catch (_) {
+      // Truly best-effort
+    }
+  }
+}
+
 // ── Extract GPS from EXIF metadata of a base64 image ─────────────────────────
 export function extractGpsFromExif(
   imageDataUrl: string
