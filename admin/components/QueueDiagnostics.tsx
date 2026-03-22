@@ -16,7 +16,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, RefreshCw,
-  Inbox, XCircle, Loader2, RotateCcw,
+  Inbox, XCircle, Loader2, RotateCcw, Download,
 } from 'lucide-react';
 import {
   getQueueHealthSummary,
@@ -32,6 +32,11 @@ import {
 import { Transaction } from '../../types';
 import { supabase } from '../../supabaseClient';
 import { submitCollectionV2 } from '../../services/collectionSubmissionService';
+import {
+  buildLocalExportPayload,
+  triggerJSONDownload,
+  buildExportFilename,
+} from '../../services/diagnosticsExportService';
 
 type DeadLetterEntry = Transaction & Partial<QueueMeta>;
 
@@ -134,6 +139,7 @@ const QueueDiagnostics: React.FC = () => {
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   /** Per-entry replay state: id → 'replaying' | ManualReplayResult */
   const [replayState, setReplayState] = useState<Record<string, 'replaying' | ManualReplayResult>>({});
+  const [exporting, setExporting] = useState(false);
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -191,6 +197,18 @@ const QueueDiagnostics: React.FC = () => {
     });
   }, []);
 
+  const handleExport = useCallback(async () => {
+    if (!summary) return;
+    setExporting(true);
+    try {
+      const payload = buildLocalExportPayload(deadItems as DeadLetterEntry[], summary);
+      const filename = buildExportFilename('local', payload.exportedAt);
+      triggerJSONDownload(payload, filename);
+    } finally {
+      setExporting(false);
+    }
+  }, [summary, deadItems]);
+
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading && !summary) {
     return (
@@ -220,17 +238,30 @@ const QueueDiagnostics: React.FC = () => {
             </p>
           )}
         </div>
-        <button
-          onClick={refresh}
-          disabled={loading}
-          className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors"
-          aria-label="Refresh diagnostics"
-        >
-          {loading
-            ? <Loader2 size={13} className="animate-spin" />
-            : <RefreshCw size={13} />}
-          Refresh
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleExport}
+            disabled={!summary || exporting}
+            className="flex items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 shadow-sm hover:bg-indigo-100 disabled:opacity-50 transition-colors"
+            aria-label="Export local diagnostics as JSON"
+          >
+            {exporting
+              ? <Loader2 size={13} className="animate-spin" />
+              : <Download size={13} />}
+            Export
+          </button>
+          <button
+            onClick={refresh}
+            disabled={loading}
+            className="flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-600 shadow-sm hover:bg-slate-50 disabled:opacity-50 transition-colors"
+            aria-label="Refresh diagnostics"
+          >
+            {loading
+              ? <Loader2 size={13} className="animate-spin" />
+              : <RefreshCw size={13} />}
+            Refresh
+          </button>
+        </div>
       </div>
 
       {/* ── Scope notice ────────────────────────────────────────────────── */}
