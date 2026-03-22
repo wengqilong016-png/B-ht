@@ -3,6 +3,7 @@ import { supabase } from '../supabaseClient';
 import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
 import { flushQueue } from '../offlineQueue';
+import { submitCollectionV2 } from '../services/collectionSubmissionService';
 
 export function useSupabaseMutations(isOnline: boolean) {
   const queryClient = useQueryClient();
@@ -13,7 +14,7 @@ export function useSupabaseMutations(isOnline: boolean) {
 
       // 1. Flush offline queue (IndexedDB)
       try {
-        await flushQueue(supabase);
+        await flushQueue(supabase, { submitCollection: submitCollectionV2 });
       } catch (e) {
         console.warn('[Sync] OfflineQueue flush error:', e);
       }
