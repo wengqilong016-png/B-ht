@@ -250,6 +250,7 @@ export const CONSTANTS = {
   STORAGE_SETTLEMENTS_KEY: 'kiosk_daily_settlements',
   STORAGE_TRANSACTIONS_KEY: 'kiosk_transactions_data',
   STORAGE_AI_LOGS_KEY: 'kiosk_ai_logs',
+  GEMINI_KEY_STORAGE: 'bahati_gemini_key',
   STORAGE_NOTIFICATIONS_KEY: 'kiosk_notifications',
   IMAGE_MAX_WIDTH: 800, 
   IMAGE_QUALITY: 0.6,

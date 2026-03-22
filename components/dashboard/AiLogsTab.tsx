@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Search, ImageIcon, FileText, LayoutList, BrainCircuit } from 'lucide-react';
 import { AILog } from '../../types';
 
 interface AiLogsTabProps {
@@ -23,10 +24,50 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="flex bg-slate-100 p-1 rounded-xl w-fit">
-        <button onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>LIST</button>
-        <button onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>GRID</button>
+      {/* Toolbar */}
+      <div className="flex flex-wrap items-center gap-3">
+        {/* Search */}
+        <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
+          <Search size={14} className="text-slate-400 shrink-0" />
+          <input
+            type="text"
+            value={aiLogSearch}
+            onChange={e => setAiLogSearch(e.target.value)}
+            placeholder="搜索日志…"
+            className="bg-transparent text-[10px] font-bold text-slate-700 outline-none w-full placeholder:text-slate-400"
+          />
+        </div>
+        {/* Type filter */}
+        <div className="flex bg-slate-100 p-1 rounded-xl">
+          {(['all', 'image', 'text'] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setAiLogTypeFilter(f)}
+              className={`flex items-center gap-1 px-3 py-2 rounded-lg text-[10px] font-black uppercase transition-all ${aiLogTypeFilter === f ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+            >
+              {f === 'all' && <LayoutList size={11} />}
+              {f === 'image' && <ImageIcon size={11} />}
+              {f === 'text' && <FileText size={11} />}
+              {f === 'all' ? '全部' : f === 'image' ? '图片' : '文本'}
+            </button>
+          ))}
+        </div>
+        {/* View mode */}
+        <div className="flex bg-slate-100 p-1 rounded-xl">
+          <button onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>LIST</button>
+          <button onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}>GRID</button>
+        </div>
       </div>
+
+      {/* Empty state */}
+      {filteredAiLogs.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+          <BrainCircuit size={48} className="text-slate-200" />
+          <p className="text-sm font-black text-slate-400">暂无 AI 日志记录</p>
+          <p className="text-[10px] font-bold text-slate-300">使用 AI 助手后，日志将在此处显示</p>
+        </div>
+      )}
+
       <div className={aiLogViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 gap-4' : 'space-y-4'}>
         {filteredAiLogs.map(log => (
           <button key={log.id} className="bg-white p-4 rounded-3xl border border-slate-200 cursor-pointer hover:shadow-md transition-shadow text-left w-full" onClick={() => setViewingLog(log)}>

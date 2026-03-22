@@ -129,7 +129,7 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
     queryKey: ['aiLogs', userRole ?? 'none'],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated) {
-         const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(500);
+         const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, imageUrl, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(500);
          if (!error && data) {
            const mapped = data.map(l => ({...l, isSynced: true})) as AILog[];
            await localDB.set(CONSTANTS.STORAGE_AI_LOGS_KEY, mapped);

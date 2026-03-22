@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { GoogleGenAI, Modality, Type } from '@google/genai';
 import { BrainCircuit, Send, Loader2, Camera, X, ShieldCheck, Activity, ScanLine, Brain, Volume2, Link, Palette, Settings } from 'lucide-react';
-import { Driver, Location, Transaction, User as UserType, AILog, safeRandomUUID, resizeImage } from '../../types';
+import { Driver, Location, Transaction, User as UserType, AILog, safeRandomUUID, resizeImage, CONSTANTS } from '../../types';
 import AIReviewModal, { PendingReviewData } from './AIReviewModal';
 import AIConfigPanel, { TtsConfig } from './AIConfigPanel';
 import AIChatMessages, { ChatMessage } from './AIChatMessages';
@@ -21,6 +21,9 @@ interface AIHubProps {
 const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onLogAI, currentUser, initialContextId, onClearContext }) => {
   const activeDriverId = currentUser.driverId ?? currentUser.id;
   const [mode, setMode] = useState<'audit' | 'design'>('audit');
+
+  // API Key (stored in localStorage so admin doesn't need to re-enter each session)
+  const [apiKey, setApiKey] = useState<string>(() => localStorage.getItem(CONSTANTS.GEMINI_KEY_STORAGE) || import.meta.env.VITE_GEMINI_API_KEY || '');
 
   // Audit Configuration State
   const [showConfig, setShowConfig] = useState(false);
@@ -69,6 +72,7 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
   };
 
   const playTTS = async (text: string) => {
+    if (!apiKey) { alert('请先在 AI 配置面板中输入 Gemini API Key'); return; }
     try {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 24000 });
@@ -77,7 +81,7 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
         await audioContextRef.current.resume();
       }
 
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
 
       let promptPrefix = '';
       switch (ttsConfig.lang) {
@@ -126,11 +130,12 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
 
   const handleGenerateImage = async () => {
     if (!imagePrompt || isGeneratingImg) return;
+    if (!apiKey) { alert('请先在 AI 配置面板中输入 Gemini API Key'); return; }
     setIsGeneratingImg(true);
     setGeneratedImage(null);
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
       const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash-image',
         contents: { parts: [{ text: imagePrompt }] },
@@ -203,6 +208,7 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
   const handleAskText = async (e: React.FormEvent) => {
     e.preventDefault();
     if ((!query.trim() && !selectedImage) || loading) return;
+    if (!apiKey) { alert('请先在 AI 配置面板中输入 Gemini API Key'); return; }
 
     const userMsg = query;
     const userImg = selectedImage;
@@ -221,7 +227,7 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
     const modelName = useOCR ? 'gemini-3-pro-preview' : (useDeepThink ? 'gemini-3-pro-preview' : 'gemini-3-flash-preview');
 
     try {
-      const ai = new GoogleGenAI({ apiKey: import.meta.env.VITE_GEMINI_API_KEY });
+      const ai = new GoogleGenAI({ apiKey: apiKey });
 
       const parts: any[] = [];
       if (userImg) {
@@ -395,6 +401,8 @@ const AIHubPage: React.FC<AIHubProps> = ({ drivers, locations, transactions, onL
 
             {showConfig && (
               <AIConfigPanel
+                apiKey={apiKey}
+                setApiKey={setApiKey}
                 useOCR={useOCR}
                 setUseOCR={setUseOCR}
                 useDeepThink={useDeepThink}
