@@ -123,6 +123,50 @@ describe('submitCollectionV2', () => {
     expect(rpcParams).not.toHaveProperty('commission');
   });
 
+  it('forwards driver id as p_driver_id (server enforces ownership)', async () => {
+    mockRpc.mockResolvedValue({ data: serverRow, error: null });
+
+    await submitCollectionV2(baseInput);
+
+    const [, rpcParams] = mockRpc.mock.calls[0] as [string, Record<string, unknown>];
+    // Client sends the driver id; the server is responsible for verifying it
+    // matches the caller's profile (driver impersonation check in the RPC).
+    expect(rpcParams['p_driver_id']).toBe('drv-001');
+  });
+
+  it('returns failure when the RPC reports a forbidden error (driver impersonation blocked by server)', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: { message: 'Forbidden: driver may not submit on behalf of another driver' },
+    });
+
+    const result = await submitCollectionV2({ ...baseInput, driverId: 'drv-other' });
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toContain('Forbidden');
+  });
+
+  it('returns the persisted row values on idempotent replay (server returns existing row on conflict)', async () => {
+    // Simulate the server returning the originally-persisted row (with different
+    // finance values than would be recomputed from the replayed inputs).
+    const persistedRow = {
+      ...serverRow,
+      revenue: 38000,   // values from the original submission
+      netPayable: 27000,
+    };
+    mockRpc.mockResolvedValue({ data: persistedRow, error: null });
+
+    // Client replays the same txId with slightly different score (simulates retry)
+    const result = await submitCollectionV2({ ...baseInput, currentScore: 1210 });
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    // Client must trust the server-returned row, not locally computed values
+    expect(result.transaction.revenue).toBe(38000);
+    expect(result.transaction.netPayable).toBe(27000);
+  });
+
   it('returns failure when the RPC reports an error', async () => {
     mockRpc.mockResolvedValue({ data: null, error: { message: 'Location not found' } });
 

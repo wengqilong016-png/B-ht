@@ -4,6 +4,17 @@
 --
 -- Finance math intentionally mirrors calculate_finance_v2 so preview and
 -- persist are always consistent.
+--
+-- Security:
+--   * auth.uid() must be non-null (authenticated callers only).
+--   * Caller's profile is loaded from profiles. If role = 'driver', the
+--     profile's driver_id must match p_driver_id (prevents impersonation).
+--     Admins may submit on behalf of any driver.
+--
+-- Idempotency:
+--   * INSERT ... ON CONFLICT (id) DO NOTHING.
+--   * If a row already exists for p_tx_id the function returns the
+--     actually-persisted row values, not newly computed ones.
 
 CREATE OR REPLACE FUNCTION public.submit_collection_v2(
   p_tx_id          TEXT,
@@ -31,6 +42,7 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
+  v_caller_profile   RECORD;
   v_location         RECORD;
   v_driver           RECORD;
   v_diff             INTEGER;
@@ -39,13 +51,34 @@ DECLARE
   v_final_retention  BIGINT;
   v_net_payable      BIGINT;
   v_now              TIMESTAMPTZ := NOW();
+  v_rows_inserted    INTEGER;
+  v_existing_tx      RECORD;
 BEGIN
-  -- ── 1. Validate caller identity ─────────────────────────────────
-  -- Only authenticated users may call this function.  The auth.uid() check
-  -- prevents anonymous or service-role abuse from the frontend.
+  -- ── 1. Validate caller identity and authorisation ────────────────
+  -- Require an authenticated session.
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
   END IF;
+
+  -- Load the caller's profile to determine role and linked driver_id.
+  SELECT role, driver_id
+    INTO v_caller_profile
+    FROM public.profiles
+   WHERE auth_user_id = auth.uid();
+
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Caller profile not found' USING ERRCODE = '42501';
+  END IF;
+
+  -- Drivers may only submit for themselves.
+  -- Admins are explicitly allowed to submit on behalf of any driver.
+  IF v_caller_profile.role = 'driver' THEN
+    IF v_caller_profile.driver_id IS DISTINCT FROM p_driver_id THEN
+      RAISE EXCEPTION 'Forbidden: driver may not submit on behalf of another driver'
+        USING ERRCODE = '42501';
+    END IF;
+  END IF;
+  -- (role = 'admin' falls through with no additional restriction)
 
   -- ── 2. Load location metadata ───────────────────────────────────
   SELECT id, name, "lastScore", "commissionRate", "machineId"
@@ -159,7 +192,57 @@ BEGIN
   )
   ON CONFLICT (id) DO NOTHING;
 
-  -- ── 6. Return normalized transaction payload ─────────────────────
+  GET DIAGNOSTICS v_rows_inserted = ROW_COUNT;
+  -- ROW_COUNT = 1: row was just inserted.
+  -- ROW_COUNT = 0: ON CONFLICT DO NOTHING fired; a row with this id already exists.
+
+  -- ── 6. Return the authoritative persisted row ────────────────────
+  -- When a row was just inserted (v_rows_inserted = 1) we return the values
+  -- we just wrote.  When the id already existed (DO NOTHING fired) we SELECT
+  -- the existing row so the caller always receives the values that are
+  -- actually stored in the database, not newly recomputed ones.
+  IF v_rows_inserted = 0 THEN
+    SELECT
+      t.id,
+      t."timestamp",
+      t."locationId",
+      t."locationName",
+      t."driverId",
+      t."driverName",
+      t."previousScore",
+      t."currentScore",
+      t.revenue,
+      t.commission,
+      t."ownerRetention",
+      t."debtDeduction",
+      t."startupDebtDeduction",
+      t.expenses,
+      t."coinExchange",
+      t."extraIncome",
+      t."netPayable",
+      t."paymentStatus",
+      t.gps,
+      t."photoUrl",
+      t."aiScore",
+      t."isAnomaly",
+      t."isSynced",
+      t.type,
+      t."approvalStatus",
+      t."reportedStatus",
+      t.notes,
+      t."expenseType",
+      t."expenseCategory",
+      t."expenseStatus"
+    INTO v_existing_tx
+    FROM public.transactions t
+    WHERE t.id = p_tx_id;
+
+    -- row_to_json preserves the camelCase column names from the SELECT above,
+    -- producing the same key shape as the fresh-insert return path below.
+    RETURN row_to_json(v_existing_tx);
+  END IF;
+
+  -- Fresh insert — return the values we just wrote.
   RETURN json_build_object(
     'id',               p_tx_id,
     'timestamp',        v_now,
