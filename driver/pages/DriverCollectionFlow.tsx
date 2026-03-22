@@ -64,17 +64,18 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     initialFloat: currentDriver?.dailyFloatingCoins || 0,
   }), [selectedLocation, draft.currentScore, draft.expenses, draft.coinExchange, draft.ownerRetention, draft.isOwnerRetaining, draft.tip, currentDriver?.dailyFloatingCoins]);
 
-  const cancelRef = useRef<boolean>(false);
+  const requestIdRef = useRef<number>(0);
   useEffect(() => {
     // Apply local calc immediately so UI stays responsive
     setFinanceResult(calculateCollectionFinanceLocal(financeInput));
 
     // Then attempt server preview; fall back silently on failure
-    cancelRef.current = false;
+    // Use a monotonic request id so that only the most recent async response is applied.
+    requestIdRef.current += 1;
+    const requestId = requestIdRef.current;
     calculateCollectionFinancePreview(financeInput).then(result => {
-      if (!cancelRef.current) setFinanceResult(result);
+      if (requestId === requestIdRef.current) setFinanceResult(result);
     });
-    return () => { cancelRef.current = true; };
   }, [financeInput]);
 
   // Auto-fill retention when conditions met
