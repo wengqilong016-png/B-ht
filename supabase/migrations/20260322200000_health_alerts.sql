@@ -16,7 +16,8 @@
 
 CREATE TABLE IF NOT EXISTS public.health_alerts (
     id           TEXT        PRIMARY KEY,               -- '{type}--{snapshot_id}'
-    alert_type   TEXT        NOT NULL,
+    alert_type   TEXT        NOT NULL
+                             CHECK (alert_type IN ('dead_letter_items', 'stale_snapshot', 'high_retry_waiting', 'high_pending')),
     severity     TEXT        NOT NULL
                              CHECK (severity IN ('critical', 'warning', 'info')),
     device_id    TEXT        NOT NULL,
@@ -38,6 +39,10 @@ CREATE INDEX IF NOT EXISTS health_alerts_detected_at_idx
 CREATE INDEX IF NOT EXISTS health_alerts_active_idx
     ON public.health_alerts (detected_at DESC)
     WHERE resolved_at IS NULL;
+
+-- Index to support per-device alert lookups.
+CREATE INDEX IF NOT EXISTS health_alerts_device_id_idx
+    ON public.health_alerts (device_id);
 
 -- ── Row-Level Security ────────────────────────────────────────────────────────
 
@@ -70,6 +75,7 @@ CREATE OR REPLACE FUNCTION public.generate_health_alerts()
 RETURNS void
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     c_stale_ms         CONSTANT BIGINT   := 7200000; -- 2 hours in milliseconds
@@ -204,20 +210,51 @@ BEGIN
 END;
 $$;
 
+-- ── Execute permissions ────────────────────────────────────────────────────────
+--
+-- Revoke default PUBLIC execute grant and restrict to the roles that actually
+-- need to call this function:
+--   • postgres   — the role pg_cron uses to invoke scheduled jobs
+--   • service_role — Supabase service-role key / Edge Functions
+
+REVOKE EXECUTE ON FUNCTION public.generate_health_alerts() FROM PUBLIC;
+
+GRANT EXECUTE ON FUNCTION public.generate_health_alerts() TO postgres;
+GRANT EXECUTE ON FUNCTION public.generate_health_alerts() TO service_role;
+
 -- ── pg_cron scheduling ────────────────────────────────────────────────────────
 --
 -- Requires the pg_cron extension (enabled by default on Supabase hosted projects).
 -- The job runs every 15 minutes so alerts exist in the database regardless of
 -- whether any admin has the HealthAlerts page open.
 --
+-- Wrapped in a DO block so the migration completes successfully even on
+-- self-hosted Postgres instances where pg_cron is not installed; the function
+-- itself remains available and can be invoked manually or via an external
+-- scheduler.
+--
 -- Idempotent: unschedule any pre-existing job with this name before re-creating.
 
-SELECT cron.unschedule(jobid)
-  FROM cron.job
- WHERE jobname = 'generate-health-alerts';
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pg_cron') THEN
+        PERFORM cron.unschedule(jobid)
+          FROM cron.job
+         WHERE jobname = 'generate-health-alerts';
 
-SELECT cron.schedule(
-    'generate-health-alerts',
-    '*/15 * * * *',
-    'SELECT public.generate_health_alerts()'
-);
+        PERFORM cron.schedule(
+            'generate-health-alerts',
+            '*/15 * * * *',
+            'SELECT public.generate_health_alerts()'
+        );
+    END IF;
+END;
+$$;
+
+-- ── Initial bootstrap ─────────────────────────────────────────────────────────
+--
+-- Run the function once immediately so that alerts are populated the moment
+-- the migration is applied, rather than waiting up to 15 minutes for the
+-- first scheduled execution.
+
+SELECT public.generate_health_alerts();
