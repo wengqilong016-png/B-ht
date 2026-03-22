@@ -66,7 +66,7 @@ const AppAdminShell: React.FC = () => {
     sites: 'Site Management', team: 'Team', billing: 'Billing',
     ai: 'AI Audit', collect: 'Collect', debt: 'Finance',
     history: 'History', reports: 'Reports', 'change-review': 'Change Requests',
-    diagnostics: 'Queue Diagnostics',
+    diagnostics: 'Local Queue Diagnostics',
   };
 
   const adminNavItems = [
@@ -78,7 +78,7 @@ const AppAdminShell: React.FC = () => {
     { id: 'team', icon: <Users size={18}/>, label: '车队与薪资', labelEn: 'Fleet' },
     { id: 'billing', icon: <FileSpreadsheet size={18}/>, label: '月账单核对', labelEn: 'Billing' },
     { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
-    { id: 'diagnostics', icon: <Activity size={18}/>, label: '队列诊断', labelEn: 'Diagnostics' },
+    { id: 'diagnostics', icon: <Activity size={18}/>, label: '本地队列诊断', labelEn: 'Local Queue' },
   ];
 
   const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {

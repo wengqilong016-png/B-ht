@@ -1,9 +1,9 @@
 /**
  * QueueDiagnostics
  * ──────────────────────────────────────────────────────────────────────────────
- * Admin/operator diagnostics panel for the offline transaction queue.
+ * Local-device diagnostics panel for the offline transaction queue.
  *
- * Shows:
+ * Shows queue state for **this browser/device only** (not fleet-wide):
  *   • Health summary: pending / retry-waiting / dead-letter counts.
  *   • Dead-letter item list with actionable metadata per entry:
  *       – operationId, last error message, error category badge,
@@ -141,7 +141,7 @@ const QueueDiagnostics: React.FC = () => {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-black text-slate-800 tracking-tight">Queue Diagnostics</h2>
+          <h2 className="text-lg font-black text-slate-800 tracking-tight">Local Queue Diagnostics</h2>
           {lastRefreshed && (
             <p className="text-[11px] text-slate-400 mt-0.5">
               Last updated: {lastRefreshed.toLocaleTimeString()}
@@ -159,6 +159,21 @@ const QueueDiagnostics: React.FC = () => {
             : <RefreshCw size={13} />}
           Refresh
         </button>
+      </div>
+
+      {/* ── Scope notice ────────────────────────────────────────────────── */}
+      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+        <Inbox size={16} className="text-amber-600 shrink-0 mt-0.5" />
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-bold text-amber-900 leading-snug">
+            Local Device Scope
+          </p>
+          <p className="text-[11px] text-amber-700 leading-relaxed mt-1">
+            This page shows the offline queue state for <strong>this browser/device only</strong>.
+            It does not reflect fleet-wide or aggregated diagnostics.
+            An empty state means no items exist on this device, not globally.
+          </p>
+        </div>
       </div>
 
       {/* ── Health summary cards ─────────────────────────────────────────── */}
@@ -200,8 +215,11 @@ const QueueDiagnostics: React.FC = () => {
         {!hasDead ? (
           <div className="flex flex-col items-center justify-center py-12 text-slate-400 gap-2">
             <CheckCircle2 size={28} className="text-emerald-400" />
-            <p className="text-sm font-semibold">No dead-letter items</p>
-            <p className="text-xs opacity-70">All queue entries are within retry budget.</p>
+            <p className="text-sm font-semibold">No dead-letter items on this device</p>
+            <p className="text-xs opacity-70 text-center max-w-md">
+              All queue entries on this browser/device are within retry budget.
+              This does not reflect other devices or fleet-wide state.
+            </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
