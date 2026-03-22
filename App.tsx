@@ -10,6 +10,7 @@ import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
 import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
+import { AuthProvider, DataProvider, MutationProvider } from './contexts';
 import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
 import ForcePasswordChange from './components/ForcePasswordChange';
@@ -158,32 +159,21 @@ const App: React.FC = () => {
   // ─── Role routing via AppRouterShell ─────────────────────────────
   return (
     <NotificationProvider>
-      <AppRouterShell
-        currentUser={currentUser}
-        lang={lang}
-        isOnline={isOnline}
-        locations={locations}
-        drivers={drivers}
-        transactions={transactions}
-        dailySettlements={dailySettlements}
-        aiLogs={aiLogs}
-        filteredLocations={filteredData.locations}
-        filteredDrivers={filteredData.drivers}
-        filteredTransactions={filteredData.transactions}
-        filteredSettlements={filteredData.dailySettlements}
-        unsyncedCount={unsyncedCount}
-        activeDriverId={activeDriverId}
-        syncOfflineData={syncOfflineData}
-        updateDrivers={updateDrivers}
-        updateLocations={updateLocations}
-        deleteLocations={deleteLocations}
-        deleteDrivers={deleteDrivers}
-        updateTransaction={updateTransaction}
-        saveSettlement={saveSettlement}
-        logAI={logAI}
-        onSetLang={setLang}
-        onLogout={handleLogout}
-      />
+      <AuthProvider value={{ currentUser, userRole: currentUser.role, lang, setLang, handleLogout, activeDriverId }}>
+        <DataProvider value={{
+          isOnline,
+          locations, drivers, transactions, dailySettlements, aiLogs,
+          filteredLocations: filteredData.locations,
+          filteredDrivers: filteredData.drivers,
+          filteredTransactions: filteredData.transactions,
+          filteredSettlements: filteredData.dailySettlements,
+          unsyncedCount,
+        }}>
+          <MutationProvider value={{ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }}>
+            <AppRouterShell />
+          </MutationProvider>
+        </DataProvider>
+      </AuthProvider>
       <Analytics />
     </NotificationProvider>
   );

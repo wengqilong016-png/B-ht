@@ -5,9 +5,12 @@ import {
   CheckSquare, Crown,
   MapPin, Store, Users, FileSpreadsheet, History, Settings, ClipboardList
 } from 'lucide-react';
-import { User, Location, Driver, Transaction, DailySettlement, AILog, TRANSLATIONS } from '../types';
-import { useSyncStatus, SyncMutationHandle } from '../hooks/useSyncStatus';
+import { TRANSLATIONS } from '../types';
+import { useSyncStatus } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
+import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../contexts/DataContext';
+import { useMutations } from '../contexts/MutationContext';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const CollectionForm = lazy(() => import('../components/CollectionForm'));
@@ -30,42 +33,18 @@ const LoadingFallback = () => (
 
 type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review';
 
-interface AppAdminShellProps {
-  currentUser: User;
-  lang: 'zh' | 'sw';
-  isOnline: boolean;
-  locations: Location[];
-  drivers: Driver[];
-  transactions: Transaction[];
-  dailySettlements: DailySettlement[];
-  aiLogs: AILog[];
-  filteredLocations: Location[];
-  filteredDrivers: Driver[];
-  filteredTransactions: Transaction[];
-  filteredSettlements: DailySettlement[];
-  unsyncedCount: number;
-  activeDriverId: string | undefined;
-  syncOfflineData: SyncMutationHandle;
-  updateDrivers: { mutateAsync: (d: Driver[]) => Promise<any>; mutate: (d: Driver[]) => void };
-  updateLocations: { mutate: (l: Location[]) => void };
-  deleteLocations: { mutate: (ids: string[]) => void };
-  deleteDrivers: { mutate: (ids: string[]) => void };
-  updateTransaction: { mutate: (args: { txId: string; updates: Partial<Transaction> }) => void };
-  saveSettlement: { mutate: (s: DailySettlement) => void };
-  logAI: { mutate: (l: AILog) => void };
-  onSetLang: (lang: 'zh' | 'sw') => void;
-  onLogout: () => void;
-}
-
-const AppAdminShell: React.FC<AppAdminShellProps> = ({
-  currentUser, lang, isOnline,
-  locations, drivers, transactions, dailySettlements, aiLogs,
-  filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
-  unsyncedCount, activeDriverId,
-  syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers,
-  updateTransaction, saveSettlement, logAI,
-  onSetLang, onLogout,
-}) => {
+const AppAdminShell: React.FC = () => {
+  const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
+  const {
+    isOnline,
+    locations, drivers, transactions, dailySettlements, aiLogs,
+    filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
+    unsyncedCount,
+  } = useAppData();
+  const {
+    syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers,
+    updateTransaction, saveSettlement, logAI,
+  } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<AdminView>('dashboard');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -186,9 +165,9 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
               <p className="text-[8px] font-bold text-slate-400 uppercase">Admin User</p>
             </div>
             <div className="flex flex-col gap-1">
-              <button onClick={() => onSetLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white rounded-lg shadow-silicone-sm text-slate-500 hover:text-indigo-600 transition-colors"><Globe size={12}/></button>
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white rounded-lg shadow-silicone-sm text-slate-500 hover:text-indigo-600 transition-colors"><Globe size={12}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-1 bg-white rounded-lg shadow-silicone-sm text-slate-500 hover:text-indigo-600 transition-colors"><Settings size={12}/></button>
-              <button onClick={onLogout} className="p-1 bg-rose-50 rounded-lg border border-rose-100 text-rose-500 hover:text-rose-700 transition-colors"><LogOut size={12}/></button>
+              <button onClick={handleLogout} className="p-1 bg-rose-50 rounded-lg border border-rose-100 text-rose-500 hover:text-rose-700 transition-colors"><LogOut size={12}/></button>
             </div>
           </div>
         </div>
@@ -213,9 +192,9 @@ const AppAdminShell: React.FC<AppAdminShellProps> = ({
               <div className="hidden sm:flex">
                 <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" />
               </div>
-              <button onClick={() => onSetLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm"><Globe size={15}/></button>
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-subcard bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm"><Globe size={15}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-2 rounded-subcard bg-white text-slate-600 hover:text-indigo-600 shadow-silicone-sm"><Settings size={15}/></button>
-              <button onClick={onLogout} className="p-2 rounded-subcard bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
+              <button onClick={handleLogout} className="p-2 rounded-subcard bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </div>
           </div>
           {/* Mobile nav */}
