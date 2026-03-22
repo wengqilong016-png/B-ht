@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Search, Layers, Coins, ScanLine, ChevronRight, AlertTriangle, Lock, RefreshCw, Wallet, WifiOff, DatabaseBackup, Plus } from 'lucide-react';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';
 import { getPendingTransactions } from '../../offlineQueue';
@@ -54,28 +54,57 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
   );
   const visitedLocationIds = useMemo(() => new Set(todayDriverTransactions.map(t => t.locationId)), [todayDriverTransactions]);
 
+  // Memoize location metadata calculations to avoid recalculating on every render
+  const locationMetadata = useMemo(() => {
+    const metadata = new Map<string, {
+      distanceMeters: number | null;
+      daysSinceActive: number | null;
+      isUrgent: boolean;
+      isNearby: boolean;
+      isPending: boolean;
+      isLocked: boolean;
+      priorityScore: number;
+    }>();
+
+    assignedLocations.forEach(loc => {
+      const distanceMeters = gpsCoords && loc.coords
+        ? getDistance(gpsCoords.lat, gpsCoords.lng, loc.coords.lat, loc.coords.lng)
+        : null;
+      const daysSinceActive = loc.lastRevenueDate
+        ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
+        : null;
+      const isUrgent = loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
+      const isNearby = distanceMeters !== null && distanceMeters <= NEARBY_DISTANCE_METERS;
+      const isPending = !visitedLocationIds.has(loc.id);
+      const isLocked = loc.resetLocked === true;
+      const priorityScore =
+        (isPending ? PRIORITY_PENDING_WEIGHT : 0) +
+        (isUrgent ? PRIORITY_URGENT_WEIGHT : 0) +
+        (isLocked ? PRIORITY_LOCKED_PENALTY : 0) +
+        (isNearby ? PRIORITY_NEARBY_WEIGHT : 0) +
+        (loc.status === 'active' ? PRIORITY_ACTIVE_WEIGHT : 0) -
+        Math.min(PRIORITY_DISTANCE_CAP_KM, Math.floor((distanceMeters ?? PRIORITY_DISTANCE_FALLBACK) / 1000));
+
+      metadata.set(loc.id, {
+        distanceMeters,
+        daysSinceActive,
+        isUrgent,
+        isNearby,
+        isPending,
+        isLocked,
+        priorityScore,
+      });
+    });
+
+    return metadata;
+  }, [assignedLocations, gpsCoords, visitedLocationIds]);
+
   const locationCards = useMemo(() => {
     const lowerSearch = searchQuery.toLowerCase();
     return assignedLocations
       .map(loc => {
-        const distanceMeters = gpsCoords && loc.coords
-          ? getDistance(gpsCoords.lat, gpsCoords.lng, loc.coords.lat, loc.coords.lng)
-          : null;
-        const daysSinceActive = loc.lastRevenueDate
-          ? Math.floor((Date.now() - new Date(loc.lastRevenueDate).getTime()) / 86400000)
-          : null;
-        const isUrgent = loc.lastScore >= 9000 || loc.status === 'broken' || (daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD);
-        const isNearby = distanceMeters !== null && distanceMeters <= NEARBY_DISTANCE_METERS;
-        const isPending = !visitedLocationIds.has(loc.id);
-        const isLocked = loc.resetLocked === true;
-        const priorityScore =
-          (isPending ? PRIORITY_PENDING_WEIGHT : 0) +
-          (isUrgent ? PRIORITY_URGENT_WEIGHT : 0) +
-          (isLocked ? PRIORITY_LOCKED_PENALTY : 0) +
-          (isNearby ? PRIORITY_NEARBY_WEIGHT : 0) +
-          (loc.status === 'active' ? PRIORITY_ACTIVE_WEIGHT : 0) -
-          Math.min(PRIORITY_DISTANCE_CAP_KM, Math.floor((distanceMeters ?? PRIORITY_DISTANCE_FALLBACK) / 1000));
-        return { loc, distanceMeters, daysSinceActive, isUrgent, isNearby, isPending, isLocked, priorityScore };
+        const meta = locationMetadata.get(loc.id)!;
+        return { loc, ...meta };
       })
       .filter(({ loc, isPending, isUrgent, isNearby }) => {
         const matchSearch = !searchQuery ||
@@ -97,7 +126,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         if (distanceA !== distanceB) return distanceA - distanceB;
         return a.loc.name.localeCompare(b.loc.name);
       });
-  }, [assignedLocations, gpsCoords, searchQuery, selectedArea, locationFilter, visitedLocationIds]);
+  }, [assignedLocations, locationMetadata, searchQuery, selectedArea, locationFilter]);
 
   const collectionOverview = useMemo(() => ({
     totalMachines: assignedLocations.length,
