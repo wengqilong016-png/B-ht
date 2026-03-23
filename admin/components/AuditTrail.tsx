@@ -22,7 +22,7 @@
  * Case-ID filter resets pagination automatically.
  */
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BookOpen, CheckCircle2, Clock, Download, FileSearch,
   Link2, Loader2, RefreshCw, Search, ShieldAlert, XCircle, Zap,
@@ -178,9 +178,11 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient,
 
   const missingConfig = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
-  // Consume initial case filter from parent navigation
+  // Consume initial case filter from parent navigation (run once per distinct value)
+  const consumedFilterRef = useRef<string | undefined>(undefined);
   useEffect(() => {
-    if (initialCaseFilter) {
+    if (initialCaseFilter && initialCaseFilter !== consumedFilterRef.current) {
+      consumedFilterRef.current = initialCaseFilter;
       setCaseIdFilter(initialCaseFilter);
       setAppliedFilter(initialCaseFilter);
       onCaseFilterConsumed?.();
