@@ -1,12 +1,14 @@
 /**
  * supportCaseService.ts
  *
- * Stage-9: lightweight support case linking and operator audit trail.
+ * Stage-9/10: lightweight support case linking, operator audit trail, and
+ * case resolution workflow.
  *
  * This module provides:
  *
  *   1. Support case CRUD — `createSupportCase()`, `fetchSupportCases()`,
- *      `closeSupportCase()` manage lightweight case entities in the
+ *      `fetchSupportCaseById()`, `closeSupportCase()`, and
+ *      `resolveSupportCase()` manage lightweight case entities in the
  *      `support_cases` Supabase table.
  *
  *   2. Audit event recording — `recordAuditEvent()` writes a single row to the
@@ -32,6 +34,7 @@
  *   manual_replay_succeeded  – manual replay completed successfully
  *   manual_replay_failed     – manual replay failed (error recorded in payload)
  *   recovery_action          – generic operator recovery action
+ *   case_resolved            – support case resolved with metadata (stage 10)
  *
  * Payload design
  * ──────────────
@@ -53,7 +56,8 @@ export type AuditEventType =
   | 'manual_replay_attempted'
   | 'manual_replay_succeeded'
   | 'manual_replay_failed'
-  | 'recovery_action';
+  | 'recovery_action'
+  | 'case_resolved';
 
 /**
  * Structured payload attached to an audit event.
@@ -81,6 +85,8 @@ export interface AuditEventPayload {
   alertSeverity?: string;
   /** Free-form note from the operator (max 500 chars). */
   note?: string;
+  /** Resolution outcome for case_resolved events (stage 10). */
+  resolutionOutcome?: string;
 }
 
 /** One row from the `support_audit_log` table. */
@@ -129,6 +135,14 @@ export interface SupportCase {
   createdBy: string | null;
   createdAt: string;
   closedAt: string | null;
+  /** Operator notes or resolution summary (stage 10). */
+  resolutionNotes: string | null;
+  /** Who resolved the case (stage 10). */
+  resolvedBy: string | null;
+  /** When the case was resolved (stage 10). */
+  resolvedAt: string | null;
+  /** Short outcome label, e.g. "fixed", "wont-fix", "duplicate" (stage 10). */
+  resolutionOutcome: string | null;
 }
 
 /** Input for creating a new support case. */
@@ -147,6 +161,18 @@ export interface FetchSupportCasesOptions {
   status?: SupportCaseStatus;
   /** Maximum number of rows to return (default: 100). */
   limit?: number;
+}
+
+/** Input for resolving (closing with metadata) a support case (stage 10). */
+export interface ResolveSupportCaseInput {
+  /** The ID of the case to resolve. */
+  caseId: string;
+  /** Operator notes or resolution summary. */
+  resolutionNotes?: string;
+  /** Short outcome label, e.g. "fixed", "wont-fix", "duplicate". */
+  resolutionOutcome?: string;
+  /** Who resolved the case. */
+  resolvedBy?: string;
 }
 
 // ── Export payload enrichment type ───────────────────────────────────────────
@@ -299,6 +325,24 @@ export async function fetchAuditEventCountsByCaseIds(
 
 // ── Support case CRUD ─────────────────────────────────────────────────────────
 
+const CASE_SELECT_COLUMNS = 'id, title, status, created_by, created_at, closed_at, resolution_notes, resolved_by, resolved_at, resolution_outcome';
+
+/** Map a raw Supabase row to a SupportCase object. */
+function mapCaseRow(row: Record<string, unknown>): SupportCase {
+  return {
+    id:                 String(row['id']                  ?? ''),
+    title:              String(row['title']               ?? ''),
+    status:             String(row['status']              ?? 'open') as SupportCaseStatus,
+    createdBy:          row['created_by']          != null ? String(row['created_by'])          : null,
+    createdAt:          String(row['created_at']          ?? ''),
+    closedAt:           row['closed_at']           != null ? String(row['closed_at'])           : null,
+    resolutionNotes:    row['resolution_notes']    != null ? String(row['resolution_notes'])    : null,
+    resolvedBy:         row['resolved_by']         != null ? String(row['resolved_by'])         : null,
+    resolvedAt:         row['resolved_at']         != null ? String(row['resolved_at'])         : null,
+    resolutionOutcome:  row['resolution_outcome']  != null ? String(row['resolution_outcome'])  : null,
+  };
+}
+
 /**
  * Create a new support case in the `support_cases` table.
  *
@@ -319,22 +363,14 @@ export async function createSupportCase(
       status:     'open',
       created_by: input.createdBy ?? null,
     })
-    .select('id, title, status, created_by, created_at, closed_at')
+    .select(CASE_SELECT_COLUMNS)
     .single();
 
   if (error) {
     throw new Error(`Failed to create support case: ${error.message}`);
   }
 
-  const row = data as Record<string, unknown>;
-  return {
-    id:         String(row['id']         ?? ''),
-    title:      String(row['title']      ?? ''),
-    status:     String(row['status']     ?? 'open') as SupportCaseStatus,
-    createdBy:  row['created_by'] != null ? String(row['created_by']) : null,
-    createdAt:  String(row['created_at'] ?? ''),
-    closedAt:   row['closed_at'] != null  ? String(row['closed_at']) : null,
-  };
+  return mapCaseRow(data as Record<string, unknown>);
 }
 
 /**
@@ -353,7 +389,7 @@ export async function fetchSupportCases(
 
   let query = supabaseClient
     .from('support_cases')
-    .select('id, title, status, created_by, created_at, closed_at');
+    .select(CASE_SELECT_COLUMNS);
 
   if (options?.status) {
     query = query.eq('status', options.status);
@@ -368,15 +404,32 @@ export async function fetchSupportCases(
   }
 
   const rows: Array<Record<string, unknown>> = data ?? [];
+  return rows.map(mapCaseRow);
+}
 
-  return rows.map((row): SupportCase => ({
-    id:         String(row['id']         ?? ''),
-    title:      String(row['title']      ?? ''),
-    status:     String(row['status']     ?? 'open') as SupportCaseStatus,
-    createdBy:  row['created_by'] != null ? String(row['created_by']) : null,
-    createdAt:  String(row['created_at'] ?? ''),
-    closedAt:   row['closed_at'] != null  ? String(row['closed_at']) : null,
-  }));
+/**
+ * Fetch a single support case by its ID.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param caseId          The case ID to look up.
+ * @returns               The matching {@link SupportCase}, or `null` if not found.
+ * @throws                Error when the Supabase query fails (network/auth).
+ */
+export async function fetchSupportCaseById(
+  supabaseClient: SupabaseClient,
+  caseId: string,
+): Promise<SupportCase | null> {
+  const { data, error } = await supabaseClient
+    .from('support_cases')
+    .select(CASE_SELECT_COLUMNS)
+    .eq('id', caseId)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(`Failed to fetch support case: ${error.message}`);
+  }
+  if (!data) return null;
+  return mapCaseRow(data as Record<string, unknown>);
 }
 
 /**
@@ -401,5 +454,38 @@ export async function closeSupportCase(
 
   if (error) {
     throw new Error(`Failed to close support case: ${error.message}`);
+  }
+}
+
+/**
+ * Resolve an open support case with explicit resolution metadata (stage 10).
+ *
+ * Sets status to 'closed', records `closed_at`, and writes the resolution
+ * fields: `resolution_notes`, `resolved_by`, `resolved_at`, and
+ * `resolution_outcome`.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param input           Resolution details.
+ * @throws                Error when the Supabase update fails.
+ */
+export async function resolveSupportCase(
+  supabaseClient: SupabaseClient,
+  input: ResolveSupportCaseInput,
+): Promise<void> {
+  const now = new Date().toISOString();
+  const { error } = await supabaseClient
+    .from('support_cases')
+    .update({
+      status:              'closed',
+      closed_at:           now,
+      resolution_notes:    input.resolutionNotes ?? null,
+      resolved_by:         input.resolvedBy      ?? null,
+      resolved_at:         now,
+      resolution_outcome:  input.resolutionOutcome ?? null,
+    })
+    .eq('id', input.caseId);
+
+  if (error) {
+    throw new Error(`Failed to resolve support case: ${error.message}`);
   }
 }

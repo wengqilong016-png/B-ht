@@ -134,7 +134,7 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 
 ---
 
-## Deployment Checklist — Stages 1 through 9
+## Deployment Checklist — Stages 1 through 10
 
 Use this checklist when deploying a release that includes any changes from
 stages 1 through 9.  Run each step in order.
@@ -164,6 +164,7 @@ stages 1 through 9.  Run each step in order.
 | 9   | `20260322210000_support_audit_log.sql` | `support_audit_log` table, RLS policies |
 | 9   | `20260323030000_support_cases.sql`     | `support_cases` table, RLS policies |
 | 9   | `20260323040000_support_check_constraints.sql` | CHECK constraints on `status` and `event_type` |
+| 10  | `20260323100000_case_resolution.sql`           | Resolution columns on `support_cases`, extended event_type CHECK |
 
 Confirm each migration is applied:
 
@@ -228,6 +229,20 @@ WHERE jobname = 'generate-health-alerts';
 ```sql
 SELECT COUNT(*) FROM public.support_audit_log;
 SELECT COUNT(*) FROM public.support_cases;
+```
+
+**Case resolution workflow (Stage 10)**
+- [ ] Open Admin → Cases → click **Detail** on an open case.
+- [ ] Confirm case detail view loads with metadata grid and resolution form.
+- [ ] Select an outcome, add resolution notes, click **Resolve Case**.
+- [ ] Confirm the case status changes to `closed` and resolution metadata is saved.
+- [ ] Confirm a `case_resolved` audit event appears in the linked history.
+- [ ] Open a closed resolved case detail → confirm resolution notes and outcome are shown read-only.
+- [ ] Confirm the resolution columns exist:
+
+```sql
+SELECT resolution_notes, resolved_by, resolved_at, resolution_outcome
+FROM public.support_cases LIMIT 1;
 ```
 
 ### Rollback
