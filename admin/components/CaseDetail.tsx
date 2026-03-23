@@ -37,6 +37,8 @@ export interface CaseDetailProps {
   onBack: () => void;
   /** Callback to navigate to audit trail filtered by this case. */
   onNavigateToAudit?: (caseId: string) => void;
+  /** Current operator name, used to populate resolvedBy on resolution. */
+  currentOperator?: string;
   /** Optionally injected for testing; defaults to the singleton Supabase client. */
   supabaseClient?: typeof supabase;
 }
@@ -45,6 +47,7 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
   caseId,
   onBack,
   onNavigateToAudit,
+  currentOperator,
   supabaseClient: injectedClient,
 }) => {
   const client = injectedClient ?? supabase;
@@ -107,6 +110,7 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
         caseId,
         resolutionNotes: resolutionNotes.trim() || undefined,
         resolutionOutcome: resolutionOutcome || undefined,
+        resolvedBy: currentOperator || undefined,
       });
       // Record audit event (fire-and-forget)
       await recordAuditEvent(client, {
@@ -125,7 +129,7 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
     } finally {
       setResolving(false);
     }
-  }, [client, caseId, supportCase, resolutionNotes, resolutionOutcome, fetchCase, fetchLinkedEvents]);
+  }, [client, caseId, supportCase, resolutionNotes, resolutionOutcome, currentOperator, fetchCase, fetchLinkedEvents]);
 
   // ── Render ────────────────────────────────────────────────────────────────
 

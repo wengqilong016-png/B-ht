@@ -55,7 +55,7 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => onViewDetail?.(supportCase.id)}
-            className="font-mono text-[11px] font-bold text-indigo-700 bg-slate-100 px-1.5 py-0.5 rounded hover:bg-indigo-100 hover:text-indigo-800 transition-colors cursor-pointer"
+            className="font-mono text-[11px] font-bold text-indigo-700 bg-slate-100 px-1.5 py-0.5 rounded hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer"
             title="View case detail"
           >
             {supportCase.id}
