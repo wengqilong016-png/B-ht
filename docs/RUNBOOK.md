@@ -503,7 +503,7 @@ triggerJSONDownload(enriched, filename);
 ### Managing support cases
 
 ```typescript
-import { createSupportCase, fetchSupportCases, closeSupportCase } from '../services/supportCaseService';
+import { createSupportCase, fetchSupportCases, resolveSupportCase } from '../services/supportCaseService';
 
 // Create
 const supportCase = await createSupportCase(supabase, {
@@ -515,8 +515,13 @@ const supportCase = await createSupportCase(supabase, {
 // List (optionally filter by status)
 const cases = await fetchSupportCases(supabase, { status: 'open' });
 
-// Close
-await closeSupportCase(supabase, 'CASE-2026-001');
+// Resolve (with metadata — preferred over direct close)
+await resolveSupportCase(supabase, {
+  caseId: 'CASE-2026-001',
+  resolutionNotes: 'Root cause was a transient network timeout; replayed successfully.',
+  resolutionOutcome: 'fixed',
+  resolvedBy: 'operator-auth-user-id',
+});
 ```
 
 ### Viewing the audit trail

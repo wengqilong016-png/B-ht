@@ -1,7 +1,7 @@
 # ADR: Stage 10 — support case resolution workflow
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 Stage 9 established support case creation, lightweight case linking, and an operator-visible audit trail. Operators can now group exports, health-alert links, and replay actions under a case and see core history.
