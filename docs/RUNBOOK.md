@@ -1,6 +1,6 @@
 # Bahati Jackpots — Operator & Support Runbook
 
-> Scope: stages 1 through 8.1.  
+> Scope: stages 1 through 10.
 > Audience: system operators, on-call support engineers.
 
 ---
@@ -19,6 +19,9 @@
 10. [Health Alerts (Stage 8 / 8.1)](#10-health-alerts-stage-8--81)
 11. [Common Troubleshooting Scenarios](#11-common-troubleshooting-scenarios)
 12. [Escalation & Contact Matrix](#12-escalation--contact-matrix)
+13. [Support Case Linking & Audit Trail (Stage 9)](#13-support-case-linking--audit-trail-stage-9)
+14. [Stage 10 — Support Case Resolution Workflow](#stage-10--support-case-resolution-workflow)
+15. [Stage 10 Post-Merge Smoke Checklist (Repeatable)](#15-stage-10-post-merge-smoke-checklist-repeatable)
 
 ---
 
@@ -609,6 +612,51 @@ as resolved with full traceability metadata.
 1. Confirm the case ID exists in `support_cases`.
 2. Confirm the admin user has the `admin` role.
 3. Check Supabase RLS policies on `support_cases`.
+
+---
+
+## 15. Stage 10 Post-Merge Smoke Checklist (Repeatable)
+
+This checklist is intentionally narrow: only validate the Stage 10 acceptance
+chain after merge, without expanding scope.
+
+### Acceptance chain
+
+1. **Cases → Detail → Resolve Case**
+   - Open Admin Console → **Cases**.
+   - Click **Detail** on an open case.
+   - Set outcome + notes, click **Resolve Case**.
+2. **Resolution metadata persisted**
+   - Case row is now `status='closed'`.
+   - `resolution_notes`, `resolution_outcome`, `resolved_by`, `resolved_at`
+     are persisted.
+3. **Audit event written**
+   - At least one `case_resolved` event exists for the same `case_id`.
+
+### Canonical SQL helper
+
+- File: `scripts/stage10_post_merge_smoke.sql`
+- Run in Supabase SQL Editor or via `psql -f scripts/stage10_post_merge_smoke.sql`.
+- Set `case_id` first, then execute all statements in order.
+
+The SQL verifies:
+- case row + resolution metadata
+- `case_resolved` audit event presence and latest timestamp
+- `support_audit_log_event_type_check` contains `case_resolved`
+
+### Fast manual SQL snippet
+
+```sql
+SELECT id, status, resolution_outcome, resolved_by, resolved_at
+FROM public.support_cases
+WHERE id = '<case_id>';
+
+SELECT event_type, actor_id, created_at
+FROM public.support_audit_log
+WHERE case_id = '<case_id>'
+  AND event_type = 'case_resolved'
+ORDER BY created_at DESC;
+```
 
 ---
 
