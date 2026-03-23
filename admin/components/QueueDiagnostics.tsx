@@ -193,7 +193,7 @@ const QueueDiagnostics: React.FC = () => {
       payload: {
         txId: entry.id,
         driverId: entry.driverId,
-        ...(!result.success && { errorSummary: (result as { error: string }).error?.slice(0, 200) }),
+        ...(!result.success && 'error' in result && { errorSummary: String(result.error).slice(0, 200) }),
       },
     });
     // Refresh local diagnostics so the list reflects any state change.
