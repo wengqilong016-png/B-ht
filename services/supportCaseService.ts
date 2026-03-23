@@ -5,18 +5,22 @@
  *
  * This module provides:
  *
- *   1. Audit event recording — `recordAuditEvent()` writes a single row to the
+ *   1. Support case CRUD — `createSupportCase()`, `fetchSupportCases()`,
+ *      `closeSupportCase()` manage lightweight case entities in the
+ *      `support_cases` Supabase table.
+ *
+ *   2. Audit event recording — `recordAuditEvent()` writes a single row to the
  *      `support_audit_log` Supabase table.  The call is fire-and-forget: it
  *      never throws so callers do not need try/catch.
  *
- *   2. Audit log retrieval — `fetchAuditLog()` reads the most recent entries
+ *   3. Audit log retrieval — `fetchAuditLog()` reads the most recent entries
  *      from `support_audit_log`.  Errors are surfaced as thrown exceptions so
  *      the UI can display a useful message.
  *
- *   3. Case filtering — `filterAuditEventsByCaseId()` is a pure helper for
+ *   4. Case filtering — `filterAuditEventsByCaseId()` is a pure helper for
  *      narrowing an already-fetched log to a single support case.
  *
- *   4. Export enrichment — `addCaseIdToExportPayload()` attaches an optional
+ *   5. Export enrichment — `addCaseIdToExportPayload()` attaches an optional
  *      `caseId` field to an export payload before it is downloaded, so that
  *      the JSON file itself carries the traceability reference.
  *
@@ -35,9 +39,6 @@
  * They must never contain PII, GPS coordinates, or raw finance values.
  * Acceptable payload fields: ids (txId, deviceId, driverId), counts, error
  * category strings, scope labels, export filenames, and timestamps.
- *
- * This module is intentionally narrow — it makes no decisions about what
- * constitutes a "case" and performs no automatic remediation.
  */
 
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -112,6 +113,39 @@ export interface FetchAuditLogOptions {
   /** Filter to a specific support case ID. */
   caseId?: string;
   /** Maximum number of rows to return (default: 200). */
+  limit?: number;
+}
+
+// ── Support case types ──────────────────────────────────────────────────────
+
+/** Status of a support case. */
+export type SupportCaseStatus = 'open' | 'closed';
+
+/** One row from the `support_cases` table. */
+export interface SupportCase {
+  id: string;
+  title: string;
+  status: SupportCaseStatus;
+  createdBy: string | null;
+  createdAt: string;
+  closedAt: string | null;
+}
+
+/** Input for creating a new support case. */
+export interface CreateSupportCaseInput {
+  /** Operator-assigned case ID (e.g. CASE-2026-001). */
+  id: string;
+  /** Short human-readable summary. */
+  title: string;
+  /** Actor who opened the case. */
+  createdBy?: string;
+}
+
+/** Options for listing support cases. */
+export interface FetchSupportCasesOptions {
+  /** Filter by status. When omitted, all cases are returned. */
+  status?: SupportCaseStatus;
+  /** Maximum number of rows to return (default: 100). */
   limit?: number;
 }
 
@@ -229,4 +263,111 @@ export function addCaseIdToExportPayload<T extends LocalExportPayload | FleetExp
 ): EnrichedExportPayload<T> {
   if (!caseId) return payload as EnrichedExportPayload<T>;
   return { ...payload, caseId } as EnrichedExportPayload<T>;
+}
+
+// ── Support case CRUD ─────────────────────────────────────────────────────────
+
+/**
+ * Create a new support case in the `support_cases` table.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param input           Case details.
+ * @returns               The created {@link SupportCase}.
+ * @throws                Error when the Supabase insert fails.
+ */
+export async function createSupportCase(
+  supabaseClient: SupabaseClient,
+  input: CreateSupportCaseInput,
+): Promise<SupportCase> {
+  const { data, error } = await supabaseClient
+    .from('support_cases')
+    .insert({
+      id:         input.id,
+      title:      input.title,
+      status:     'open',
+      created_by: input.createdBy ?? null,
+    })
+    .select('id, title, status, created_by, created_at, closed_at')
+    .single();
+
+  if (error) {
+    throw new Error(`Failed to create support case: ${error.message}`);
+  }
+
+  const row = data as Record<string, unknown>;
+  return {
+    id:         String(row['id']         ?? ''),
+    title:      String(row['title']      ?? ''),
+    status:     String(row['status']     ?? 'open') as SupportCaseStatus,
+    createdBy:  row['created_by'] != null ? String(row['created_by']) : null,
+    createdAt:  String(row['created_at'] ?? ''),
+    closedAt:   row['closed_at'] != null  ? String(row['closed_at']) : null,
+  };
+}
+
+/**
+ * Fetch support cases from the `support_cases` table.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param options         Optional filters and pagination.
+ * @returns               Array of {@link SupportCase}s sorted newest-first.
+ * @throws                Error when the Supabase query fails.
+ */
+export async function fetchSupportCases(
+  supabaseClient: SupabaseClient,
+  options?: FetchSupportCasesOptions,
+): Promise<SupportCase[]> {
+  const limit = options?.limit ?? 100;
+
+  let query = supabaseClient
+    .from('support_cases')
+    .select('id, title, status, created_by, created_at, closed_at');
+
+  if (options?.status) {
+    query = query.eq('status', options.status);
+  }
+
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw new Error(`Support cases query failed: ${error.message}`);
+  }
+
+  const rows: Array<Record<string, unknown>> = data ?? [];
+
+  return rows.map((row): SupportCase => ({
+    id:         String(row['id']         ?? ''),
+    title:      String(row['title']      ?? ''),
+    status:     String(row['status']     ?? 'open') as SupportCaseStatus,
+    createdBy:  row['created_by'] != null ? String(row['created_by']) : null,
+    createdAt:  String(row['created_at'] ?? ''),
+    closedAt:   row['closed_at'] != null  ? String(row['closed_at']) : null,
+  }));
+}
+
+/**
+ * Close an open support case by setting status to 'closed' and recording
+ * `closed_at`.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param caseId          The ID of the case to close.
+ * @throws                Error when the Supabase update fails.
+ */
+export async function closeSupportCase(
+  supabaseClient: SupabaseClient,
+  caseId: string,
+): Promise<void> {
+  const { error } = await supabaseClient
+    .from('support_cases')
+    .update({
+      status:    'closed',
+      closed_at: new Date().toISOString(),
+    })
+    .eq('id', caseId);
+
+  if (error) {
+    throw new Error(`Failed to close support case: ${error.message}`);
+  }
 }

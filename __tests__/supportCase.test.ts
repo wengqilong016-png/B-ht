@@ -34,6 +34,23 @@
  *     - Attaches caseId to a fleet export payload
  *     - Does not mutate the original payload object
  *     - Returns the same object reference when caseId is undefined
+ *
+ *   createSupportCase:
+ *     - Inserts a case and returns the created entity
+ *     - Defaults status to 'open'
+ *     - Inserts with null created_by when not provided
+ *     - Throws when Supabase insert fails
+ *
+ *   fetchSupportCases:
+ *     - Returns an empty array when no cases exist
+ *     - Maps DB columns to SupportCase fields correctly
+ *     - Filters by status when option is provided
+ *     - Applies default limit of 100
+ *     - Throws on Supabase query failure
+ *
+ *   closeSupportCase:
+ *     - Calls update with status=closed and closed_at
+ *     - Throws on Supabase update failure
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
@@ -42,6 +59,9 @@ import {
   fetchAuditLog,
   filterAuditEventsByCaseId,
   addCaseIdToExportPayload,
+  createSupportCase,
+  fetchSupportCases,
+  closeSupportCase,
   type AuditEvent,
   type AuditEventType,
 } from '../services/supportCaseService';
@@ -372,5 +392,192 @@ describe('addCaseIdToExportPayload', () => {
     addCaseIdToExportPayload(payload, 'CASE-X');
     expect(Object.keys(payload)).toEqual(originalKeys);
     expect((payload as any).caseId).toBeUndefined();
+  });
+});
+
+// ── Support case CRUD helpers ────────────────────────────────────────────────
+
+/** Build a Supabase client stub for support_cases insert (returning created row). */
+function makeCaseInsertStub(
+  returnRow: Record<string, unknown> | null,
+  insertError: { message: string } | null = null,
+) {
+  const singleMock = jest.fn().mockResolvedValue({
+    data: insertError ? null : returnRow,
+    error: insertError,
+  });
+  const selectMock = jest.fn().mockReturnValue({ single: singleMock });
+  return {
+    _singleMock: singleMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        insert: jest.fn().mockReturnValue({ select: selectMock }),
+      }),
+    } as any,
+  };
+}
+
+/** Build a raw support_cases DB row. */
+function makeCaseRow(overrides: Partial<Record<string, unknown>> = {}): Record<string, unknown> {
+  return {
+    id: 'CASE-001',
+    title: 'Test case',
+    status: 'open',
+    created_by: 'admin-1',
+    created_at: new Date().toISOString(),
+    closed_at: null,
+    ...overrides,
+  };
+}
+
+/** Build a Supabase client stub for support_cases select query. */
+function makeCaseSelectStub(
+  rows: Record<string, unknown>[],
+  queryError: { message: string } | null = null,
+) {
+  const limitMock = jest.fn().mockResolvedValue({
+    data: queryError ? null : rows,
+    error: queryError,
+  });
+  const orderMock = jest.fn().mockReturnValue({ limit: limitMock });
+  const eqMock = jest.fn().mockReturnValue({ order: orderMock });
+  const selectResult = { order: orderMock, eq: eqMock };
+
+  return {
+    _orderMock: orderMock,
+    _limitMock: limitMock,
+    _eqMock: eqMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue(selectResult),
+      }),
+    } as any,
+  };
+}
+
+/** Build a Supabase client stub for support_cases update. */
+function makeCaseUpdateStub(updateError: { message: string } | null = null) {
+  const eqMock = jest.fn().mockResolvedValue({
+    data: null,
+    error: updateError,
+  });
+  return {
+    _eqMock: eqMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: eqMock }),
+      }),
+    } as any,
+  };
+}
+
+// ── createSupportCase ─────────────────────────────────────────────────────────
+
+describe('createSupportCase', () => {
+  it('inserts a case and returns the created entity', async () => {
+    const row = makeCaseRow();
+    const { client } = makeCaseInsertStub(row);
+    const result = await createSupportCase(client, { id: 'CASE-001', title: 'Test case', createdBy: 'admin-1' });
+    expect(result.id).toBe('CASE-001');
+    expect(result.title).toBe('Test case');
+    expect(result.status).toBe('open');
+    expect(result.createdBy).toBe('admin-1');
+  });
+
+  it('inserts with null created_by when createdBy is not provided', async () => {
+    const row = makeCaseRow({ created_by: null });
+    const { client } = makeCaseInsertStub(row);
+    const result = await createSupportCase(client, { id: 'CASE-002', title: 'No author' });
+    expect(result.createdBy).toBeNull();
+  });
+
+  it('throws when Supabase insert fails', async () => {
+    const { client } = makeCaseInsertStub(null, { message: 'duplicate key' });
+    await expect(createSupportCase(client, { id: 'CASE-DUP', title: 'dup' })).rejects.toThrow(
+      'Failed to create support case: duplicate key',
+    );
+  });
+});
+
+// ── fetchSupportCases ─────────────────────────────────────────────────────────
+
+describe('fetchSupportCases', () => {
+  it('returns an empty array when no cases exist', async () => {
+    const { client } = makeCaseSelectStub([]);
+    const result = await fetchSupportCases(client);
+    expect(result).toEqual([]);
+  });
+
+  it('maps DB columns to SupportCase fields correctly', async () => {
+    const row = makeCaseRow();
+    const { client } = makeCaseSelectStub([row]);
+    const result = await fetchSupportCases(client);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe(row['id']);
+    expect(result[0].title).toBe(row['title']);
+    expect(result[0].status).toBe(row['status']);
+    expect(result[0].createdBy).toBe(row['created_by']);
+    expect(result[0].createdAt).toBe(row['created_at']);
+    expect(result[0].closedAt).toBeNull();
+  });
+
+  it('filters by status when option is provided', async () => {
+    const { client, _eqMock } = makeCaseSelectStub([]);
+    await fetchSupportCases(client, { status: 'open' });
+    expect(_eqMock).toHaveBeenCalledWith('status', 'open');
+  });
+
+  it('applies default limit of 100 when no limit option is provided', async () => {
+    const { client, _limitMock } = makeCaseSelectStub([]);
+    await fetchSupportCases(client);
+    expect(_limitMock).toHaveBeenCalledWith(100);
+  });
+
+  it('applies a caller-supplied limit', async () => {
+    const { client, _limitMock } = makeCaseSelectStub([]);
+    await fetchSupportCases(client, { limit: 25 });
+    expect(_limitMock).toHaveBeenCalledWith(25);
+  });
+
+  it('throws on Supabase query failure', async () => {
+    const { client } = makeCaseSelectStub([], { message: 'permission denied' });
+    await expect(fetchSupportCases(client)).rejects.toThrow(
+      'Support cases query failed: permission denied',
+    );
+  });
+
+  it('handles null created_by and closed_at gracefully', async () => {
+    const row = makeCaseRow({ created_by: null, closed_at: null });
+    const { client } = makeCaseSelectStub([row]);
+    const result = await fetchSupportCases(client);
+    expect(result[0].createdBy).toBeNull();
+    expect(result[0].closedAt).toBeNull();
+  });
+
+  it('maps closed_at when present', async () => {
+    const ts = new Date().toISOString();
+    const row = makeCaseRow({ status: 'closed', closed_at: ts });
+    const { client } = makeCaseSelectStub([row]);
+    const result = await fetchSupportCases(client);
+    expect(result[0].status).toBe('closed');
+    expect(result[0].closedAt).toBe(ts);
+  });
+});
+
+// ── closeSupportCase ──────────────────────────────────────────────────────────
+
+describe('closeSupportCase', () => {
+  it('calls update with status=closed on the correct case ID', async () => {
+    const { client, _eqMock } = makeCaseUpdateStub();
+    await closeSupportCase(client, 'CASE-TO-CLOSE');
+    expect(_eqMock).toHaveBeenCalledWith('id', 'CASE-TO-CLOSE');
+    expect(client.from).toHaveBeenCalledWith('support_cases');
+  });
+
+  it('throws on Supabase update failure', async () => {
+    const { client } = makeCaseUpdateStub({ message: 'not found' });
+    await expect(closeSupportCase(client, 'CASE-MISSING')).rejects.toThrow(
+      'Failed to close support case: not found',
+    );
   });
 });

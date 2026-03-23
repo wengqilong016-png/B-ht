@@ -160,9 +160,13 @@ const AuditEventRow: React.FC<AuditEventRowProps> = ({ event }) => {
 export interface AuditTrailProps {
   /** Optionally injected for testing; defaults to the singleton Supabase client. */
   supabaseClient?: typeof supabase;
+  /** If set, pre-populates and applies the case ID filter on mount. */
+  initialCaseFilter?: string;
+  /** Called after the initial case filter has been consumed (so the parent can clear it). */
+  onCaseFilterConsumed?: () => void;
 }
 
-const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient }) => {
+const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient, initialCaseFilter, onCaseFilterConsumed }) => {
   const client = injectedClient ?? supabase;
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -170,9 +174,18 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient 
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [lastFetchedAt, setLastFetchedAt] = useState<string | null>(null);
   const [caseIdFilter, setCaseIdFilter] = useState('');
-  const [appliedFilter, setAppliedFilter] = useState('');
+  const [appliedFilter, setAppliedFilter] = useState(initialCaseFilter || '');
 
   const missingConfig = !SUPABASE_URL || !SUPABASE_ANON_KEY;
+
+  // Consume initial case filter from parent navigation
+  useEffect(() => {
+    if (initialCaseFilter) {
+      setCaseIdFilter(initialCaseFilter);
+      setAppliedFilter(initialCaseFilter);
+      onCaseFilterConsumed?.();
+    }
+  }, [initialCaseFilter, onCaseFilterConsumed]);
 
   const fetchEvents = useCallback(async (caseId?: string) => {
     if (missingConfig) {

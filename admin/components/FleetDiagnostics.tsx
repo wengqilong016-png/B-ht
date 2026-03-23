@@ -37,6 +37,10 @@ import {
   buildExportFilename,
   type ExportFilters,
 } from '../../services/diagnosticsExportService';
+import {
+  recordAuditEvent,
+  addCaseIdToExportPayload,
+} from '../../services/supportCaseService';
 
 const POLL_INTERVAL_MS = 60_000;
 // STALE_THRESHOLD_MS is imported from the service to stay in sync.
@@ -204,6 +208,7 @@ const FleetDiagnostics: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [lastRefreshed, setLastRefreshed] = useState<Date | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [caseId, setCaseId] = useState('');
   /** Export filter controls */
   const [filterDriverId, setFilterDriverId] = useState('');
   const [filterDeviceId, setFilterDeviceId] = useState('');
@@ -251,13 +256,22 @@ const FleetDiagnostics: React.FC = () => {
       if (filterDeviceId.trim()) filters.deviceId = filterDeviceId.trim();
       if (filterErrorState) filters.errorState = filterErrorState;
       const hasFilters = Object.keys(filters).length > 0;
-      const payload = buildFleetExportPayload(summary, hasFilters ? filters : undefined);
+      const rawPayload = buildFleetExportPayload(summary, hasFilters ? filters : undefined);
+      const payload = addCaseIdToExportPayload(rawPayload, caseId.trim() || undefined);
       const filename = buildExportFilename('fleet', payload.exportedAt);
       triggerJSONDownload(payload, filename);
+      // Record audit event: diagnostic export
+      if (supabase) {
+        recordAuditEvent(supabase, {
+          caseId: caseId.trim() || undefined,
+          eventType: 'diagnostic_export',
+          payload: { exportScope: 'fleet', exportFilename: filename },
+        });
+      }
     } finally {
       setExporting(false);
     }
-  }, [summary, filterDriverId, filterDeviceId, filterErrorState]);
+  }, [summary, filterDriverId, filterDeviceId, filterErrorState, caseId]);
 
   // ── Loading skeleton ─────────────────────────────────────────────────────
   if (loading && !summary) {
@@ -313,8 +327,18 @@ const FleetDiagnostics: React.FC = () => {
       {/* ── Export filter controls ───────────────────────────────────────── */}
       {summary && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
-          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Export Filters (optional)</p>
+          <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Export Filters &amp; Case Linking (optional)</p>
           <div className="flex flex-wrap items-end gap-3">
+            <label className="flex flex-col gap-1 min-w-[160px]">
+              <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">Support Case ID</span>
+              <input
+                type="text"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                placeholder="e.g. CASE-2026-001"
+                className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+              />
+            </label>
             <label className="flex flex-col gap-1 min-w-[140px]">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Driver ID</span>
               <input
@@ -360,6 +384,7 @@ const FleetDiagnostics: React.FC = () => {
           </div>
           <p className="text-[10px] text-slate-400">
             Filters are applied to the export only — they do not affect the display above.
+            When a case ID is set, the export file and audit trail will reference it.
           </p>
         </div>
       )}
