@@ -100,6 +100,54 @@ database within seconds.
 > each pull request independently, so migrations are verified against a preview
 > environment before hitting production.
 
+### Troubleshooting CI Migration Failures
+
+#### Invalid access token format
+
+**Error:** `Invalid access token format. Must be like 'sbp_0102...1920'.`
+
+**Cause:** The `SUPABASE_ACCESS_TOKEN` secret does not have the correct format.
+
+**Fix:**
+1. Go to [supabase.com/dashboard/account/tokens](https://supabase.com/dashboard/account/tokens)
+2. Generate a new personal access token (it will start with `sbp_`)
+3. Update the `SUPABASE_ACCESS_TOKEN` secret in **Repository → Settings → Secrets and variables → Actions**
+4. Re-run the failed workflow
+
+> ⚠️ Make sure you're generating a **personal access token** (starts with `sbp_`), not
+> the **anon key** or **service role key** from your project settings.
+
+#### IP address not in allow list
+
+**Error:** `Address not in tenant allow_list: {xx, xx, xx, xx}`
+
+**Cause:** Your Supabase project has Network Restrictions enabled that block GitHub Actions runner IPs.
+
+**Fix (Option A - Recommended for production):**
+1. Go to Supabase Dashboard → **Settings → Database → Network Restrictions**
+2. Add GitHub Actions IP ranges from [api.github.com/meta](https://api.github.com/meta) (look for the `actions` key)
+3. Re-run the failed workflow
+
+**Fix (Option B - Quick fix for development):**
+1. Go to Supabase Dashboard → **Settings → Database → Network Restrictions**
+2. Enable **Allow all IPv4 addresses**
+3. Re-run the failed workflow
+
+> ⚠️ Option B exposes your database to the public internet. Use only for development
+> projects or temporarily while setting up proper IP allowlists.
+
+#### Connection timeout or network errors
+
+**Error:** `failed to connect to postgres: connection timeout` or similar
+
+**Cause:** Temporary network issue or Supabase service degradation.
+
+**Fix:**
+1. Check [status.supabase.com](https://status.supabase.com) for any active incidents
+2. Wait a few minutes and re-run the failed workflow
+3. If the issue persists, verify your `SUPABASE_PROJECT_ID` is correct
+
+
 ## Supabase Authentication Settings (Production)
 
 After deploying, manually sync the following settings in **Supabase Dashboard → Authentication → Settings**:

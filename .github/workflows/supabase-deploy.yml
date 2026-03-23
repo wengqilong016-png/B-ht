@@ -1,6 +1,6 @@
 # Automatically push Supabase migrations to the production project on every
 # merge to main.  Requires three repository secrets:
-#   SUPABASE_ACCESS_TOKEN  – personal access token from supabase.com/account/tokens
+#   SUPABASE_ACCESS_TOKEN  – personal access token from supabase.com/account/tokens (must start with sbp_)
 #   SUPABASE_DB_PASSWORD   – database password for the linked project
 #   SUPABASE_PROJECT_ID    – project ref (e.g. yctsiudhicztvppddbvk)
 
@@ -31,17 +31,34 @@ jobs:
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
     steps:
-      - name: Verify required secrets are set
+      - name: Verify required secrets are set and valid
         run: |
-          missing=()
-          [ -z "$SUPABASE_ACCESS_TOKEN" ] && missing+=("SUPABASE_ACCESS_TOKEN")
-          [ -z "$SUPABASE_DB_PASSWORD"  ] && missing+=("SUPABASE_DB_PASSWORD")
-          [ -z "$SUPABASE_PROJECT_ID"   ] && missing+=("SUPABASE_PROJECT_ID")
-          if [ ${#missing[@]} -gt 0 ]; then
-            echo "::error::Missing required secrets: ${missing[*]}"
-            echo "Add them under Repository → Settings → Secrets and variables → Actions."
+          errors=()
+
+          # Check for missing secrets
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && errors+=("SUPABASE_ACCESS_TOKEN is not set")
+          [ -z "$SUPABASE_DB_PASSWORD"  ] && errors+=("SUPABASE_DB_PASSWORD is not set")
+          [ -z "$SUPABASE_PROJECT_ID"   ] && errors+=("SUPABASE_PROJECT_ID is not set")
+
+          # Validate access token format (must start with sbp_)
+          if [ -n "$SUPABASE_ACCESS_TOKEN" ]; then
+            if [[ ! "$SUPABASE_ACCESS_TOKEN" =~ ^sbp_ ]]; then
+              errors+=("SUPABASE_ACCESS_TOKEN has invalid format – must start with 'sbp_'. Generate a new token at https://supabase.com/dashboard/account/tokens")
+            fi
+          fi
+
+          if [ ${#errors[@]} -gt 0 ]; then
+            echo "::error::Configuration errors found:"
+            for err in "${errors[@]}"; do
+              echo "::error::  • $err"
+            done
+            echo ""
+            echo "Add/update secrets under Repository → Settings → Secrets and variables → Actions."
+            echo "See DEPLOYMENT.md for detailed setup instructions."
             exit 1
           fi
+
+          echo "✓ All required secrets are set and valid"
 
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -52,7 +69,17 @@ jobs:
           version: latest
 
       - name: Link project
-        run: supabase link --project-ref "$SUPABASE_PROJECT_ID"
+        run: |
+          if ! supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee /tmp/link_output.txt; then
+            if grep -q "Address not in tenant allow_list" /tmp/link_output.txt; then
+              echo "::error::Connection blocked by Supabase IP allowlist."
+              echo "::error::Add GitHub Actions IP ranges to your Supabase project's Network Restrictions:"
+              echo "::error::  Supabase Dashboard → Settings → Database → Network Restrictions → Add IP"
+              echo "::error::  GitHub Actions IP ranges: https://api.github.com/meta (look for 'actions' key)"
+              echo "::error::  Alternatively, enable 'Allow all IPv4' temporarily for CI/CD."
+            fi
+            exit 1
+          fi
 
       - name: Push migrations to production
         run: supabase db push
