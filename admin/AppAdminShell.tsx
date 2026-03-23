@@ -29,6 +29,7 @@ const FleetDiagnostics = lazy(() => import('./components/FleetDiagnostics'));
 const HealthAlerts = lazy(() => import('./components/HealthAlerts'));
 const AuditTrail = lazy(() => import('./components/AuditTrail'));
 const SupportCases = lazy(() => import('./components/SupportCases'));
+const CaseDetail = lazy(() => import('./components/CaseDetail'));
 
 const LoadingFallback = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -37,7 +38,7 @@ const LoadingFallback = () => (
   </div>
 );
 
-type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts' | 'audit-trail' | 'support-cases';
+type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts' | 'audit-trail' | 'support-cases' | 'case-detail';
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -56,6 +57,7 @@ const AppAdminShell: React.FC = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
   const [aiContextId, setAiContextId] = useState<string>('');
   const [auditCaseFilter, setAuditCaseFilter] = useState<string>('');
+  const [selectedCaseId, setSelectedCaseId] = useState<string>('');
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
 
@@ -76,6 +78,7 @@ const AppAdminShell: React.FC = () => {
     'health-alerts': 'Health Alerts',
     'audit-trail': 'Support Audit Trail',
     'support-cases': 'Support Cases',
+    'case-detail': 'Case Detail',
   };
 
   const adminNavItems = [
@@ -336,6 +339,21 @@ const AppAdminShell: React.FC = () => {
                     setAuditCaseFilter(caseId);
                     setView('audit-trail');
                   }}
+                  onNavigateToCaseDetail={(caseId) => {
+                    setSelectedCaseId(caseId);
+                    setView('case-detail');
+                  }}
+                />
+              )}
+              {view === 'case-detail' && selectedCaseId && (
+                <CaseDetail
+                  caseId={selectedCaseId}
+                  onBack={() => setView('support-cases')}
+                  onNavigateToAudit={(caseId) => {
+                    setAuditCaseFilter(caseId);
+                    setView('audit-trail');
+                  }}
+                  currentOperator={currentUser.id}
                 />
               )}
               {view === 'audit-trail' && (

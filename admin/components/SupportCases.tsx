@@ -1,13 +1,17 @@
 /**
  * SupportCases
  * ──────────────────────────────────────────────────────────────────────────────
- * Admin panel for managing support cases (stage 9).
+ * Admin panel for managing support cases (stage 9/10).
  *
  * Provides:
  *   • List of support cases (newest-first) with open/closed status
  *   • Create new case with operator-assigned ID and title
- *   • Close an open case
+ *   • Navigate to CaseDetail for reviewing and resolving open cases
  *   • Navigate to Audit Trail filtered by case ID for linked event history
+ *
+ * Case closure/resolution is handled exclusively through the CaseDetail
+ * workflow (stage 10) to ensure resolution metadata, operator notes, and
+ * `case_resolved` audit events are always captured.
  *
  * Data source: `support_cases` Supabase table (admin-read/write, RLS-enforced).
  * Auto-refreshes every 60 seconds; a manual Refresh button is provided.
@@ -22,7 +26,6 @@ import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient'
 import {
   createSupportCase,
   fetchSupportCases,
-  closeSupportCase,
   recordAuditEvent,
   fetchAuditEventCountsByCaseIds,
   type SupportCase,
@@ -35,13 +38,12 @@ const POLL_INTERVAL_MS = 60_000;
 
 interface CaseRowProps {
   supportCase: SupportCase;
-  onClose: (id: string) => void;
-  closing: boolean;
   onViewAudit: (caseId: string) => void;
+  onViewDetail?: (caseId: string) => void;
   linkedEventCount?: number;
 }
 
-const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onViewAudit, linkedEventCount }) => {
+const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onViewAudit, onViewDetail, linkedEventCount }) => {
   const isOpen = supportCase.status === 'open';
   return (
     <div className={`flex items-start gap-3 p-3 rounded-xl border ${isOpen ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
@@ -52,14 +54,29 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
-            {supportCase.id}
-          </span>
+          {onViewDetail ? (
+            <button
+              onClick={() => onViewDetail(supportCase.id)}
+              className="font-mono text-[11px] font-bold text-indigo-700 bg-slate-100 px-1.5 py-0.5 rounded hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer"
+              title="View case detail"
+            >
+              {supportCase.id}
+            </button>
+          ) : (
+            <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+              {supportCase.id}
+            </span>
+          )}
           <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
             isOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
           }`}>
             {supportCase.status}
           </span>
+          {supportCase.resolutionOutcome && (
+            <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded-full uppercase">
+              {supportCase.resolutionOutcome}
+            </span>
+          )}
           {linkedEventCount != null && linkedEventCount > 0 && (
             <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full flex items-center gap-1">
               <BookOpen size={9} />
@@ -74,9 +91,19 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
           <span>Created: {new Date(supportCase.createdAt).toLocaleString()}</span>
           {supportCase.createdBy && <span>by: {supportCase.createdBy}</span>}
           {supportCase.closedAt && <span>Closed: {new Date(supportCase.closedAt).toLocaleString()}</span>}
+          {supportCase.resolvedBy && <span>Resolved by: {supportCase.resolvedBy}</span>}
         </div>
       </div>
       <div className="flex items-center gap-1.5 shrink-0">
+        {onViewDetail && (
+          <button
+            onClick={() => onViewDetail(supportCase.id)}
+            className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors"
+            title="View case detail"
+          >
+            Detail
+          </button>
+        )}
         <button
           onClick={() => onViewAudit(supportCase.id)}
           className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-600 hover:text-indigo-600 hover:border-indigo-300 transition-colors"
@@ -84,16 +111,6 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
         >
           History
         </button>
-        {isOpen && (
-          <button
-            onClick={() => onClose(supportCase.id)}
-            disabled={closing}
-            className="px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-[10px] font-bold text-slate-500 hover:text-rose-600 hover:border-rose-200 disabled:opacity-50 transition-colors"
-            title="Close this case"
-          >
-            {closing ? <Loader2 size={10} className="animate-spin" /> : 'Close'}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -106,9 +123,11 @@ export interface SupportCasesProps {
   supabaseClient?: typeof supabase;
   /** Callback to navigate to the audit trail filtered by a case ID. */
   onNavigateToAudit?: (caseId: string) => void;
+  /** Callback to navigate to the case detail view. */
+  onNavigateToCaseDetail?: (caseId: string) => void;
 }
 
-const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedClient, onNavigateToAudit }) => {
+const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedClient, onNavigateToAudit, onNavigateToCaseDetail }) => {
   const client = injectedClient ?? supabase;
 
   const [cases, setCases] = useState<SupportCase[]>([]);
@@ -124,8 +143,6 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState<string | null>(null);
 
-  // Close state
-  const [closingId, setClosingId] = useState<string | null>(null);
   // Linked audit event counts per case
   const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
@@ -191,24 +208,6 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
       setCreating(false);
     }
   }, [client, newCaseId, newCaseTitle, fetchCases]);
-
-  const handleClose = useCallback(async (caseId: string) => {
-    setClosingId(caseId);
-    try {
-      await closeSupportCase(client, caseId);
-      // Record audit event for case closure (fire-and-forget, never throws)
-      await recordAuditEvent(client, {
-        caseId,
-        eventType: 'recovery_action',
-        payload: { note: `Case closed: ${caseId}` },
-      });
-      fetchCases();
-    } catch (err) {
-      console.error('[SupportCases] close error', err);
-    } finally {
-      setClosingId(null);
-    }
-  }, [client, fetchCases]);
 
   const handleViewAudit = useCallback((caseId: string) => {
     onNavigateToAudit?.(caseId);
@@ -366,9 +365,8 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
             <CaseRow
               key={c.id}
               supportCase={c}
-              onClose={handleClose}
-              closing={closingId === c.id}
               onViewAudit={handleViewAudit}
+              onViewDetail={onNavigateToCaseDetail}
               linkedEventCount={eventCounts[c.id]}
             />
           ))}
