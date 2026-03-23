@@ -44,11 +44,6 @@ const CasePicker: React.FC<CasePickerProps> = ({ value, onChange, supabaseClient
     try {
       const result = await fetchSupportCases(client, { status: 'open', limit: 50 });
       setCases(result);
-      // If cases now exist and the current value is not among them, clear it
-      // to prevent stale manual IDs from persisting once real cases appear.
-      if (result.length > 0 && value && !result.some((c) => c.id === value)) {
-        onChange('');
-      }
     } catch {
       setCases([]);
     } finally {
@@ -60,6 +55,16 @@ const CasePicker: React.FC<CasePickerProps> = ({ value, onChange, supabaseClient
   useEffect(() => {
     loadCases();
   }, [loadCases]);
+
+  // On initial load, clear any stale manual value that doesn't match a real case.
+  // This only fires once (when loaded transitions to true) so refreshes never
+  // disrupt an intentional user selection.
+  useEffect(() => {
+    if (loaded && cases.length > 0 && value && !cases.some((c) => c.id === value)) {
+      onChange('');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only on initial load
+  }, [loaded]);
 
   const handleSelect = (e: React.ChangeEvent<HTMLSelectElement>) => {
     onChange(e.target.value);
