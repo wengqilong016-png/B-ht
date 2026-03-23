@@ -87,8 +87,8 @@ fallback when offline.
 
 - Confirm `calculate_finance_v2` exists: **Supabase Dashboard → Database → Functions**.
 - Check that `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are set
-  (missing env vars make the server preview silently fall back to local; see
-  console warning `[Bahati] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set`).
+  (missing env vars cause the Supabase client to initialize with empty
+  credentials, logging a console error; see Scenario E in Section 11).
 - Compare local vs. server commission rate: local uses `location.commissionRate`
   or `CONSTANTS.DEFAULT_PROFIT_SHARE` (15%); server uses the same inputs via
   `p_commission_rate`.  If they diverge, a location's `commissionRate` column
@@ -388,12 +388,18 @@ Check Supabase status: [status.supabase.com](https://status.supabase.com)
 
 ### Scenario E — App cannot connect to Supabase
 
-Check the browser console for:
+Check the browser console for errors from `supabaseClient.ts` initialization
+that mention missing or invalid `VITE_SUPABASE_URL` or `VITE_SUPABASE_ANON_KEY`
+environment variables.  The actual error message logged is:
+
 ```
-[Bahati] VITE_SUPABASE_URL / VITE_SUPABASE_ANON_KEY not set — using built-in project credentials
+[Bahati] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. Copy .env.example to .env.local and fill in your Supabase project credentials.
 ```
 
-If this warning appears, the deployment environment variables are missing.
+If this error appears, the deployment environment variables are missing or
+misconfigured.  There are no built-in fallback project credentials — the
+Supabase client is initialized with empty strings, and the app will not be
+able to connect to Supabase until valid values are provided.
 Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the deployment
 platform (Vercel / Firebase) and redeploy.
 
