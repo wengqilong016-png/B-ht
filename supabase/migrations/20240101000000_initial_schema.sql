@@ -1,4 +1,4 @@
--- Initial database schema for Bahati Jackpots
+-- Initial database schema for Bahati Jackpots.
 
 -- 0. 开启 UUID 扩展
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
