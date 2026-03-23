@@ -495,6 +495,32 @@ function makeCaseUpdateStub(updateError: { message: string } | null = null) {
   };
 }
 
+/**
+ * Build a Supabase client stub for resolveSupportCase
+ * (update → eq → select → maybeSingle chain).
+ */
+function makeResolveUpdateStub(
+  row: Record<string, unknown> | null = { id: 'CASE-001' },
+  updateError: { message: string } | null = null,
+) {
+  const maybeSingleMock = jest.fn().mockResolvedValue({
+    data: updateError ? null : row,
+    error: updateError,
+  });
+  const selectMock = jest.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+  const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+  return {
+    _eqMock: eqMock,
+    _selectMock: selectMock,
+    _maybeSingleMock: maybeSingleMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: eqMock }),
+      }),
+    } as any,
+  };
+}
+
 /** Build a Supabase client stub for support_cases select().eq().maybeSingle(). */
 function makeCaseMaybeSingleStub(
   row: Record<string, unknown> | null,
@@ -743,7 +769,7 @@ describe('fetchSupportCaseById', () => {
 
 describe('resolveSupportCase', () => {
   it('calls update with resolution metadata on the correct case', async () => {
-    const { client, _eqMock } = makeCaseUpdateStub();
+    const { client, _eqMock } = makeResolveUpdateStub({ id: 'CASE-TO-RESOLVE' });
     await resolveSupportCase(client, {
       caseId: 'CASE-TO-RESOLVE',
       resolutionNotes: 'Root cause was X',
@@ -764,7 +790,7 @@ describe('resolveSupportCase', () => {
   });
 
   it('defaults optional fields to null', async () => {
-    const { client } = makeCaseUpdateStub();
+    const { client } = makeResolveUpdateStub({ id: 'CASE-MINIMAL' });
     await resolveSupportCase(client, { caseId: 'CASE-MINIMAL' });
     const updateCall = client.from.mock.results[0].value.update;
     const updateArg = updateCall.mock.calls[0][0];
@@ -774,10 +800,17 @@ describe('resolveSupportCase', () => {
   });
 
   it('throws on Supabase update failure', async () => {
-    const { client } = makeCaseUpdateStub({ message: 'not found' });
+    const { client } = makeResolveUpdateStub(null, { message: 'not found' });
     await expect(
       resolveSupportCase(client, { caseId: 'CASE-FAIL', resolutionOutcome: 'fixed' }),
     ).rejects.toThrow('Failed to resolve support case: not found');
+  });
+
+  it('throws when no row is affected (unknown case ID)', async () => {
+    const { client } = makeResolveUpdateStub(null);
+    await expect(
+      resolveSupportCase(client, { caseId: 'CASE-UNKNOWN' }),
+    ).rejects.toThrow('Failed to resolve support case: case "CASE-UNKNOWN" not found');
   });
 });
 

@@ -473,7 +473,7 @@ export async function resolveSupportCase(
   input: ResolveSupportCaseInput,
 ): Promise<void> {
   const now = new Date().toISOString();
-  const { error } = await supabaseClient
+  const { data, error } = await supabaseClient
     .from('support_cases')
     .update({
       status:              'closed',
@@ -483,9 +483,14 @@ export async function resolveSupportCase(
       resolved_at:         now,
       resolution_outcome:  input.resolutionOutcome ?? null,
     })
-    .eq('id', input.caseId);
+    .eq('id', input.caseId)
+    .select('id')
+    .maybeSingle();
 
   if (error) {
     throw new Error(`Failed to resolve support case: ${error.message}`);
+  }
+  if (!data) {
+    throw new Error(`Failed to resolve support case: case "${input.caseId}" not found`);
   }
 }

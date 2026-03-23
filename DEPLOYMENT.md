@@ -137,7 +137,7 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 ## Deployment Checklist — Stages 1 through 10
 
 Use this checklist when deploying a release that includes any changes from
-stages 1 through 9.  Run each step in order.
+stages 1 through 10.  Run each step in order.
 
 ### Pre-deploy
 

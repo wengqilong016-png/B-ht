@@ -53,13 +53,19 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <button
-            onClick={() => onViewDetail?.(supportCase.id)}
-            className="font-mono text-[11px] font-bold text-indigo-700 bg-slate-100 px-1.5 py-0.5 rounded hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer"
-            title="View case detail"
-          >
-            {supportCase.id}
-          </button>
+          {onViewDetail ? (
+            <button
+              onClick={() => onViewDetail(supportCase.id)}
+              className="font-mono text-[11px] font-bold text-indigo-700 bg-slate-100 px-1.5 py-0.5 rounded hover:bg-indigo-100 hover:text-indigo-800 focus:outline-none focus:ring-2 focus:ring-indigo-400 transition-colors cursor-pointer"
+              title="View case detail"
+            >
+              {supportCase.id}
+            </button>
+          ) : (
+            <span className="font-mono text-[11px] font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+              {supportCase.id}
+            </span>
+          )}
           <span className={`text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded-full ${
             isOpen ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'
           }`}>

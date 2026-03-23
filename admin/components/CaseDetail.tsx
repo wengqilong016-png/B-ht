@@ -116,6 +116,7 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
       await recordAuditEvent(client, {
         caseId,
         eventType: 'case_resolved',
+        actorId: currentOperator || undefined,
         payload: {
           note: resolutionNotes.trim() || undefined,
           resolutionOutcome: resolutionOutcome || undefined,
@@ -229,6 +230,12 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
           <div className="rounded-xl border border-slate-200 bg-white p-3">
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Closed</p>
             <p className="mt-0.5 text-xs font-mono text-slate-700">{new Date(supportCase.closedAt).toLocaleString()}</p>
+          </div>
+        )}
+        {supportCase.resolvedAt && (
+          <div className="rounded-xl border border-slate-200 bg-white p-3">
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Resolved at</p>
+            <p className="mt-0.5 text-xs font-mono text-slate-700">{new Date(supportCase.resolvedAt).toLocaleString()}</p>
           </div>
         )}
         {supportCase.resolvedBy && (
