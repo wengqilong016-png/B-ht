@@ -24,7 +24,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  AlertTriangle, Bell, CheckCircle2, Clock, Info, Link2,
+  AlertTriangle, Bell, CheckCircle2, Clock, Info,
   Loader2, RefreshCw, XCircle,
 } from 'lucide-react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
@@ -40,6 +40,7 @@ import {
   type AlertSeverity,
 } from '../../services/healthAlertService';
 import { recordAuditEvent } from '../../services/supportCaseService';
+import CasePicker from './CasePicker';
 
 const POLL_INTERVAL_MS = 60_000;
 const MS_PER_HOUR = 3_600_000;
@@ -228,19 +229,12 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
       </div>
 
       {/* ── Support case linking ───────────────────────────────────────────── */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
-        <Link2 size={14} className="text-indigo-500 shrink-0" />
-        <label className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide shrink-0">Case ID</span>
-          <input
-            type="text"
-            value={caseId}
-            onChange={(e) => { setCaseId(e.target.value); setLinkedAlertIds(new Set()); }}
-            placeholder="e.g. CASE-2026-001 (required to link alerts)"
-            className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-mono text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          />
-        </label>
-        <p className="text-[10px] text-slate-400 hidden sm:block">Set a case ID, then click Link on any alert</p>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <CasePicker
+          value={caseId}
+          onChange={(v) => { setCaseId(v); setLinkedAlertIds(new Set()); }}
+        />
+        <p className="text-[10px] text-slate-400 mt-1.5">Select a case, then click Link on any alert below</p>
       </div>
 
       {/* ── Thresholds summary ──────────────────────────────────────────────── */}

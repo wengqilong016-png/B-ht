@@ -435,10 +435,16 @@ alerts, and manual replay workflows.
 
 **Admin UI:**
 - Admin Console → **Cases** (sidebar: 支持工单) — create, list, close cases.
+  Each case row shows linked event count. Creating/closing a case records a
+  `recovery_action` audit event automatically.
 - Admin Console → **Audit Trail** (sidebar: 操作审计) — view all audit events.
-- **Local Queue** panel — case ID input links replays and exports to a case.
-- **Fleet Diag.** panel — case ID input links fleet exports to a case.
-- **Alerts** panel — case ID input + Link button links health alerts to a case.
+  Case ID badges are clickable for cross-navigation to Cases.
+- **Local Queue** panel — case picker links replays and exports to an existing case.
+- **Fleet Diag.** panel — case picker links fleet exports to an existing case.
+- **Alerts** panel — case picker + Link button links health alerts to a case.
+
+All action panels use a shared **CasePicker** dropdown that fetches open cases
+from the `support_cases` table, with a manual-entry fallback.
 
 ### Event types
 
@@ -464,6 +470,8 @@ Audit events are recorded automatically in the following workflows:
   enriched with case ID if set.
 - **Alerts → Link**: records `health_alert_linked` with alert type, severity,
   and device ID.
+- **Cases → Create**: records `recovery_action` with the new case ID and title.
+- **Cases → Close**: records `recovery_action` with the closed case ID.
 
 ### How to write an audit event (service layer)
 

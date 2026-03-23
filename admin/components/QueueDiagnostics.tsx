@@ -16,8 +16,9 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle, CheckCircle2, Clock, RefreshCw,
-  Inbox, XCircle, Loader2, RotateCcw, Download, Link2,
+  Inbox, XCircle, Loader2, RotateCcw, Download,
 } from 'lucide-react';
+import CasePicker from './CasePicker';
 import {
   getQueueHealthSummary,
   getDeadLetterItems,
@@ -310,19 +311,9 @@ const QueueDiagnostics: React.FC = () => {
       </div>
 
       {/* ── Support case linking ───────────────────────────────────────── */}
-      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 flex items-center gap-3">
-        <Link2 size={14} className="text-indigo-500 shrink-0" />
-        <label className="flex items-center gap-2 flex-1 min-w-0">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wide shrink-0">Case ID</span>
-          <input
-            type="text"
-            value={caseId}
-            onChange={(e) => setCaseId(e.target.value)}
-            placeholder="e.g. CASE-2026-001 (optional)"
-            className="flex-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-mono text-slate-700 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-          />
-        </label>
-        <p className="text-[10px] text-slate-400 hidden sm:block">Links replay &amp; export actions to this case</p>
+      <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+        <CasePicker value={caseId} onChange={setCaseId} />
+        <p className="text-[10px] text-slate-400 mt-1.5">Links replay &amp; export actions to the selected case</p>
       </div>
 
       {/* ── Health summary cards ─────────────────────────────────────────── */}
