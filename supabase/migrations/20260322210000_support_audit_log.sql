@@ -53,6 +53,8 @@ CREATE INDEX IF NOT EXISTS support_audit_log_event_type_idx
 ALTER TABLE public.support_audit_log ENABLE ROW LEVEL SECURITY;
 
 -- Admins may read all rows.
+-- Note: `profiles.id` is the primary key (indexed); `profiles.role` has an
+-- existing index (`idx_profiles_role`) from the initial schema migration.
 DO $$
 BEGIN
     IF NOT EXISTS (

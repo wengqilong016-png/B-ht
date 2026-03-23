@@ -36,6 +36,10 @@ import {
 
 const POLL_INTERVAL_MS = 60_000;
 const DEFAULT_LIMIT = 200;
+const MAX_ACTOR_ID_DISPLAY_LEN = 16;
+const TRUNCATE_ACTOR_ID_AT = 14;
+const MAX_PAYLOAD_VALUE_LEN = 40;
+const TRUNCATE_PAYLOAD_VALUE_AT = 38;
 
 // ── Event-type display config ─────────────────────────────────────────────────
 
@@ -129,7 +133,7 @@ const AuditEventRow: React.FC<AuditEventRowProps> = ({ event }) => {
           )}
           {event.actorId && (
             <span className="text-[9px] font-mono text-slate-400">
-              by: {event.actorId.length > 16 ? `${event.actorId.slice(0, 14)}…` : event.actorId}
+              by: {event.actorId.length > MAX_ACTOR_ID_DISPLAY_LEN ? `${event.actorId.slice(0, TRUNCATE_ACTOR_ID_AT)}…` : event.actorId}
             </span>
           )}
         </div>
@@ -138,7 +142,7 @@ const AuditEventRow: React.FC<AuditEventRowProps> = ({ event }) => {
             {payloadLines.map(({ label, value }) => (
               <span key={label} className="text-[10px] text-slate-500">
                 <span className="font-bold text-slate-600">{label}:</span>{' '}
-                <span className="font-mono">{value.length > 40 ? `${value.slice(0, 38)}…` : value}</span>
+                <span className="font-mono">{value.length > MAX_PAYLOAD_VALUE_LEN ? `${value.slice(0, TRUNCATE_PAYLOAD_VALUE_AT)}…` : value}</span>
               </span>
             ))}
           </div>

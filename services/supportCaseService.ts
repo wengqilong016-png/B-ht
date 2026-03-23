@@ -220,8 +220,8 @@ export function filterAuditEventsByCaseId(
  * Returns a new object — never mutates the input.
  *
  * @param payload  A local or fleet export payload.
- * @param caseId   Optional support case ID to attach.  If omitted, the
- *                 payload is returned unchanged.
+ * @param caseId   Support case ID to attach.  If falsy (undefined, null, or empty
+ *                 string) the payload is returned unchanged without a `caseId` field.
  */
 export function addCaseIdToExportPayload<T extends LocalExportPayload | FleetExportPayload>(
   payload: T,
