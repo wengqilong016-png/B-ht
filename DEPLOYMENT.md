@@ -134,10 +134,10 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 
 ---
 
-## Deployment Checklist — Stages 1 through 8.1
+## Deployment Checklist — Stages 1 through 9
 
 Use this checklist when deploying a release that includes any changes from
-stages 1 through 8.1.  Run each step in order.
+stages 1 through 9.  Run each step in order.
 
 ### Pre-deploy
 
@@ -161,6 +161,7 @@ stages 1 through 8.1.  Run each step in order.
 | 6   | `20260322150000_fleet_queue_snapshots.sql` | `queue_health_reports` table |
 | 8   | `20260322200000_health_alerts.sql` | `health_alerts` table, `generate_health_alerts()` function |
 | 8.1 | `20260322200001_health_alerts_harden.sql` | RLS hardening, index improvements |
+| 9   | `20260322210000_support_audit_log.sql` | `support_audit_log` table, RLS policies |
 
 Confirm each migration is applied:
 
@@ -207,6 +208,15 @@ LIMIT 10;
 SELECT jobname, schedule, command, active
 FROM cron.job
 WHERE jobname = 'generate-health-alerts';
+```
+
+**Support audit trail (Stage 9)**
+- [ ] Open Admin → Audit Trail (sidebar: 操作审计).
+- [ ] Confirm the panel loads without errors (empty state is expected on a fresh deploy).
+- [ ] Confirm the `support_audit_log` table exists:
+
+```sql
+SELECT COUNT(*) FROM public.support_audit_log;
 ```
 
 ### Rollback

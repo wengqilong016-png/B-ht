@@ -417,4 +417,66 @@ platform (Vercel / Firebase) and redeploy.
 
 ---
 
-*Last updated: 2026-03-22. Covers stages 1 through 8.1.*
+## 13. Support Case Linking & Audit Trail (Stage 9)
+
+### Overview
+
+Stage 9 adds a lightweight audit trail for support and recovery actions.
+
+**DB table:** `support_audit_log` (migration `20260322210000_support_audit_log.sql`).
+**Service:** `services/supportCaseService.ts`.
+**Admin UI:** Admin Console → **Audit Trail** (sidebar: 操作审计).
+
+### Event types
+
+| Event type | When it is written |
+|---|---|
+| `diagnostic_export` | Operator triggers a local or fleet diagnostics export |
+| `health_alert_linked` | Operator links a health alert to a support case |
+| `manual_replay_attempted` | Operator starts a dead-letter manual replay |
+| `manual_replay_succeeded` | Manual replay completed successfully |
+| `manual_replay_failed` | Manual replay failed (error in payload) |
+| `recovery_action` | Generic operator recovery step |
+
+### How to write an audit event (service layer)
+
+```typescript
+import { recordAuditEvent } from '../services/supportCaseService';
+
+// fire-and-forget — never throws
+await recordAuditEvent(supabase, {
+  caseId:    'CASE-2026-001',          // optional free-form reference
+  eventType: 'manual_replay_attempted',
+  actorId:   currentUser.id,
+  payload:   { txId: 'tx-abc', driverId: 'drv-1' },
+});
+```
+
+### How to attach a case ID to an export
+
+```typescript
+import { addCaseIdToExportPayload } from '../services/supportCaseService';
+
+const enriched = addCaseIdToExportPayload(localPayload, 'CASE-2026-001');
+triggerJSONDownload(enriched, filename);
+```
+
+### Viewing the audit trail
+
+Open Admin Console → **Audit Trail**.  Enter a support case ID in the filter
+box to narrow to events for a specific case.  The panel auto-refreshes every
+60 seconds.
+
+### Scenario F — Audit trail panel shows "Failed to fetch audit log"
+
+1. Confirm `support_audit_log` table exists:
+   ```sql
+   SELECT COUNT(*) FROM public.support_audit_log;
+   ```
+2. Confirm the admin user has the `admin` role in `profiles`.
+3. Check Supabase RLS policies on `support_audit_log` — admins need `SELECT`,
+   authenticated users need `INSERT`.
+
+---
+
+*Last updated: 2026-03-23. Covers stages 1 through 9.*
