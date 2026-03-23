@@ -550,4 +550,61 @@ Alternatively, open **Cases**, find the case of interest, and click
 
 ---
 
-*Last updated: 2026-03-23. Covers stages 1 through 9.*
+## Stage 10 — Support Case Resolution Workflow
+
+### Overview
+
+Stage 10 adds an explicit case resolution workflow.  Operators can now open a
+case detail view, add resolution notes, select an outcome, and mark the case
+as resolved with full traceability metadata.
+
+### Components
+
+| Component | Purpose |
+|-----------|---------|
+| `CaseDetail` | Detail view for a single case; resolution form; linked audit history |
+| `SupportCases` (updated) | Case list with "Detail" button to navigate to CaseDetail |
+| `AuditTrail` (updated) | New `case_resolved` event type displayed in timeline |
+| `supportCaseService.ts` (updated) | `fetchSupportCaseById()`, `resolveSupportCase()`, `case_resolved` audit event type |
+
+### Resolution Fields
+
+| Field | Column | Description |
+|-------|--------|-------------|
+| Resolution Notes | `resolution_notes` | Free-form operator notes (max 500 chars) |
+| Resolved By | `resolved_by` | Actor who resolved the case |
+| Resolved At | `resolved_at` | Timestamp of resolution |
+| Outcome | `resolution_outcome` | One of: `fixed`, `wont-fix`, `duplicate`, `cannot-reproduce`, `other` |
+
+### Migration
+
+`20260323100000_case_resolution.sql` adds:
+- Four nullable columns to `support_cases` (resolution_notes, resolved_by,
+  resolved_at, resolution_outcome)
+- Extends the `support_audit_log.event_type` CHECK constraint to allow
+  `case_resolved`
+
+### Scenario H — Resolving a case
+
+1. Open Admin Console → **Cases**.
+2. Click **Detail** on the case to resolve.
+3. Select an **Outcome** and optionally add **Resolution Notes**.
+4. Click **Resolve Case**.
+5. The case status changes to `closed` and the resolution metadata is saved.
+6. A `case_resolved` audit event is recorded automatically.
+
+### Scenario I — Viewing resolution metadata on a closed case
+
+1. Open Admin Console → **Cases** → click **Detail** on a closed case.
+2. Resolution notes, resolved by, resolved at, and outcome are shown in the
+   metadata grid.  Notes are shown in a separate read-only section.
+
+### Scenario J — Case detail shows "Failed to load case"
+
+1. Confirm the case ID exists in `support_cases`.
+2. Confirm the admin user has the `admin` role.
+3. Check Supabase RLS policies on `support_cases`.
+
+---
+
+*Last updated: 2026-03-23. Covers stages 1 through 10.*
