@@ -142,7 +142,7 @@ stages 1 through 8.1.  Run each step in order.
 ### Pre-deploy
 
 - [ ] Run `npm run build` locally — confirm zero TypeScript errors.
-- [ ] Run `npm test -- --coverage` — confirm all tests pass and coverage does
+- [ ] Run `npm run test:coverage` — confirm all tests pass and coverage does
       not regress.
 - [ ] Confirm all required migrations are present in `supabase/migrations/`
       (see table below).
