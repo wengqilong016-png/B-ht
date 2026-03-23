@@ -162,6 +162,7 @@ stages 1 through 9.  Run each step in order.
 | 8   | `20260322200000_health_alerts.sql` | `health_alerts` table, `generate_health_alerts()` function |
 | 8.1 | `20260322200001_health_alerts_harden.sql` | RLS hardening, index improvements |
 | 9   | `20260322210000_support_audit_log.sql` | `support_audit_log` table, RLS policies |
+| 9   | `20260323030000_support_cases.sql`     | `support_cases` table, RLS policies |
 
 Confirm each migration is applied:
 
@@ -210,13 +211,19 @@ FROM cron.job
 WHERE jobname = 'generate-health-alerts';
 ```
 
-**Support audit trail (Stage 9)**
+**Support case linking & audit trail (Stage 9)**
 - [ ] Open Admin → Audit Trail (sidebar: 操作审计).
 - [ ] Confirm the panel loads without errors (empty state is expected on a fresh deploy).
-- [ ] Confirm the `support_audit_log` table exists:
+- [ ] Open Admin → Cases (sidebar: 支持工单).
+- [ ] Confirm the panel loads without errors and the create form works.
+- [ ] Open Admin → Local Queue Diagnostics — confirm Case ID input is visible.
+- [ ] Open Admin → Fleet-Wide Diagnostics — confirm Case ID input is visible in export filters.
+- [ ] Open Admin → Health Alerts — confirm Case ID input and Link buttons are visible.
+- [ ] Confirm both tables exist:
 
 ```sql
 SELECT COUNT(*) FROM public.support_audit_log;
+SELECT COUNT(*) FROM public.support_cases;
 ```
 
 ### Rollback
