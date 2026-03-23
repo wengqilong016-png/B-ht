@@ -353,7 +353,7 @@ const AppAdminShell: React.FC = () => {
                     setAuditCaseFilter(caseId);
                     setView('audit-trail');
                   }}
-                  currentOperator={currentUser.name}
+                  currentOperator={currentUser.id}
                 />
               )}
               {view === 'audit-trail' && (
