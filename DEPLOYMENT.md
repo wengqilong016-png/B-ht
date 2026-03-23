@@ -216,9 +216,12 @@ WHERE jobname = 'generate-health-alerts';
 - [ ] Confirm the panel loads without errors (empty state is expected on a fresh deploy).
 - [ ] Open Admin → Cases (sidebar: 支持工单).
 - [ ] Confirm the panel loads without errors and the create form works.
-- [ ] Open Admin → Local Queue Diagnostics — confirm Case ID input is visible.
-- [ ] Open Admin → Fleet-Wide Diagnostics — confirm Case ID input is visible in export filters.
-- [ ] Open Admin → Health Alerts — confirm Case ID input and Link buttons are visible.
+- [ ] Create a case → confirm `recovery_action` event appears in the audit trail.
+- [ ] Close a case → confirm `recovery_action` event appears in the audit trail.
+- [ ] Open Admin → Local Queue Diagnostics — confirm case picker dropdown is visible.
+- [ ] Open Admin → Fleet-Wide Diagnostics — confirm case picker dropdown is visible in export filters.
+- [ ] Open Admin → Health Alerts — confirm case picker dropdown and Link buttons are visible.
+- [ ] Confirm cross-navigation: Cases → History → case badge click → Cases.
 - [ ] Confirm both tables exist:
 
 ```sql

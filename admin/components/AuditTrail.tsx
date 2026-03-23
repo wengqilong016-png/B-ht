@@ -98,9 +98,10 @@ const FALLBACK_CONFIG = {
 
 interface AuditEventRowProps {
   event: AuditEvent;
+  onCaseClick?: () => void;
 }
 
-const AuditEventRow: React.FC<AuditEventRowProps> = ({ event }) => {
+const AuditEventRow: React.FC<AuditEventRowProps> = ({ event, onCaseClick }) => {
   const cfg = EVENT_CONFIG[event.eventType] ?? FALLBACK_CONFIG;
 
   const payloadLines: Array<{ label: string; value: string }> = [];
@@ -127,9 +128,13 @@ const AuditEventRow: React.FC<AuditEventRowProps> = ({ event }) => {
             {cfg.label}
           </span>
           {event.caseId && (
-            <span className="text-[9px] font-mono text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full">
+            <button
+              onClick={onCaseClick}
+              className="text-[9px] font-mono text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full hover:bg-indigo-100 transition-colors cursor-pointer"
+              title={`View case ${event.caseId}`}
+            >
               case: {event.caseId}
-            </span>
+            </button>
           )}
           {event.actorId && (
             <span className="text-[9px] font-mono text-slate-400">
@@ -164,9 +169,11 @@ export interface AuditTrailProps {
   initialCaseFilter?: string;
   /** Called after the initial case filter has been consumed (so the parent can clear it). */
   onCaseFilterConsumed?: () => void;
+  /** Callback to navigate to the SupportCases panel (e.g. clicking a case ID badge). */
+  onNavigateToCases?: () => void;
 }
 
-const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient, initialCaseFilter, onCaseFilterConsumed }) => {
+const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient, initialCaseFilter, onCaseFilterConsumed, onNavigateToCases }) => {
   const client = injectedClient ?? supabase;
 
   const [events, setEvents] = useState<AuditEvent[]>([]);
@@ -342,7 +349,7 @@ const AuditTrail: React.FC<AuditTrailProps> = ({ supabaseClient: injectedClient,
       {!loading && !fetchError && events.length > 0 && (
         <div className="space-y-2">
           {events.map((event) => (
-            <AuditEventRow key={event.id} event={event} />
+            <AuditEventRow key={event.id} event={event} onCaseClick={onNavigateToCases} />
           ))}
         </div>
       )}

@@ -15,7 +15,7 @@
 
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Briefcase, CheckCircle2, Clock, FolderOpen, Loader2,
+  BookOpen, Briefcase, CheckCircle2, Clock, FolderOpen, Loader2,
   Plus, RefreshCw, X, XCircle,
 } from 'lucide-react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
@@ -23,6 +23,8 @@ import {
   createSupportCase,
   fetchSupportCases,
   closeSupportCase,
+  recordAuditEvent,
+  fetchAuditEventCountsByCaseIds,
   type SupportCase,
   type SupportCaseStatus,
 } from '../../services/supportCaseService';
@@ -36,9 +38,10 @@ interface CaseRowProps {
   onClose: (id: string) => void;
   closing: boolean;
   onViewAudit: (caseId: string) => void;
+  linkedEventCount?: number;
 }
 
-const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onViewAudit }) => {
+const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onViewAudit, linkedEventCount }) => {
   const isOpen = supportCase.status === 'open';
   return (
     <div className={`flex items-start gap-3 p-3 rounded-xl border ${isOpen ? 'bg-white border-slate-200' : 'bg-slate-50 border-slate-200 opacity-75'}`}>
@@ -57,6 +60,12 @@ const CaseRow: React.FC<CaseRowProps> = ({ supportCase, onClose, closing, onView
           }`}>
             {supportCase.status}
           </span>
+          {linkedEventCount != null && linkedEventCount > 0 && (
+            <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+              <BookOpen size={9} />
+              {linkedEventCount} event{linkedEventCount !== 1 ? 's' : ''}
+            </span>
+          )}
         </div>
         {supportCase.title && (
           <p className="mt-1 text-xs text-slate-600">{supportCase.title}</p>
@@ -117,6 +126,8 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
 
   // Close state
   const [closingId, setClosingId] = useState<string | null>(null);
+  // Linked audit event counts per case
+  const [eventCounts, setEventCounts] = useState<Record<string, number>>({});
 
   const missingConfig = !SUPABASE_URL || !SUPABASE_ANON_KEY;
 
@@ -132,6 +143,16 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
       setCases(result);
       setLastFetchedAt(new Date().toISOString());
       setFetchError(null);
+      // Fetch linked event counts for each case (single count query per case)
+      if (result.length > 0) {
+        const counts = await fetchAuditEventCountsByCaseIds(
+          client,
+          result.map((c) => c.id),
+        );
+        setEventCounts(counts);
+      } else {
+        setEventCounts({});
+      }
     } catch (err) {
       setFetchError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -154,6 +175,12 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
         id: newCaseId.trim(),
         title: newCaseTitle.trim(),
       });
+      // Record audit event for case creation (fire-and-forget, never throws)
+      await recordAuditEvent(client, {
+        caseId: newCaseId.trim(),
+        eventType: 'recovery_action',
+        payload: { note: `Case created: ${newCaseTitle.trim() || newCaseId.trim()}` },
+      });
       setNewCaseId('');
       setNewCaseTitle('');
       setShowCreateForm(false);
@@ -169,6 +196,12 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
     setClosingId(caseId);
     try {
       await closeSupportCase(client, caseId);
+      // Record audit event for case closure (fire-and-forget, never throws)
+      await recordAuditEvent(client, {
+        caseId,
+        eventType: 'recovery_action',
+        payload: { note: `Case closed: ${caseId}` },
+      });
       fetchCases();
     } catch (err) {
       console.error('[SupportCases] close error', err);
@@ -336,6 +369,7 @@ const SupportCases: React.FC<SupportCasesProps> = ({ supabaseClient: injectedCli
               onClose={handleClose}
               closing={closingId === c.id}
               onViewAudit={handleViewAudit}
+              linkedEventCount={eventCounts[c.id]}
             />
           ))}
         </div>

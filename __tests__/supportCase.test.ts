@@ -62,6 +62,7 @@ import {
   createSupportCase,
   fetchSupportCases,
   closeSupportCase,
+  fetchAuditEventCountsByCaseIds,
   type AuditEvent,
   type AuditEventType,
 } from '../services/supportCaseService';
@@ -579,5 +580,60 @@ describe('closeSupportCase', () => {
     await expect(closeSupportCase(client, 'CASE-MISSING')).rejects.toThrow(
       'Failed to close support case: not found',
     );
+  });
+});
+
+// ── fetchAuditEventCountsByCaseIds ────────────────────────────────────────────
+
+describe('fetchAuditEventCountsByCaseIds', () => {
+  function makeCountStub(countByCase: Record<string, number>) {
+    return {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockImplementation(() => ({
+          eq: jest.fn().mockImplementation((_col: string, caseId: string) =>
+            Promise.resolve({
+              count: countByCase[caseId] ?? 0,
+              error: null,
+            }),
+          ),
+        })),
+      }),
+    } as any;
+  }
+
+  it('returns correct counts for multiple case IDs', async () => {
+    const client = makeCountStub({ 'CASE-A': 5, 'CASE-B': 12 });
+    const result = await fetchAuditEventCountsByCaseIds(client, ['CASE-A', 'CASE-B']);
+    expect(result).toEqual({ 'CASE-A': 5, 'CASE-B': 12 });
+  });
+
+  it('returns an empty map when given no case IDs', async () => {
+    const client = makeCountStub({});
+    const result = await fetchAuditEventCountsByCaseIds(client, []);
+    expect(result).toEqual({});
+  });
+
+  it('returns 0 for a case when the query fails', async () => {
+    const client = {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockResolvedValue({ count: null, error: { message: 'fail' } }),
+        }),
+      }),
+    } as any;
+    const result = await fetchAuditEventCountsByCaseIds(client, ['CASE-ERR']);
+    expect(result).toEqual({ 'CASE-ERR': 0 });
+  });
+
+  it('returns 0 for a case when an exception is thrown', async () => {
+    const client = {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({
+          eq: jest.fn().mockRejectedValue(new Error('network')),
+        }),
+      }),
+    } as any;
+    const result = await fetchAuditEventCountsByCaseIds(client, ['CASE-THROW']);
+    expect(result).toEqual({ 'CASE-THROW': 0 });
   });
 });

@@ -265,6 +265,38 @@ export function addCaseIdToExportPayload<T extends LocalExportPayload | FleetExp
   return { ...payload, caseId } as EnrichedExportPayload<T>;
 }
 
+/**
+ * Fetch audit event counts for a list of case IDs in a single query.
+ *
+ * Uses Supabase's `select('id', { count: 'exact', head: true })` per case ID
+ * in parallel.  Returns a map of caseId → count.  Errors for individual
+ * queries are silently caught and counted as 0.
+ *
+ * @param supabaseClient  Supabase client instance.
+ * @param caseIds         Array of case IDs to count events for.
+ * @returns               Map of caseId → event count.
+ */
+export async function fetchAuditEventCountsByCaseIds(
+  supabaseClient: SupabaseClient,
+  caseIds: string[],
+): Promise<Record<string, number>> {
+  const counts: Record<string, number> = {};
+  await Promise.all(
+    caseIds.map(async (caseId) => {
+      try {
+        const { count, error } = await supabaseClient
+          .from('support_audit_log')
+          .select('id', { count: 'exact', head: true })
+          .eq('case_id', caseId);
+        counts[caseId] = error ? 0 : (count ?? 0);
+      } catch {
+        counts[caseId] = 0;
+      }
+    }),
+  );
+  return counts;
+}
+
 // ── Support case CRUD ─────────────────────────────────────────────────────────
 
 /**
