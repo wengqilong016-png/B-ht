@@ -339,7 +339,11 @@ const AppAdminShell: React.FC = () => {
                 />
               )}
               {view === 'audit-trail' && (
-                <AuditTrail initialCaseFilter={auditCaseFilter} onCaseFilterConsumed={() => setAuditCaseFilter('')} />
+                <AuditTrail
+                  initialCaseFilter={auditCaseFilter}
+                  onCaseFilterConsumed={() => setAuditCaseFilter('')}
+                  onNavigateToCases={() => setView('support-cases')}
+                />
               )}
             </Suspense>
           </div>

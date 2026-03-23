@@ -41,6 +41,7 @@ import {
   recordAuditEvent,
   addCaseIdToExportPayload,
 } from '../../services/supportCaseService';
+import CasePicker from './CasePicker';
 
 const POLL_INTERVAL_MS = 60_000;
 // STALE_THRESHOLD_MS is imported from the service to stay in sync.
@@ -328,27 +329,19 @@ const FleetDiagnostics: React.FC = () => {
       {summary && (
         <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 space-y-2">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">Export Filters &amp; Case Linking (optional)</p>
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="flex flex-col gap-1 min-w-[160px]">
-              <span className="text-[10px] font-semibold text-indigo-500 uppercase tracking-wide">Support Case ID</span>
-              <input
-                type="text"
-                value={caseId}
-                onChange={(e) => setCaseId(e.target.value)}
-                placeholder="e.g. CASE-2026-001"
-                className="rounded-lg border border-indigo-200 bg-white px-2.5 py-1.5 text-xs font-mono text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-              />
-            </label>
-            <label className="flex flex-col gap-1 min-w-[140px]">
-              <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Driver ID</span>
-              <input
-                type="text"
-                value={filterDriverId}
-                onChange={(e) => setFilterDriverId(e.target.value)}
-                placeholder="e.g. drv-123"
-                className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
-              />
-            </label>
+          <div className="space-y-2">
+            <CasePicker value={caseId} onChange={setCaseId} />
+            <div className="flex flex-wrap items-end gap-3">
+              <label className="flex flex-col gap-1 min-w-[140px]">
+                <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Driver ID</span>
+                <input
+                  type="text"
+                  value={filterDriverId}
+                  onChange={(e) => setFilterDriverId(e.target.value)}
+                  placeholder="e.g. drv-123"
+                  className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-indigo-400"
+                />
+              </label>
             <label className="flex flex-col gap-1 min-w-[140px]">
               <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wide">Device ID</span>
               <input
@@ -381,6 +374,7 @@ const FleetDiagnostics: React.FC = () => {
                 Clear
               </button>
             )}
+            </div>
           </div>
           <p className="text-[10px] text-slate-400">
             Filters are applied to the export only — they do not affect the display above.
