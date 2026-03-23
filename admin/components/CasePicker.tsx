@@ -10,7 +10,7 @@
  *   • Fetches open cases on mount and exposes a refresh button
  *   • Allows selecting an open case from a dropdown
  *   • Allows clearing the selection
- *   • Shows a text fallback for manual entry when no cases exist
+ *   • Defaults to manual-entry mode when no cases are found (fresh deploy)
  */
 
 import React, { useCallback, useEffect, useState } from 'react';
@@ -63,9 +63,11 @@ const CasePicker: React.FC<CasePickerProps> = ({ value, onChange, supabaseClient
     setManualEntry(false);
   };
 
-  // If there's a value that's not in the dropdown, show it as manual
+  // If there's a value that's not in the dropdown, show it as manual.
+  // Also default to manual input when loading completes and no cases exist
+  // (e.g. fresh deploy) so operators are never left with an unusable empty dropdown.
   const valueInList = cases.some((c) => c.id === value);
-  const showManualInput = manualEntry || (value && !valueInList && cases.length > 0);
+  const showManualInput = manualEntry || (value && !valueInList && cases.length > 0) || (!loading && cases.length === 0);
 
   return (
     <div className="flex items-center gap-2 flex-wrap">
