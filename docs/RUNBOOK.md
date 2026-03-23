@@ -311,8 +311,8 @@ pg_cron job every 15 minutes, and are visible in **Admin → Health Alerts**.
 |------|----------|---------|
 | `dead_letter_items` | Critical | Any dead-letter count ≥ 1 |
 | `stale_snapshot` | Warning | Device snapshot older than 2 hours |
-| `high_retry_waiting` | Warning | `retryWaiting ≥ 5` |
-| `high_pending` | Info | `pending ≥ 20` |
+| `high_retry_waiting` | Warning | `retryWaiting > 5` |
+| `high_pending` | Info | `pending > 20` |
 
 ### Alert lifecycle
 
@@ -384,7 +384,7 @@ Check Supabase status: [status.supabase.com](https://status.supabase.com)
 1. pg_cron may not be running.  Check: **Dashboard → Database → Extensions**.
 2. `queue_health_reports` may be empty (devices haven't synced).
 3. The alert thresholds may not be met — current thresholds are:
-   `deadLetter ≥ 1`, `retryWaiting ≥ 5`, `pending ≥ 20`.
+   `deadLetter ≥ 1`, `retryWaiting > 5`, `pending > 20`.
 
 ### Scenario E — App cannot connect to Supabase
 

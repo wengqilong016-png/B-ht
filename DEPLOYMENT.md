@@ -201,12 +201,12 @@ LIMIT 10;
 - [ ] Confirm the panel loads without errors.
 - [ ] Run `SELECT generate_health_alerts();` in SQL Editor to verify the
       function exists and executes without error.
-- [ ] Confirm pg_cron job `generate_health_alerts` is scheduled:
+- [ ] Confirm pg_cron job `generate-health-alerts` is scheduled:
 
 ```sql
 SELECT jobname, schedule, command, active
 FROM cron.job
-WHERE jobname = 'generate_health_alerts';
+WHERE jobname = 'generate-health-alerts';
 ```
 
 ### Rollback
