@@ -85,6 +85,12 @@ const EVENT_CONFIG: Record<AuditEventType, {
     badgeClass: 'bg-violet-100 text-violet-700',
     rowClass: 'bg-white border-slate-200',
   },
+  case_resolved: {
+    label: 'Resolved',
+    icon: <CheckCircle2 size={14} className="text-emerald-600 flex-shrink-0" />,
+    badgeClass: 'bg-emerald-100 text-emerald-700',
+    rowClass: 'bg-emerald-50 border-emerald-200',
+  },
 };
 
 const FALLBACK_CONFIG = {
@@ -117,6 +123,7 @@ const AuditEventRow: React.FC<AuditEventRowProps> = ({ event, onCaseClick }) => 
     if (p.errorCategory)   payloadLines.push({ label: 'error cat.', value: p.errorCategory });
     if (p.errorSummary)    payloadLines.push({ label: 'error', value: p.errorSummary });
     if (p.note)            payloadLines.push({ label: 'note', value: p.note });
+    if (p.resolutionOutcome) payloadLines.push({ label: 'outcome', value: p.resolutionOutcome });
   }
 
   return (

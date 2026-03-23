@@ -1,7 +1,8 @@
 /**
  * __tests__/supportCase.test.ts
  *
- * Stage-9: focused tests for support case linking and audit trail.
+ * Stage-9/10: focused tests for support case linking, audit trail, and
+ * case resolution workflow.
  *
  * Coverage:
  *   recordAuditEvent:
@@ -51,6 +52,22 @@
  *   closeSupportCase:
  *     - Calls update with status=closed and closed_at
  *     - Throws on Supabase update failure
+ *
+ *   fetchSupportCaseById (stage 10):
+ *     - Returns the case when found
+ *     - Returns null when case is not found
+ *     - Throws on Supabase query error
+ *     - Maps resolution metadata fields correctly
+ *     - Maps resolution fields as null when not set
+ *
+ *   resolveSupportCase (stage 10):
+ *     - Calls update with resolution metadata on the correct case
+ *     - Defaults optional fields to null
+ *     - Throws on Supabase update failure
+ *
+ *   fetchSupportCases resolution fields (stage 10):
+ *     - Maps resolution metadata when present
+ *     - Maps resolution fields as null for open cases
  */
 
 import { describe, it, expect, jest } from '@jest/globals';
@@ -61,7 +78,9 @@ import {
   addCaseIdToExportPayload,
   createSupportCase,
   fetchSupportCases,
+  fetchSupportCaseById,
   closeSupportCase,
+  resolveSupportCase,
   fetchAuditEventCountsByCaseIds,
   type AuditEvent,
   type AuditEventType,
@@ -427,6 +446,10 @@ function makeCaseRow(overrides: Partial<Record<string, unknown>> = {}): Record<s
     created_by: 'admin-1',
     created_at: new Date().toISOString(),
     closed_at: null,
+    resolution_notes: null,
+    resolved_by: null,
+    resolved_at: null,
+    resolution_outcome: null,
     ...overrides,
   };
 }
@@ -467,6 +490,53 @@ function makeCaseUpdateStub(updateError: { message: string } | null = null) {
     client: {
       from: jest.fn().mockReturnValue({
         update: jest.fn().mockReturnValue({ eq: eqMock }),
+      }),
+    } as any,
+  };
+}
+
+/**
+ * Build a Supabase client stub for resolveSupportCase
+ * (update → eq → select → maybeSingle chain).
+ */
+function makeResolveUpdateStub(
+  row: Record<string, unknown> | null = { id: 'CASE-001' },
+  updateError: { message: string } | null = null,
+) {
+  const maybeSingleMock = jest.fn().mockResolvedValue({
+    data: updateError ? null : row,
+    error: updateError,
+  });
+  const selectMock = jest.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+  const eqMock = jest.fn().mockReturnValue({ select: selectMock });
+  return {
+    _eqMock: eqMock,
+    _selectMock: selectMock,
+    _maybeSingleMock: maybeSingleMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        update: jest.fn().mockReturnValue({ eq: eqMock }),
+      }),
+    } as any,
+  };
+}
+
+/** Build a Supabase client stub for support_cases select().eq().maybeSingle(). */
+function makeCaseMaybeSingleStub(
+  row: Record<string, unknown> | null,
+  queryError: { message: string } | null = null,
+) {
+  const maybeSingleMock = jest.fn().mockResolvedValue({
+    data: queryError ? null : row,
+    error: queryError,
+  });
+  const eqMock = jest.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
+  return {
+    _eqMock: eqMock,
+    _maybeSingleMock: maybeSingleMock,
+    client: {
+      from: jest.fn().mockReturnValue({
+        select: jest.fn().mockReturnValue({ eq: eqMock }),
       }),
     } as any,
   };
@@ -635,5 +705,144 @@ describe('fetchAuditEventCountsByCaseIds', () => {
     } as any;
     const result = await fetchAuditEventCountsByCaseIds(client, ['CASE-THROW']);
     expect(result).toEqual({ 'CASE-THROW': 0 });
+  });
+});
+
+// ── fetchSupportCaseById (stage 10) ───────────────────────────────────────────
+
+describe('fetchSupportCaseById', () => {
+  it('returns the case when found', async () => {
+    const row = makeCaseRow({ id: 'CASE-BY-ID', title: 'Found' });
+    const { client, _eqMock } = makeCaseMaybeSingleStub(row);
+    const result = await fetchSupportCaseById(client, 'CASE-BY-ID');
+    expect(result).not.toBeNull();
+    expect(result!.id).toBe('CASE-BY-ID');
+    expect(result!.title).toBe('Found');
+    expect(_eqMock).toHaveBeenCalledWith('id', 'CASE-BY-ID');
+  });
+
+  it('returns null when case is not found', async () => {
+    const { client } = makeCaseMaybeSingleStub(null);
+    const result = await fetchSupportCaseById(client, 'CASE-MISSING');
+    expect(result).toBeNull();
+  });
+
+  it('throws on Supabase query error', async () => {
+    const { client } = makeCaseMaybeSingleStub(null, { message: 'permission denied' });
+    await expect(fetchSupportCaseById(client, 'CASE-ERR')).rejects.toThrow(
+      'Failed to fetch support case: permission denied',
+    );
+  });
+
+  it('maps resolution metadata fields correctly', async () => {
+    const ts = new Date().toISOString();
+    const row = makeCaseRow({
+      id: 'CASE-RES',
+      status: 'closed',
+      closed_at: ts,
+      resolution_notes: 'Root cause identified',
+      resolved_by: 'operator-A',
+      resolved_at: ts,
+      resolution_outcome: 'fixed',
+    });
+    const { client } = makeCaseMaybeSingleStub(row);
+    const result = await fetchSupportCaseById(client, 'CASE-RES');
+    expect(result).not.toBeNull();
+    expect(result!.resolutionNotes).toBe('Root cause identified');
+    expect(result!.resolvedBy).toBe('operator-A');
+    expect(result!.resolvedAt).toBe(ts);
+    expect(result!.resolutionOutcome).toBe('fixed');
+  });
+
+  it('maps resolution fields as null when not set', async () => {
+    const row = makeCaseRow();
+    const { client } = makeCaseMaybeSingleStub(row);
+    const result = await fetchSupportCaseById(client, 'CASE-001');
+    expect(result!.resolutionNotes).toBeNull();
+    expect(result!.resolvedBy).toBeNull();
+    expect(result!.resolvedAt).toBeNull();
+    expect(result!.resolutionOutcome).toBeNull();
+  });
+});
+
+// ── resolveSupportCase (stage 10) ─────────────────────────────────────────────
+
+describe('resolveSupportCase', () => {
+  it('calls update with resolution metadata on the correct case', async () => {
+    const { client, _eqMock } = makeResolveUpdateStub({ id: 'CASE-TO-RESOLVE' });
+    await resolveSupportCase(client, {
+      caseId: 'CASE-TO-RESOLVE',
+      resolutionNotes: 'Root cause was X',
+      resolutionOutcome: 'fixed',
+      resolvedBy: 'admin-99',
+    });
+    expect(_eqMock).toHaveBeenCalledWith('id', 'CASE-TO-RESOLVE');
+    expect(client.from).toHaveBeenCalledWith('support_cases');
+    // Check that update was called with the expected fields
+    const updateCall = client.from.mock.results[0].value.update;
+    const updateArg = updateCall.mock.calls[0][0];
+    expect(updateArg.status).toBe('closed');
+    expect(updateArg.resolution_notes).toBe('Root cause was X');
+    expect(updateArg.resolution_outcome).toBe('fixed');
+    expect(updateArg.resolved_by).toBe('admin-99');
+    expect(updateArg.closed_at).toBeTruthy();
+    expect(updateArg.resolved_at).toBeTruthy();
+  });
+
+  it('defaults optional fields to null', async () => {
+    const { client } = makeResolveUpdateStub({ id: 'CASE-MINIMAL' });
+    await resolveSupportCase(client, { caseId: 'CASE-MINIMAL' });
+    const updateCall = client.from.mock.results[0].value.update;
+    const updateArg = updateCall.mock.calls[0][0];
+    expect(updateArg.resolution_notes).toBeNull();
+    expect(updateArg.resolution_outcome).toBeNull();
+    expect(updateArg.resolved_by).toBeNull();
+  });
+
+  it('throws on Supabase update failure', async () => {
+    const { client } = makeResolveUpdateStub(null, { message: 'not found' });
+    await expect(
+      resolveSupportCase(client, { caseId: 'CASE-FAIL', resolutionOutcome: 'fixed' }),
+    ).rejects.toThrow('Failed to resolve support case: not found');
+  });
+
+  it('throws when no row is affected (unknown case ID)', async () => {
+    const { client } = makeResolveUpdateStub(null);
+    await expect(
+      resolveSupportCase(client, { caseId: 'CASE-UNKNOWN' }),
+    ).rejects.toThrow('Failed to resolve support case: case "CASE-UNKNOWN" not found');
+  });
+});
+
+// ── fetchSupportCases resolution field mapping (stage 10) ─────────────────────
+
+describe('fetchSupportCases (resolution fields)', () => {
+  it('maps resolution metadata when present', async () => {
+    const ts = new Date().toISOString();
+    const row = makeCaseRow({
+      status: 'closed',
+      closed_at: ts,
+      resolution_notes: 'Summary here',
+      resolved_by: 'op-1',
+      resolved_at: ts,
+      resolution_outcome: 'wont-fix',
+    });
+    const { client } = makeCaseSelectStub([row]);
+    const result = await fetchSupportCases(client);
+    expect(result).toHaveLength(1);
+    expect(result[0].resolutionNotes).toBe('Summary here');
+    expect(result[0].resolvedBy).toBe('op-1');
+    expect(result[0].resolvedAt).toBe(ts);
+    expect(result[0].resolutionOutcome).toBe('wont-fix');
+  });
+
+  it('maps resolution fields as null for open cases', async () => {
+    const row = makeCaseRow();
+    const { client } = makeCaseSelectStub([row]);
+    const result = await fetchSupportCases(client);
+    expect(result[0].resolutionNotes).toBeNull();
+    expect(result[0].resolvedBy).toBeNull();
+    expect(result[0].resolvedAt).toBeNull();
+    expect(result[0].resolutionOutcome).toBeNull();
   });
 });
