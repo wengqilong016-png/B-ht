@@ -475,8 +475,9 @@ Audit events are recorded automatically in the following workflows:
   completion.
 - **Fleet Diag. → Export**: records `diagnostic_export` with fleet scope,
   enriched with case ID if set.
-- **Alerts → Link**: records `health_alert_linked` with alert type, severity,
-  and device ID.
+- **Alerts → Link**: records `health_alert_linked` with `alertType`
+  (`dead_letter_items` | `stale_snapshot` | `high_retry_waiting` | `high_pending`),
+  `alertSeverity` (`critical` | `warning` | `info`), and `deviceId`.
 - **Cases → Create**: records `recovery_action` with the new case ID and title.
 - **Cases → Close**: records `recovery_action` with the closed case ID.
 

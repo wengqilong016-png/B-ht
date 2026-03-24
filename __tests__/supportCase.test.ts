@@ -236,6 +236,31 @@ describe('recordAuditEvent', () => {
     });
   });
 
+  it('records health alert payload fields using HealthAlert semantics', async () => {
+    const stub = makeInsertClientStub();
+    await recordAuditEvent(stub, {
+      caseId: 'CASE-456',
+      eventType: 'health_alert_linked',
+      payload: {
+        alertType: 'stale_snapshot',
+        alertSeverity: 'warning',
+        deviceId: 'device-xyz',
+      },
+    });
+
+    const fromCall = (stub.from as ReturnType<typeof jest.fn>).mock.results[0].value;
+    expect(fromCall.insert).toHaveBeenCalledWith({
+      case_id:    'CASE-456',
+      event_type: 'health_alert_linked',
+      actor_id:   null,
+      payload:    {
+        alertType: 'stale_snapshot',
+        alertSeverity: 'warning',
+        deviceId: 'device-xyz',
+      },
+    });
+  });
+
   it('does not throw when the Supabase insert returns an error', async () => {
     const stub = makeInsertClientStub({ message: 'permission denied' });
     await expect(
