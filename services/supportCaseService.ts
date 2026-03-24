@@ -46,6 +46,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import type { LocalExportPayload, FleetExportPayload } from './diagnosticsExportService';
+import type { AlertType, AlertSeverity } from './healthAlertService';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -80,9 +81,9 @@ export interface AuditEventPayload {
   /** Filename used for the export download. */
   exportFilename?: string;
   /** Alert type for health_alert_linked events. */
-  alertType?: string;
+  alertType?: AlertType;
   /** Alert severity for health_alert_linked events. */
-  alertSeverity?: string;
+  alertSeverity?: AlertSeverity;
   /** Free-form note from the operator (max 500 chars). */
   note?: string;
   /** Resolution outcome for case_resolved events (stage 10). */
