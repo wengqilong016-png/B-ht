@@ -1,15 +1,26 @@
 /**
  * __tests__/supportCase.test.ts
  *
- * Stage-9/10: focused tests for support case linking, audit trail, and
- * case resolution workflow.
+ * Stage-9/10/11A: focused tests for support case linking, audit trail,
+ * case resolution workflow, and caseId normalization (stage 11A).
  *
  * Coverage:
+ *   normalizeCaseId (stage 11A):
+ *     - Returns null for undefined
+ *     - Returns null for null
+ *     - Returns null for empty string
+ *     - Returns null for whitespace-only string
+ *     - Trims leading/trailing whitespace from a valid caseId
+ *     - Returns a clean caseId unchanged
+ *
  *   recordAuditEvent:
  *     - Inserts a row to support_audit_log with all provided fields
  *     - Works when caseId, actorId, and payload are omitted (optional fields)
  *     - Never throws when the Supabase insert returns an error (fire-and-forget)
  *     - Never throws when the Supabase client itself throws (fire-and-forget)
+ *     - (stage 11A) Trims whitespace from caseId before insert
+ *     - (stage 11A) Collapses blank caseId to null before insert
+ *     - (stage 11A) Collapses whitespace-only caseId to null before insert
  *
  *   fetchAuditLog:
  *     - Returns an empty array when the table has no rows
@@ -21,6 +32,8 @@
  *     - Throws a descriptive error when the Supabase query fails
  *     - Handles null payload and null actorId gracefully
  *     - Handles null caseId correctly (maps to null not undefined)
+ *     - (stage 11A) Trims caseId filter before querying
+ *     - (stage 11A) Does not filter when caseId is whitespace-only
  *
  *   filterAuditEventsByCaseId:
  *     - Returns an empty array for an empty input list
@@ -28,6 +41,8 @@
  *     - Returns only matching events when multiple case IDs are present
  *     - Returns an empty array when no events match the case ID
  *     - Does not mutate the input array
+ *     - (stage 11A) Trims caseId before filtering
+ *     - (stage 11A) Returns empty array for whitespace-only caseId
  *
  *   addCaseIdToExportPayload:
  *     - Returns the original payload unchanged when caseId is undefined
@@ -35,6 +50,8 @@
  *     - Attaches caseId to a fleet export payload
  *     - Does not mutate the original payload object
  *     - Returns the same object reference when caseId is undefined
+ *     - (stage 11A) Trims caseId before attaching to payload
+ *     - (stage 11A) Returns payload unchanged when caseId is whitespace-only
  *
  *   createSupportCase:
  *     - Inserts a case and returns the created entity
@@ -76,6 +93,7 @@ import {
   fetchAuditLog,
   filterAuditEventsByCaseId,
   addCaseIdToExportPayload,
+  normalizeCaseId,
   createSupportCase,
   fetchSupportCases,
   fetchSupportCaseById,
@@ -201,6 +219,35 @@ function makeFleetPayload(): FleetExportPayload {
   };
 }
 
+// ── normalizeCaseId (stage 11A) ───────────────────────────────────────────────
+
+describe('normalizeCaseId', () => {
+  it('returns null for undefined', () => {
+    expect(normalizeCaseId(undefined)).toBeNull();
+  });
+
+  it('returns null for null', () => {
+    expect(normalizeCaseId(null)).toBeNull();
+  });
+
+  it('returns null for empty string', () => {
+    expect(normalizeCaseId('')).toBeNull();
+  });
+
+  it('returns null for whitespace-only string', () => {
+    expect(normalizeCaseId('   ')).toBeNull();
+    expect(normalizeCaseId('\t\n')).toBeNull();
+  });
+
+  it('trims leading/trailing whitespace from a valid caseId', () => {
+    expect(normalizeCaseId('  CASE-001  ')).toBe('CASE-001');
+  });
+
+  it('returns a clean caseId unchanged', () => {
+    expect(normalizeCaseId('CASE-001')).toBe('CASE-001');
+  });
+});
+
 // ── recordAuditEvent ──────────────────────────────────────────────────────────
 
 describe('recordAuditEvent', () => {
@@ -277,6 +324,47 @@ describe('recordAuditEvent', () => {
     await expect(
       recordAuditEvent(stub, { eventType: 'recovery_action' }),
     ).resolves.toBeUndefined();
+  });
+
+  // ── stage 11A normalization ──
+
+  it('trims whitespace from caseId before insert', async () => {
+    const stub = makeInsertClientStub();
+    await recordAuditEvent(stub, {
+      caseId: '  CASE-TRIM  ',
+      eventType: 'diagnostic_export',
+    });
+
+    const fromCall = (stub.from as ReturnType<typeof jest.fn>).mock.results[0].value;
+    expect(fromCall.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ case_id: 'CASE-TRIM' }),
+    );
+  });
+
+  it('collapses blank caseId to null before insert', async () => {
+    const stub = makeInsertClientStub();
+    await recordAuditEvent(stub, {
+      caseId: '',
+      eventType: 'diagnostic_export',
+    });
+
+    const fromCall = (stub.from as ReturnType<typeof jest.fn>).mock.results[0].value;
+    expect(fromCall.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ case_id: null }),
+    );
+  });
+
+  it('collapses whitespace-only caseId to null before insert', async () => {
+    const stub = makeInsertClientStub();
+    await recordAuditEvent(stub, {
+      caseId: '   ',
+      eventType: 'diagnostic_export',
+    });
+
+    const fromCall = (stub.from as ReturnType<typeof jest.fn>).mock.results[0].value;
+    expect(fromCall.insert).toHaveBeenCalledWith(
+      expect.objectContaining({ case_id: null }),
+    );
   });
 });
 
@@ -367,6 +455,20 @@ describe('fetchAuditLog', () => {
     const events = await fetchAuditLog(client);
     expect(events[0].caseId).toBeNull();
   });
+
+  // ── stage 11A normalization ──
+
+  it('trims caseId filter before querying', async () => {
+    const { client, _eqMock } = makeSelectClientStub([makeAuditRow()]);
+    await fetchAuditLog(client, { caseId: '  CASE-001  ' });
+    expect(_eqMock).toHaveBeenCalledWith('case_id', 'CASE-001');
+  });
+
+  it('does not filter when caseId is whitespace-only', async () => {
+    const { client, _eqMock } = makeSelectClientStub([makeAuditRow()]);
+    await fetchAuditLog(client, { caseId: '   ' });
+    expect(_eqMock).not.toHaveBeenCalled();
+  });
 });
 
 // ── filterAuditEventsByCaseId ─────────────────────────────────────────────────
@@ -403,6 +505,23 @@ describe('filterAuditEventsByCaseId', () => {
     filterAuditEventsByCaseId(events, 'CASE-001');
     expect(events).toEqual(copy);
   });
+
+  // ── stage 11A normalization ──
+
+  it('trims caseId before filtering', () => {
+    const events = [
+      makeAuditEvent({ caseId: 'CASE-001' }),
+      makeAuditEvent({ caseId: 'CASE-002' }),
+    ];
+    const result = filterAuditEventsByCaseId(events, '  CASE-001  ');
+    expect(result).toHaveLength(1);
+    expect(result[0].caseId).toBe('CASE-001');
+  });
+
+  it('returns empty array for whitespace-only caseId', () => {
+    const events = [makeAuditEvent({ caseId: 'CASE-001' })];
+    expect(filterAuditEventsByCaseId(events, '   ')).toEqual([]);
+  });
 });
 
 // ── addCaseIdToExportPayload ──────────────────────────────────────────────────
@@ -437,6 +556,21 @@ describe('addCaseIdToExportPayload', () => {
     addCaseIdToExportPayload(payload, 'CASE-X');
     expect(Object.keys(payload)).toEqual(originalKeys);
     expect((payload as any).caseId).toBeUndefined();
+  });
+
+  // ── stage 11A normalization ──
+
+  it('trims caseId before attaching to payload', () => {
+    const payload = makeLocalPayload();
+    const result = addCaseIdToExportPayload(payload, '  CASE-TRIM  ');
+    expect((result as any).caseId).toBe('CASE-TRIM');
+  });
+
+  it('returns payload unchanged when caseId is whitespace-only', () => {
+    const payload = makeLocalPayload();
+    const result = addCaseIdToExportPayload(payload, '   ');
+    expect(result).toBe(payload);
+    expect((result as any).caseId).toBeUndefined();
   });
 });
 

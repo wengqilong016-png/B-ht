@@ -676,4 +676,84 @@ ORDER BY created_at DESC;
 
 ---
 
-*Last updated: 2026-03-23. Covers stages 1 through 10.*
+## Stage 11A — Support Relationship Soft Hardening
+
+### Overview
+
+Stage 11A normalizes `caseId` inputs at the service boundary and adds a
+lightweight database constraint to prevent blank/whitespace-only values from
+being stored in `support_audit_log.case_id`.
+
+**No foreign key is introduced in this stage.**  A hard FK on
+`support_audit_log.case_id → support_cases.id` is deferred to Stage 11B,
+pending historical data compatibility verification.
+
+### caseId normalization rules
+
+All functions in `services/supportCaseService.ts` that accept a `caseId`
+parameter now normalize it via `normalizeCaseId()`:
+
+| Input | Normalized result |
+|-------|-------------------|
+| `undefined` / `null` | `null` |
+| `''` (empty string) | `null` |
+| `'   '` (whitespace-only) | `null` |
+| `'  CASE-001  '` (leading/trailing whitespace) | `'CASE-001'` |
+| `'CASE-001'` (clean value) | `'CASE-001'` (unchanged) |
+
+Affected functions:
+- `recordAuditEvent()` — normalizes before DB insert
+- `fetchAuditLog()` — normalizes `caseId` filter before querying
+- `filterAuditEventsByCaseId()` — normalizes before in-memory filter
+- `addCaseIdToExportPayload()` — normalizes before attaching to export
+
+### Database constraint
+
+Migration `20260325000000_stage11a_case_id_blank_check.sql` adds:
+
+```sql
+ALTER TABLE public.support_audit_log
+    ADD CONSTRAINT support_audit_log_case_id_not_blank
+    CHECK (case_id IS NULL OR length(btrim(case_id)) > 0);
+```
+
+- `NULL` values are allowed (optional case reference).
+- Empty `''` and whitespace-only `'   '` values are rejected.
+- Existing rows with NULL `case_id` are unaffected.
+
+### Baseline SQL check
+
+After deploying Stage 11A, verify the constraint exists:
+
+```sql
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.support_audit_log'::regclass
+  AND conname = 'support_audit_log_case_id_not_blank';
+```
+
+Verify no blank/whitespace-only values exist in existing data:
+
+```sql
+SELECT COUNT(*) AS blank_case_ids
+FROM public.support_audit_log
+WHERE case_id IS NOT NULL
+  AND length(btrim(case_id)) = 0;
+```
+
+Expected result: `0`.
+
+### Scenario K — Insert rejected by blank case_id constraint
+
+If a write to `support_audit_log` fails with a constraint violation on
+`support_audit_log_case_id_not_blank`, it means the caller passed an
+empty or whitespace-only `case_id`.  The service layer should normalize
+this to `null` before the DB is reached.  Check:
+
+1. Confirm the caller is using `recordAuditEvent()` (which normalizes
+   automatically) rather than writing directly to the table.
+2. If using a custom insert path, pre-process with `normalizeCaseId()`.
+
+---
+
+*Last updated: 2026-03-25. Covers stages 1 through 11A.*

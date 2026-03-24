@@ -182,10 +182,10 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 
 ---
 
-## Deployment Checklist — Stages 1 through 10
+## Deployment Checklist — Stages 1 through 11A
 
 Use this checklist when deploying a release that includes any changes from
-stages 1 through 10.  Run each step in order.
+stages 1 through 11A.  Run each step in order.
 
 ### Pre-deploy
 
@@ -213,6 +213,8 @@ stages 1 through 10.  Run each step in order.
 | 9   | `20260323030000_support_cases.sql`     | `support_cases` table, RLS policies |
 | 9   | `20260323040000_support_check_constraints.sql` | CHECK constraints on `status` and `event_type` |
 | 10  | `20260323100000_case_resolution.sql`           | Resolution columns on `support_cases`, extended event_type CHECK |
+| 10  | `20260324110000_support_resolution_consistency.sql` | `resolve_support_case_v1()` RPC, closed-resolution CHECK |
+| 11A | `20260325000000_stage11a_case_id_blank_check.sql` | CHECK constraint blocking blank/whitespace `case_id` |
 
 Confirm each migration is applied:
 
@@ -293,6 +295,27 @@ SELECT COUNT(*) FROM public.support_cases;
 SELECT resolution_notes, resolved_by, resolved_at, resolution_outcome
 FROM public.support_cases LIMIT 1;
 ```
+
+**caseId normalization (Stage 11A)**
+- [ ] Confirm the `support_audit_log_case_id_not_blank` CHECK constraint exists:
+
+```sql
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.support_audit_log'::regclass
+  AND conname = 'support_audit_log_case_id_not_blank';
+```
+
+- [ ] Confirm no blank/whitespace-only `case_id` values exist:
+
+```sql
+SELECT COUNT(*) AS blank_case_ids
+FROM public.support_audit_log
+WHERE case_id IS NOT NULL
+  AND length(btrim(case_id)) = 0;
+```
+
+- [ ] Verify `recordAuditEvent` still works (fire-and-forget) by creating a case or triggering an export in the UI. Confirm the audit event appears in Admin → Audit Trail.
 
 ### Stage 10 post-merge smoke SQL (repeatable)
 

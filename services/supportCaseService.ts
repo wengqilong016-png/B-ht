@@ -198,6 +198,26 @@ export type EnrichedExportPayload<T extends LocalExportPayload | FleetExportPayl
   caseId?: string;
 };
 
+// ── Normalization ─────────────────────────────────────────────────────────────
+
+/**
+ * Normalize a `caseId` value at the service boundary.
+ *
+ * - Trims leading/trailing whitespace.
+ * - Collapses blank or whitespace-only strings to `null`.
+ * - Passes `null` and `undefined` through as `null`.
+ *
+ * All functions that accept a `caseId` in this module call this helper so that
+ * the database never receives empty or whitespace-only values.
+ *
+ * Exported for testing; callers outside this module should not need it.
+ */
+export function normalizeCaseId(caseId: string | undefined | null): string | null {
+  if (caseId == null) return null;
+  const trimmed = caseId.trim();
+  return trimmed.length > 0 ? trimmed : null;
+}
+
 // ── Core functions ────────────────────────────────────────────────────────────
 
 /**
@@ -205,6 +225,9 @@ export type EnrichedExportPayload<T extends LocalExportPayload | FleetExportPayl
  *
  * Fire-and-forget: this function never throws.  Supabase errors are caught
  * and logged to the console so that callers do not need try/catch.
+ *
+ * The `caseId` input is normalized (trimmed, blank → `null`) at the service
+ * boundary so callers do not need to pre-process it.
  *
  * @param supabaseClient  Supabase client instance.
  * @param input           Event details.
@@ -217,7 +240,7 @@ export async function recordAuditEvent(
     const { error } = await supabaseClient
       .from('support_audit_log')
       .insert({
-        case_id:    input.caseId    ?? null,
+        case_id:    normalizeCaseId(input.caseId),
         event_type: input.eventType,
         actor_id:   input.actorId   ?? null,
         payload:    input.payload   ?? null,
@@ -248,8 +271,9 @@ export async function fetchAuditLog(
     .from('support_audit_log')
     .select('id, case_id, event_type, actor_id, payload, created_at');
 
-  if (options?.caseId) {
-    query = query.eq('case_id', options.caseId);
+  const normalizedFilterId = normalizeCaseId(options?.caseId);
+  if (normalizedFilterId) {
+    query = query.eq('case_id', normalizedFilterId);
   }
 
   const { data, error } = await query
@@ -285,8 +309,9 @@ export function filterAuditEventsByCaseId(
   events: AuditEvent[],
   caseId: string,
 ): AuditEvent[] {
-  if (!caseId) return [];
-  return events.filter((e) => e.caseId === caseId);
+  const normalized = normalizeCaseId(caseId);
+  if (!normalized) return [];
+  return events.filter((e) => e.caseId === normalized);
 }
 
 /**
@@ -302,8 +327,9 @@ export function addCaseIdToExportPayload<T extends LocalExportPayload | FleetExp
   payload: T,
   caseId?: string,
 ): EnrichedExportPayload<T> {
-  if (!caseId) return payload as EnrichedExportPayload<T>;
-  return { ...payload, caseId } as EnrichedExportPayload<T>;
+  const normalized = normalizeCaseId(caseId);
+  if (!normalized) return payload as EnrichedExportPayload<T>;
+  return { ...payload, caseId: normalized } as EnrichedExportPayload<T>;
 }
 
 /**
