@@ -48,6 +48,16 @@ Supabase (PostgreSQL + Edge Functions)
   └─ transactions            ─ canonical source of truth for collections
 ```
 
+### Realtime subscription center (UI consistency)
+
+- Single subscription entrypoint: `hooks/useRealtimeSubscription.ts` (mounted once in `App.tsx`).
+- Subscribed tables are fixed to: `transactions`, `drivers`, `daily_settlements`.
+- Realtime invalidation is debounced (250 ms window) and deduplicated per query key.
+  This reduces repeated `invalidateQueries` bursts that can cause extra fetches
+  and visible UI jitter during high-frequency updates.
+- Do **not** add additional table-level realtime subscriptions elsewhere unless
+  this section and the central hook are updated together.
+
 ---
 
 ## 2. Daily Operations Checklist
