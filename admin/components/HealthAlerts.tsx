@@ -25,7 +25,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   AlertTriangle, Bell, CheckCircle2, Clock, Info,
-  Loader2, RefreshCw, XCircle,
+  Link2, Loader2, RefreshCw, XCircle,
 } from 'lucide-react';
 import { supabase, SUPABASE_URL, SUPABASE_ANON_KEY } from '../../supabaseClient';
 import {
@@ -164,7 +164,7 @@ const HealthAlerts: React.FC<HealthAlertsProps> = ({ supabaseClient: injectedCli
       caseId: trimmedCaseId,
       eventType: 'health_alert_linked',
       payload: {
-        alertType: alert.alertType,
+        alertType: alert.type,
         alertSeverity: alert.severity,
         deviceId: alert.deviceId,
       },
