@@ -1,7 +1,7 @@
 # ADR: Stage 10 smoke script follow-up
 
 ## Status
-Proposed
+Accepted
 
 ## Context
 PR #189 added a repeatable Stage 10 post-merge smoke checklist and a canonical SQL helper script.
