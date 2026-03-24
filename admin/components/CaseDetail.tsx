@@ -22,7 +22,6 @@ import {
   fetchSupportCaseById,
   resolveSupportCase,
   fetchAuditLog,
-  recordAuditEvent,
   type SupportCase,
   type AuditEvent,
 } from '../../services/supportCaseService';
@@ -106,22 +105,15 @@ const CaseDetail: React.FC<CaseDetailProps> = ({
     setResolving(true);
     setResolveError(null);
     try {
-      await resolveSupportCase(client, {
+      const result = await resolveSupportCase(client, {
         caseId,
         resolutionNotes: resolutionNotes.trim() || undefined,
         resolutionOutcome: resolutionOutcome || undefined,
         resolvedBy: currentOperator || undefined,
       });
-      // Record audit event (fire-and-forget)
-      await recordAuditEvent(client, {
-        caseId,
-        eventType: 'case_resolved',
-        actorId: currentOperator || undefined,
-        payload: {
-          note: resolutionNotes.trim() || undefined,
-          resolutionOutcome: resolutionOutcome || undefined,
-        },
-      });
+      if (!result.auditRecorded) {
+        throw new Error('Case was closed but audit event was not recorded');
+      }
       // Refresh case + events
       await fetchCase();
       await fetchLinkedEvents();

@@ -1,7 +1,7 @@
 import React, { Suspense, lazy, useState } from 'react';
 import {
-  PlusCircle, CreditCard, LogOut, Globe, Loader2,
-  Crown, History, Banknote, Settings, ClipboardList, UserCircle
+  LogOut, Globe, Loader2,
+  Crown, Settings
 } from 'lucide-react';
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -9,6 +9,7 @@ import SyncStatusPill from '../shared/SyncStatusPill';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
+import { DRIVER_NAV_ITEMS, type DriverView } from './driverShellConfig';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
@@ -25,8 +26,6 @@ const LoadingFallback = () => (
     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Module...</p>
   </div>
 );
-
-type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'requests' | 'status';
 
 const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -74,14 +73,7 @@ const AppDriverShell: React.FC = () => {
 
           {/* Driver nav tabs */}
           <div className="flex border-t border-white/10 overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'collect' as const, icon: <PlusCircle size={16}/>, label: t.collect },
-              { id: 'settlement' as const, icon: <Banknote size={16}/>, label: t.dailySettlement },
-              { id: 'debt' as const, icon: <CreditCard size={16}/>, label: t.debt },
-              { id: 'history' as const, icon: <History size={16}/>, label: lang === 'sw' ? 'Historia' : '记录' },
-              { id: 'requests' as const, icon: <ClipboardList size={16}/>, label: lang === 'sw' ? 'Maombi' : '申请' },
-              { id: 'status' as const, icon: <UserCircle size={16}/>, label: t.driverStatus },
-            ].map((item) => (
+            {DRIVER_NAV_ITEMS.map((item) => (
               <button
                 key={item.id}
                 onClick={() => setView(item.id)}
@@ -90,7 +82,7 @@ const AppDriverShell: React.FC = () => {
                 }`}
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <span>{item.getLabel(lang, t)}</span>
               </button>
             ))}
           </div>

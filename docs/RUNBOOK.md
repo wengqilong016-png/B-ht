@@ -593,6 +593,12 @@ as resolved with full traceability metadata.
 - Extends the `support_audit_log.event_type` CHECK constraint to allow
   `case_resolved`
 
+`20260324110000_support_resolution_consistency.sql` hardens this workflow by:
+- adding `resolve_support_case_v1(...)` to atomically perform
+  **case close + case_resolved audit insert** in one DB transaction
+- adding a `support_cases_closed_resolution_check` constraint (`NOT VALID`)
+  so all new closed-case writes include required resolution metadata
+
 ### Scenario H — Resolving a case
 
 1. Open Admin Console → **Cases**.

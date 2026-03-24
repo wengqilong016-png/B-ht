@@ -1,10 +1,7 @@
 import React, { Suspense, lazy, useState, useMemo } from 'react';
 import {
-  LayoutDashboard, PlusCircle, CreditCard, PieChart, Brain,
   LogOut, Globe, Loader2,
-  CheckSquare, Crown,
-  MapPin, Store, Users, FileSpreadsheet, History, Settings, ClipboardList,
-  Activity, Radio, Bell, BookOpen, Briefcase,
+  Crown, Settings,
 } from 'lucide-react';
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -12,6 +9,13 @@ import SyncStatusPill from '../shared/SyncStatusPill';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
+import {
+  ADMIN_PAGE_TITLES,
+  ADMIN_SECONDARY_NAV,
+  buildAdminPrimaryNav,
+  mapAdminViewToDashboardTab,
+  type AdminView,
+} from './adminShellConfig';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const CollectionForm = lazy(() => import('../components/CollectionForm'));
@@ -37,8 +41,6 @@ const LoadingFallback = () => (
     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Module...</p>
   </div>
 );
-
-type AdminView = 'dashboard' | 'settlement' | 'map' | 'sites' | 'team' | 'billing' | 'ai' | 'collect' | 'debt' | 'history' | 'reports' | 'change-review' | 'diagnostics' | 'fleet-diagnostics' | 'health-alerts' | 'audit-trail' | 'support-cases' | 'case-detail';
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -68,42 +70,7 @@ const AppAdminShell: React.FC = () => {
     transactions.filter(t => t.type === 'reset_request' && t.approvalStatus === 'pending').length +
     transactions.filter(t => t.type === 'payout_request' && t.approvalStatus === 'pending').length;
 
-  const pageTitles: Record<string, string> = {
-    dashboard: 'Action Center', settlement: 'Settlement', map: 'Map & Routes',
-    sites: 'Site Management', team: 'Team', billing: 'Billing',
-    ai: 'AI Audit', collect: 'Collect', debt: 'Finance',
-    history: 'History', reports: 'Reports', 'change-review': 'Change Requests',
-    'diagnostics': 'Local Queue Diagnostics',
-    'fleet-diagnostics': 'Fleet-Wide Diagnostics',
-    'health-alerts': 'Health Alerts',
-    'audit-trail': 'Support Audit Trail',
-    'support-cases': 'Support Cases',
-    'case-detail': 'Case Detail',
-  };
-
-  const adminNavItems = [
-    { id: 'dashboard', icon: <LayoutDashboard size={18}/>, label: '工作台', labelEn: 'Overview' },
-    { id: 'settlement', icon: <CheckSquare size={18}/>, label: '审批中心', labelEn: 'Approvals', badge: totalApprovalBadge },
-    { id: 'map', icon: <MapPin size={18}/>, label: '地图与轨迹', labelEn: 'Map & Routes' },
-    { id: 'sites', icon: <Store size={18}/>, label: '网点管理', labelEn: 'Sites' },
-    { id: 'change-review', icon: <ClipboardList size={18}/>, label: '变更审核', labelEn: 'Change Req.' },
-    { id: 'team', icon: <Users size={18}/>, label: '车队与薪资', labelEn: 'Fleet' },
-    { id: 'billing', icon: <FileSpreadsheet size={18}/>, label: '月账单核对', labelEn: 'Billing' },
-    { id: 'ai', icon: <Brain size={18}/>, label: 'AI 日志', labelEn: 'AI Logs' },
-    { id: 'diagnostics', icon: <Activity size={18}/>, label: '本地队列诊断', labelEn: 'Local Queue' },
-    { id: 'fleet-diagnostics', icon: <Radio size={18}/>, label: '车队健康', labelEn: 'Fleet Diag.' },
-    { id: 'health-alerts', icon: <Bell size={18}/>, label: '健康告警', labelEn: 'Alerts' },
-    { id: 'support-cases', icon: <Briefcase size={18}/>, label: '支持工单', labelEn: 'Cases' },
-    { id: 'audit-trail', icon: <BookOpen size={18}/>, label: '操作审计', labelEn: 'Audit Trail' },
-  ];
-
-  const getDashboardTab = (v: string): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' => {
-    if (v === 'settlement') return 'settlement';
-    if (v === 'map') return 'tracking';
-    if (v === 'sites') return 'locations';
-    if (v === 'ai') return 'ai-logs';
-    return 'overview';
-  };
+  const adminNavItems = useMemo(() => buildAdminPrimaryNav(totalApprovalBadge), [totalApprovalBadge]);
 
   const showDashboard = ['dashboard', 'settlement', 'map', 'sites', 'ai'].includes(view);
 
@@ -147,12 +114,7 @@ const AppAdminShell: React.FC = () => {
             );
           })}
           <div className="h-px bg-slate-200 my-2" />
-          {[
-            { id: 'collect', icon: <PlusCircle size={18}/>, label: '采集录入' },
-            { id: 'debt', icon: <CreditCard size={18}/>, label: '债务管理' },
-            { id: 'reports', icon: <PieChart size={18}/>, label: '财务报表' },
-            { id: 'history', icon: <History size={18}/>, label: '操作记录' },
-          ].map((item) => {
+          {ADMIN_SECONDARY_NAV.map((item) => {
             const active = view === item.id;
             return (
               <button
@@ -205,7 +167,7 @@ const AppAdminShell: React.FC = () => {
                 <span className="text-xs font-black text-slate-800">BAHATI</span>
               </div>
               <div className="hidden md:block">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{pageTitles[view] || 'ADMIN'}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{ADMIN_PAGE_TITLES[view] || 'ADMIN'}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -261,7 +223,7 @@ const AppAdminShell: React.FC = () => {
                   offlineCount={unsyncedCount}
                   lang={lang}
                   onNavigate={(v) => setView(v as any)}
-                  initialTab={getDashboardTab(view)}
+                  initialTab={mapAdminViewToDashboardTab(view)}
                   hideTabs={true}
                 />
               )}

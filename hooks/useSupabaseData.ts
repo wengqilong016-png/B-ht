@@ -176,68 +176,8 @@ export function useSupabaseData(userRole?: 'admin' | 'driver' | null | undefined
     return () => window.removeEventListener('online', handleOnline);
   }, [queryClient]);
 
-  // ─── Supabase Realtime: driver GPS / status ───────────────────────────────
-  // Subscribe to UPDATE events on the drivers table so the admin dashboard
-  // receives driver GPS and lastActive changes in real-time — without waiting
-  // for the next React Query refetch window.
-  // The subscription is established once and torn down on unmount.
-  useEffect(() => {
-    if (!supabase || !isAuthenticated) return;
-
-    const channel = supabase
-      .channel('drivers-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'drivers' },
-        (payload) => {
-          const updated = payload.new as Record<string, any>;
-          queryClient.setQueryData<Driver[]>(['drivers'], (old = []) => {
-            // Only patch if the driver is already in the cache to avoid
-            // inserting incomplete records for newly created drivers.
-            if (!old.some(d => d.id === updated.id)) return old;
-            const sanitized = sanitizeDrivers([updated])[0];
-            return old.map(d => d.id === updated.id ? { ...d, ...sanitized } : d);
-          });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAuthenticated, queryClient]);
-
-  // ─── Supabase Realtime: new driver transactions ──────────────────────────
-  // Subscribe to INSERT and UPDATE events on the transactions table so the
-  // admin dashboard sees driver-submitted collections the moment they land in
-  // Supabase — without waiting for the next periodic refetch window.
-  // The invalidation is intentionally coarse (refetch the whole query) rather
-  // than a cache patch so the result set stays correctly sorted/filtered.
-  useEffect(() => {
-    if (!supabase || isDriver || !isAuthenticated) return;
-
-    const channel = supabase
-      .channel('transactions-realtime')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'transactions' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'transactions' },
-        () => {
-          queryClient.invalidateQueries({ queryKey: ['transactions'] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [isAuthenticated, isDriver, queryClient, supabase]);
+  // Realtime subscriptions are centralized in `useRealtimeSubscription` (App.tsx)
+  // so query invalidation has a single entrypoint.
 
   // Main loading state now only reflects CORE data needed for first paint
   const isLoading = isLoadingLocs || isLoadingDrivers;

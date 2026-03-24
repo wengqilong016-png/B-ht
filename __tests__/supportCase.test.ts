@@ -520,29 +520,27 @@ function makeCaseUpdateStub(updateError: { message: string } | null = null) {
   };
 }
 
-/**
- * Build a Supabase client stub for resolveSupportCase
- * (update → eq → select → maybeSingle chain).
- */
-function makeResolveUpdateStub(
-  row: Record<string, unknown> | null = { id: 'CASE-001' },
-  updateError: { message: string } | null = null,
+/** Build a Supabase client stub for resolveSupportCase rpc(). */
+function makeResolveRpcStub(
+  row: Record<string, unknown> | null = {
+    case_id: 'CASE-001',
+    status: 'closed',
+    closed_at: new Date().toISOString(),
+    resolved_at: new Date().toISOString(),
+    resolved_by: 'admin-1',
+    resolution_outcome: 'fixed',
+    audit_recorded: true,
+    audit_event_id: '00000000-0000-0000-0000-000000000001',
+  },
+  rpcError: { message: string } | null = null,
 ) {
-  const maybeSingleMock = jest.fn().mockResolvedValue({
-    data: updateError ? null : row,
-    error: updateError,
+  const rpcMock = jest.fn().mockResolvedValue({
+    data: rpcError ? null : (row ? [row] : []),
+    error: rpcError,
   });
-  const selectMock = jest.fn().mockReturnValue({ maybeSingle: maybeSingleMock });
-  const eqMock = jest.fn().mockReturnValue({ select: selectMock });
   return {
-    _eqMock: eqMock,
-    _selectMock: selectMock,
-    _maybeSingleMock: maybeSingleMock,
-    client: {
-      from: jest.fn().mockReturnValue({
-        update: jest.fn().mockReturnValue({ eq: eqMock }),
-      }),
-    } as any,
+    _rpcMock: rpcMock,
+    client: { rpc: rpcMock } as any,
   };
 }
 
@@ -793,49 +791,81 @@ describe('fetchSupportCaseById', () => {
 // ── resolveSupportCase (stage 10) ─────────────────────────────────────────────
 
 describe('resolveSupportCase', () => {
-  it('calls update with resolution metadata on the correct case', async () => {
-    const { client, _eqMock } = makeResolveUpdateStub({ id: 'CASE-TO-RESOLVE' });
-    await resolveSupportCase(client, {
+  it('calls transactional rpc with expected payload', async () => {
+    const { client, _rpcMock } = makeResolveRpcStub({
+      case_id: 'CASE-TO-RESOLVE',
+      status: 'closed',
+      closed_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+      resolved_by: 'admin-99',
+      resolution_outcome: 'fixed',
+      audit_recorded: true,
+      audit_event_id: '00000000-0000-0000-0000-000000000099',
+    });
+    const result = await resolveSupportCase(client, {
       caseId: 'CASE-TO-RESOLVE',
       resolutionNotes: 'Root cause was X',
       resolutionOutcome: 'fixed',
       resolvedBy: 'admin-99',
     });
-    expect(_eqMock).toHaveBeenCalledWith('id', 'CASE-TO-RESOLVE');
-    expect(client.from).toHaveBeenCalledWith('support_cases');
-    // Check that update was called with the expected fields
-    const updateCall = client.from.mock.results[0].value.update;
-    const updateArg = updateCall.mock.calls[0][0];
-    expect(updateArg.status).toBe('closed');
-    expect(updateArg.resolution_notes).toBe('Root cause was X');
-    expect(updateArg.resolution_outcome).toBe('fixed');
-    expect(updateArg.resolved_by).toBe('admin-99');
-    expect(updateArg.closed_at).toBeTruthy();
-    expect(updateArg.resolved_at).toBeTruthy();
+    expect(_rpcMock).toHaveBeenCalledWith('resolve_support_case_v1', {
+      p_case_id: 'CASE-TO-RESOLVE',
+      p_actor_id: 'admin-99',
+      p_resolution_notes: 'Root cause was X',
+      p_resolution_outcome: 'fixed',
+    });
+    expect(result.auditRecorded).toBe(true);
+    expect(result.caseId).toBe('CASE-TO-RESOLVE');
   });
 
-  it('defaults optional fields to null', async () => {
-    const { client } = makeResolveUpdateStub({ id: 'CASE-MINIMAL' });
+  it('defaults optional fields to null for rpc args', async () => {
+    const { client, _rpcMock } = makeResolveRpcStub({
+      case_id: 'CASE-MINIMAL',
+      status: 'closed',
+      closed_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+      resolved_by: 'system',
+      resolution_outcome: 'other',
+      audit_recorded: true,
+      audit_event_id: '00000000-0000-0000-0000-000000000123',
+    });
     await resolveSupportCase(client, { caseId: 'CASE-MINIMAL' });
-    const updateCall = client.from.mock.results[0].value.update;
-    const updateArg = updateCall.mock.calls[0][0];
-    expect(updateArg.resolution_notes).toBeNull();
-    expect(updateArg.resolution_outcome).toBeNull();
-    expect(updateArg.resolved_by).toBeNull();
+    expect(_rpcMock).toHaveBeenCalledWith('resolve_support_case_v1', {
+      p_case_id: 'CASE-MINIMAL',
+      p_actor_id: null,
+      p_resolution_notes: null,
+      p_resolution_outcome: null,
+    });
   });
 
-  it('throws on Supabase update failure', async () => {
-    const { client } = makeResolveUpdateStub(null, { message: 'not found' });
+  it('throws on Supabase rpc failure', async () => {
+    const { client } = makeResolveRpcStub(null, { message: 'not found' });
     await expect(
       resolveSupportCase(client, { caseId: 'CASE-FAIL', resolutionOutcome: 'fixed' }),
     ).rejects.toThrow('Failed to resolve support case: not found');
   });
 
   it('throws when no row is affected (unknown case ID)', async () => {
-    const { client } = makeResolveUpdateStub(null);
+    const { client } = makeResolveRpcStub(null);
     await expect(
       resolveSupportCase(client, { caseId: 'CASE-UNKNOWN' }),
     ).rejects.toThrow('Failed to resolve support case: case "CASE-UNKNOWN" not found');
+  });
+
+  it('throws when transactional result does not confirm audit write', async () => {
+    const { client } = makeResolveRpcStub({
+      case_id: 'CASE-NO-AUDIT',
+      status: 'closed',
+      closed_at: new Date().toISOString(),
+      resolved_at: new Date().toISOString(),
+      resolved_by: 'admin-1',
+      resolution_outcome: 'fixed',
+      audit_recorded: false,
+      audit_event_id: null,
+    });
+    await expect(
+      resolveSupportCase(client, { caseId: 'CASE-NO-AUDIT' }),
+    ).rejects.toThrow('Failed to resolve support case: closure/audit consistency check failed');
   });
 });
 

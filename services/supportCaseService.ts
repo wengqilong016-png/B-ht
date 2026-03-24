@@ -176,6 +176,20 @@ export interface ResolveSupportCaseInput {
   resolvedBy?: string;
 }
 
+/** Result returned by `resolveSupportCase` to make closure/audit consistency explicit. */
+export interface ResolveSupportCaseResult {
+  caseId: string;
+  status: SupportCaseStatus;
+  closedAt: string;
+  resolvedAt: string;
+  resolvedBy: string;
+  resolutionOutcome: string;
+  /** Whether the transactional function wrote a case_resolved audit row. */
+  auditRecorded: boolean;
+  /** New audit row ID when available. */
+  auditEventId: string | null;
+}
+
 // ── Export payload enrichment type ───────────────────────────────────────────
 
 /** A local or fleet export payload enriched with a support case reference. */
@@ -472,26 +486,44 @@ export async function closeSupportCase(
 export async function resolveSupportCase(
   supabaseClient: SupabaseClient,
   input: ResolveSupportCaseInput,
-): Promise<void> {
-  const now = new Date().toISOString();
-  const { data, error } = await supabaseClient
-    .from('support_cases')
-    .update({
-      status:              'closed',
-      closed_at:           now,
-      resolution_notes:    input.resolutionNotes ?? null,
-      resolved_by:         input.resolvedBy      ?? null,
-      resolved_at:         now,
-      resolution_outcome:  input.resolutionOutcome ?? null,
-    })
-    .eq('id', input.caseId)
-    .select('id')
-    .maybeSingle();
+): Promise<ResolveSupportCaseResult> {
+  const { data, error } = await supabaseClient.rpc('resolve_support_case_v1', {
+    p_case_id: input.caseId,
+    p_actor_id: input.resolvedBy ?? null,
+    p_resolution_notes: input.resolutionNotes ?? null,
+    p_resolution_outcome: input.resolutionOutcome ?? null,
+  });
 
   if (error) {
     throw new Error(`Failed to resolve support case: ${error.message}`);
   }
-  if (!data) {
+
+  const rows = Array.isArray(data) ? (data as Array<Record<string, unknown>>) : [];
+  const row = rows[0];
+  if (!row) {
     throw new Error(`Failed to resolve support case: case "${input.caseId}" not found`);
   }
+
+  const status = String(row['status'] ?? '');
+  const closedAt = String(row['closed_at'] ?? '');
+  const resolvedAt = String(row['resolved_at'] ?? '');
+  const resolvedBy = String(row['resolved_by'] ?? '');
+  const resolutionOutcome = String(row['resolution_outcome'] ?? '');
+  const auditRecorded = Boolean(row['audit_recorded']);
+  const auditEventId = row['audit_event_id'] != null ? String(row['audit_event_id']) : null;
+
+  if (status !== 'closed' || !closedAt || !resolvedAt || !resolvedBy || !resolutionOutcome || !auditRecorded) {
+    throw new Error('Failed to resolve support case: closure/audit consistency check failed');
+  }
+
+  return {
+    caseId: String(row['case_id'] ?? input.caseId),
+    status: 'closed',
+    closedAt,
+    resolvedAt,
+    resolvedBy,
+    resolutionOutcome,
+    auditRecorded,
+    auditEventId,
+  };
 }
