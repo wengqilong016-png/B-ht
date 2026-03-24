@@ -636,8 +636,7 @@ chain after merge, without expanding scope.
 ### Canonical SQL helper
 
 - File: `scripts/stage10_post_merge_smoke.sql`
-- Run in Supabase SQL Editor or via `psql -f scripts/stage10_post_merge_smoke.sql`.
-- Set `case_id` first, then execute all statements in order.
+- Open the file, replace `CASE-2026-001` with the resolved case ID, then run in Supabase SQL Editor or via `psql -f`.
 
 The SQL verifies:
 - case row + resolution metadata

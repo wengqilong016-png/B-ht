@@ -1,10 +1,9 @@
 -- Stage 10 post-merge smoke checks (repeatable, no data mutation).
+-- Run this in Supabase Dashboard → SQL Editor (or psql).
+--
 -- Usage:
---   1) Replace the default case_id below with the case you just resolved in UI.
---   2) Run in Supabase SQL Editor, or:
---        psql "$DATABASE_URL" -v case_id='CASE-2026-001' -f scripts/stage10_post_merge_smoke.sql
-
-\set case_id 'CASE-2026-001'
+--   1) Replace 'CASE-2026-001' below with the case you just resolved in UI.
+--   2) Run all statements in order.
 
 -- 1) Validate the acceptance chain anchor row: case exists and is closed.
 SELECT id,
@@ -12,10 +11,9 @@ SELECT id,
        resolution_outcome,
        resolution_notes,
        resolved_by,
-       resolved_at,
-       updated_at
+       resolved_at
 FROM public.support_cases
-WHERE id = :'case_id';
+WHERE id = 'CASE-2026-001';
 
 -- 2) Validate resolution metadata is fully persisted.
 SELECT id,
@@ -24,7 +22,7 @@ SELECT id,
        (resolved_by IS NOT NULL)        AS has_resolved_by,
        (resolved_at IS NOT NULL)        AS has_resolved_at
 FROM public.support_cases
-WHERE id = :'case_id';
+WHERE id = 'CASE-2026-001';
 
 -- 3) Validate audit log contains case_resolved event(s) for this case.
 SELECT case_id,
@@ -33,7 +31,7 @@ SELECT case_id,
        created_at,
        payload
 FROM public.support_audit_log
-WHERE case_id = :'case_id'
+WHERE case_id = 'CASE-2026-001'
   AND event_type = 'case_resolved'
 ORDER BY created_at DESC;
 
@@ -41,7 +39,7 @@ ORDER BY created_at DESC;
 SELECT case_id,
        COUNT(*) AS case_resolved_events
 FROM public.support_audit_log
-WHERE case_id = :'case_id'
+WHERE case_id = 'CASE-2026-001'
   AND event_type = 'case_resolved'
 GROUP BY case_id;
 
