@@ -286,7 +286,7 @@ SELECT COUNT(*) FROM public.support_cases;
 - [ ] Confirm the case status changes to `closed` and resolution metadata is saved.
 - [ ] Confirm a `case_resolved` audit event appears in the linked history.
 - [ ] Open a closed resolved case detail → confirm resolution notes and outcome are shown read-only.
-- [ ] Run `scripts/stage10_post_merge_smoke.sql` in Supabase SQL Editor (or `psql`) and confirm all checks pass.
+- [ ] Open `scripts/stage10_post_merge_smoke.sql`, replace `CASE-2026-001` with the case you just resolved, and run in Supabase SQL Editor (or `psql -f`). Confirm all checks pass.
 - [ ] Confirm the resolution columns exist:
 
 ```sql
@@ -298,8 +298,8 @@ FROM public.support_cases LIMIT 1;
 
 Use the canonical helper script at `scripts/stage10_post_merge_smoke.sql`.
 
-1. Set `case_id` in the script to the case you just resolved via UI.
-2. Run the script as-is in Supabase SQL Editor (or with `psql -f`).
+1. Open `scripts/stage10_post_merge_smoke.sql` and replace `CASE-2026-001` with the case you just resolved via UI.
+2. Run the script in Supabase SQL Editor or via `psql -f`.
 3. Expect:
    - `support_cases` row shows `status='closed'` and non-null resolution metadata.
    - one `case_resolved` row exists in `support_audit_log` for the same case.
