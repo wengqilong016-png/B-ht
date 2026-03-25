@@ -4,9 +4,21 @@ import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog, User } from '../types';
 import { flushQueue, reportQueueHealthToServer } from '../offlineQueue';
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
+import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRoleScope';
 
 export function useSupabaseMutations(isOnline: boolean, currentUser?: User | null) {
   const queryClient = useQueryClient();
+
+  // Compute role-aware query keys so optimistic updates land on the same cache
+  // entries that useSupabaseData reads from.
+  const transactionQueryKey = [
+    'transactions',
+    getTransactionQueryScope(currentUser?.role, currentUser?.driverId).cacheScope,
+  ] as const;
+  const settlementQueryKey = [
+    'dailySettlements',
+    getSettlementQueryScope(currentUser?.role, currentUser?.driverId).cacheScope,
+  ] as const;
 
   const syncOfflineData = useMutation({
     mutationFn: async () => {
@@ -86,11 +98,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
 
   const updateTransaction = useMutation({
     mutationFn: async ({ txId, updates }: { txId: string; updates: Partial<Transaction> }) => {
-      queryClient.setQueryData(['transactions'], (old: Transaction[] = []) =>
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
         old.map(t => t.id === txId ? { ...t, ...updates, isSynced: false } : t)
       );
       if (isOnline && supabase) {
-        const txs = queryClient.getQueryData<Transaction[]>(['transactions']) || [];
+        const txs = queryClient.getQueryData<Transaction[]>(transactionQueryKey) || [];
         const tx = txs.find(t => t.id === txId);
         if (tx) {
            await supabase.from('transactions').upsert({...tx, ...updates, isSynced: true});
@@ -104,7 +116,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
 
   const saveSettlement = useMutation({
     mutationFn: async (settlement: DailySettlement) => {
-      queryClient.setQueryData(['dailySettlements'], (old: DailySettlement[] = []) => {
+      queryClient.setQueryData(settlementQueryKey, (old: DailySettlement[] = []) => {
         const exists = old.find(s => s.id === settlement.id);
         if (exists) return old.map(s => s.id === settlement.id ? { ...settlement, isSynced: false } : s);
         return [{ ...settlement, isSynced: false }, ...old];
