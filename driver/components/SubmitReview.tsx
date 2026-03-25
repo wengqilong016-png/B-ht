@@ -1,12 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Send, Loader2, CheckCircle2, ArrowRight, AlertTriangle, Satellite, RotateCcw } from 'lucide-react';
 import WizardStepBar from './WizardStepBar';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { extractGpsFromExif, estimateLocationFromContext } from '../../offlineQueue';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
-import { orchestrateCollectionSubmission } from '../../services/collectionSubmissionOrchestrator';
-
-type SubmissionStatus = 'idle' | 'gps' | 'uploading';
+import { useCollectionSubmission } from '../../hooks/useCollectionSubmission';
 
 interface SubmitReviewProps {
   selectedLocation: Location;
@@ -50,7 +48,34 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   onSubmit, onBack, onReset, onUpdateGps, onUpdateGpsPermission,
 }) => {
   const t = TRANSLATIONS[lang];
-  const [status, setStatus] = useState<SubmissionStatus>('idle');
+  // GPS-acquisition local state (distinct from the submission state machine)
+  const [gpsResolving, setGpsResolving] = useState(false);
+  const { state: submissionState, submit: submitCollection, reset: resetSubmissionState } = useCollectionSubmission();
+
+  // Derived boolean used to disable the submit button and spinner gating
+  const isProcessing = gpsResolving || submissionState.status === 'submitting';
+
+  // Consume success / error transitions and run UI side effects
+  useEffect(() => {
+    if (submissionState.status === 'success') {
+      const { source, transaction } = submissionState;
+      onSubmit(transaction);
+      resetSubmissionState();
+      if (source === 'server') {
+        alert(lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
+      } else {
+        alert(
+          lang === 'zh'
+            ? '✅ 离线已保存！恢复网络后自动上传。'
+            : '✅ Saved offline! Will auto-upload when connected.',
+        );
+      }
+      onReset();
+    } else if (submissionState.status === 'error') {
+      resetSubmissionState();
+      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Submission failed, please retry');
+    }
+  }, [submissionState, lang, onSubmit, onReset, resetSubmissionState]);
 
   const requestGps = () => {
     if (!navigator.geolocation) return;
@@ -71,59 +96,37 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     resolvedGps: { lat: number; lng: number },
     gpsSourceType: 'live' | 'exif' | 'estimated' | 'none' = 'live',
   ) => {
-    setStatus('uploading');
-
-    try {
-      const result = await orchestrateCollectionSubmission({
-        selectedLocation,
-        currentDriver,
-        isOnline,
-        currentScore,
-        photoData,
-        aiReviewData,
-        expenses,
-        expenseType,
-        expenseCategory,
-        coinExchange,
-        tip,
-        draftTxId,
-        isOwnerRetaining,
-        ownerRetention,
-        calculations,
-        resolvedGps,
-        gpsSourceType,
-      });
-
-      onSubmit(result.transaction);
-      setStatus('idle');
-
-      if (result.source === 'server') {
-        alert(lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
-        onReset();
-        return;
-      }
-
-      const savedMsg = lang === 'zh'
-        ? '✅ 离线已保存！恢复网络后自动上传。'
-        : '✅ Saved offline! Will auto-upload when connected.';
-      alert(savedMsg);
-      onReset();
-    } catch (error) {
-      console.error('[SubmitReview] submission failed:', error);
-      setStatus('idle');
-      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Submission failed, please retry');
-    }
+    await submitCollection({
+      selectedLocation,
+      currentDriver,
+      isOnline,
+      currentScore,
+      photoData,
+      aiReviewData,
+      expenses,
+      expenseType,
+      expenseCategory,
+      coinExchange,
+      tip,
+      draftTxId,
+      isOwnerRetaining,
+      ownerRetention,
+      calculations,
+      resolvedGps,
+      gpsSourceType,
+    });
   };
 
   const handleSubmit = async () => {
-    if (!selectedLocation || status !== 'idle') return;
+    if (!selectedLocation || isProcessing) return;
     if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? '⚠️ Coin stock insufficient, continue?' : '⚠️ Coin stock insufficient, continue?')) return;
 
     if (gpsCoords) { processSubmission(gpsCoords, 'live'); return; }
 
     if (photoData) {
-      setStatus('gps');
+      setGpsResolving(true);
       const exifGps = await extractGpsFromExif(photoData);
+      setGpsResolving(false);
       if (exifGps) { processSubmission(exifGps, 'exif'); return; }
     }
 
@@ -131,13 +134,12 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     if (estimated) {
       const confirmEst = confirm(lang === 'zh' ? '⚠️ 无法获取GPS，将使用网点坐标估算位置。继续提交？' : '⚠️ No GPS available. Will use site coordinates as estimated location. Continue?');
       if (confirmEst) { processSubmission(estimated, 'estimated'); return; }
-      setStatus('idle');
       return;
     }
 
     const confirmNoGps = confirm(lang === 'zh' ? '❌ 无GPS信号。是否仍要保存记录？（将标注为无位置）' : '❌ No GPS signal. Save record without location? (marked as offline)');
     if (confirmNoGps) { processSubmission({ lat: 0, lng: 0 }, 'none'); }
-    else { setStatus('idle'); requestGps(); }
+    else { requestGps(); }
   };
 
   return (
@@ -238,11 +240,11 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={status !== 'idle' || !currentScore || !photoData}
+          disabled={isProcessing || !currentScore || !photoData}
           className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
-          {status !== 'idle' ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
-          {status === 'uploading' ? t.saving :
+          {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
+          {submissionState.status === 'submitting' ? t.saving :
            !gpsCoords && gpsPermission !== 'denied' ? t.acquiringGps :
            t.confirmSubmit}
         </button>
