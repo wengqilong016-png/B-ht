@@ -40,6 +40,12 @@ describe('production full business-flow baseline consistency', () => {
     expect(sql).toContain('lcr_requester_or_admin_select_full_v1');
   });
 
+  it('avoids the timestamptz::date index expression that breaks migration execution', () => {
+    expect(sql).not.toContain('(("timestamp")::date)');
+    expect(sql).toContain('idx_transactions_driver_timestamp_full_v1');
+    expect(doc).toContain('avoids a `timestamptz::date` expression index');
+  });
+
   it('keeps support and diagnostics out of layer 01', () => {
     expect(doc).toContain('does not create support / audit tables');
     expect(doc).toContain('does not create diagnostics / health tables');

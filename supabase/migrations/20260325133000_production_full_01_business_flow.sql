@@ -128,9 +128,6 @@ CREATE INDEX IF NOT EXISTS idx_transactions_driver_full_v1
 CREATE INDEX IF NOT EXISTS idx_transactions_driver_timestamp_full_v1
     ON public.transactions ("driverId", "timestamp" ASC);
 
-CREATE INDEX IF NOT EXISTS idx_transactions_driver_date_full_v1
-    ON public.transactions ("driverId", (("timestamp")::date));
-
 CREATE INDEX IF NOT EXISTS idx_daily_settlements_driver_date_full_v1
     ON public.daily_settlements ("driverId", "date");
 

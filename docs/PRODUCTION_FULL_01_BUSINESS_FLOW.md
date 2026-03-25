@@ -41,6 +41,18 @@ This file assumes the identity layer is already applied:
 - can create own `location_change_requests`
 - can read only own `location_change_requests`
 
+## Index safety note
+
+This layer intentionally avoids a `timestamptz::date` expression index on `transactions`.
+
+Reason:
+- PostgreSQL requires functions used in index expressions to be `IMMUTABLE`
+- casting `timestamptz` to `date` can fail that requirement depending on the expression path
+- this layer therefore keeps the safe indexes:
+  - `("timestamp" DESC)`
+  - `("driverId")`
+  - `("driverId", "timestamp")`
+
 ## What this file does NOT do
 
 - does not create support / audit tables
