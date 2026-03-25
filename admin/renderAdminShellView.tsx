@@ -1,7 +1,10 @@
 import React, { lazy } from 'react';
+import type { UseMutationResult } from '@tanstack/react-query';
+import type { SyncMutationHandle } from '../hooks/useSyncStatus';
+import type { AILog, DailySettlement, Driver, Location, Transaction, User } from '../types';
 import type { AdminView } from './adminShellConfig';
-import { isDashboardBackedAdminView, } from './adminShellViewState';
 import { mapAdminViewToDashboardTab } from './adminShellConfig';
+import { isDashboardBackedAdminView } from './adminShellViewState';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const CollectionForm = lazy(() => import('../components/CollectionForm'));
@@ -21,17 +24,17 @@ const CaseDetail = lazy(() => import('./components/CaseDetail'));
 
 interface AdminShellViewRendererProps {
   view: AdminView;
-  currentUser: any;
+  currentUser: User;
   lang: 'zh' | 'sw';
   activeDriverId?: string;
   isOnline: boolean;
-  locations: any[];
-  drivers: any[];
-  filteredLocations: any[];
-  filteredDrivers: any[];
-  filteredTransactions: any[];
-  filteredSettlements: any[];
-  aiLogs: any[];
+  locations: Location[];
+  drivers: Driver[];
+  filteredLocations: Location[];
+  filteredDrivers: Driver[];
+  filteredTransactions: Transaction[];
+  filteredSettlements: DailySettlement[];
+  aiLogs: AILog[];
   unsyncedCount: number;
   aiContextId: string;
   auditCaseFilter: string;
@@ -41,14 +44,14 @@ interface AdminShellViewRendererProps {
   onConsumeAuditCaseFilter: () => void;
   onSelectCaseId: (caseId: string) => void;
   onSetAuditCaseFilter: (caseId: string) => void;
-  syncOfflineData: any;
-  updateDrivers: any;
-  updateLocations: any;
-  deleteLocations: any;
-  deleteDrivers: any;
-  updateTransaction: any;
-  saveSettlement: any;
-  logAI: any;
+  syncOfflineData: SyncMutationHandle;
+  updateDrivers: UseMutationResult<unknown, unknown, Driver[], unknown>;
+  updateLocations: UseMutationResult<unknown, unknown, Location[], unknown>;
+  deleteLocations: UseMutationResult<unknown, unknown, string[], unknown>;
+  deleteDrivers: UseMutationResult<unknown, unknown, string[], unknown>;
+  updateTransaction: UseMutationResult<unknown, unknown, { txId: string; updates: Partial<Transaction> }, unknown>;
+  saveSettlement: UseMutationResult<unknown, unknown, DailySettlement, unknown>;
+  logAI: UseMutationResult<unknown, unknown, AILog, unknown>;
 }
 
 const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
@@ -91,12 +94,12 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
         dailySettlements={filteredSettlements}
         aiLogs={aiLogs}
         currentUser={currentUser}
-        onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
-        onUpdateLocations={(l) => updateLocations.mutate(l)}
+        onUpdateDrivers={(driversToSave) => updateDrivers.mutateAsync(driversToSave).then(() => {})}
+        onUpdateLocations={(locationsToSave) => updateLocations.mutate(locationsToSave)}
         onDeleteLocations={(ids) => deleteLocations.mutate(ids)}
-        onUpdateTransaction={(id, updates) => updateTransaction.mutate({ txId: id, updates })}
+        onUpdateTransaction={(txId, updates) => updateTransaction.mutate({ txId, updates })}
         onNewTransaction={() => {}}
-        onSaveSettlement={(s) => saveSettlement.mutate(s)}
+        onSaveSettlement={(settlement) => saveSettlement.mutate(settlement)}
         onSync={async () => syncOfflineData.mutate()}
         isSyncing={syncOfflineData.isPending}
         offlineCount={unsyncedCount}
@@ -116,8 +119,8 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
           locations={locations}
           transactions={filteredTransactions}
           dailySettlements={filteredSettlements}
-          onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
-          onUpdateLocations={(l) => updateLocations.mutate(l)}
+          onUpdateDrivers={(driversToSave) => updateDrivers.mutateAsync(driversToSave).then(() => {})}
+          onUpdateLocations={(locationsToSave) => updateLocations.mutate(locationsToSave)}
           onDeleteDrivers={(ids) => deleteDrivers.mutate(ids)}
         />
       );
@@ -133,15 +136,15 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
       return (
         <CollectionForm
           locations={filteredLocations}
-          currentDriver={drivers.find((d) => d.id === activeDriverId) || drivers[0]}
+          currentDriver={drivers.find((driver) => driver.id === activeDriverId) || drivers[0]}
           onSubmit={() => syncOfflineData.mutate()}
           lang={lang}
-          onLogAI={(l) => logAI.mutate(l)}
+          onLogAI={(log) => logAI.mutate(log)}
           isOnline={isOnline}
           allTransactions={filteredTransactions}
-          onRegisterMachine={async (loc) => {
-            const newLoc = { ...loc, isSynced: false, assignedDriverId: activeDriverId };
-            updateLocations.mutate([...locations, newLoc]);
+          onRegisterMachine={async (location) => {
+            const newLocation: Location = { ...location, isSynced: false, assignedDriverId: activeDriverId };
+            updateLocations.mutate([...locations, newLocation]);
           }}
         />
       );
@@ -163,8 +166,8 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
           drivers={filteredDrivers}
           locations={filteredLocations}
           currentUser={currentUser}
-          onUpdateLocations={(l) => updateLocations.mutate(l)}
-          onUpdateDrivers={(d) => updateDrivers.mutateAsync(d).then(() => {})}
+          onUpdateLocations={(locationsToSave) => updateLocations.mutate(locationsToSave)}
+          onUpdateDrivers={(driversToSave) => updateDrivers.mutateAsync(driversToSave).then(() => {})}
           lang={lang}
         />
       );
@@ -174,7 +177,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
           drivers={filteredDrivers}
           locations={filteredLocations}
           transactions={filteredTransactions}
-          onLogAI={(l) => logAI.mutate(l)}
+          onLogAI={(log) => logAI.mutate(log)}
           currentUser={currentUser}
           initialContextId={aiContextId}
           onClearContext={onClearAiContext}
