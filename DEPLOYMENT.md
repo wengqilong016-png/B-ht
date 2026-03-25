@@ -214,7 +214,7 @@ stages 1 through 11A.  Run each step in order.
 | 9   | `20260323040000_support_check_constraints.sql` | CHECK constraints on `status` and `event_type` |
 | 10  | `20260323100000_case_resolution.sql`           | Resolution columns on `support_cases`, extended event_type CHECK |
 | 10  | `20260324110000_support_resolution_consistency.sql` | `resolve_support_case_v1()` RPC, closed-resolution CHECK |
-| 11A | `20260325000000_stage11a_case_id_blank_check.sql` | CHECK constraint blocking blank/whitespace `case_id` |
+| 11A | `20260325000000_stage11a_case_id_blank_check.sql` | CHECK constraint blocking blank/whitespace `case_id` (`NOT VALID`) |
 
 Confirm each migration is applied:
 

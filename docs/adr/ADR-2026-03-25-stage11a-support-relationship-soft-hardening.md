@@ -30,10 +30,14 @@ Open a narrowly scoped Stage 11A focused on soft hardening only.
 
 **Database constraint** (`20260325000000_stage11a_case_id_blank_check.sql`):
 ```sql
-CHECK (case_id IS NULL OR length(btrim(case_id)) > 0)
+CHECK (case_id IS NULL OR length(btrim(case_id)) > 0) NOT VALID
 ```
+- Added as `NOT VALID` so the migration does not scan existing rows.  This
+  prevents deployment failure if historical data contains blank/whitespace-only
+  `case_id` values.  New inserts and updates are still enforced immediately.
 - `NULL` is still allowed (fire-and-forget inserts without a case reference).
-- Empty string `''` and whitespace-only `'   '` are rejected.
+- Empty string `''` and whitespace-only `'   '` are rejected for new writes.
+- A future stage (11B) may `VALIDATE` the constraint after baseline data cleanup.
 - No foreign key is introduced.
 
 **Test matrix** (added to `__tests__/supportCase.test.ts`):

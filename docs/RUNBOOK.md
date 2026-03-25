@@ -714,12 +714,18 @@ Migration `20260325000000_stage11a_case_id_blank_check.sql` adds:
 ```sql
 ALTER TABLE public.support_audit_log
     ADD CONSTRAINT support_audit_log_case_id_not_blank
-    CHECK (case_id IS NULL OR length(btrim(case_id)) > 0);
+    CHECK (case_id IS NULL OR length(btrim(case_id)) > 0)
+    NOT VALID;
 ```
 
+- The constraint is `NOT VALID`, meaning it does **not** scan existing rows
+  during deployment.  This prevents migration failure if historical data
+  already contains blank/whitespace-only `case_id` values.
+- New inserts and updates are enforced immediately.
 - `NULL` values are allowed (optional case reference).
-- Empty `''` and whitespace-only `'   '` values are rejected.
-- Existing rows with NULL `case_id` are unaffected.
+- Empty `''` and whitespace-only `'   '` values are rejected for new writes.
+- A future stage (11B) may `VALIDATE` the constraint after confirming no
+  violating rows remain via the baseline SQL check below.
 
 ### Baseline SQL check
 
