@@ -37,7 +37,7 @@ CHECK (case_id IS NULL OR length(btrim(case_id)) > 0) NOT VALID
   `case_id` values.  New inserts and updates are still enforced immediately.
 - `NULL` is still allowed (fire-and-forget inserts without a case reference).
 - Empty string `''` and whitespace-only `'   '` are rejected for new writes.
-- A future stage (11B) may `VALIDATE` the constraint after baseline data cleanup.
+- A future stage (11E) may `VALIDATE` the constraint after baseline data cleanup.
 - No foreign key is introduced.
 
 **Test matrix** (added to `__tests__/supportCase.test.ts`):

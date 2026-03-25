@@ -684,9 +684,10 @@ Stage 11A normalizes `caseId` inputs at the service boundary and adds a
 lightweight database constraint to prevent blank/whitespace-only values from
 being stored in `support_audit_log.case_id`.
 
-**No foreign key is introduced in this stage.**  A hard FK on
-`support_audit_log.case_id → support_cases.id` is deferred to Stage 11B,
-pending historical data compatibility verification.
+**No validated foreign key is introduced in this stage.**  The relationship
+hardening is split:
+- Stage 11D: add `support_audit_log.case_id → support_cases.id` as `NOT VALID`
+- Stage 11E: run `VALIDATE CONSTRAINT` after compatibility checks
 
 ### caseId normalization rules
 
@@ -724,7 +725,7 @@ ALTER TABLE public.support_audit_log
 - New inserts and updates are enforced immediately.
 - `NULL` values are allowed (optional case reference).
 - Empty `''` and whitespace-only `'   '` values are rejected for new writes.
-- A future stage (11B) may `VALIDATE` the constraint after confirming no
+- A future stage (11E) may `VALIDATE` this constraint after confirming no
   violating rows remain via the baseline SQL check below.
 
 ### Baseline SQL check
@@ -760,6 +761,46 @@ this to `null` before the DB is reached.  Check:
    automatically) rather than writing directly to the table.
 2. If using a custom insert path, pre-process with `normalizeCaseId()`.
 
+
+## Stage 11D — Support Relationship Hardening (Transitional FK)
+
+### Overview
+
+Stage 11D introduces a **transitional** foreign key for
+`public.support_audit_log(case_id)` referencing `public.support_cases(id)`.
+
+Migration `20260325010000_stage11d_support_audit_log_case_fk_not_valid.sql`:
+
+```sql
+ALTER TABLE public.support_audit_log
+    ADD CONSTRAINT support_audit_log_case_id_fkey
+    FOREIGN KEY (case_id)
+    REFERENCES public.support_cases(id)
+    NOT VALID;
+```
+
+- Constraint is added as `NOT VALID` (no full-table historical validation in this stage).
+- `case_id` remains optional (`NULL` still permitted).
+- New writes are checked by FK semantics; existing rows are not bulk-validated yet.
+- **Do not run `VALIDATE CONSTRAINT` in Stage 11D.**
+- Stage 11E is the planned validation stage after compatibility checks.
+
+### Verification SQL
+
+```sql
+SELECT conname, convalidated, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.support_audit_log'::regclass
+  AND conname = 'support_audit_log_case_id_fkey';
+```
+
+Expected result in Stage 11D:
+- one row found
+- `convalidated = false`
+- definition includes `FOREIGN KEY (case_id) REFERENCES public.support_cases(id)`
+
 ---
 
-*Last updated: 2026-03-25. Covers stages 1 through 11A.*
+---
+
+*Last updated: 2026-03-25. Covers stages 1 through 11D.*
