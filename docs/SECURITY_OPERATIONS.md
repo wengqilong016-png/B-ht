@@ -4,6 +4,38 @@ This document covers operational security steps that **cannot** be automated by 
 
 ---
 
+## 0. Dangerous bootstrap SQL usage (`BAHATI_COMPLETE_SETUP.sql`)
+
+### Treat it as bootstrap only
+
+`BAHATI_COMPLETE_SETUP.sql` is a **destructive bootstrap script**.
+
+It is appropriate only for:
+- a brand-new project
+- a disposable local rebuild
+- a throwaway test environment
+
+It is **not** appropriate for:
+- any Supabase project that already contains real data
+- incremental production updates
+- “small fixes” such as one new constraint, one new index, one new function, or one auth/profile repair
+
+### Why this is high risk
+
+The script:
+- drops and recreates tables
+- recreates helper functions / triggers / RLS state
+- seeds the exact accounts and password defaults currently defined inside the SQL file at that commit
+
+### Safe rule
+
+- **Existing environment:** apply only the targeted SQL file in `supabase/migrations/`
+- **Bootstrap / rebuild:** inspect `BAHATI_COMPLETE_SETUP.sql` before execution, confirm the seeded accounts/password defaults, back up data first, and rotate all default passwords immediately after first login
+
+> Do not assume README examples are the source of truth. The source of truth is the SQL file you are actually about to run.
+
+---
+
 ## 1. Credential Rotation (Supabase URL / Anon Key)
 
 ### When is this required?
@@ -11,10 +43,11 @@ This document covers operational security steps that **cannot** be automated by 
 - The Supabase `anon` key (or project URL) was ever hard-coded into a committed file **and that commit is in Git history**.
 - A former team member who should no longer have access has seen the credentials.
 - You suspect the key has been leaked.
+- Seeded bootstrap passwords or account lists were exposed to people who should not retain access.
 
 ### Steps
 
-1. Log in to [supabase.com](https://supabase.com) and open your project.
+1. Log in to supabase.com and open your project.
 2. Go to **Settings → API**.
 3. Click **Regenerate** next to the `anon` public key (and/or the `service_role` key if it was exposed).
 4. Update every deployment that uses the old key:
@@ -22,7 +55,8 @@ This document covers operational security steps that **cannot** be automated by 
    - **Firebase Hosting**: update the secret in your CI secrets and redeploy.
    - **GitHub Actions secrets**: Settings → Secrets and variables → Actions → update `VITE_SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL`.
    - **Local `.env.local`**: update all developer machines.
-5. Verify the old key no longer works by making a test API call with it.
+5. If bootstrap SQL seeded shared default passwords, rotate those passwords too in Supabase Auth.
+6. Verify the old key no longer works by making a test API call with it.
 
 > ℹ️ The Supabase `anon` key is designed to be safe in client-side code when Row-Level Security (RLS) is enabled on all tables. However, if the key has been publicly exposed and RLS was not enabled at the time, treat it as compromised.
 
@@ -39,7 +73,7 @@ The file `BAHATI_DATA_BACKUP.json` (≈ 15.8 MB, contains real operational data)
 
 ### Recommended tool: BFG Repo Cleaner
 
-[BFG Repo Cleaner](https://rtyley.github.io/bfg-repo-cleaner/) is faster and safer than `git filter-branch`.
+BFG Repo Cleaner is faster and safer than `git filter-branch`.
 
 ```bash
 # 1. Download BFG (requires Java)
@@ -58,9 +92,6 @@ git gc --prune=now --aggressive
 
 # 5. Force-push all refs (this rewrites public history — coordinate with all team members!)
 git push --force
-
-# 6. Ask GitHub Support to purge cached data (optional but recommended)
-#    https://support.github.com/contact
 ```
 
 > ⚠️ **Coordinate with all collaborators before force-pushing.** Everyone must re-clone or rebase their local branches after the force-push.
@@ -77,13 +108,13 @@ git push --force
 
 ## 3. Setting Environment Variables in Vercel
 
-1. Open [vercel.com](https://vercel.com) → select your project.
+1. Open Vercel and select your project.
 2. Go to **Settings → Environment Variables**.
 3. Add each variable below for the **Production**, **Preview**, and **Development** environments as appropriate:
 
 | Variable | Required | Description |
 |---|---|---|
-| `VITE_SUPABASE_URL` | Yes | Supabase project URL, e.g. `https://xxxx.supabase.co` |
+| `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
 | `VITE_GEMINI_API_KEY` | Yes | Google Gemini API key |
 | `VITE_STATUS_API_BASE` | Optional | Base URL for the status API |
@@ -108,7 +139,7 @@ All `VITE_*` variables are injected at build time through the GitHub Actions wor
    - `VITE_GEMINI_API_KEY`
    - `VITE_STATUS_API_BASE` (if used)
    - `VITE_INTERNAL_API_KEY` (if used)
-   - `FIREBASE_SERVICE_ACCOUNT` (Firebase hosting deploy key — JSON downloaded from Firebase console)
+   - `FIREBASE_SERVICE_ACCOUNT`
    - `FIREBASE_PROJECT_ID`
 
 3. The workflow reads these secrets automatically via `${{ secrets.VAR_NAME }}`.
@@ -139,4 +170,4 @@ git grep -i 'service_role' -- '*.ts' '*.tsx' '*.js' '*.cjs'
 git grep -E '[a-zA-Z0-9]{40,}' -- 'supabaseClient.ts' 'get_credentials.cjs'
 ```
 
-If any secrets appear in tracked files, rotate them immediately (see Section 1) and consider using a tool like [truffleHog](https://github.com/trufflesecurity/trufflehog) or [gitleaks](https://github.com/gitleaks/gitleaks) for a full scan.
+If any secrets appear in tracked files, rotate them immediately (see Section 1) and consider using a tool like truffleHog or gitleaks for a full scan.

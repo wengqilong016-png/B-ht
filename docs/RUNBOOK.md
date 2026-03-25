@@ -1,7 +1,8 @@
 # Bahati Jackpots — Operator & Support Runbook
 
-> Scope: stages 1 through 10.
+> Scope: stages 1 through 15.
 > Audience: system operators, on-call support engineers.
+> Note: operator procedures currently cover stages 1 through 13; stages 14 and 15 were repository-structure and query-scope changes with no new operator runbook steps.
 
 ---
 
@@ -498,7 +499,7 @@ import { recordAuditEvent } from '../services/supportCaseService';
 
 // fire-and-forget — never throws
 await recordAuditEvent(supabase, {
-  caseId:    'CASE-2026-001',          // optional free-form reference
+  caseId:    'CASE-2026-001',
   eventType: 'manual_replay_attempted',
   actorId:   currentUser.id,
   payload:   { txId: 'tx-abc', driverId: 'drv-1' },
@@ -519,17 +520,14 @@ triggerJSONDownload(enriched, filename);
 ```typescript
 import { createSupportCase, fetchSupportCases, resolveSupportCase } from '../services/supportCaseService';
 
-// Create
 const supportCase = await createSupportCase(supabase, {
   id: 'CASE-2026-001',
   title: 'Dead-letter investigation for device X',
   createdBy: currentUser.id,
 });
 
-// List (optionally filter by status)
 const cases = await fetchSupportCases(supabase, { status: 'open' });
 
-// Resolve (with metadata — preferred over direct close)
 await resolveSupportCase(supabase, {
   caseId: 'CASE-2026-001',
   resolutionNotes: 'Root cause was a transient network timeout; replayed successfully.',
@@ -834,4 +832,4 @@ Expected: one row returned.
 
 ---
 
-*Last updated: 2026-03-25. Covers stages 1 through 13.*
+*Last updated: 2026-03-25. Covers stages 1 through 15; operator procedures through stage 13.*
