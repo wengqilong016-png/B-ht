@@ -64,10 +64,10 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
 
   switch (view) {
     case 'collect':
-      return currentDriver ? (
+      return (
         <DriverCollectionFlow
           locations={filteredLocations}
-          currentDriver={currentDriver}
+          currentDriver={currentDriver!}
           onSubmit={() => syncOfflineData.mutate()}
           lang={lang}
           onLogAI={(log) => logAI.mutate(log)}
@@ -78,7 +78,7 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
             updateLocations.mutate([...locations, newLocation]);
           }}
         />
-      ) : null;
+      );
     case 'settlement':
       return (
         <Dashboard
