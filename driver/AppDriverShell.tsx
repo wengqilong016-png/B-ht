@@ -1,15 +1,17 @@
 import React, { Suspense, lazy, useState } from 'react';
 import {
-  LogOut, Globe, Loader2,
+  LogOut, Globe,
   Crown, Settings
 } from 'lucide-react';
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
+import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 import { DRIVER_NAV_ITEMS, type DriverView } from './driverShellConfig';
+import { resolveCurrentDriver } from './driverShellViewState';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
@@ -19,13 +21,6 @@ const AccountSettings = lazy(() => import('../components/AccountSettings'));
 const PwaInstallPrompt = lazy(() => import('../components/PwaInstallPrompt'));
 const LocationChangeRequestForm = lazy(() => import('../driver/components/LocationChangeRequestForm'));
 const DriverStatusPanel = lazy(() => import('../driver/components/DriverStatusPanel'));
-
-const LoadingFallback = () => (
-  <div className="flex-1 flex flex-col items-center justify-center p-12">
-    <Loader2 size={32} className="text-indigo-600 animate-spin mb-4" />
-    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Module...</p>
-  </div>
-);
 
 const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -44,6 +39,8 @@ const AppDriverShell: React.FC = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
+  const activeDriver = drivers.find(d => d.id === activeDriverId);
+  const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
@@ -90,11 +87,11 @@ const AppDriverShell: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#f3f5f8]">
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-            <Suspense fallback={<LoadingFallback />}>
+            <Suspense fallback={<ShellLoadingFallback />}>
               {view === 'collect' && (
                 <DriverCollectionFlow
                   locations={filteredLocations}
-                  currentDriver={drivers.find(d => d.id === activeDriverId) || drivers[0]}
+                  currentDriver={currentDriver}
                   onSubmit={() => syncOfflineData.mutate()}
                   lang={lang}
                   onLogAI={(l) => logAI.mutate(l)}
@@ -145,7 +142,7 @@ const AppDriverShell: React.FC = () => {
               )}
               {view === 'status' && (
                 <DriverStatusPanel
-                  driver={drivers.find(d => d.id === activeDriverId)}
+                  driver={activeDriver}
                   locations={locations}
                   transactions={filteredTransactions}
                   lang={lang}
