@@ -4,7 +4,7 @@ import { supabase, checkDbHealth } from '../supabaseClient';
 import { localDB } from '../services/localDB';
 import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
 import { isAuthDisabled } from '../utils/authMode';
-import { getSettlementQueryScope, getTransactionQueryScope } from './supabaseRoleScope';
+import { getSettlementQueryScope, getTransactionQueryScope, SupabaseDataUserRole } from './supabaseRoleScope';
 
 // Helper to sanitize drivers
 const sanitizeDrivers = (driverList: any[]): Driver[] => {
@@ -16,6 +16,23 @@ const sanitizeDrivers = (driverList: any[]): Driver[] => {
 };
 
 /**
+ * One-time migration helper: reads from the scoped localDB key, falling back to
+ * the legacy unscoped key (filtered by driverId when applicable) so users don't
+ * see empty lists after upgrading to the scoped storage-key scheme.
+ */
+async function readWithLegacyFallback<T extends { driverId?: string }>(
+  scopedKey: string,
+  legacyKey: string,
+  driverIdFilter?: string,
+): Promise<T[]> {
+  const scoped = await localDB.get<T[]>(scopedKey);
+  if (scoped) return scoped;
+  const legacy = await localDB.get<T[]>(legacyKey);
+  if (!legacy) return [];
+  return driverIdFilter ? legacy.filter(item => item.driverId === driverIdFilter) : legacy;
+}
+
+/**
  * Central data-fetching hook backed by React Query + Supabase.
  *
  * Pass `userRole` so the hook can skip admin-only data (AI logs) for
@@ -24,7 +41,7 @@ const sanitizeDrivers = (driverList: any[]): Driver[] => {
  * falls back to the fully-deferred chain, which is the existing behaviour.
  */
 export function useSupabaseData(
-  userRole?: 'admin' | 'driver' | null | undefined,
+  userRole?: SupabaseDataUserRole,
   activeDriverId?: string,
 ) {
   const queryClient = useQueryClient();
@@ -103,7 +120,11 @@ export function useSupabaseData(
           return mapped;
         }
       }
-      return (await localDB.get<Transaction[]>(transactionStorageKey)) || [];
+      return readWithLegacyFallback<Transaction>(
+        transactionStorageKey,
+        CONSTANTS.STORAGE_TRANSACTIONS_KEY,
+        transactionScope.driverIdFilter,
+      );
     },
     enabled: !!locations.length && transactionScope.enabled,
     staleTime: 1000 * 60 * 2,
@@ -131,7 +152,11 @@ export function useSupabaseData(
           return mapped;
         }
       }
-      return (await localDB.get<DailySettlement[]>(settlementStorageKey)) || [];
+      return readWithLegacyFallback<DailySettlement>(
+        settlementStorageKey,
+        CONSTANTS.STORAGE_SETTLEMENTS_KEY,
+        settlementScope.driverIdFilter,
+      );
     },
     enabled: !!drivers.length && settlementScope.enabled,
     staleTime: 1000 * 60 * 5,

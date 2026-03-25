@@ -48,4 +48,34 @@ describe('supabaseRoleScope', () => {
       enabled: false,
     });
   });
+
+  it('treats null role as admin scope for transactions', () => {
+    expect(getTransactionQueryScope(null)).toEqual({
+      cacheScope: 'admin',
+      enabled: true,
+      txLimit: TX_LIMIT_ADMIN,
+    });
+  });
+
+  it('treats undefined role as admin scope for transactions', () => {
+    expect(getTransactionQueryScope(undefined)).toEqual({
+      cacheScope: 'admin',
+      enabled: true,
+      txLimit: TX_LIMIT_ADMIN,
+    });
+  });
+
+  it('treats null role as admin scope for settlements', () => {
+    expect(getSettlementQueryScope(null)).toEqual({
+      cacheScope: 'admin',
+      enabled: true,
+    });
+  });
+
+  it('treats undefined role as admin scope for settlements', () => {
+    expect(getSettlementQueryScope(undefined)).toEqual({
+      cacheScope: 'admin',
+      enabled: true,
+    });
+  });
 });
