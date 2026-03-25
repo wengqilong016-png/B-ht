@@ -801,6 +801,47 @@ Expected result in Stage 11D:
 
 ---
 
+## Stage 11E — FK Validation Readiness (Preparation Only)
+
+### Overview
+
+Stage 11E is a **docs-only preparation stage**.  It produces no schema
+changes and does not execute `VALIDATE CONSTRAINT`.
+
+The full operator runbook is in
+[`docs/RUNBOOK.stage11e.md`](./RUNBOOK.stage11e.md).
+
+### Purpose
+
+Provide a go / no-go checklist that an operator can follow before
+Stage 11F runs `VALIDATE CONSTRAINT` on `support_audit_log_case_id_fkey`.
+
+### What the runbook covers
+
+1. Data integrity queries (blank, untrimmed, orphan `case_id` rows)
+2. Constraint state verification (`convalidated = false`)
+3. Operational safety checks (no bulk writes, no in-flight migrations)
+4. Explicit go / no-go decision table
+5. Stop conditions — when to halt before validation
+6. Lock and performance notes for `VALIDATE CONSTRAINT`
+7. Rollback guidance if Stage 11F fails
+
+### Quick go / no-go summary
+
+| # | Criterion | Must be |
+|---|-----------|---------|
+| 1 | Blank `case_id` count | 0 |
+| 2 | Untrimmed `case_id` count | 0 |
+| 3 | Orphan `case_id` count | 0 |
+| 4 | FK exists, `convalidated` | `false` |
+| 5 | Operational safety checks | all pass |
+
+**Proceed to Stage 11F only when every criterion passes.**
+
+### ADR
+
+See [`docs/adr/ADR-2026-03-25-stage11e-support-fk-validation-prep.md`](./adr/ADR-2026-03-25-stage11e-support-fk-validation-prep.md).
+
 ---
 
-*Last updated: 2026-03-25. Covers stages 1 through 11D.*
+*Last updated: 2026-03-25. Covers stages 1 through 11E (preparation).*
