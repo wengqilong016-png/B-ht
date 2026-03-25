@@ -17,7 +17,6 @@ import ForcePasswordChange from './components/ForcePasswordChange';
 import { isAuthDisabled } from './utils/authMode';
 import type { Location, Driver, Transaction, DailySettlement } from './types';
 
-// ─── Local backup shape ────────────────────────────────────────────
 interface LocalBackupData {
   locations: Location[];
   drivers: Driver[];
@@ -25,7 +24,6 @@ interface LocalBackupData {
   dailySettlements: DailySettlement[];
 }
 
-// ─── Error Boundary ────────────────────────────────────────────────
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
     super(props);
@@ -54,28 +52,23 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-// ─── Main App (auth + global init + role routing) ──────────────────
 const App: React.FC = () => {
   const { currentUser, userRole, lang, isInitializing, handleLogin, handleLogout, setLang } = useAuthBootstrap();
 
-  // Detect device performance tier and apply CSS degradation class to <html>.
   useDevicePerformance();
-
-  // ─── Supabase Realtime (enhancement over 20-second polling fallback) ─────
   useRealtimeSubscription();
 
   const activeDriverId = currentUser?.driverId ?? currentUser?.id;
 
-  // -- Use React Query Custom Hooks --
-  const { 
-    isOnline, 
-    locations: cloudLocations, 
-    drivers: cloudDrivers, 
-    transactions: cloudTransactions, 
-    dailySettlements: cloudDailySettlements, 
-    aiLogs, 
-    isLoading: isDataLoading 
-  } = useSupabaseData(userRole);
+  const {
+    isOnline,
+    locations: cloudLocations,
+    drivers: cloudDrivers,
+    transactions: cloudTransactions,
+    dailySettlements: cloudDailySettlements,
+    aiLogs,
+    isLoading: isDataLoading,
+  } = useSupabaseData(userRole, activeDriverId);
 
   const [localBackup, setLocalBackup] = useState<LocalBackupData | null>(null);
 
@@ -99,7 +92,7 @@ const App: React.FC = () => {
     deleteDrivers,
     updateTransaction,
     saveSettlement,
-    logAI
+    logAI,
   } = useSupabaseMutations(isOnline, currentUser);
 
   const unsyncedCount = useMemo(
@@ -110,10 +103,8 @@ const App: React.FC = () => {
     [transactions, dailySettlements, aiLogs]
   );
 
-  // ─── Offline sync + GPS heartbeat ────────────────────────────────
   useOfflineSyncLoop({ isOnline, unsyncedCount, currentUser, activeDriverId, syncOfflineData });
 
-  // ─── Derived data ────────────────────────────────────────────────
   const filteredData = useMemo(() => ({
     locations: !currentUser || currentUser.role === 'admin'
       ? locations
@@ -129,7 +120,6 @@ const App: React.FC = () => {
       : drivers.filter(d => d.id === activeDriverId),
   }), [activeDriverId, currentUser, locations, transactions, dailySettlements, drivers]);
 
-  // ─── useMemo hooks must always run before any early returns ──────
   const authValue = useMemo(
     () => ({ currentUser, userRole: currentUser?.role ?? 'driver', lang, setLang, handleLogout, activeDriverId }),
     [currentUser, lang, setLang, handleLogout, activeDriverId]
@@ -153,7 +143,6 @@ const App: React.FC = () => {
     [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
   );
 
-  // ─── Loading / Login screens ─────────────────────────────────────
   if (isInitializing || (isDataLoading && !currentUser)) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f3f5f8]">
@@ -170,7 +159,6 @@ const App: React.FC = () => {
     return <Login onLogin={handleLogin} lang={lang} onSetLang={setLang} />;
   }
 
-  // ─── Force password change gate ──────────────────────────────────
   if (currentUser.mustChangePassword) {
     return (
       <ForcePasswordChange
@@ -179,8 +167,6 @@ const App: React.FC = () => {
       />
     );
   }
-
-  // ─── Role routing via AppRouterShell ─────────────────────────────
 
   return (
     <NotificationProvider>
