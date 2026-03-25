@@ -1,11 +1,12 @@
 import React, { Suspense, lazy, useState, useMemo } from 'react';
 import {
-  LogOut, Globe, Loader2,
+  LogOut, Globe,
   Crown, Settings,
 } from 'lucide-react';
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
+import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
@@ -16,6 +17,7 @@ import {
   mapAdminViewToDashboardTab,
   type AdminView,
 } from './adminShellConfig';
+import { calculateAdminApprovalBadge, isDashboardBackedAdminView } from './adminShellViewState';
 
 const Dashboard = lazy(() => import('../components/Dashboard'));
 const CollectionForm = lazy(() => import('../components/CollectionForm'));
@@ -34,13 +36,6 @@ const HealthAlerts = lazy(() => import('./components/HealthAlerts'));
 const AuditTrail = lazy(() => import('./components/AuditTrail'));
 const SupportCases = lazy(() => import('./components/SupportCases'));
 const CaseDetail = lazy(() => import('./components/CaseDetail'));
-
-const LoadingFallback = () => (
-  <div className="flex-1 flex flex-col items-center justify-center p-12">
-    <Loader2 size={32} className="text-indigo-600 animate-spin mb-4" />
-    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Loading Module...</p>
-  </div>
-);
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
@@ -63,16 +58,11 @@ const AppAdminShell: React.FC = () => {
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
 
-  const pendingSettlementCount = dailySettlements.filter(s => s.status === 'pending').length;
-  const pendingExpenseCount = transactions.filter(t => t.expenses > 0 && t.expenseStatus === 'pending').length;
-  const anomalyCount = transactions.filter(t => t.isAnomaly === true && t.approvalStatus !== 'approved' && t.approvalStatus !== 'rejected').length;
-  const totalApprovalBadge = pendingSettlementCount + pendingExpenseCount + anomalyCount +
-    transactions.filter(t => t.type === 'reset_request' && t.approvalStatus === 'pending').length +
-    transactions.filter(t => t.type === 'payout_request' && t.approvalStatus === 'pending').length;
+  const totalApprovalBadge = calculateAdminApprovalBadge(transactions, dailySettlements);
 
   const adminNavItems = useMemo(() => buildAdminPrimaryNav(totalApprovalBadge), [totalApprovalBadge]);
 
-  const showDashboard = ['dashboard', 'settlement', 'map', 'sites', 'ai'].includes(view);
+  const showDashboard = isDashboardBackedAdminView(view);
 
   return (
     <div className="flex h-screen overflow-hidden bg-[#f3f5f8]">
@@ -203,7 +193,7 @@ const AppAdminShell: React.FC = () => {
 
         <main className="flex-1 overflow-y-auto overflow-x-hidden relative bg-[#f3f5f8]">
           <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-            <Suspense fallback={<LoadingFallback />}>
+            <Suspense fallback={<ShellLoadingFallback />}>
               {showDashboard && (
                 <Dashboard
                   transactions={filteredTransactions}
