@@ -164,6 +164,11 @@ supabase functions deploy create-driver --no-verify-jwt
 
 Repository-level changes are expected to pass these checks:
 
-1. `npm test`
+1. `npm run test:ci`
 2. `npm run typecheck`
 3. `npm run build`
+
+### Local vs CI test modes
+
+- `npm test` keeps the current local-friendly behavior and still allows zero tests during ad hoc development.
+- `npm run test:ci` is the strict mode used by repository CI and **must fail** if no tests are found.

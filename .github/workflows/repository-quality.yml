@@ -25,8 +25,8 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Test
-        run: npm test
+      - name: Test (strict CI mode)
+        run: npm run test:ci
 
       - name: Type check
         run: npm run typecheck

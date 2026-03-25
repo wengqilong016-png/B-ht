@@ -25,9 +25,10 @@ describe('README setup consistency', () => {
     expect(readme).not.toContain('Driver 4');
   });
 
-  it('documents repository quality gates including tests', () => {
-    expect(readme).toContain('`npm test`');
+  it('documents repository quality gates including strict CI test mode', () => {
+    expect(readme).toContain('`npm run test:ci`');
     expect(readme).toContain('`npm run typecheck`');
     expect(readme).toContain('`npm run build`');
+    expect(readme).toContain('Local vs CI test modes');
   });
 });
