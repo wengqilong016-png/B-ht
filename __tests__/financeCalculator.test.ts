@@ -27,17 +27,17 @@ import {
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
-function makeLocation(overrides: Partial<{ lastScore: number; commissionRate: number }> = {}) {
+function makeLocation(overrides: Partial<{ lastScore: number; commissionRate: number; machineId: string; area: string; initialStartupDebt: number; remainingStartupDebt: number }> = {}) {
   return {
     id: 'loc-001',
     name: 'Test Site',
     coords: { lat: -6.79, lng: 39.21 },
     lastScore: overrides.lastScore ?? 1000,
     commissionRate: overrides.commissionRate ?? 0.15,
-    machineId: 'M-001',
-    area: 'Test Area',
-    initialStartupDebt: 0,
-    remainingStartupDebt: 0,
+    machineId: overrides.machineId ?? 'M-001',
+    area: overrides.area ?? 'Test Area',
+    initialStartupDebt: overrides.initialStartupDebt ?? 0,
+    remainingStartupDebt: overrides.remainingStartupDebt ?? 0,
     initialFloat: 0,
     assignedDriverId: null,
     status: 'active' as const,

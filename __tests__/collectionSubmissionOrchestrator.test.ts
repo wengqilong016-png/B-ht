@@ -1,5 +1,9 @@
 import { describe, it, expect, jest } from '@jest/globals';
 import type { Driver, Location, Transaction } from '../types';
+
+// Mock supabaseClient so import.meta.env is not evaluated in the Jest/Node environment
+jest.mock('../supabaseClient', () => ({ supabase: null }));
+
 import {
   buildCollectionSubmissionInput,
   orchestrateCollectionSubmission,

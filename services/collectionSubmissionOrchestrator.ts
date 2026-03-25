@@ -123,7 +123,9 @@ export async function orchestrateCollectionSubmission(
 
     deps.logger.warn(
       '[collectionSubmissionOrchestrator] submit_collection_v2 failed, falling back to local path:',
-      result.error,
+      // Cast to narrow the union: TypeScript's control flow narrowing is not
+      // reliably applied to discriminated unions in this project's tsconfig.
+      (result as { success: false; error: string }).error,
     );
 
     const offlineTransaction = deps.createCollectionTransaction(
@@ -162,7 +164,9 @@ export async function orchestrateCollectionSubmission(
     return {
       source: 'offline',
       transaction: offlineTransaction,
-      fallbackReason: result.error,
+      // Cast to narrow the union: TypeScript's control flow narrowing is not
+      // reliably applied to discriminated unions in this project's tsconfig.
+      fallbackReason: (result as { success: false; error: string }).error,
     };
   }
 

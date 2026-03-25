@@ -87,7 +87,7 @@ export interface Transaction {
 
   // New Fields for Expense Approval
   expenseType?: 'public' | 'private'; // Public = Company Cost, Private = Driver Loan
-  expenseCategory?: 'fuel' | 'repair' | 'fine' | 'allowance' | 'salary_advance' | 'other';
+  expenseCategory?: 'fuel' | 'repair' | 'fine' | 'allowance' | 'salary_advance' | 'other' | 'transport';
   expenseStatus?: 'pending' | 'approved' | 'rejected';
   expenseDescription?: string;
 

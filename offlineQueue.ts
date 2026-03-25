@@ -325,8 +325,11 @@ export async function flushQueue(
           flushed++;
           options.onProgress?.(flushed, pending.length);
         } else {
-          const category = classifyError(result.error);
-          await recordRetryFailure(tx.id, result.error, category);
+          // Cast to narrow the union: TypeScript's control flow narrowing is not
+          // reliably applied to discriminated unions in this project's tsconfig.
+          const failResult = result as { success: false; error: string };
+          const category = classifyError(failResult.error);
+          await recordRetryFailure(tx.id, failResult.error, category);
         }
         continue;
       }
