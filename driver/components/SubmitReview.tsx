@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
 import { Send, Loader2, CheckCircle2, ArrowRight, AlertTriangle, Satellite, RotateCcw } from 'lucide-react';
 import WizardStepBar from './WizardStepBar';
-import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS } from '../../types';
-import { enqueueTransaction, extractGpsFromExif, estimateLocationFromContext, getPendingTransactions } from '../../offlineQueue';
+import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
+import { extractGpsFromExif, estimateLocationFromContext } from '../../offlineQueue';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
-import { createCollectionTransaction } from '../../utils/transactionBuilder';
-import { submitCollectionV2 } from '../../services/collectionSubmissionService';
-import type { CollectionSubmissionInput } from '../../services/collectionSubmissionService';
+import { orchestrateCollectionSubmission } from '../../services/collectionSubmissionOrchestrator';
 
 type SubmissionStatus = 'idle' | 'gps' | 'uploading';
 
@@ -69,122 +67,57 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     );
   };
 
-  const processSubmission = async (resolvedGps: {lat: number, lng: number}, gpsSourceType: 'live' | 'exif' | 'estimated' | 'none' = 'live') => {
+  const processSubmission = async (
+    resolvedGps: { lat: number; lng: number },
+    gpsSourceType: 'live' | 'exif' | 'estimated' | 'none' = 'live',
+  ) => {
     setStatus('uploading');
-    const expenseValue = parseInt(expenses) || 0;
-    const userScore = parseInt(currentScore) || (selectedLocation?.lastScore || 0);
-    const recognizedScore = aiReviewData?.score ? parseInt(aiReviewData.score) : undefined;
-    const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
-    const reportedStatus = (aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as 'active' | 'maintenance' | 'broken';
 
-    const notes = [
-      aiReviewData?.notes,
-      parseInt(tip) > 0 ? `[Tip: TZS ${parseInt(tip).toLocaleString()}]` : null,
-      gpsSourceType !== 'live' ? `[GPS: ${gpsSourceType}]` : null
-    ].filter(Boolean).join(' ') || null;
+    try {
+      const result = await orchestrateCollectionSubmission({
+        selectedLocation,
+        currentDriver,
+        isOnline,
+        currentScore,
+        photoData,
+        aiReviewData,
+        expenses,
+        expenseType,
+        expenseCategory,
+        coinExchange,
+        tip,
+        draftTxId,
+        isOwnerRetaining,
+        ownerRetention,
+        calculations,
+        resolvedGps,
+        gpsSourceType,
+      });
 
-    // ── Single source of truth for raw collection inputs ─────────────────
-    // Both the online write path and offline replay path use this same shape,
-    // so the server always receives consistent raw inputs regardless of how
-    // the submission reached it (direct or via queue replay).
-    const rawInput: CollectionSubmissionInput = {
-      txId:             draftTxId,
-      locationId:       selectedLocation!.id,
-      driverId:         currentDriver.id,
-      currentScore:     userScore,
-      expenses:         expenseValue,
-      tip:              parseInt(tip) || 0,
-      isOwnerRetaining,
-      // Pass the explicit override if the driver entered one; null means
-      // "let the server fall back to commission rate as retention".
-      // Use an explicit NaN check so that an entry of "0" is forwarded as 0
-      // rather than being coerced to null by the `|| null` idiom.
-      ownerRetention:   isOwnerRetaining && ownerRetention !== ''
-                          ? (v => isNaN(v) ? null : v)(parseInt(ownerRetention, 10))
-                          : null,
-      coinExchange:     parseInt(coinExchange) || 0,
-      gps:              resolvedGps.lat === 0 && resolvedGps.lng === 0 ? null : resolvedGps,
-      photoUrl:         photoData || null,
-      aiScore:          recognizedScore ?? null,
-      anomalyFlag:      isAnomaly,
-      notes,
-      expenseType:      expenseValue > 0 ? expenseType : null,
-      expenseCategory:  expenseValue > 0 ? expenseCategory : null,
-      reportedStatus,
-    };
+      onSubmit(result.transaction);
+      setStatus('idle');
 
-    let tx: Transaction;
-
-    // ── Server-authoritative write path (online) ─────────────────────────
-    // When online, delegate finance computation and persistence to the server.
-    // The server recomputes all finance fields from raw inputs and returns the
-    // normalized transaction row. The frontend no longer acts as the authority
-    // for revenue / commission / netPayable on the write path.
-    if (isOnline) {
-      const result = await submitCollectionV2(rawInput);
-
-      if (result.success) {
-        // Server returned the normalized, persisted transaction.
-        tx = result.transaction;
-        onSubmit(tx);
-        setStatus('idle');
+      if (result.source === 'server') {
         alert(lang === 'zh' ? '✅ 采集记录已保存' : '✅ Collection report saved');
         onReset();
         return;
       }
 
-      // Server call failed while online — fall through to local path with a
-      // warning so the driver's work is never lost.
-      console.warn('[SubmitReview] submit_collection_v2 failed, falling back to local path:', result.error);
+      const savedMsg = lang === 'zh'
+        ? '✅ 离线已保存！恢复网络后自动上传。'
+        : '✅ Saved offline! Will auto-upload when connected.';
+      alert(savedMsg);
+      onReset();
+    } catch (error) {
+      console.error('[SubmitReview] submission failed:', error);
+      setStatus('idle');
+      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Submission failed, please retry');
     }
-
-    // ── Offline / fallback write path ─────────────────────────────────────
-    // Build the transaction locally using client-computed finance values and
-    // enqueue it for sync once connectivity is restored.  rawInput is stored
-    // alongside so replay routes through submit_collection_v2 (not a blind
-    // upsert of locally-computed finance values).
-    tx = createCollectionTransaction(
-      selectedLocation!,
-      currentDriver,
-      resolvedGps,
-      userScore,
-      {
-        txId: draftTxId,
-        revenue: calculations.revenue,
-        commission: calculations.commission,
-        ownerRetention: calculations.finalRetention,
-        expenses: expenseValue,
-        coinExchange: parseInt(coinExchange) || 0,
-        netPayable: calculations.netPayable,
-        photoUrl: photoData || undefined,
-        dataUsageKB: 120,
-        notes: notes || undefined,
-        anomalyFlag: isAnomaly,
-      }
-    );
-
-    // Override collection-specific fields not handled by builder
-    tx.expenseType = expenseValue > 0 ? expenseType : undefined;
-    tx.expenseCategory = expenseValue > 0 ? expenseCategory : undefined;
-    tx.expenseStatus = expenseValue > 0 ? 'pending' : undefined;
-    tx.paymentStatus = 'paid';
-    tx.aiScore = recognizedScore;
-    tx.reportedStatus = reportedStatus;
-
-    try { await enqueueTransaction(tx, rawInput); } catch (e) { console.warn('[SubmitReview] IDB enqueue failed:', e); }
-    onSubmit(tx);
-    setStatus('idle');
-
-    const savedMsg = lang === 'zh'
-      ? '✅ 离线已保存！恢复网络后自动上传。'
-      : '✅ Saved offline! Will auto-upload when connected.';
-    alert(savedMsg);
-    onReset();
   };
 
   const handleSubmit = async () => {
     if (!selectedLocation || status !== 'idle') return;
-    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? "⚠️ Coin stock insufficient, continue?" : "⚠️ Coin stock insufficient, continue?")) return;
+    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? '⚠️ Coin stock insufficient, continue?' : '⚠️ Coin stock insufficient, continue?')) return;
 
     if (gpsCoords) { processSubmission(gpsCoords, 'live'); return; }
 
@@ -211,7 +144,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     <div className="max-w-md mx-auto py-4 px-4 pb-20 animate-in fade-in space-y-4">
       <WizardStepBar current="confirm" lang={lang} />
 
-      {/* Location sub-header */}
       <div className="flex items-center gap-3 mb-5">
         <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-subcard text-slate-500 hover:text-indigo-600 shadow-field transition-colors flex-shrink-0">
           <ArrowRight size={18} className="rotate-180" />
@@ -224,7 +156,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </div>
       </div>
 
-      {/* Net payable */}
       <div className="bg-slate-900 rounded-subcard p-5 text-white flex justify-between items-center">
         <div>
           <p className="text-[10px] font-black uppercase opacity-60">{t.net}</p>
@@ -233,7 +164,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         <p className="text-4xl font-black">TZS {calculations.netPayable.toLocaleString()}</p>
       </div>
 
-      {/* Summary breakdown */}
       <div className="bg-white rounded-subcard border border-slate-200 shadow-field divide-y divide-slate-100">
         {[
           { label: t.revenue, value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
@@ -250,7 +180,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         ))}
       </div>
 
-      {/* Photo thumbnail */}
       {photoData && (
         <div className="h-20 rounded-subcard overflow-hidden border border-slate-200 shadow-field relative">
           <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
@@ -260,7 +189,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </div>
       )}
 
-      {/* GPS status */}
       <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${
         gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' :
         gpsCoords ? 'bg-emerald-50 border-emerald-200' :
@@ -291,7 +219,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         )}
       </div>
 
-      {/* Coin stock warning */}
       {calculations.isCoinStockNegative && (
         <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-200 rounded-subcard">
           <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
@@ -301,7 +228,6 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </div>
       )}
 
-      {/* Navigation */}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onBack}
