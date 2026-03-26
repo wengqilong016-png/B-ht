@@ -21,6 +21,8 @@ const HealthAlerts = lazy(() => import('./components/HealthAlerts'));
 const AuditTrail = lazy(() => import('./components/AuditTrail'));
 const SupportCases = lazy(() => import('./components/SupportCases'));
 const CaseDetail = lazy(() => import('./components/CaseDetail'));
+const DriverLookup = lazy(() => import('./components/DriverLookup'));
+const DriverMachines = lazy(() => import('./components/DriverMachines'));
 
 interface AdminShellViewRendererProps {
   view: AdminView;
@@ -39,10 +41,12 @@ interface AdminShellViewRendererProps {
   aiContextId: string;
   auditCaseFilter: string;
   selectedCaseId: string;
+  selectedDriverId: string;
   onSetView: (view: AdminView) => void;
   onClearAiContext: () => void;
   onConsumeAuditCaseFilter: () => void;
   onSelectCaseId: (caseId: string) => void;
+  onSelectDriverId: (driverId: string) => void;
   onSetAuditCaseFilter: (caseId: string) => void;
   syncOfflineData: SyncMutationHandle;
   updateDrivers: UseMutationResult<unknown, unknown, Driver[], unknown>;
@@ -71,10 +75,12 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
   aiContextId,
   auditCaseFilter,
   selectedCaseId,
+  selectedDriverId,
   onSetView,
   onClearAiContext,
   onConsumeAuditCaseFilter,
   onSelectCaseId,
+  onSelectDriverId,
   onSetAuditCaseFilter,
   syncOfflineData,
   updateDrivers,
@@ -224,6 +230,55 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
           onNavigateToCases={() => onSetView('support-cases')}
         />
       );
+    case 'driver-lookup':
+      return (
+        <DriverLookup
+          drivers={filteredDrivers}
+          locations={locations}
+          onSelectDriver={(driverId) => {
+            onSelectDriverId(driverId);
+            onSetView('driver-machines');
+          }}
+        />
+      );
+    case 'driver-machines': {
+      if (!selectedDriverId) {
+        return null;
+      }
+
+      const selectedDriver = drivers.find((d) => d.id === selectedDriverId);
+
+      if (!selectedDriver) {
+        return (
+          <div className="p-4">
+            <p className="mb-4 text-red-600">未找到对应的司机，请返回重新选择。</p>
+            <button
+              type="button"
+              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              onClick={() => {
+                onSelectDriverId(null);
+                onSetView('driver-lookup');
+              }}
+            >
+              返回
+            </button>
+          </div>
+        );
+      }
+
+      return (
+        <DriverMachines
+          driver={selectedDriver}
+          locations={locations}
+          drivers={drivers}
+          onBack={() => {
+            onSelectDriverId(null);
+            onSetView('driver-lookup');
+          }}
+          onUpdateLocations={(locs) => updateLocations.mutate(locs)}
+        />
+      );
+    }
     default:
       return null;
   }
