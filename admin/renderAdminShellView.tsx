@@ -256,7 +256,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
               type="button"
               className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
               onClick={() => {
-                onSelectDriverId(null);
+                onSelectDriverId('');
                 onSetView('driver-lookup');
               }}
             >
@@ -272,7 +272,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
           locations={locations}
           drivers={drivers}
           onBack={() => {
-            onSelectDriverId(null);
+            onSelectDriverId('');
             onSetView('driver-lookup');
           }}
           onUpdateLocations={(locs) => updateLocations.mutate(locs)}
