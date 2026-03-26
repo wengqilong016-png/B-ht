@@ -60,13 +60,14 @@ const DriverMachines: React.FC<DriverMachinesProps> = ({
     if (!editingLoc) return;
     setIsSavingLoc(true);
     const rate = parseFloat(locEditForm.commissionRate) / 100;
+    const parsedLastScore = parseInt(locEditForm.lastScore, 10);
     const updated: Location = {
       ...editingLoc,
       name: locEditForm.name,
       area: locEditForm.area,
       machineId: locEditForm.machineId,
       commissionRate: isNaN(rate) ? editingLoc.commissionRate : rate,
-      lastScore: parseInt(locEditForm.lastScore) || editingLoc.lastScore,
+      lastScore: Number.isNaN(parsedLastScore) ? editingLoc.lastScore : parsedLastScore,
       status: locEditForm.status,
       ownerName: locEditForm.ownerName,
       shopOwnerPhone: locEditForm.shopOwnerPhone,

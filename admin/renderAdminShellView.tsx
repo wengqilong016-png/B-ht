@@ -242,28 +242,39 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
         />
       );
     case 'driver-machines': {
-      const selectedDriver = selectedDriverId
-        ? drivers.find(d => d.id === selectedDriverId)
-        : undefined;
+      if (!selectedDriverId) {
+        return null;
+      }
+
+      const selectedDriver = drivers.find((d) => d.id === selectedDriverId);
+
       if (!selectedDriver) {
         return (
-          <div className="py-16 text-center text-slate-400 animate-in fade-in">
-            <p className="text-xs font-black uppercase mb-4">No driver selected or driver not found</p>
+          <div className="p-4">
+            <p className="mb-4 text-red-600">未找到对应的司机，请返回重新选择。</p>
             <button
-              onClick={() => onSetView('driver-lookup')}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-xl text-xs font-black uppercase hover:bg-indigo-700 transition-colors"
+              type="button"
+              className="rounded bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"
+              onClick={() => {
+                onSelectDriverId(null);
+                onSetView('driver-lookup');
+              }}
             >
-              Back to Driver List
+              返回
             </button>
           </div>
         );
       }
+
       return (
         <DriverMachines
           driver={selectedDriver}
           locations={locations}
           drivers={drivers}
-          onBack={() => onSetView('driver-lookup')}
+          onBack={() => {
+            onSelectDriverId(null);
+            onSetView('driver-lookup');
+          }}
           onUpdateLocations={(locs) => updateLocations.mutate(locs)}
         />
       );
