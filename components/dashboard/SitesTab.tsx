@@ -114,17 +114,19 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 {loc.machinePhotoUrl ? (
                   <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 400, 400)} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-slate-300">
-                    <Store size={36} />
+                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-300">
+                    <Store size={32} />
+                    <span className="text-[8px] font-black uppercase tracking-widest text-slate-300">No Photo</span>
                   </div>
                 )}
                 <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[8px] font-black uppercase backdrop-blur-sm ${loc.status === 'active' ? 'bg-emerald-500/80 text-white' : loc.status === 'maintenance' ? 'bg-amber-500/80 text-white' : 'bg-rose-500/80 text-white'}`}>{loc.status}</div>
               </div>
               <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <p className="text-sm font-black text-slate-900 leading-tight">{loc.name}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{loc.machineId} • {loc.area}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-black text-slate-900 leading-tight uppercase tracking-wide">{loc.machineId || '—'}</p>
+                    {loc.area && <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{loc.area}</p>}
+                    <p className="text-[9px] font-bold text-slate-500 mt-0.5 truncate">{loc.name}</p>
                     {loc.assignedDriverId && (
                       <p className="text-[9px] font-bold text-indigo-500 uppercase mt-0.5">
                         {driverMap.get(loc.assignedDriverId)?.name || loc.assignedDriverId}
