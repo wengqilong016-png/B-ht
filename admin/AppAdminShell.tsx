@@ -52,6 +52,7 @@ const AppAdminShell: React.FC = () => {
   const [aiContextId, setAiContextId] = useState<string>('');
   const [auditCaseFilter, setAuditCaseFilter] = useState<string>('');
   const [selectedCaseId, setSelectedCaseId] = useState<string>('');
+  const [selectedDriverId, setSelectedDriverId] = useState<string>('');
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
   const totalApprovalBadge = calculateAdminApprovalBadge(transactions, dailySettlements);
@@ -201,10 +202,12 @@ const AppAdminShell: React.FC = () => {
                 aiContextId={aiContextId}
                 auditCaseFilter={auditCaseFilter}
                 selectedCaseId={selectedCaseId}
+                selectedDriverId={selectedDriverId}
                 onSetView={setView}
                 onClearAiContext={() => setAiContextId('')}
                 onConsumeAuditCaseFilter={() => setAuditCaseFilter('')}
                 onSelectCaseId={setSelectedCaseId}
+                onSelectDriverId={setSelectedDriverId}
                 onSetAuditCaseFilter={setAuditCaseFilter}
                 syncOfflineData={syncOfflineData}
                 updateDrivers={updateDrivers}
