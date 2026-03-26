@@ -45,6 +45,7 @@ const DriverLookup: React.FC<DriverLookupProps> = ({ drivers, locations, onSelec
           placeholder="Search by name or phone..."
           value={search}
           onChange={e => setSearch(e.target.value)}
+          aria-label="Search drivers by name or phone"
           className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold"
         />
       </div>

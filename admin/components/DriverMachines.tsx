@@ -164,17 +164,17 @@ const DriverMachines: React.FC<DriverMachinesProps> = ({
 
       {/* Location Edit Modal — reuses the same pattern as SitesTab */}
       {editingLoc && (
-        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+        <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" role="dialog" aria-modal="true" aria-labelledby="edit-location-title">
           <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-600 rounded-xl text-white"><Store size={18} /></div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900 uppercase">Edit Location</h3>
+                  <h3 id="edit-location-title" className="text-base font-black text-slate-900 uppercase">Edit Location</h3>
                   <p className="text-[9px] font-bold text-slate-400 uppercase">{editingLoc.machineId}</p>
                 </div>
               </div>
-              <button onClick={() => setEditingLoc(null)} className="p-2 bg-white rounded-full text-slate-400 shadow-sm hover:text-rose-500 transition-colors"><X size={18} /></button>
+              <button onClick={() => setEditingLoc(null)} aria-label="Close dialog" className="p-2 bg-white rounded-full text-slate-400 shadow-sm hover:text-rose-500 transition-colors"><X size={18} /></button>
             </div>
 
             <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
