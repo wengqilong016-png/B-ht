@@ -10,6 +10,8 @@ import InputField from './InputField';
 export interface DriverFormState {
   name: string;
   username: string;
+  email: string;
+  password: string;
   phone: string;
   model: string;
   plate: string;
@@ -59,6 +61,27 @@ const DriverForm: React.FC<DriverFormProps> = ({
           <div>
             <InputField label="登录账号 USERNAME" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} />
           </div>
+
+          {/* Email + Password — new driver only */}
+          {!editingId && (
+            <div className="p-5 bg-amber-50/50 rounded-[28px] border border-amber-100 space-y-4">
+              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
+              <div>
+                <InputField label="邮箱 EMAIL *" value={form.email} icon={<ShieldCheck size={16} />} onChange={v => onChange({ email: v })} />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
+                <input
+                  type="password"
+                  value={form.password}
+                  onChange={e => onChange({ password: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold outline-none focus:border-amber-400"
+                  placeholder="Min 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Status toggle */}
           <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">

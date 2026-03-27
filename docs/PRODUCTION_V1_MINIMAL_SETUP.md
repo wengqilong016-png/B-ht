@@ -42,7 +42,7 @@ After running the SQL:
 
 1. Create your first admin user manually in Supabase Authentication.
 2. Copy that auth user's UUID.
-3. Insert a matching profile row:
+3. Insert a matching profile row with `role = 'admin'`:
 
 ```sql
 INSERT INTO public.profiles (auth_user_id, role, display_name, driver_id)

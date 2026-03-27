@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Driver, Location, Transaction, DailySettlement } from '../../types';
+import { supabase } from '../../supabaseClient';
 import { useDriverManagement } from './hooks/useDriverManagement';
 import DriverSalaryModal from './DriverSalaryModal';
 import DriverToolbar, { SortField } from './DriverToolbar';
@@ -20,7 +21,7 @@ interface DriverManagementProps {
 }
 
 const DEFAULT_FORM: DriverFormState = {
-  name: '', username: '', phone: '',
+  name: '', username: '', email: '', password: '', phone: '',
   model: '', plate: '', dailyFloatingCoins: '10000',
   initialDebt: '0', remainingDebt: '0', baseSalary: '300000', commissionRate: '5',
   status: 'active'
@@ -100,6 +101,8 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
     setForm({
       name: d.name || '',
       username: d.username || '',
+      email: '',
+      password: '',
       phone: d.phone || '',
       model: d.vehicleInfo?.model || '',
       plate: d.vehicleInfo?.plate || '',
@@ -122,64 +125,111 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
     );
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.username) {
       alert("请填写姓名和账号 (Name and ID are required)");
       return;
     }
 
     setIsSaving(true);
-    setTimeout(() => {
-      const parseNum = (str: string) => {
-        const cleanStr = str.replace(/,/g, '').trim();
-        const num = parseInt(cleanStr);
-        return isNaN(num) ? 0 : num;
-      };
 
-      const parsedBaseSalary = parseNum(form.baseSalary);
-      const parsedCommRate = parseFloat(form.commissionRate);
+    const parseNum = (str: string) => {
+      const cleanStr = str.replace(/,/g, '').trim();
+      const num = parseInt(cleanStr);
+      return isNaN(num) ? 0 : num;
+    };
 
-      const driverData = {
-        name: form.name,
-        username: form.username,
-        phone: form.phone,
-        dailyFloatingCoins: parseNum(form.dailyFloatingCoins),
-        initialDebt: parseNum(form.initialDebt),
-        vehicleInfo: { model: form.model, plate: form.plate },
-        baseSalary: parsedBaseSalary === 0 ? 300000 : parsedBaseSalary,
-        commissionRate: (isNaN(parsedCommRate) ? 5 : parsedCommRate) / 100,
-        status: form.status
-      };
+    const parsedBaseSalary = parseNum(form.baseSalary);
+    const parsedCommRate = parseFloat(form.commissionRate);
 
-      if (editingId) {
-        const remainingDebt = parseNum(form.remainingDebt);
-        onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData, remainingDebt } : d));
-        // Update location assignments if the handler is available
-        if (onUpdateLocations) {
-          const updatedLocations = locations.map(loc => {
-            if (pendingLocationIds.includes(loc.id)) {
-              return { ...loc, assignedDriverId: editingId };
-            }
-            if (loc.assignedDriverId === editingId) {
-              // Explicitly clear the assignment by omitting assignedDriverId
-              const { assignedDriverId: _removed, ...rest } = loc;
-              return rest as typeof loc;
-            }
-            return loc;
-          });
-          onUpdateLocations(updatedLocations);
+    const driverData = {
+      name: form.name,
+      username: form.username,
+      phone: form.phone,
+      dailyFloatingCoins: parseNum(form.dailyFloatingCoins),
+      initialDebt: parseNum(form.initialDebt),
+      vehicleInfo: { model: form.model, plate: form.plate },
+      baseSalary: parsedBaseSalary === 0 ? 300000 : parsedBaseSalary,
+      commissionRate: (isNaN(parsedCommRate) ? 5 : parsedCommRate) / 100,
+      status: form.status
+    };
+
+    if (editingId) {
+      // ── Edit existing driver ──────────────────────────────────────────
+      const remainingDebt = parseNum(form.remainingDebt);
+      onUpdateDrivers(drivers.map(d => d.id === editingId ? { ...d, ...driverData, remainingDebt } : d));
+      if (onUpdateLocations) {
+        const updatedLocations = locations.map(loc => {
+          if (pendingLocationIds.includes(loc.id)) {
+            return { ...loc, assignedDriverId: editingId };
+          }
+          if (loc.assignedDriverId === editingId) {
+            const { assignedDriverId: _removed, ...rest } = loc;
+            return rest as typeof loc;
+          }
+          return loc;
+        });
+        onUpdateLocations(updatedLocations);
+      }
+      resetForm();
+      setIsSaving(false);
+    } else {
+      // ── Create new driver via Edge Function ───────────────────────────
+      const email = form.email.trim();
+      const password = form.password;
+
+      if (!email || !password) {
+        alert("新建司机必须填写邮箱和初始密码\nEmail and password are required for new drivers");
+        setIsSaving(false);
+        return;
+      }
+      if (password.length < 8) {
+        alert("密码至少 8 位 / Password must be at least 8 characters");
+        setIsSaving(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase.functions.invoke('create-driver', {
+          body: {
+            email,
+            password,
+            driver_id: form.username,
+            display_name: form.name,
+            username: form.username,
+          },
+        });
+
+        if (error || !data?.success) {
+          const msg = data?.error ?? error?.message ?? 'Unknown error';
+          const code = data?.code ?? '';
+          if (code === 'EMAIL_CONFLICT') {
+            alert(`邮箱已被注册 / Email already registered: ${email}`);
+          } else if (code === 'DRIVER_ID_CONFLICT') {
+            alert(`司机账号已存在 / Driver ID already exists: ${form.username}`);
+          } else {
+            alert(`创建司机失败 / Failed to create driver: ${msg}`);
+          }
+          setIsSaving(false);
+          return;
         }
-      } else {
+
+        // Edge Function created Auth user + drivers row + profiles row.
+        // Merge the new driver into local state so the UI updates immediately.
         const newDriver: Driver = {
-          id: `D-${Date.now()}`,
+          id: data.driver_id as string,
           ...driverData,
           remainingDebt: driverData.initialDebt,
         };
         onUpdateDrivers([...drivers, newDriver]);
+        resetForm();
+      } catch (e: unknown) {
+        const msg = e instanceof Error ? e.message : String(e);
+        alert(`创建司机失败 / Failed to create driver: ${msg}`);
+      } finally {
+        setIsSaving(false);
       }
-      resetForm();
-      setIsSaving(false);
-    }, 600);
+    }
   };
 
   const handleDeleteDriver = (id: string) => {
