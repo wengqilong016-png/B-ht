@@ -10,7 +10,7 @@ The current repository can run, but it is not yet a clean long-term production b
 Current risks:
 - `BAHATI_COMPLETE_SETUP.sql` is a destructive all-in-one bootstrap script.
 - The legacy bootstrap script mixes table creation, helper functions, triggers, RLS, and seeded auth accounts in one file.
-- Production auth users must not continue to be created from committed SQL with shared default passwords.
+- production auth accounts must not continue to be seeded from committed SQL with shared default passwords.
 - Some RLS policies are still broader than the desired production posture.
 - Repository governance files and meta-tests have started to spread across the root.
 
