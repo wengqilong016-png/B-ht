@@ -9,11 +9,16 @@
 --    overflow deduplication can use a typed column rather than LIKE on message.
 -- 2. Re-define all three SECURITY DEFINER trigger functions with
 --    SET search_path = public, pg_temp  (prevents search-path hijacking).
--- 3. Fix on_machine_overflow: skip inserting a new overflow notification when
---    an unread (isRead = false) overflow notification already exists for the
---    same location (checked via "relatedLocationId"), preventing unbounded
---    notification fan-out.
+-- 3. Fix on_machine_overflow: concurrent-safe deduplication via a partial
+--    unique index on (type, "relatedLocationId") WHERE type='overflow' AND
+--    "isRead"=false, with INSERT … ON CONFLICT DO NOTHING.
 -- 4. Recreate all three triggers idempotently (DROP … IF EXISTS + CREATE).
+-- 5. Fix trigger_on_transaction_anomaly: fire only on isAnomaly false→true
+--    transition to prevent duplicate notifications on unrelated upserts.
+-- 6. Fix trigger_on_machine_overflow: fire only when lastScore crosses the
+--    9900 threshold (old < 9900 → new ≥ 9900) for performance.
+-- 7. REVOKE EXECUTE FROM PUBLIC on all three SECURITY DEFINER functions to
+--    prevent direct invocation by anon/authenticated roles.
 --
 -- This migration is safe to re-run (idempotent).
 
@@ -22,6 +27,11 @@
 
 ALTER TABLE public.notifications
     ADD COLUMN IF NOT EXISTS "relatedLocationId" UUID;
+
+-- Partial unique index for concurrent-safe overflow deduplication.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_notifications_overflow_dedup
+    ON public.notifications (type, "relatedLocationId")
+    WHERE type = 'overflow' AND "isRead" = false;
 
 -- ─── 1. Transaction anomaly notification ──────────────────────────────────────
 
@@ -48,14 +58,13 @@ DROP TRIGGER IF EXISTS trigger_on_transaction_anomaly ON public.transactions;
 CREATE TRIGGER trigger_on_transaction_anomaly
 AFTER INSERT OR UPDATE ON public.transactions
 FOR EACH ROW
-WHEN (NEW."isAnomaly" IS TRUE)
+WHEN (NEW."isAnomaly" IS TRUE AND OLD."isAnomaly" IS DISTINCT FROM TRUE)
 EXECUTE FUNCTION public.on_transaction_anomaly();
 
 -- ─── 2. Machine score overflow notification (with deduplication) ──────────────
--- Skips the INSERT when an unread overflow notification already exists for the
--- same location (checked via the typed "relatedLocationId" column).
--- This prevents repeated UPDATE events on a high-score machine from flooding
--- the notifications table.
+-- Uses INSERT … ON CONFLICT DO NOTHING together with the partial unique index
+-- idx_notifications_overflow_dedup to atomically prevent duplicate unread
+-- overflow notifications, even under concurrent UPDATE events.
 
 CREATE OR REPLACE FUNCTION public.on_machine_overflow()
 RETURNS TRIGGER
@@ -64,25 +73,14 @@ SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 BEGIN
-    -- Guard: skip if an unread overflow notification for this location exists.
-    IF EXISTS (
-        SELECT 1
-          FROM public.notifications
-         WHERE type               = 'overflow'
-           AND "isRead"           = false
-           AND "relatedLocationId" = NEW.id
-         LIMIT 1
-    ) THEN
-        RETURN NEW;
-    END IF;
-
     INSERT INTO public.notifications (type, title, message, "relatedLocationId")
     VALUES (
         'overflow',
         'Machine near score overflow',
         'Location "' || NEW.name || '" (id: ' || NEW.id::text || ') lastScore=' || NEW."lastScore"::text || ' is near overflow (≥9900).',
         NEW.id
-    );
+    )
+    ON CONFLICT DO NOTHING;
     RETURN NEW;
 END;
 $$;
@@ -91,7 +89,7 @@ DROP TRIGGER IF EXISTS trigger_on_machine_overflow ON public.locations;
 CREATE TRIGGER trigger_on_machine_overflow
 AFTER UPDATE OF "lastScore" ON public.locations
 FOR EACH ROW
-WHEN (NEW."lastScore" >= 9900)
+WHEN (NEW."lastScore" >= 9900 AND (OLD."lastScore" IS NULL OR OLD."lastScore" < 9900))
 EXECUTE FUNCTION public.on_machine_overflow();
 
 -- ─── 3. Reset-lock alert ──────────────────────────────────────────────────────
@@ -120,3 +118,11 @@ CREATE TRIGGER trigger_on_reset_locked
 AFTER UPDATE OF "resetLocked" ON public.locations
 FOR EACH ROW
 EXECUTE FUNCTION public.on_reset_locked();
+
+-- ─── 4. Revoke direct EXECUTE from PUBLIC on SECURITY DEFINER functions ───────
+-- Prevents anon/authenticated roles from calling these functions directly with
+-- definer-level privileges.  They remain callable only via the triggers above.
+
+REVOKE EXECUTE ON FUNCTION public.on_transaction_anomaly()  FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.on_machine_overflow()     FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.on_reset_locked()         FROM PUBLIC;
