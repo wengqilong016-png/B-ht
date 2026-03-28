@@ -11,6 +11,7 @@ import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
 import { AuthProvider, DataProvider, MutationProvider } from './contexts';
 import Login from './components/Login';
+import type { User } from './types';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -40,13 +41,31 @@ class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { has
   }
 }
 
-const App: React.FC = () => {
-  const { currentUser, userRole, lang, isInitializing, handleLogin, handleLogout, setLang } = useAuthBootstrap();
+// ─── AuthenticatedApp ─────────────────────────────────────────────────────────
+// All hooks that require an authenticated session (data loading, realtime,
+// offline sync) live here so they only run after the user has logged in.
+// This prevents unauthenticated WebSocket connections and redundant Supabase
+// queries while the auth state is being resolved.
 
-  useDevicePerformance();
+interface AuthenticatedAppProps {
+  currentUser: User;
+  userRole: 'admin' | 'driver' | null;
+  lang: 'zh' | 'sw';
+  setLang: (lang: 'zh' | 'sw') => void;
+  handleLogout: () => void;
+}
+
+const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
+  currentUser,
+  userRole,
+  lang,
+  setLang,
+  handleLogout,
+}) => {
+  // Start realtime subscriptions only now that a session exists.
   useRealtimeSubscription();
 
-  const activeDriverId = currentUser?.driverId ?? currentUser?.id;
+  const activeDriverId = currentUser.driverId ?? currentUser.id;
 
   const {
     isOnline,
@@ -55,7 +74,6 @@ const App: React.FC = () => {
     transactions: cloudTransactions,
     dailySettlements: cloudDailySettlements,
     aiLogs,
-    isLoading: isDataLoading,
   } = useSupabaseData(userRole, activeDriverId);
 
   const locations = cloudLocations;
@@ -85,22 +103,22 @@ const App: React.FC = () => {
   useOfflineSyncLoop({ isOnline, unsyncedCount, currentUser, activeDriverId, syncOfflineData });
 
   const filteredData = useMemo(() => ({
-    locations: !currentUser || currentUser.role === 'admin'
+    locations: currentUser.role === 'admin'
       ? locations
       : locations.filter(l => l.assignedDriverId === activeDriverId),
-    transactions: !currentUser || currentUser.role === 'admin'
+    transactions: currentUser.role === 'admin'
       ? transactions
       : transactions.filter(t => t.driverId === activeDriverId),
-    dailySettlements: !currentUser || currentUser.role === 'admin'
+    dailySettlements: currentUser.role === 'admin'
       ? dailySettlements
       : dailySettlements.filter(s => s.driverId === activeDriverId),
-    drivers: !currentUser || currentUser.role === 'admin'
+    drivers: currentUser.role === 'admin'
       ? drivers
       : drivers.filter(d => d.id === activeDriverId),
   }), [activeDriverId, currentUser, locations, transactions, dailySettlements, drivers]);
 
   const authValue = useMemo(
-    () => ({ currentUser, userRole: currentUser?.role ?? 'driver', lang, setLang, handleLogout, activeDriverId }),
+    () => ({ currentUser, userRole: currentUser.role ?? 'driver', lang, setLang, handleLogout, activeDriverId }),
     [currentUser, lang, setLang, handleLogout, activeDriverId]
   );
 
@@ -122,7 +140,27 @@ const App: React.FC = () => {
     [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
   );
 
-  if (isInitializing || (isDataLoading && !currentUser)) {
+  return (
+    <NotificationProvider>
+      <AuthProvider value={authValue}>
+        <DataProvider value={dataValue}>
+          <MutationProvider value={mutationValue}>
+            <AppRouterShell />
+          </MutationProvider>
+        </DataProvider>
+      </AuthProvider>
+    </NotificationProvider>
+  );
+};
+
+// ─── App ──────────────────────────────────────────────────────────────────────
+
+const App: React.FC = () => {
+  const { currentUser, userRole, lang, isInitializing, handleLogin, handleLogout, setLang } = useAuthBootstrap();
+
+  useDevicePerformance();
+
+  if (isInitializing) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#f3f5f8]">
         <Loader2 size={48} className="text-indigo-500 animate-spin mb-4" />
@@ -136,15 +174,13 @@ const App: React.FC = () => {
   }
 
   return (
-    <NotificationProvider>
-      <AuthProvider value={authValue}>
-        <DataProvider value={dataValue}>
-          <MutationProvider value={mutationValue}>
-            <AppRouterShell />
-          </MutationProvider>
-        </DataProvider>
-      </AuthProvider>
-    </NotificationProvider>
+    <AuthenticatedApp
+      currentUser={currentUser}
+      userRole={userRole}
+      lang={lang}
+      setLang={setLang}
+      handleLogout={handleLogout}
+    />
   );
 };
 
