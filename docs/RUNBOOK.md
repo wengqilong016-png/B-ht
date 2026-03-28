@@ -59,6 +59,29 @@ Supabase (PostgreSQL + Edge Functions)
 - Do **not** add additional table-level realtime subscriptions elsewhere unless
   this section and the central hook are updated together.
 
+#### Broadcast architecture (scalable, replaces `postgres_changes`)
+
+The hook uses **dedicated private broadcast channels** instead of `postgres_changes`:
+
+| Channel topic          | Table              |
+|------------------------|--------------------|
+| `db:transactions`      | transactions       |
+| `db:drivers`           | drivers            |
+| `db:daily_settlements` | daily_settlements  |
+
+Each channel uses `{ config: { private: true } }` and requires the auth token to
+be set via `supabase.realtime.setAuth()` before subscribing.
+
+Database triggers (`notify_table_changes`) call `realtime.broadcast_changes()` after
+every `INSERT`, `UPDATE`, or `DELETE` on each table, broadcasting to the matching
+`db:<table>` topic. The migration
+`supabase/migrations/20260328000000_realtime_broadcast_triggers.sql` must be applied
+to create the trigger function, the per-table triggers, and the RLS policy on
+`realtime.messages` that grants authenticated users SELECT access to these topics.
+
+> **Operator note:** If realtime updates stop working after a schema reset, re-apply
+> `20260328000000_realtime_broadcast_triggers.sql` to restore the triggers and RLS policy.
+
 ---
 
 ## 2. Daily Operations Checklist
