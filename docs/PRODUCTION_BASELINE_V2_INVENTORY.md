@@ -3,7 +3,6 @@
 This inventory is the Phase-2 working baseline for the productionization effort.
 
 It is based on the repository-visible SQL sources currently checked into `main`:
-- `BAHATI_COMPLETE_SETUP.sql`
 - `supabase/migrations/20240101000000_initial_schema.sql`
 - support-case and support-audit migrations through Stage 13
 
@@ -128,7 +127,6 @@ The V2 rewrite should focus first on:
 | Current file / area | Problem | Target location | Phase |
 |---|---|---|---|
 | Root governance tests | root is accumulating repo-governance tests | `tests/repo/` | 5 |
-| `BAHATI_COMPLETE_SETUP.sql` | legacy bootstrap still sits as high-visibility setup file | `supabase/bootstrap/legacy/` or equivalent legacy area | 5 |
 | Production planning docs | now correctly in docs, but not yet linked everywhere | `docs/` | 1/5 |
 | Database setup guidance | still split between legacy README guidance and new production direction | `docs/` + README cleanup | 1/5 |
 

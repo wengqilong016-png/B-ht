@@ -8,26 +8,7 @@ This contains everything you need to run your app locally.
 
 View your app in AI Studio: https://ai.studio/apps/drive/19ZXHne5Pl7SQ2J0RPJvTJi1lf01A0cU6
 
-## 🚀 Supabase 数据库配置（先区分“首次初始化”与“增量更新”）/ Supabase setup (bootstrap vs incremental)
-
----
-
-### 第 0 步 / Step 0 — 先判断你的场景 / Decide your scenario first
-
-**仅在以下场景运行 `BAHATI_COMPLETE_SETUP.sql`：**
-- 全新项目第一次初始化
-- 本地一次性重建
-- 可丢弃的测试环境
-
-**以下场景不要运行 `BAHATI_COMPLETE_SETUP.sql`：**
-- 已有真实数据的环境
-- 任何需要保留现有表和数据的 Supabase 项目
-- 只想做一次小改动、补一个约束、补一个索引、补一个函数的情况
-
-> ⚠️ `BAHATI_COMPLETE_SETUP.sql` 是 **destructive bootstrap script**：它会先 drop 再重建表，并按该 SQL 文件当前版本中定义的账号/默认密码进行 seed。  
-> ⚠️ For any existing database, **do not run `BAHATI_COMPLETE_SETUP.sql`** — apply only the targeted migration files instead.  
-> ⚠️ 对已有数据库做增量更新时，请只运行 `supabase/migrations/` 里的目标 migration。  
-> ⚠️ 在任何共享环境执行 bootstrap SQL 之前，先阅读 `docs/SECURITY_OPERATIONS.md`。
+## 🚀 Supabase 数据库配置 / Supabase setup
 
 ---
 
@@ -39,41 +20,30 @@ Open your Supabase Dashboard, select your project, click **SQL Editor** in the l
 
 ---
 
-### 第二步 / Step 2 — 仅在首次初始化时运行完整脚本 / Run the full script only for bootstrap
+### 第二步 / Step 2 — 运行 migrations / Apply migrations
 
-把 [`BAHATI_COMPLETE_SETUP.sql`](./BAHATI_COMPLETE_SETUP.sql) 的**全部内容**复制粘贴进去，点击 **Run**。
+所有数据库变更均通过 `supabase/migrations/` 中的增量文件管理。按文件名顺序在 SQL Editor 中依次运行各 migration 文件。
 
-Copy the **entire contents** of [`BAHATI_COMPLETE_SETUP.sql`](./BAHATI_COMPLETE_SETUP.sql), paste it into the editor, click **Run**.
+All database changes are managed through incremental files in `supabase/migrations/`. Apply each migration file in filename order via the SQL Editor.
 
-> ⚠️ **此脚本会先删除再重建所有表！如有数据请先备份。**  
-> ⚠️ **This script drops and recreates all tables. Back up any existing data first.**
->
-> ⚠️ **该脚本还会 seed 它内部当前定义的账号与默认密码。运行前必须先审查 SQL 内容。**  
-> ⚠️ **The script also seeds whatever accounts and password defaults are currently defined inside the SQL file. Review it before running.**
+> ⚠️ 对已有数据库做增量更新时，请只运行 `supabase/migrations/` 里新增的目标 migration 文件。  
+> ⚠️ For incremental updates to an existing database, apply only the new targeted migration files from `supabase/migrations/`.
 
 ---
 
 ### 第三步 / Step 3 — 创建或绑定账号 / Create or bind accounts
 
-如果你刚刚运行的是 bootstrap SQL，那么它会根据 **该次执行的 `BAHATI_COMPLETE_SETUP.sql` 内容** 创建/重置账号与 profiles 绑定关系。执行前先审查账号列表；执行后立即轮换默认密码。
-
-If you just ran the bootstrap SQL, it will create/reset accounts and profile bindings according to the **exact contents of `BAHATI_COMPLETE_SETUP.sql` at the time you run it**. Review the account list before execution, and rotate all default passwords immediately afterwards.
-
-如果你使用的是**已有数据库**，不要重跑完整 bootstrap。请改用下面两种方式之一：
-
-For an **existing database**, do not rerun the full bootstrap. Use one of these instead:
+通过以下方式创建用户账号：
 
 1. 通过 Supabase Dashboard → **Authentication → Users** 手动创建用户，再补齐 `public.profiles` / `public.drivers` 绑定。
 2. 使用 Edge Function `create-driver` 创建司机账号。
+3. 管理员账号在 Supabase Auth 中手动创建，然后在 `public.profiles` 中插入对应的 `role = 'admin'` 记录。
 
----
+To create accounts:
 
-### Seed account safety / 种子账号安全说明
-
-- 不要把 README 里的示例邮箱当作真实 source of truth。**真正的 source of truth 是你准备执行的 SQL 文件本身。**
-- 当前仓库快照中的 bootstrap SQL 可能包含环境相关账号；执行前必须人工确认。
-- 任何默认密码都只能用于一次性初始化；首次登录后必须立即修改。
-- 生产环境不要保留弱密码，也不要长期保留 seed 账号的默认凭证。
+1. Create users manually in Supabase Dashboard → **Authentication → Users**, then insert the matching `public.profiles` / `public.drivers` rows.
+2. Use the `create-driver` Edge Function to create driver accounts.
+3. Admin accounts are created manually in Supabase Auth, then a matching `role = 'admin'` row is inserted into `public.profiles`.
 
 ---
 
@@ -81,7 +51,7 @@ For an **existing database**, do not rerun the full bootstrap. Use one of these 
 
 **问题：登录报错 `Account exists but profile is not provisioned`**
 
-在 SQL Editor 中执行 `BAHATI_COMPLETE_SETUP.sql`，或者单独运行对应的 profiles 补齐 SQL。
+在 SQL Editor 中手动插入对应的 `public.profiles` 绑定记录。
 
 **问题：忘记密码 / Forgot password**
 
