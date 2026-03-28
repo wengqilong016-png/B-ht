@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Loader2 } from 'lucide-react';
 import { Analytics } from '@vercel/analytics/react';
 
@@ -15,14 +15,6 @@ import Login from './components/Login';
 import LocalDriverPicker from './components/LocalDriverPicker';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import { isAuthDisabled } from './utils/authMode';
-import type { Location, Driver, Transaction, DailySettlement } from './types';
-
-interface LocalBackupData {
-  locations: Location[];
-  drivers: Driver[];
-  transactions: Transaction[];
-  dailySettlements: DailySettlement[];
-}
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -70,19 +62,10 @@ const App: React.FC = () => {
     isLoading: isDataLoading,
   } = useSupabaseData(userRole, activeDriverId);
 
-  const [localBackup, setLocalBackup] = useState<LocalBackupData | null>(null);
-
-  useEffect(() => {
-    fetch('/api/backup-data')
-      .then(res => res.json())
-      .then(data => setLocalBackup(data))
-      .catch(() => console.warn('Local backup API not available'));
-  }, []);
-
-  const locations = useMemo(() => cloudLocations.length > 0 ? cloudLocations : (localBackup?.locations || []), [cloudLocations, localBackup]);
-  const drivers = useMemo(() => cloudDrivers.length > 0 ? cloudDrivers : (localBackup?.drivers || []), [cloudDrivers, localBackup]);
-  const transactions = useMemo(() => cloudTransactions.length > 0 ? cloudTransactions : (localBackup?.transactions || []), [cloudTransactions, localBackup]);
-  const dailySettlements = useMemo(() => cloudDailySettlements.length > 0 ? cloudDailySettlements : (localBackup?.dailySettlements || []), [cloudDailySettlements, localBackup]);
+  const locations = cloudLocations;
+  const drivers = cloudDrivers;
+  const transactions = cloudTransactions;
+  const dailySettlements = cloudDailySettlements;
 
   const {
     syncOfflineData,

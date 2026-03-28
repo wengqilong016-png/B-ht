@@ -63,7 +63,7 @@ export function useSupabaseData(
   const { data: isOnline = false } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
-    refetchInterval: 15000,
+    refetchInterval: 45000,
   });
 
   // 2. Core Data: Locations & Drivers - Critical for first paint
@@ -71,7 +71,7 @@ export function useSupabaseData(
     queryKey: ['locations'],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated) {
-        const { data, error } = await supabase.from('locations').select('id, name, machineId, lastScore, area, assignedDriverId, ownerName, shopOwnerPhone, initialStartupDebt, remainingStartupDebt, isNewOffice, coords, status, lastRevenueDate, commissionRate');
+        const { data, error } = await supabase.from('locations').select('id, name, machineId, lastScore, area, assignedDriverId, ownerName, shopOwnerPhone, initialStartupDebt, remainingStartupDebt, isNewOffice, coords, status, lastRevenueDate, commissionRate, ownerPhotoUrl, machinePhotoUrl, resetLocked, dividendBalance');
         if (!error && data) {
           await localDB.set(CONSTANTS.STORAGE_LOCATIONS_KEY, data);
           return data as Location[];
@@ -105,7 +105,7 @@ export function useSupabaseData(
       if (isOnline && supabase && isAuthenticated && transactionScope.enabled) {
         let query = supabase
           .from('transactions')
-          .select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount')
+          .select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount, photoUrl, anomalyFlag')
           .order('timestamp', { ascending: false })
           .limit(transactionScope.txLimit);
 
