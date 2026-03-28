@@ -128,12 +128,16 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
       });
   }, [assignedLocations, locationMetadata, searchQuery, selectedArea, locationFilter]);
 
-  const collectionOverview = useMemo(() => ({
-    totalMachines: assignedLocations.length,
-    pendingStops: locationCards.filter(item => item.isPending).length,
-    urgentMachines: locationCards.filter(item => item.isUrgent).length,
-    nearbySites: locationCards.filter(item => item.isNearby).length,
-  }), [assignedLocations.length, locationCards]);
+  const collectionOverview = useMemo(() => {
+    // Single pass instead of three separate filter() calls
+    let pendingStops = 0, urgentMachines = 0, nearbySites = 0;
+    for (const item of locationCards) {
+      if (item.isPending) pendingStops++;
+      if (item.isUrgent) urgentMachines++;
+      if (item.isNearby) nearbySites++;
+    }
+    return { totalMachines: assignedLocations.length, pendingStops, urgentMachines, nearbySites };
+  }, [assignedLocations.length, locationCards]);
 
   return (
     <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
