@@ -20,14 +20,69 @@ Open your Supabase Dashboard, select your project, click **SQL Editor** in the l
 
 ---
 
-### 第二步 / Step 2 — 运行 migrations / Apply migrations
+### 第二步 / Step 2 — 选择你的数据库配置路径 / Choose your database setup path
 
-所有数据库变更均通过 `supabase/migrations/` 中的增量文件管理。按文件名顺序在 SQL Editor 中依次运行各 migration 文件。
+`supabase/migrations/` 中包含**两类文件**，不要全部按顺序运行——请根据你的场景选择一条路径：
 
-All database changes are managed through incremental files in `supabase/migrations/`. Apply each migration file in filename order via the SQL Editor.
+The `supabase/migrations/` directory contains **two distinct types of files**. Do not run all of them blindly in order — choose one path based on your scenario:
 
-> ⚠️ 对已有数据库做增量更新时，请只运行 `supabase/migrations/` 里新增的目标 migration 文件。  
-> ⚠️ For incremental updates to an existing database, apply only the new targeted migration files from `supabase/migrations/`.
+---
+
+#### 路径 A：最小生产基线（仅核心登录 + 司机 + 点位）
+**Path A — Minimal production baseline (identity, driver, location only)**
+
+适用场景：全新生产项目，只需要登录、司机管理和点位分配功能。
+
+Use when: brand-new production project, only need login identity, driver records, and location assignment.
+
+在 SQL Editor 中运行此单一文件：
+
+Run this single file in SQL Editor:
+```
+supabase/migrations/20260325123000_production_v1_minimal_baseline.sql
+```
+
+详情见 `docs/PRODUCTION_V1_MINIMAL_SETUP.md`。
+
+See `docs/PRODUCTION_V1_MINIMAL_SETUP.md` for details.
+
+---
+
+#### 路径 B：完整生产基线（含收款、结算、支持、诊断）
+**Path B — Full production baseline (all features)**
+
+适用场景：需要完整业务功能（收款、财务、支持工单、诊断）的生产部署。
+
+Use when: production deployment that needs the full business scope (collection, finance, support cases, diagnostics).
+
+按顺序运行以下四个文件：
+
+Apply these four files in order:
+```
+supabase/migrations/20260325130000_production_full_00_identity_and_assignment.sql
+supabase/migrations/20260325133000_production_full_01_business_flow.sql
+supabase/migrations/20260325140000_production_full_02_support_and_audit.sql
+supabase/migrations/20260325150000_production_full_03_diagnostics_and_health.sql
+```
+
+详情见 `docs/PRODUCTION_FULL_BASELINE_APPROACH.md`。
+
+See `docs/PRODUCTION_FULL_BASELINE_APPROACH.md` for details.
+
+---
+
+#### 路径 C：对已有数据库做增量更新
+**Path C — Incremental update to an existing database**
+
+适用场景：数据库已运行，只需补充新的 migration 文件。
+
+Use when: the database is already running and you only need to apply new incremental changes.
+
+> ⚠️ 只运行你尚未应用的那些 migration 文件，不要重新运行已有的文件。  
+> ⚠️ Apply only the specific migration files you have not yet applied. Do not re-run files already applied.
+
+> ⚠️ **不要**将 `20240101000000_initial_schema.sql` 或 `20240103000000_enable_rls.sql` 与上面的生产基线包混用——两者会产生冲突的 RLS 策略。  
+> ⚠️ Do **not** mix `20240101000000_initial_schema.sql` / `20240103000000_enable_rls.sql` with the production baseline packs above — they produce conflicting RLS policies.
 
 ---
 

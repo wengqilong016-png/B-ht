@@ -8,8 +8,29 @@ This document covers operational security steps that **cannot** be automated by 
 
 All database changes should be applied via versioned migration files in `supabase/migrations/`. Do not run ad hoc destructive SQL scripts against any environment that contains real data.
 
-- **Existing environment:** apply only the targeted SQL file in `supabase/migrations/`
-- **New environment:** apply all migration files in filename order from `supabase/migrations/`
+### Setup paths
+
+The `supabase/migrations/` directory contains two distinct types of files. Choose the correct path for your scenario — do not run all files blindly in filename order, as mixing the legacy incremental migrations with the production baseline packs produces conflicting RLS policies.
+
+**New environment — minimal production baseline (identity, driver, location only):**
+Run this single file:
+```
+supabase/migrations/20260325123000_production_v1_minimal_baseline.sql
+```
+See `docs/PRODUCTION_V1_MINIMAL_SETUP.md`.
+
+**New environment — full production baseline (all business features):**
+Apply these four files in order:
+```
+supabase/migrations/20260325130000_production_full_00_identity_and_assignment.sql
+supabase/migrations/20260325133000_production_full_01_business_flow.sql
+supabase/migrations/20260325140000_production_full_02_support_and_audit.sql
+supabase/migrations/20260325150000_production_full_03_diagnostics_and_health.sql
+```
+See `docs/PRODUCTION_FULL_BASELINE_APPROACH.md`.
+
+**Existing environment (incremental update):**
+Apply only the specific migration files you have not yet applied. Do not re-run files already applied. Do not mix `20240101000000_initial_schema.sql` / `20240103000000_enable_rls.sql` with the production baseline packs — they produce conflicting RLS policies.
 
 ## 1. Credential Rotation (Supabase URL / Anon Key)
 
