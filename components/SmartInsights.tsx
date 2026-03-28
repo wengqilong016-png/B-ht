@@ -85,7 +85,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
       .sort((a, b) => (a.riskLevel === 'high' ? -1 : 1));
   }, [transactions, locations]);
 
-  const totalRiskCount = insights.filter(i => i.riskLevel === 'high').length;
+  const totalRiskCount = useMemo(() => insights.filter(i => i.riskLevel === 'high').length, [insights]);
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
