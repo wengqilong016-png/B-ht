@@ -97,9 +97,13 @@ export function useDashboardData({
     }
     return drivers.map(driver => {
       const driverTxs = txByDriver.get(driver.id) ?? [];
-      const driverRev = driverTxs.reduce((s, t) => s + t.revenue, 0);
-      const driverCommission = driverTxs.reduce((s, t) => s + t.ownerRetention, 0);
-      const driverNet = driverTxs.reduce((s, t) => s + t.netPayable, 0);
+      // Single pass instead of three separate reduce() calls
+      let driverRev = 0, driverCommission = 0, driverNet = 0;
+      for (const t of driverTxs) {
+        driverRev += t.revenue;
+        driverCommission += t.ownerRetention;
+        driverNet += t.netPayable;
+      }
       return { driver, driverTxs, driverRev, driverCommission, driverNet };
     });
   }, [drivers, transactions, todayStr]);
@@ -122,12 +126,34 @@ export function useDashboardData({
     return drivers.filter(d => d.status === 'active').map(driver => {
       const driverTxs = txByDriver.get(driver.id) ?? [];
       const driverSettlements = settlementByDriver.get(driver.id) ?? [];
+
+      // Pre-group this driver's transactions and settlements by month to avoid
+      // an O(n×m) nested filter (one pass over driverTxs per month).
+      const txByMonth = new Map<string, Transaction[]>();
+      for (const t of driverTxs) {
+        const month = t.timestamp.substring(0, 7);
+        const arr = txByMonth.get(month);
+        if (arr) arr.push(t);
+        else txByMonth.set(month, [t]);
+      }
+      const settlByMonth = new Map<string, DailySettlement[]>();
+      for (const s of driverSettlements) {
+        const month = s.date.substring(0, 7);
+        const arr = settlByMonth.get(month);
+        if (arr) arr.push(s);
+        else settlByMonth.set(month, [s]);
+      }
+
       const monthlyBreakdown = (months as string[]).map((month: string) => {
-        const monthTxs = driverTxs.filter(t => t.timestamp.startsWith(month));
-        const monthSettlements = driverSettlements.filter(s => s.date.startsWith(month));
-        const totalRevenue = monthTxs.reduce((sum, t) => sum + t.revenue, 0);
+        const monthTxs = txByMonth.get(month) ?? [];
+        const monthSettlements = settlByMonth.get(month) ?? [];
+        // Single pass to accumulate revenue and loans together
+        let totalRevenue = 0, loans = 0;
+        for (const t of monthTxs) {
+          totalRevenue += t.revenue;
+          if (t.expenseType === 'private') loans += t.expenses;
+        }
         const commission = Math.floor(totalRevenue * (driver.commissionRate || 0.05));
-        const loans = monthTxs.filter(t => t.expenseType === 'private').reduce((sum, t) => sum + t.expenses, 0);
         const shortage = monthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
         const netPayout = (driver.baseSalary || 0) + commission - loans - shortage;
         return { month, totalRevenue, commission, loans, shortage, netPayout };
@@ -170,14 +196,29 @@ export function useDashboardData({
   }, [transactions, drivers, locations, todayStr]);
 
   const trackingDriverCards = useMemo(() => {
-    const todayCollections = transactions.filter(
-      t => t.timestamp.startsWith(todayStr) && (t.type === undefined || t.type === 'collection')
-    );
+    // Pre-group locations and today's collection transactions by driver to avoid
+    // O(drivers × locations) and O(drivers × todayCollections) nested filter passes.
+    const locsByDriver = new Map<string, Location[]>();
+    for (const l of locations) {
+      if (!l.assignedDriverId) continue;
+      const arr = locsByDriver.get(l.assignedDriverId);
+      if (arr) arr.push(l);
+      else locsByDriver.set(l.assignedDriverId, [l]);
+    }
+
+    const txTodayByDriver = new Map<string, Transaction[]>();
+    for (const t of transactions) {
+      if (!t.timestamp.startsWith(todayStr)) continue;
+      if (t.type !== undefined && t.type !== 'collection') continue;
+      const arr = txTodayByDriver.get(t.driverId);
+      if (arr) arr.push(t);
+      else txTodayByDriver.set(t.driverId, [t]);
+    }
 
     return drivers
       .map(driver => {
-        const driverLocs = locations.filter(l => l.assignedDriverId === driver.id);
-        const driverTxsToday = todayCollections.filter(t => t.driverId === driver.id);
+        const driverLocs = locsByDriver.get(driver.id) ?? [];
+        const driverTxsToday = txTodayByDriver.get(driver.id) ?? [];
         const todayRevenue = driverTxsToday.reduce((sum, tx) => sum + tx.netPayable, 0);
         const attentionLocations = driverLocs.filter(
           l => l.status !== 'active' || l.resetLocked || l.lastScore >= 9000
@@ -213,12 +254,17 @@ export function useDashboardData({
       });
   }, [drivers, locations, transactions, todayStr, trackingSearch, trackingStatusFilter]);
 
-  const trackingOverview = useMemo(() => ({
-    liveDrivers: trackingDriverCards.filter(item => item.driver.status === 'active' && !item.hasStaleGps).length,
-    staleDrivers: trackingDriverCards.filter(item => item.hasStaleGps).length,
-    todayCollections: trackingDriverCards.reduce((sum, item) => sum + item.driverTxsToday.length, 0),
-    attentionSites: trackingDriverCards.reduce((sum, item) => sum + item.attentionLocations.length, 0),
-  }), [trackingDriverCards]);
+  const trackingOverview = useMemo(() => {
+    // Single pass instead of four separate filter()/reduce() calls
+    let liveDrivers = 0, staleDrivers = 0, todayCollections = 0, attentionSites = 0;
+    for (const item of trackingDriverCards) {
+      if (item.hasStaleGps) staleDrivers++;
+      else if (item.driver.status === 'active') liveDrivers++;
+      todayCollections += item.driverTxsToday.length;
+      attentionSites += item.attentionLocations.length;
+    }
+    return { liveDrivers, staleDrivers, todayCollections, attentionSites };
+  }, [trackingDriverCards]);
 
   const trackingVisibleDriverIds = useMemo(() => new Set(trackingDriverCards.map(item => item.driver.id)), [trackingDriverCards]);
 
