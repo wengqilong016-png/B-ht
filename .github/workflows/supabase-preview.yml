@@ -46,7 +46,7 @@ jobs:
             done
             echo ""
             echo "Add/update secrets under Repository → Settings → Secrets and variables → Actions."
-            echo "See DEPLOYMENT.md for detailed setup instructions."
+            echo "See docs/DEPLOYMENT.md for detailed setup instructions."
             exit 1
           fi
 
