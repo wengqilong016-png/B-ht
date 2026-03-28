@@ -71,20 +71,25 @@ export function useDashboardData({
     [dailySettlements]
   );
 
-  const anomalyTransactions = useMemo(
-    () => transactions.filter(tx => tx.isAnomaly === true && tx.approvalStatus !== 'approved' && tx.approvalStatus !== 'rejected'),
-    [transactions]
-  );
-
-  const pendingResetRequests = useMemo(
-    () => transactions.filter(tx => tx.type === 'reset_request' && tx.approvalStatus === 'pending'),
-    [transactions]
-  );
-
-  const pendingPayoutRequests = useMemo(
-    () => transactions.filter(tx => tx.type === 'payout_request' && tx.approvalStatus === 'pending'),
-    [transactions]
-  );
+  // Single pass over transactions to populate three separate filtered lists,
+  // replacing three independent O(n) filter calls with one O(n) loop.
+  const { anomalyTransactions, pendingResetRequests, pendingPayoutRequests } = useMemo(() => {
+    const anomaly: Transaction[] = [];
+    const resets: Transaction[] = [];
+    const payouts: Transaction[] = [];
+    for (const tx of transactions) {
+      if (tx.isAnomaly === true && tx.approvalStatus !== 'approved' && tx.approvalStatus !== 'rejected') {
+        anomaly.push(tx);
+      }
+      if (tx.type === 'reset_request' && tx.approvalStatus === 'pending') {
+        resets.push(tx);
+      }
+      if (tx.type === 'payout_request' && tx.approvalStatus === 'pending') {
+        payouts.push(tx);
+      }
+    }
+    return { anomalyTransactions: anomaly, pendingResetRequests: resets, pendingPayoutRequests: payouts };
+  }, [transactions]);
 
   // Revenue drill-down: per-driver today stats
   const todayDriverStats = useMemo(() => {
@@ -179,18 +184,25 @@ export function useDashboardData({
     });
   }, [locations, siteSearch, siteFilterArea, siteSort]);
 
+  // Single filter pass avoids an intermediate array when both search and
+  // type-filter conditions are active simultaneously.
   const filteredAiLogs = useMemo(() => {
-    let result = aiLogs;
-    if (aiLogSearch) {
-      const q = aiLogSearch.toLowerCase();
-      result = result.filter(log => log.driverName.toLowerCase().includes(q) || log.query.toLowerCase().includes(q) || log.response.toLowerCase().includes(q));
-    }
-    if (aiLogTypeFilter === 'image') result = result.filter(log => !!log.imageUrl);
-    return result;
+    const q = aiLogSearch ? aiLogSearch.toLowerCase() : null;
+    const imageOnly = aiLogTypeFilter === 'image';
+    if (!q && !imageOnly) return aiLogs;
+    return aiLogs.filter(log => {
+      if (q && !(log.driverName.toLowerCase().includes(q) || log.query.toLowerCase().includes(q) || log.response.toLowerCase().includes(q))) return false;
+      if (imageOnly && !log.imageUrl) return false;
+      return true;
+    });
   }, [aiLogs, aiLogSearch, aiLogTypeFilter]);
 
   const bossStats = useMemo(() => {
-    const todayRev = transactions.filter(t => t.timestamp.startsWith(todayStr)).reduce((sum, t) => sum + t.revenue, 0);
+    // Single pass replaces .filter().reduce() (two iterations → one)
+    let todayRev = 0;
+    for (const t of transactions) {
+      if (t.timestamp.startsWith(todayStr)) todayRev += t.revenue;
+    }
     const riskyDrivers = drivers.filter(d => d.remainingDebt > 100000);
     return { todayRev, riskyDrivers, stagnantMachines: locations.filter(l => l.status === 'broken') };
   }, [transactions, drivers, locations, todayStr]);

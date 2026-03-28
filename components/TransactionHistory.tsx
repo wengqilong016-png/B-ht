@@ -17,9 +17,17 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ transactions, l
   const [activeMapTx, setActiveMapTx] = useState<Transaction | null>(null);
 
   const filteredTransactions = useMemo(() => {
-    let result = [...transactions];
-    if (selectedLocation !== 'all') result = result.filter(tx => tx.locationName === selectedLocation);
-    if (showUnsyncedOnly) result = result.filter(tx => !tx.isSynced);
+    const locFilter = selectedLocation !== 'all';
+    // .filter() produces a new array (no extra copy needed); when neither
+    // filter is active, .slice() creates a copy so .sort() doesn't mutate
+    // the source array.
+    const result = (locFilter || showUnsyncedOnly)
+      ? transactions.filter(tx => {
+          if (locFilter && tx.locationName !== selectedLocation) return false;
+          if (showUnsyncedOnly && tx.isSynced) return false;
+          return true;
+        })
+      : transactions.slice();
     return result.sort((a, b) => (b.timestamp > a.timestamp ? 1 : -1));
   }, [transactions, selectedLocation, showUnsyncedOnly]);
 
