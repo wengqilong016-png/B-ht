@@ -4,37 +4,12 @@ This document covers operational security steps that **cannot** be automated by 
 
 ---
 
-## 0. Dangerous bootstrap SQL usage (`BAHATI_COMPLETE_SETUP.sql`)
+## 0. Database changes
 
-### Treat it as bootstrap only
-
-`BAHATI_COMPLETE_SETUP.sql` is a **destructive bootstrap script**.
-
-It is appropriate only for:
-- a brand-new project
-- a disposable local rebuild
-- a throwaway test environment
-
-It is **not** appropriate for:
-- any Supabase project that already contains real data
-- incremental production updates
-- “small fixes” such as one new constraint, one new index, one new function, or one auth/profile repair
-
-### Why this is high risk
-
-The script:
-- drops and recreates tables
-- recreates helper functions / triggers / RLS state
-- seeds the exact accounts and password defaults currently defined inside the SQL file at that commit
-
-### Safe rule
+All database changes should be applied via versioned migration files in `supabase/migrations/`. Do not run ad hoc destructive SQL scripts against any environment that contains real data.
 
 - **Existing environment:** apply only the targeted SQL file in `supabase/migrations/`
-- **Bootstrap / rebuild:** inspect `BAHATI_COMPLETE_SETUP.sql` before execution, confirm the seeded accounts/password defaults, back up data first, and rotate all default passwords immediately after first login
-
-> Do not assume README examples are the source of truth. The source of truth is the SQL file you are actually about to run.
-
----
+- **New environment:** apply all migration files in filename order from `supabase/migrations/`
 
 ## 1. Credential Rotation (Supabase URL / Anon Key)
 

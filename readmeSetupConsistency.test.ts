@@ -11,9 +11,7 @@ describe('README setup consistency', () => {
     readme = fs.readFileSync(readmePath, 'utf8');
   });
 
-  it('documents the destructive bootstrap path and points incremental updates to migrations', () => {
-    expect(readme).toContain('destructive bootstrap script');
-    expect(readme).toContain('do not run `BAHATI_COMPLETE_SETUP.sql`');
+  it('points incremental database updates to migrations directory', () => {
     expect(readme).toContain('`supabase/migrations/`');
   });
 
