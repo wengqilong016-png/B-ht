@@ -23,6 +23,7 @@ const SupportCases = lazy(() => import('./components/SupportCases'));
 const CaseDetail = lazy(() => import('./components/CaseDetail'));
 const DriverLookup = lazy(() => import('./components/DriverLookup'));
 const DriverMachines = lazy(() => import('./components/DriverMachines'));
+const AdminManagement = lazy(() => import('./components/AdminManagement'));
 
 interface AdminShellViewRendererProps {
   view: AdminView;
@@ -279,6 +280,8 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
         />
       );
     }
+    case 'admin-management':
+      return <AdminManagement />;
     default:
       return null;
   }

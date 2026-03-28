@@ -170,6 +170,48 @@ supabase functions deploy create-driver --no-verify-jwt
 
 ---
 
+## Edge Function: Create Admin Account
+
+The `create-admin` Supabase Edge Function lets an existing admin create a new administrator account in a single API call — no manual Supabase Dashboard clicks or SQL required.
+
+Administrator accounts can also be created directly through the **Admin Console → 管理员 (Admins)** page in the app UI.
+
+### What it does
+
+1. Creates a Supabase Auth user (email + password, email pre-confirmed so the new admin can log in immediately).
+2. Inserts a record in `public.profiles` (`role='admin'`, `driver_id: null`, `display_name`).
+3. Rolls back the Auth user automatically if the profile insert fails (no orphaned accounts).
+
+### Security
+
+- **Admin-only**: the caller must supply a valid JWT from an authenticated admin session.
+- Uses the `service_role` key internally so RLS policies do not block any writes.
+
+### Request
+
+```http
+POST /functions/v1/create-admin
+Authorization: Bearer <admin-jwt>
+Content-Type: application/json
+```
+
+Required fields:
+- `email`
+- `password` (minimum 8 characters)
+
+Optional fields:
+- `display_name` (defaults to `'Admin'`)
+
+### Deploy
+
+```bash
+supabase functions deploy create-admin --no-verify-jwt
+```
+
+> `--no-verify-jwt` is safe here because the function performs its own JWT validation and admin role check internally.
+
+---
+
 ## Run Locally
 
 **Prerequisites:** Node.js

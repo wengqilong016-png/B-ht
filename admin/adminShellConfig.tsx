@@ -16,6 +16,7 @@ import {
   PlusCircle,
   Radio,
   Search,
+  ShieldCheck,
   Store,
   Users,
 } from 'lucide-react';
@@ -40,7 +41,8 @@ export type AdminView =
   | 'support-cases'
   | 'case-detail'
   | 'driver-lookup'
-  | 'driver-machines';
+  | 'driver-machines'
+  | 'admin-management';
 
 export interface AdminNavItem {
   id: AdminView;
@@ -66,6 +68,7 @@ export function buildAdminPrimaryNav(totalApprovalBadge: number): AdminNavItem[]
     { id: 'support-cases', icon: <Briefcase size={18} />, label: '支持工单', labelEn: 'Cases' },
     { id: 'audit-trail', icon: <BookOpen size={18} />, label: '操作审计', labelEn: 'Audit Trail' },
     { id: 'driver-lookup', icon: <Search size={18} />, label: '司机查询', labelEn: 'Driver Lookup' },
+    { id: 'admin-management', icon: <ShieldCheck size={18} />, label: '管理员', labelEn: 'Admins' },
   ];
 }
 
@@ -97,6 +100,7 @@ export const ADMIN_PAGE_TITLES: Record<AdminView, string> = {
   'case-detail': 'Case Detail',
   'driver-lookup': 'Driver Lookup',
   'driver-machines': 'Driver Machines',
+  'admin-management': 'Admin Management',
 };
 
 export function mapAdminViewToDashboardTab(v: AdminView): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking' {
