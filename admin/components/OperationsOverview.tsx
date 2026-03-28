@@ -13,18 +13,34 @@ const OperationsOverview: React.FC<Props> = ({ transactions, drivers, locations,
     const now = new Date();
     const todayStr = now.toISOString().split('T')[0];
 
-    const todayTxs = transactions.filter(t => t.timestamp.startsWith(todayStr));
+    // Single pass: accumulate today's transaction count and revenue together
+    let todayCount = 0, todayRevenue = 0;
+    for (const t of transactions) {
+      if (t.timestamp.startsWith(todayStr)) {
+        todayCount++;
+        todayRevenue += t.revenue || 0;
+      }
+    }
+
+    // Single pass: count pending approvals across settlements and transactions
+    let pendingCount = 0;
+    for (const s of dailySettlements) {
+      if (!s.isSynced) pendingCount++;
+    }
+    for (const t of transactions) {
+      if (t.type === 'payout_request' && !t.isSynced) pendingCount++;
+    }
     
     return [
       { 
         label: '今日交易数', 
-        value: todayTxs.length, 
+        value: todayCount, 
         color: 'text-blue-500',
         desc: '今日完成采集次数'
       },
       { 
         label: '今日收入', 
-        value: `$${todayTxs.reduce((sum, t) => sum + (t.revenue || 0), 0).toLocaleString()}`, 
+        value: `$${todayRevenue.toLocaleString()}`, 
         color: 'text-green-500',
         desc: '今日总 revenue'
       },
@@ -36,7 +52,7 @@ const OperationsOverview: React.FC<Props> = ({ transactions, drivers, locations,
       },
       { 
         label: '待审批', 
-        value: dailySettlements.filter(s => !s.isSynced).length + transactions.filter(t => t.type === 'payout_request' && !t.isSynced).length, 
+        value: pendingCount, 
         color: 'text-yellow-500',
         desc: 'Pending Approval'
       },
