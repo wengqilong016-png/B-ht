@@ -5,7 +5,7 @@ import AppDriverShell from '../driver/AppDriverShell';
 
 const AppRouterShell: React.FC = () => {
   const { currentUser } = useAuth();
-  if (currentUser.role === 'admin') {
+  if (currentUser?.role === 'admin') {
     return <AppAdminShell />;
   }
   return <AppDriverShell />;

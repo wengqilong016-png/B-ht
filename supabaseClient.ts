@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 // Supabase credentials MUST be provided via environment variables.
 // See .env.example for the required variables and docs/SECURITY_OPERATIONS.md
@@ -16,24 +16,27 @@ if (!envUrl || !envKey) {
 export const SUPABASE_URL: string = envUrl ?? '';
 export const SUPABASE_ANON_KEY: string = envKey ?? '';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-  auth: {
-    storageKey: 'bht-main-auth',
-    persistSession: true,
-    autoRefreshToken: true,
-  },
-});
+export const supabase: SupabaseClient | null =
+  envUrl && envKey
+    ? createClient(envUrl, envKey, {
+        auth: {
+          storageKey: 'bht-main-auth',
+          persistSession: true,
+          autoRefreshToken: true,
+        },
+      })
+    : null;
 
 export const checkDbHealth = async (): Promise<boolean> => {
+  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
   try {
     // Ping the Supabase REST API root with a short timeout.
-    // Any valid HTTP response (including 4xx/5xx when RLS blocks anonymous access)
-    // means the server is reachable — only a network failure returns false.
+    // 2xx–4xx means the server is reachable; 5xx means server-side failure.
     const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
       headers: { apikey: SUPABASE_ANON_KEY },
       signal: AbortSignal.timeout(5000),
     });
-    return res.ok || res.status >= 100;
+    return res.status >= 200 && res.status < 500;
   } catch {
     return false;
   }
