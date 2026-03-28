@@ -92,7 +92,10 @@ const OfflineRouteMap: React.FC<OfflineRouteMapProps> = ({
     [routePoints, projection]
   );
 
-  const polylinePoints = svgPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+  const polylinePoints = useMemo(
+    () => svgPoints.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '),
+    [svgPoints]
+  );
 
   // ── Google Maps link (online only) ────────────────────────────────────────
   const googleMapsUrl = useMemo(() => {
@@ -108,7 +111,7 @@ const OfflineRouteMap: React.FC<OfflineRouteMapProps> = ({
     return url;
   }, [isOnline, routePoints]);
 
-  const totalRevenue = routePoints.reduce((s, p) => s + p.tx.revenue, 0);
+  const totalRevenue = useMemo(() => routePoints.reduce((s, p) => s + p.tx.revenue, 0), [routePoints]);
 
   // ── Summary strip ─────────────────────────────────────────────────────────
   const summary = (
