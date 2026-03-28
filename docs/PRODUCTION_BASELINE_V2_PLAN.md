@@ -8,9 +8,6 @@ Accepted as the productionization direction for the next database and repository
 The current repository can run, but it is not yet a clean long-term production baseline.
 
 Current risks:
-- `BAHATI_COMPLETE_SETUP.sql` is a destructive all-in-one bootstrap script.
-- The legacy bootstrap script mixes table creation, helper functions, triggers, RLS, and seeded auth accounts in one file.
-- production auth accounts must not continue to be seeded from committed SQL with shared default passwords.
 - Some RLS policies are still broader than the desired production posture.
 - Repository governance files and meta-tests have started to spread across the root.
 
@@ -68,10 +65,9 @@ Target structure direction:
 ## What changes in V2
 
 ### Legacy path
-`BAHATI_COMPLETE_SETUP.sql`
-- remains a **legacy rebuild helper** for disposable environments only
-- is not the production source of truth
-- must not be extended with more real production accounts
+The legacy monolithic bootstrap script has been removed from the repository.
+- Production setup is handled exclusively through versioned migrations in `supabase/migrations/`
+- No committed SQL seeds real production accounts or passwords
 
 ### Production path
 Production setup moves to:
@@ -144,7 +140,7 @@ This phase does **not**:
 ## Definition of done for the full V2 effort
 
 The production baseline is considered complete when:
-- production no longer depends on `BAHATI_COMPLETE_SETUP.sql`
+- production is managed exclusively through versioned migrations
 - real production auth accounts are no longer seeded by committed SQL
 - schema / functions / triggers / RLS are migration-first and reviewable in small units
 - repository governance tests are organized and not scattered at root

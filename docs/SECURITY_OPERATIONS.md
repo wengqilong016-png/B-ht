@@ -4,37 +4,33 @@ This document covers operational security steps that **cannot** be automated by 
 
 ---
 
-## 0. Dangerous bootstrap SQL usage (`BAHATI_COMPLETE_SETUP.sql`)
+## 0. Database changes
 
-### Treat it as bootstrap only
+All database changes should be applied via versioned migration files in `supabase/migrations/`. Do not run ad hoc destructive SQL scripts against any environment that contains real data.
 
-`BAHATI_COMPLETE_SETUP.sql` is a **destructive bootstrap script**.
+### Setup paths
 
-It is appropriate only for:
-- a brand-new project
-- a disposable local rebuild
-- a throwaway test environment
+The `supabase/migrations/` directory contains two distinct types of files. Choose the correct path for your scenario — do not run all files blindly in filename order, as mixing the legacy incremental migrations with the production baseline packs produces conflicting RLS policies.
 
-It is **not** appropriate for:
-- any Supabase project that already contains real data
-- incremental production updates
-- “small fixes” such as one new constraint, one new index, one new function, or one auth/profile repair
+**New environment — minimal production baseline (identity, driver, location only):**
+Run this single file:
+```
+supabase/migrations/20260325123000_production_v1_minimal_baseline.sql
+```
+See `docs/PRODUCTION_V1_MINIMAL_SETUP.md`.
 
-### Why this is high risk
+**New environment — full production baseline (all business features):**
+Apply these four files in order:
+```
+supabase/migrations/20260325130000_production_full_00_identity_and_assignment.sql
+supabase/migrations/20260325133000_production_full_01_business_flow.sql
+supabase/migrations/20260325140000_production_full_02_support_and_audit.sql
+supabase/migrations/20260325150000_production_full_03_diagnostics_and_health.sql
+```
+See `docs/PRODUCTION_FULL_BASELINE_APPROACH.md`.
 
-The script:
-- drops and recreates tables
-- recreates helper functions / triggers / RLS state
-- seeds the exact accounts and password defaults currently defined inside the SQL file at that commit
-
-### Safe rule
-
-- **Existing environment:** apply only the targeted SQL file in `supabase/migrations/`
-- **Bootstrap / rebuild:** inspect `BAHATI_COMPLETE_SETUP.sql` before execution, confirm the seeded accounts/password defaults, back up data first, and rotate all default passwords immediately after first login
-
-> Do not assume README examples are the source of truth. The source of truth is the SQL file you are actually about to run.
-
----
+**Existing environment (incremental update):**
+Apply only the specific migration files you have not yet applied. Do not re-run files already applied. Do not mix `20240101000000_initial_schema.sql` / `20240103000000_enable_rls.sql` with the production baseline packs — they produce conflicting RLS policies.
 
 ## 1. Credential Rotation (Supabase URL / Anon Key)
 
