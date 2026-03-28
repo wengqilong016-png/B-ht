@@ -215,9 +215,26 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
         }
 
         // Edge Function created Auth user + drivers row + profiles row.
+        // Persist business fields that the Edge Function doesn't handle.
+        const createdDriverId = data.driver_id as string;
+        const { error: updateError } = await supabase.from('drivers').update({
+          phone: driverData.phone,
+          vehicleInfo: driverData.vehicleInfo,
+          dailyFloatingCoins: driverData.dailyFloatingCoins,
+          baseSalary: driverData.baseSalary,
+          commissionRate: driverData.commissionRate,
+          initialDebt: driverData.initialDebt,
+          remainingDebt: driverData.initialDebt,
+        }).eq('id', createdDriverId);
+
+        if (updateError) {
+          console.error('Failed to persist business fields for new driver:', updateError);
+          alert('司机账号已创建，但部分业务信息未能保存。请重新编辑司机资料。\nDriver account created, but some business fields could not be saved. Please re-edit the driver profile.');
+        }
+
         // Merge the new driver into local state so the UI updates immediately.
         const newDriver: Driver = {
-          id: data.driver_id as string,
+          id: createdDriverId,
           ...driverData,
           remainingDebt: driverData.initialDebt,
         };

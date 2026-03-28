@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { Location } from '../../types';
 import InputField from './InputField';
+import { MIN_PASSWORD_LENGTH } from '../../utils/passwordPolicy';
 
 export interface DriverFormState {
   name: string;
@@ -55,11 +56,11 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
         <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-4">
-            <InputField label="姓名 NAME" value={form.name} icon={<User size={16} />} onChange={v => onChange({ name: v })} />
-            <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16} />} onChange={v => onChange({ phone: v })} />
+            <InputField label="姓名 NAME" value={form.name} icon={<User size={16} />} onChange={v => onChange({ name: v })} placeholder="e.g. John Doe / 张三" />
+            <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16} />} onChange={v => onChange({ phone: v })} placeholder="+255 xxx xxx xxx" />
           </div>
           <div>
-            <InputField label="登录账号 USERNAME" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} />
+            <InputField label="司机ID DRIVER ID" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} placeholder="e.g. DRV-001" />
           </div>
 
           {/* Email + Password — new driver only */}
@@ -68,6 +69,10 @@ const DriverForm: React.FC<DriverFormProps> = ({
               <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
               <div>
                 <InputField label="邮箱 EMAIL *" value={form.email} icon={<ShieldCheck size={16} />} onChange={v => onChange({ email: v })} />
+                {form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && (
+                  <p className="text-[10px] font-bold text-rose-500 mt-1 ml-1">请输入有效邮箱地址 / Invalid email format</p>
+                )}
+                <p className="text-[10px] font-bold text-amber-500 mt-1 ml-1">此邮箱用于司机登录系统 / This email is used for driver login</p>
               </div>
               <div className="space-y-1">
                 <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
@@ -79,29 +84,34 @@ const DriverForm: React.FC<DriverFormProps> = ({
                   placeholder="Min 8 characters"
                   autoComplete="new-password"
                 />
+                <p className={`text-[10px] font-bold mt-1 ml-1 ${form.password.length >= MIN_PASSWORD_LENGTH ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {form.password.length}/{MIN_PASSWORD_LENGTH}{form.password.length >= MIN_PASSWORD_LENGTH ? ' ✓' : ''}
+                </p>
               </div>
             </div>
           )}
 
-          {/* Status toggle */}
-          <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">
-            <div>
-              <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
-              <p className="text-xs font-bold text-slate-700 mt-0.5">
-                {form.status === 'active' ? '在职 Active' : '停职 Inactive'}
-              </p>
+          {/* Status toggle — edit mode only */}
+          {editingId && (
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">
+              <div>
+                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
+                <p className="text-xs font-bold text-slate-700 mt-0.5">
+                  {form.status === 'active' ? '在职 Active' : '停职 Inactive'}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onChange({ status: form.status === 'active' ? 'inactive' : 'active' })}
+                className={`transition-colors ${form.status === 'active' ? 'text-emerald-500' : 'text-slate-300'}`}
+              >
+                {form.status === 'active'
+                  ? <ToggleRight size={36} />
+                  : <ToggleLeft size={36} />
+                }
+              </button>
             </div>
-            <button
-              type="button"
-              onClick={() => onChange({ status: form.status === 'active' ? 'inactive' : 'active' })}
-              className={`transition-colors ${form.status === 'active' ? 'text-emerald-500' : 'text-slate-300'}`}
-            >
-              {form.status === 'active'
-                ? <ToggleRight size={36} />
-                : <ToggleLeft size={36} />
-              }
-            </button>
-          </div>
+          )}
 
           <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
