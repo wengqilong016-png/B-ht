@@ -90,8 +90,8 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     <div className="min-h-screen bg-[#f5f7fa] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 right-0 p-6 pt-12 flex justify-between items-start z-30">
          <div className="flex gap-4">
-            <button onClick={() => onSetLang('zh')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'zh' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'}`}><Languages size={12}/> 中文</button>
-            <button onClick={() => onSetLang('sw')} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'sw' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'}`}><Languages size={12}/> EN</button>
+            <button onClick={() => onSetLang('zh')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'zh' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> 中文</button>
+            <button onClick={() => onSetLang('sw')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'sw' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> EN</button>
          </div>
          <div className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 ${dbStatus === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
             {dbStatus === 'checking' ? 'Connecting...' : dbStatus === 'online' ? 'Cloud Ready' : 'Local Mode'}
@@ -119,13 +119,13 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               <label htmlFor="email-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <User size={12} className="text-indigo-500" /> {t.username}
               </label>
-              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400" placeholder="email@example.com" required />
+              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="email@example.com" required />
             </div>
             <div className="space-y-3">
               <label htmlFor="password-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <Lock size={12} className="text-indigo-500" /> {t.password}
               </label>
-              <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400" placeholder="••••••••" required />
+              <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="••••••••" required />
             </div>
 
             {error && (
@@ -145,7 +145,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
             )}
 
             <button type="submit" disabled={isLoading} className="w-full bg-silicone-gradient text-indigo-600 font-black py-4 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all">
-              {isLoading ? <Loader2 size={20} className="animate-spin text-indigo-600" /> : <span className="flex items-center gap-2">{t.loginBtn} <ArrowRight size={20} /></span>}
+              {isLoading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 size={20} className="animate-spin text-indigo-600" />
+                  {t.loginBtnLoading}
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">{t.loginBtn} <ArrowRight size={20} /></span>
+              )}
             </button>
 
             <div className="text-center">
