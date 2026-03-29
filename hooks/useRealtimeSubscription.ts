@@ -12,6 +12,10 @@
  *
  * The existing polling inside useSupabaseData is kept as a fallback for
  * weak/offline network conditions; this hook is an enhancement on top.
+ *
+ * Pass `userRole` to restrict subscriptions by role: drivers only need the
+ * `db:transactions` channel (their own collection changes), while admins
+ * subscribe to all three channels.
  */
 
 import { useEffect, useState } from 'react';
@@ -24,14 +28,19 @@ export type RealtimeStatus = 'connected' | 'disconnected' | 'reconnecting';
 /** Broadcast event names matching TG_OP values emitted by notify_table_changes(). */
 const BROADCAST_EVENTS = ['INSERT', 'UPDATE', 'DELETE'] as const;
 
-/** Dedicated private channel topics — must match the trigger function's topic arg. */
-const CHANNEL_CONFIGS = [
+/** All channels — used by admin accounts. */
+const ADMIN_CHANNELS = [
   { topic: 'db:transactions',      table: 'transactions'      },
   { topic: 'db:drivers',           table: 'drivers'           },
   { topic: 'db:daily_settlements', table: 'daily_settlements' },
 ] as const;
 
-export function useRealtimeSubscription() {
+/** Reduced channel set for driver accounts — only their own transaction changes. */
+const DRIVER_CHANNELS = [
+  { topic: 'db:transactions',      table: 'transactions'      },
+] as const;
+
+export function useRealtimeSubscription(userRole?: 'admin' | 'driver') {
   const queryClient = useQueryClient();
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
 
@@ -45,6 +54,8 @@ export function useRealtimeSubscription() {
     // Supabase client.
     supabase.realtime.setAuth();
 
+    const channelConfigs = userRole === 'driver' ? DRIVER_CHANNELS : ADMIN_CHANNELS;
+
     // Track which channel topics have reached SUBSCRIBED state so the aggregate
     // status indicator is accurate even when channels transition independently.
     const subscribedTopics = new Set<string>();
@@ -52,7 +63,7 @@ export function useRealtimeSubscription() {
     const makeStatusHandler = (topic: string) => (status: string) => {
       if (status === 'SUBSCRIBED') {
         subscribedTopics.add(topic);
-        if (subscribedTopics.size === CHANNEL_CONFIGS.length) {
+        if (subscribedTopics.size === channelConfigs.length) {
           setRealtimeStatus('connected');
         }
       } else if (status === 'CLOSED') {
@@ -65,7 +76,7 @@ export function useRealtimeSubscription() {
       }
     };
 
-    const channels = CHANNEL_CONFIGS.map(({ topic, table }) => {
+    const channels = channelConfigs.map(({ topic, table }) => {
       const ch = supabase.channel(topic, { config: { private: true } });
 
       for (const event of BROADCAST_EVENTS) {
@@ -80,7 +91,7 @@ export function useRealtimeSubscription() {
       cleanup();
       channels.forEach((ch) => supabase.removeChannel(ch));
     };
-  }, [queryClient]);
+  }, [queryClient, userRole]);
 
   return { realtimeStatus };
 }
