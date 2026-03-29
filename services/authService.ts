@@ -59,30 +59,22 @@ export const restoreCurrentUserFromSession = async (): Promise<
     return { success: false, error: 'Supabase not configured' };
   }
 
+  // Attempt to validate the token (checking server if needed).
   const { data: userData, error: userError } = await supabase.auth.getUser();
 
-  if (userError) {
-    const isNetworkError =
-      userError.message?.toLowerCase().includes('fetch') ||
-      userError.message?.toLowerCase().includes('network');
-
-    if (isNetworkError) {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const sessionUser = sessionData.session?.user;
-      if (!sessionUser) {
-        return { success: false, error: 'No active session' };
-      }
-      return fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
-    }
-
-    return { success: false, error: 'No active session' };
+  if (!userError && userData.user) {
+    return fetchCurrentUserProfile(userData.user.id, userData.user.email || '');
   }
 
-  if (!userData.user) {
-    return { success: false, error: 'No active session' };
+  // getUser() failed (network error, expired token, missing session, etc.).
+  // Always fallback to getSession() to check if a local session still exists.
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUser = sessionData.session?.user;
+  if (sessionUser) {
+    return fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
   }
 
-  return fetchCurrentUserProfile(userData.user.id, userData.user.email || '');
+  return { success: false, error: 'No active session' };
 };
 
 export const signInWithEmailPassword = async (email: string, password: string) => {
