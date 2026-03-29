@@ -31,6 +31,12 @@ async function readWithLegacyFallback<T extends { driverId?: string }>(
   return driverIdFilter ? legacy.filter(item => item.driverId === driverIdFilter) : legacy;
 }
 
+/** Fields fetched for driver accounts — only what the driver UI renders. */
+const TX_SELECT_DRIVER = 'id, timestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, netPayable, type, isClearance, notes, photoUrl';
+
+/** Fields fetched for admin accounts — full set needed for reporting and anomaly detection. */
+const TX_SELECT_ADMIN = 'id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, deductDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount, photoUrl, anomalyFlag';
+
 /**
  * Central data-fetching hook backed by React Query + Supabase.
  *
@@ -70,10 +76,14 @@ export function useSupabaseData(
     queryKey: ['locations'],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated) {
-        const { data, error } = await supabase.from('locations').select('id, name, machineId, lastScore, area, assignedDriverId, ownerName, shopOwnerPhone, initialStartupDebt, remainingStartupDebt, isNewOffice, coords, status, lastRevenueDate, commissionRate, ownerPhotoUrl, machinePhotoUrl, resetLocked, dividendBalance');
-        if (!error && data) {
-          await localDB.set(CONSTANTS.STORAGE_LOCATIONS_KEY, data);
-          return data as Location[];
+        try {
+          const { data, error } = await supabase.from('locations').select('id, name, machineId, lastScore, area, assignedDriverId, ownerName, shopOwnerPhone, initialStartupDebt, remainingStartupDebt, isNewOffice, coords, status, lastRevenueDate, commissionRate, ownerPhotoUrl, machinePhotoUrl, resetLocked, dividendBalance').abortSignal(AbortSignal.timeout(8000));
+          if (!error && data) {
+            await localDB.set(CONSTANTS.STORAGE_LOCATIONS_KEY, data);
+            return data as Location[];
+          }
+        } catch {
+          // timeout or network error — fall through to localDB
         }
       }
       return (await localDB.get<Location[]>(CONSTANTS.STORAGE_LOCATIONS_KEY)) || [];
@@ -85,11 +95,15 @@ export function useSupabaseData(
     queryKey: ['drivers'],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated) {
-        const { data, error } = await supabase.from('drivers').select('id, name, username, phone, initialDebt, remainingDebt, dailyFloatingCoins, vehicleInfo, currentGps, lastActive, status, baseSalary, commissionRate');
-        if (!error && data) {
-          const sanitized = sanitizeDrivers(data);
-          await localDB.set(CONSTANTS.STORAGE_DRIVERS_KEY, sanitized);
-          return sanitized;
+        try {
+          const { data, error } = await supabase.from('drivers').select('id, name, username, phone, initialDebt, remainingDebt, dailyFloatingCoins, vehicleInfo, currentGps, lastActive, status, baseSalary, commissionRate').abortSignal(AbortSignal.timeout(8000));
+          if (!error && data) {
+            const sanitized = sanitizeDrivers(data);
+            await localDB.set(CONSTANTS.STORAGE_DRIVERS_KEY, sanitized);
+            return sanitized;
+          }
+        } catch {
+          // timeout or network error — fall through to localDB
         }
       }
       return (await localDB.get<Driver[]>(CONSTANTS.STORAGE_DRIVERS_KEY)) || [];
@@ -102,21 +116,26 @@ export function useSupabaseData(
     queryKey: ['transactions', transactionScope.cacheScope],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated && transactionScope.enabled) {
-        let query = supabase
-          .from('transactions')
-          .select('id, timestamp, uploadTimestamp, locationId, locationName, driverId, driverName, previousScore, currentScore, revenue, commission, ownerRetention, debtDeduction, startupDebtDeduction, expenses, coinExchange, extraIncome, netPayable, gps, gpsDeviation, dataUsageKB, aiScore, isAnomaly, notes, isClearance, reportedStatus, paymentStatus, type, approvalStatus, expenseType, expenseCategory, expenseStatus, expenseDescription, payoutAmount, photoUrl, anomalyFlag')
-          .order('timestamp', { ascending: false })
-          .limit(transactionScope.txLimit);
+        try {
+          const transactionSelectFields: string = isDriver ? TX_SELECT_DRIVER : TX_SELECT_ADMIN;
+          let query = supabase
+            .from('transactions')
+            .select(transactionSelectFields)
+            .order('timestamp', { ascending: false })
+            .limit(transactionScope.txLimit);
 
-        if (transactionScope.driverIdFilter) {
-          query = query.eq('driverId', transactionScope.driverIdFilter);
-        }
+          if (transactionScope.driverIdFilter) {
+            query = query.eq('driverId', transactionScope.driverIdFilter);
+          }
 
-        const { data, error } = await query;
-        if (!error && data) {
-          const mapped = data.map(t => ({ ...t, isSynced: true })) as Transaction[];
-          await localDB.set(transactionStorageKey, mapped);
-          return mapped;
+          const { data, error } = await query.abortSignal(AbortSignal.timeout(8000));
+          if (!error && data) {
+            const mapped = (data as any[]).map(t => ({ ...t, isSynced: true })) as Transaction[];
+            await localDB.set(transactionStorageKey, mapped);
+            return mapped;
+          }
+        } catch {
+          // timeout or network error — fall through to localDB
         }
       }
       return readWithLegacyFallback<Transaction>(
@@ -134,21 +153,25 @@ export function useSupabaseData(
     queryKey: ['dailySettlements', settlementScope.cacheScope],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated && settlementScope.enabled) {
-        let query = supabase
-          .from('daily_settlements')
-          .select('id, date, adminId, adminName, driverId, driverName, totalRevenue, totalNetPayable, totalExpenses, driverFloat, expectedTotal, actualCash, actualCoins, shortage, note, timestamp, status')
-          .order('timestamp', { ascending: false })
-          .limit(500);
+        try {
+          let query = supabase
+            .from('daily_settlements')
+            .select('id, date, adminId, adminName, driverId, driverName, totalRevenue, totalNetPayable, totalExpenses, driverFloat, expectedTotal, actualCash, actualCoins, shortage, note, timestamp, status')
+            .order('timestamp', { ascending: false })
+            .limit(settlementScope.settlementLimit);
 
-        if (settlementScope.driverIdFilter) {
-          query = query.eq('driverId', settlementScope.driverIdFilter);
-        }
+          if (settlementScope.driverIdFilter) {
+            query = query.eq('driverId', settlementScope.driverIdFilter);
+          }
 
-        const { data, error } = await query;
-        if (!error && data) {
-          const mapped = data.map(s => ({ ...s, isSynced: true })) as DailySettlement[];
-          await localDB.set(settlementStorageKey, mapped);
-          return mapped;
+          const { data, error } = await query.abortSignal(AbortSignal.timeout(8000));
+          if (!error && data) {
+            const mapped = data.map(s => ({ ...s, isSynced: true })) as DailySettlement[];
+            await localDB.set(settlementStorageKey, mapped);
+            return mapped;
+          }
+        } catch {
+          // timeout or network error — fall through to localDB
         }
       }
       return readWithLegacyFallback<DailySettlement>(
@@ -166,11 +189,15 @@ export function useSupabaseData(
     queryKey: ['aiLogs', userRole ?? 'none'],
     queryFn: async () => {
       if (isOnline && supabase && isAuthenticated) {
-        const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, imageUrl, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(500);
-        if (!error && data) {
-          const mapped = data.map(l => ({ ...l, isSynced: true })) as AILog[];
-          await localDB.set(CONSTANTS.STORAGE_AI_LOGS_KEY, mapped);
-          return mapped;
+        try {
+          const { data, error } = await supabase.from('ai_logs').select('id, timestamp, driverId, driverName, query, response, imageUrl, modelUsed, relatedLocationId, relatedTransactionId').order('timestamp', { ascending: false }).limit(100).abortSignal(AbortSignal.timeout(8000));
+          if (!error && data) {
+            const mapped = data.map(l => ({ ...l, isSynced: true })) as AILog[];
+            await localDB.set(CONSTANTS.STORAGE_AI_LOGS_KEY, mapped);
+            return mapped;
+          }
+        } catch {
+          // timeout or network error — fall through to localDB
         }
       }
       return (await localDB.get<AILog[]>(CONSTANTS.STORAGE_AI_LOGS_KEY)) || [];

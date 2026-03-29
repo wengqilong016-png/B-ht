@@ -6,7 +6,10 @@ import { supabase } from '../supabaseClient';
 const AUTO_SYNC_INTERVAL_MS = 60_000;
 
 /** GPS heartbeat interval for driver users (ms). */
-const GPS_HEARTBEAT_INTERVAL_MS = 30_000;
+const GPS_HEARTBEAT_INTERVAL_MS = 60_000;
+
+/** Skip GPS update when the driver has moved less than this distance (metres). */
+const GPS_MIN_MOVEMENT_METERS = 50;
 
 interface UseOfflineSyncLoopOptions {
   isOnline: boolean;
@@ -22,6 +25,20 @@ type SyncRegistration = ServiceWorkerRegistration & {
 };
 
 /**
+ * Returns the great-circle distance between two GPS coordinates in metres
+ * using the Haversine formula. No external dependencies required.
+ */
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6371000;
+  const dLat = (b.lat - a.lat) * Math.PI / 180;
+  const dLng = (b.lng - a.lng) * Math.PI / 180;
+  const sinDLat = Math.sin(dLat / 2);
+  const sinDLng = Math.sin(dLng / 2);
+  const h = sinDLat * sinDLat + Math.cos(a.lat * Math.PI / 180) * Math.cos(b.lat * Math.PI / 180) * sinDLng * sinDLng;
+  return R * 2 * Math.atan2(Math.sqrt(h), Math.sqrt(1 - h));
+}
+
+/**
  * Global auto-sync loop (mode B – background, no user action required).
  *
  * Responsibilities:
@@ -30,8 +47,11 @@ type SyncRegistration = ServiceWorkerRegistration & {
  *   2. Retries every 60 s while online with pending records and not already syncing.
  *   3. Listens for Service Worker `FLUSH_OFFLINE_QUEUE` messages.
  *   4. Registers a background-sync tag for browser-native flush on reconnect.
- *   5. Runs a 30-second GPS heartbeat for driver users while online, with an
+ *   5. Runs a 60-second GPS heartbeat for driver users while online, with an
  *      immediate ping on mount so the admin sees the driver online instantly.
+ *      Skips the GPS position update when the driver has moved less than 50 m
+ *      (still updates lastActive), and aborts the Supabase update after 5 s
+ *      on weak networks to avoid hanging requests.
  *
  * All intervals and listeners are cleaned up on unmount.
  */
@@ -49,6 +69,9 @@ export function useOfflineSyncLoop({
 
   // Track whether the previous render was offline to detect the transition.
   const prevOnlineRef = useRef(isOnline);
+
+  // Last successfully uploaded GPS position for movement throttling.
+  const lastGpsRef = useRef<{ lat: number; lng: number } | null>(null);
 
   // ─── Auto-sync: trigger immediately on offline → online transition ────────
   useEffect(() => {
@@ -110,22 +133,44 @@ export function useOfflineSyncLoop({
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          supabase!
-            .from('drivers')
-            .update({
-              lastActive: new Date().toISOString(),
-              currentGps: { lat: latitude, lng: longitude },
-            })
-            .eq('id', activeDriverId)
-            .then(({ error }) => {
-              if (error) console.warn('[GPS] Heartbeat update failed:', error.message);
-            });
+          const newPos = { lat: latitude, lng: longitude };
+
+          const lastPos = lastGpsRef.current;
+          const hasMovedEnough = !lastPos || haversineMeters(lastPos, newPos) >= GPS_MIN_MOVEMENT_METERS;
+
+          if (hasMovedEnough) {
+            // Position changed significantly — update both GPS and lastActive.
+            supabase!
+              .from('drivers')
+              .update({
+                lastActive: new Date().toISOString(),
+                currentGps: newPos,
+              })
+              .eq('id', activeDriverId)
+              .abortSignal(AbortSignal.timeout(5000))
+              .then(({ error }) => {
+                if (error) {
+                  console.warn('[GPS] Heartbeat update failed:', error.message);
+                } else {
+                  lastGpsRef.current = newPos;
+                }
+              });
+          } else {
+            // Driver hasn't moved — only update lastActive to keep the session alive.
+            supabase!
+              .from('drivers')
+              .update({ lastActive: new Date().toISOString() })
+              .eq('id', activeDriverId)
+              .abortSignal(AbortSignal.timeout(5000))
+              .then(({ error }) => {
+                if (error) console.warn('[GPS] lastActive update failed:', error.message);
+              });
+          }
         },
         (err) => console.warn('[GPS] Heartbeat position error:', err.message),
-        // maximumAge: allow browser-cached position up to 15 s old (fast on old phones).
-        // Keeping it at half the heartbeat interval (30 s) ensures the data never
-        // exceeds one full interval old when it reaches the server.
-        { enableHighAccuracy: false, timeout: 8000, maximumAge: 15000 }
+        // maximumAge: allow browser-cached position up to 30 s old (half the heartbeat
+        // interval) so the data is never more than one full cycle stale on the server.
+        { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 },
       );
     };
 

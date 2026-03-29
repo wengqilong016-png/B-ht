@@ -63,7 +63,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   handleLogout,
 }) => {
   // Start realtime subscriptions only now that a session exists.
-  useRealtimeSubscription();
+  useRealtimeSubscription(userRole ?? undefined);
 
   const activeDriverId = currentUser.driverId ?? currentUser.id;
 

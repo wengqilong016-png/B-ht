@@ -2,6 +2,8 @@ import { describe, expect, it } from '@jest/globals';
 import {
   TX_LIMIT_ADMIN,
   TX_LIMIT_DRIVER,
+  SETTLEMENT_LIMIT_ADMIN,
+  SETTLEMENT_LIMIT_DRIVER,
   getSettlementQueryScope,
   getTransactionQueryScope,
 } from '../hooks/supabaseRoleScope';
@@ -38,6 +40,7 @@ describe('supabaseRoleScope', () => {
       cacheScope: 'driver:drv-7',
       driverIdFilter: 'drv-7',
       enabled: true,
+      settlementLimit: SETTLEMENT_LIMIT_DRIVER,
     });
   });
 
@@ -46,6 +49,7 @@ describe('supabaseRoleScope', () => {
       cacheScope: 'driver:pending',
       driverIdFilter: undefined,
       enabled: false,
+      settlementLimit: SETTLEMENT_LIMIT_DRIVER,
     });
   });
 
@@ -69,6 +73,7 @@ describe('supabaseRoleScope', () => {
     expect(getSettlementQueryScope(null)).toEqual({
       cacheScope: 'admin',
       enabled: true,
+      settlementLimit: SETTLEMENT_LIMIT_ADMIN,
     });
   });
 
@@ -76,6 +81,7 @@ describe('supabaseRoleScope', () => {
     expect(getSettlementQueryScope(undefined)).toEqual({
       cacheScope: 'admin',
       enabled: true,
+      settlementLimit: SETTLEMENT_LIMIT_ADMIN,
     });
   });
 });
