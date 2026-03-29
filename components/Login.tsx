@@ -41,6 +41,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     if (rawError.includes('Invalid user role')) {
       return zh ? '账号角色配置错误，请联系管理员' : 'Invalid account role. Contact admin.';
     }
+    if (rawError.includes('Profile fetch failed')) {
+      return zh ? '加载账号信息失败，请检查网络后重试' : 'Failed to load account info. Check your connection and retry.';
+    }
     return zh ? '登录失败，请检查网络后重试' : 'Login failed. Check your connection and retry.';
   };
 
@@ -52,8 +55,16 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     const result = await fetchCurrentUserProfile(authUserId, fallbackEmail || '');
 
     if (!result.success) {
-      await signOutCurrentUser();
-      setError(resolveSupabaseLoginError('error' in result ? (result as { error: string }).error : 'Unknown error', lang));
+      const err = 'error' in result ? (result as { error: string }).error : 'Unknown error';
+      // Only sign out for permanent configuration errors (profile genuinely missing or
+      // misconfigured role).  For transient failures (network error, server error) we
+      // show an error and leave the session intact so the user can retry without
+      // having to go through a full re-authentication cycle.
+      const isPermanentError = err === 'Profile not found' || err === 'Invalid user role';
+      if (isPermanentError) {
+        await signOutCurrentUser();
+      }
+      setError(resolveSupabaseLoginError(err, lang));
       return;
     }
 
