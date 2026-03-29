@@ -3,6 +3,7 @@ export const sw: Record<string, string> = {
   username: 'Email',
   password: 'Password',
   loginBtn: 'Login Now',
+  loginBtnLoading: 'Signing in...',
   loginFailed: 'Login failed',
   loginError: 'Login error',
   profileNotProvisioned: 'Account exists but profile is not provisioned.',

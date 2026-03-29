@@ -3,6 +3,7 @@ export const zh: Record<string, string> = {
   username: '邮箱',
   password: '密码 Password',
   loginBtn: '立即登录 Login Now',
+  loginBtnLoading: '登录中...',
   loginFailed: '登录失败，请检查账号密码',
   loginError: '登录过程中发生错误',
   profileNotProvisioned: '账号已存在，但未完成资料配置',
