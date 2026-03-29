@@ -1,4 +1,4 @@
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useRef } from 'react';
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
 import {
@@ -23,7 +23,7 @@ type AuthAction =
 
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
-const authReducer = (state: AuthState, action: AuthAction): AuthState => {
+export const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   switch (action.type) {
     case 'SET_USER':
       return {
@@ -107,7 +107,14 @@ export function useAuthBootstrap() {
   });
 
   // Persist the user to localStorage whenever it changes; clear on logout.
+  // Skip the initial render (currentUser starts as null) so we don't wipe the
+  // cache before the loadUser effect gets a chance to read it.
+  const isMountedRef = useRef(false);
   useEffect(() => {
+    if (!isMountedRef.current) {
+      isMountedRef.current = true;
+      return;
+    }
     if (state.currentUser) {
       writeCachedUser(state.currentUser);
     } else {
