@@ -14,7 +14,15 @@ const isValidUserRole = (role: string): role is User['role'] =>
 
 export type FetchCurrentUserProfileResult =
   | { success: true; user: User }
-  | { success: false; error: 'Supabase not configured' | 'Profile not found' | 'Invalid user role' };
+  | { success: false; error: 'Supabase not configured' | 'Profile not found' | 'Invalid user role' | 'Profile fetch failed' };
+
+/**
+ * PostgREST error code returned by `.single()` when no rows match.
+ * Any other error code indicates a network or server-side failure — we must
+ * NOT treat those as "profile not found" so that we avoid wiping the
+ * Supabase session on transient errors.
+ */
+const PGRST_NO_ROWS = 'PGRST116';
 
 export const fetchCurrentUserProfile = async (
   authUserId: string,
@@ -32,7 +40,14 @@ export const fetchCurrentUserProfile = async (
     .eq('auth_user_id', authUserId)
     .single<UserProfileRow>();
 
-  if (error || !profile) {
+  if (error) {
+    // PGRST116 = no rows returned by .single() → the profile genuinely doesn't exist.
+    // Any other error code (network failure, server error, etc.) is transient — return a
+    // distinct value so callers can avoid wiping the session unnecessarily.
+    const isNotFound = !error.code || error.code === PGRST_NO_ROWS;
+    return { success: false, error: isNotFound ? 'Profile not found' : 'Profile fetch failed' };
+  }
+  if (!profile) {
     return { success: false, error: 'Profile not found' };
   }
 
