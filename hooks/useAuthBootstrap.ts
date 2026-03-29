@@ -1,8 +1,7 @@
-import { useEffect, useReducer, useRef } from 'react';
+import { useEffect, useReducer } from 'react';
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
 import {
-  fetchCurrentUserProfile,
   restoreCurrentUserFromSession,
   signOutCurrentUser,
 } from '../services/authService';
@@ -107,13 +106,6 @@ export function useAuthBootstrap() {
     isInitializing: true,
   });
 
-  // Keep a ref so async callbacks inside the one-time useEffect can always read
-  // the latest currentUser without capturing a stale closure value.
-  const currentUserRef = useRef<User | null>(state.currentUser);
-  useEffect(() => {
-    currentUserRef.current = state.currentUser;
-  }, [state.currentUser]);
-
   // Persist the user to localStorage whenever it changes; clear on logout.
   useEffect(() => {
     if (state.currentUser) {
@@ -149,17 +141,17 @@ export function useAuthBootstrap() {
 
       if (!result.success) {
         const err = (result as { error: string }).error;
-        if (err !== 'No active session' && err !== 'Timeout') {
-          await signOutCurrentUser();
-        }
-        // Only forcibly logout if we had no cached user — avoid flashing the
-        // login screen when the network is temporarily slow.
+        // Never call signOutCurrentUser() here — doing so would wipe the
+        // Supabase session token from localStorage, making subsequent logins
+        // fail in the same browser.  signOut must only happen when the user
+        // explicitly clicks "Log out".
         if (!cached) {
           dispatch({ type: 'FINISH_INITIALIZING' });
         } else if (err === 'No active session') {
           // Session is truly gone — clear cached user and show login.
           dispatch({ type: 'LOGOUT' });
         }
+        // cached + any other error (Timeout, Profile not found, network, etc.) → keep cached user, skip update.
         return;
       }
       dispatch({ type: 'SET_USER', user: result.user });
@@ -167,38 +159,17 @@ export function useAuthBootstrap() {
 
     loadUser();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (
-        _event === 'USER_UPDATED' ||
-        _event === 'INITIAL_SESSION' ||
-        _event === 'TOKEN_REFRESHED'
-      ) return;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, _session) => {
+      // Only react to SIGNED_OUT — all other events are handled elsewhere:
+      // - INITIAL_SESSION / TOKEN_REFRESHED: handled by loadUser() above
+      // - USER_UPDATED: handled by dedicated profile-update UI
+      // - SIGNED_IN: Login component handles this via handleLogin(); processing
+      //   it here too causes a race where currentUserRef is still null and the
+      //   profile fetch failure triggers a spurious signOut.
+      if (_event !== 'SIGNED_OUT') return;
 
-      try {
-        if (!session?.user) {
-          dispatch({ type: 'LOGOUT' });
-          return;
-        }
-        const result = await fetchCurrentUserProfile(session.user.id, session.user.email || '');
-        if (!result.success) {
-          // If a user is already logged in, keep them logged in — don't force a
-          // logout just because a background profile re-fetch failed (e.g. slow
-          // network after token refresh).
-          if (currentUserRef.current) {
-            console.warn('[Auth] Profile fetch failed during state change, keeping current user.');
-            return;
-          }
-          await signOutCurrentUser();
-          dispatch({ type: 'LOGOUT' });
-          return;
-        }
-        dispatch({ type: 'SET_USER', user: result.user });
-      } catch (err) {
-        console.error('[Auth] onAuthStateChange error:', err);
-        if (!currentUserRef.current) {
-          dispatch({ type: 'LOGOUT' });
-        }
-      }
+      // Supabase has already cleared the session; just update UI state.
+      dispatch({ type: 'LOGOUT' });
     });
 
     return () => subscription.unsubscribe();
