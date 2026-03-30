@@ -13,7 +13,7 @@
 --   • Driver balance (coin_balance/cash_balance) must never go negative.
 --   • Merchant retained_balance / debt_balance are column-level REVOKEd
 --     (done in Phase 1); Boss reads via SECURITY DEFINER RPCs here.
---   • initial_coin_loan: 未指定 (not specified in current schema).
+--   • initial_coin_loan: 未指定 / UNSPECIFIED (not present in current schema).
 --     Minimal default: not enforced — callers must handle externally until
 --     a future migration adds the field + RPC.  Risk: no DB-level guard.
 -- =============================================================================
