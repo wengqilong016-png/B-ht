@@ -81,7 +81,7 @@ All RPCs use `p_` prefixed named parameters. Positional parameters are **forbidd
    `merchants.retained_balance` and `merchants.debt_balance` are REVOKEd from
    `authenticated`. Boss reads via `get_merchant_balances` (SECURITY DEFINER).
 
-7. **`initial_coin_loan`:** **未指定** (not specified in current authoritative SQL).
+7. **`initial_coin_loan`:** **未指定 / UNSPECIFIED** (not present in current authoritative SQL).
    - Minimal default: no DB-level field or enforcement.
    - Risk: no guard against double-issuing initial loans.
    - Recommended future action: add `initial_coin_loan` column to `drivers` table
