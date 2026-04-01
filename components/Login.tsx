@@ -1,10 +1,8 @@
-
-import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-
-import { fetchCurrentUserProfile, signInWithEmailPassword, signOutCurrentUser } from '../services/authService';
-import { checkDbHealth, envVarsMissing, supabase } from '../supabaseClient';
+import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown, Settings, CheckCircle2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
 import { User as UserType, TRANSLATIONS } from '../types';
+import { checkDbHealth, supabase, SUPABASE_URL, envVarsMissing, usingRuntimeCredentials, saveRuntimeCredentials, clearRuntimeCredentials } from '../supabaseClient';
+import { fetchCurrentUserProfile, signInWithEmailPassword, signOutCurrentUser } from '../services/authService';
 
 import EnvMissingErrorPage from './EnvMissingErrorPage';
 
@@ -20,6 +18,14 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
+
+  // Connection settings panel — auto-open when no credentials are configured
+  const [showSettings, setShowSettings] = useState(envVarsMissing);
+  const [settingsUrl, setSettingsUrl] = useState(SUPABASE_URL);
+  const [settingsKey, setSettingsKey] = useState('');
+  const [settingsSaved, setSettingsSaved] = useState(false);
+  const [settingsError, setSettingsError] = useState('');
+
   const t = TRANSLATIONS[lang];
 
   const resolveSupabaseLoginError = (rawError: string, language: 'zh' | 'sw'): string => {
@@ -51,9 +57,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   };
 
   useEffect(() => {
-    checkDbHealth()
-      .then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'))
-      .catch(() => setDbStatus('offline'));
+    checkDbHealth().then(isOnline => {
+      setDbStatus(isOnline ? 'online' : 'offline');
+      if (!isOnline) setShowSettings(true);
+    });
   }, []);
 
   if (envVarsMissing) {
@@ -78,6 +85,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     }
 
     onLogin(result.user);
+  };
+
+  const handleSaveSettings = () => {
+    setSettingsError('');
+    const trimUrl = settingsUrl.trim();
+    const trimKey = settingsKey.trim();
+    if (!trimUrl || !trimKey) {
+      setSettingsError(lang === 'zh' ? 'URL 和 Anon Key 均为必填项' : 'Both URL and Anon Key are required.');
+      return;
+    }
+    if (!trimUrl.startsWith('https://')) {
+      setSettingsError(lang === 'zh' ? 'URL 必须以 https:// 开头' : 'URL must start with https://');
+      return;
+    }
+    saveRuntimeCredentials(trimUrl, trimKey);
+    setSettingsSaved(true);
+    // Brief delay so the "Saved" confirmation is visible before the page reloads
+    setTimeout(() => window.location.reload(), 800);
+  };
+
+  const handleClearSettings = () => {
+    clearRuntimeCredentials();
+    window.location.reload();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -113,8 +143,29 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
             <button onClick={() => onSetLang('zh')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-caption font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'zh' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> 中文</button>
             <button onClick={() => onSetLang('sw')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-caption font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'sw' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> EN</button>
          </div>
-         <div className={`px-4 py-2 rounded-xl text-caption font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 ${dbStatus === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
-            {dbStatus === 'checking' ? 'Connecting...' : dbStatus === 'online' ? 'Cloud Ready' : 'Local Mode'}
+         <div className="flex items-center gap-2">
+            <div
+              className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 flex items-center gap-1.5 ${
+                dbStatus === 'online'
+                  ? 'bg-emerald-50 text-emerald-600'
+                  : dbStatus === 'offline'
+                  ? 'bg-rose-50 text-rose-600'
+                  : 'bg-slate-50 text-slate-400'
+              }`}
+              title={SUPABASE_URL || 'No URL configured'}
+            >
+              {dbStatus === 'checking' && <Loader2 size={10} className="animate-spin" />}
+              {dbStatus === 'online'   && <Wifi size={10} />}
+              {dbStatus === 'offline'  && <WifiOff size={10} />}
+              {dbStatus === 'checking' ? 'Connecting...' : dbStatus === 'online' ? 'Connected' : 'No Connection'}
+            </div>
+            <button
+              onClick={() => setShowSettings(v => !v)}
+              className={`p-2 rounded-xl text-[10px] font-black transition-all shadow-silicone border border-white/60 ${showSettings ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'}`}
+              title={lang === 'zh' ? '连接设置' : 'Connection Settings'}
+            >
+              <Settings size={14} />
+            </button>
          </div>
       </div>
 
@@ -177,7 +228,11 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
             <div className="text-center">
               <p className={`text-caption font-bold uppercase tracking-widest ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'offline' ? 'text-rose-400' : 'text-slate-300'}`}>
-                {dbStatus === 'online' ? '● Connected' : dbStatus === 'offline' ? '● Offline' : '● Checking...'}
+                {dbStatus === 'online'
+                  ? `● Connected${usingRuntimeCredentials ? ' (runtime config)' : ''}`
+                  : dbStatus === 'offline'
+                  ? '● Cannot connect — open Settings to configure'
+                  : '● Checking...'}
               </p>
               <p className="mt-1 text-caption font-bold text-slate-600 tracking-widest">
                 v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—'}
@@ -185,6 +240,95 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
             </div>
           </form>
         </div>
+
+        {/* ── Connection Settings Panel ─────────────────────────────────── */}
+        {showSettings && (
+          <div className="w-full mt-4 bg-[#f5f7fa] rounded-[32px] shadow-silicone border border-white/60 p-7 space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Settings size={14} className="text-indigo-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  {lang === 'zh' ? '连接设置' : 'Connection Settings'}
+                </span>
+              </div>
+              {usingRuntimeCredentials && (
+                <span className="text-[8px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                  {lang === 'zh' ? '已使用本地配置' : 'Using local config'}
+                </span>
+              )}
+            </div>
+
+            {/* Security notice */}
+            <div className="bg-rose-50 border border-rose-100 rounded-2xl p-3 flex items-start gap-2" role="alert" aria-label={lang === 'zh' ? '安全警告' : 'Security warning'}>
+              <AlertCircle size={13} className="text-rose-500 flex-shrink-0 mt-0.5" aria-hidden="true" />
+              <p className="text-rose-600 text-[10px] font-bold leading-relaxed">
+                {lang === 'zh'
+                  ? '请勿在此输入 Service Role Key（服务角色密钥）。该密钥会绕过所有安全规则，不可在浏览器中使用。此处仅填写 Anon Key（公开密钥）。'
+                  : 'Do NOT enter the Service Role Key here — it bypasses all security rules and must never be used in a browser. Enter the Anon Key (public key) only.'}
+              </p>
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                <Wifi size={11} className="text-indigo-400" />
+                Supabase URL
+              </label>
+              <input
+                type="url"
+                value={settingsUrl}
+                onChange={e => setSettingsUrl(e.target.value)}
+                placeholder="https://your-project.supabase.co"
+                className="w-full bg-[#f0f2f5] border-none rounded-2xl py-3.5 px-4 font-bold text-slate-700 text-xs shadow-silicone-pressed outline-none placeholder:text-slate-400"
+              />
+            </div>
+
+            <div className="space-y-3">
+              <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+                <Lock size={11} className="text-indigo-400" />
+                {lang === 'zh' ? 'Anon Key（公开密钥）' : 'Anon Key (public key)'}
+              </label>
+              <input
+                type="password"
+                value={settingsKey}
+                onChange={e => setSettingsKey(e.target.value)}
+                placeholder={lang === 'zh' ? '粘贴你的 anon key...' : 'Paste your anon key...'}
+                className="w-full bg-[#f0f2f5] border-none rounded-2xl py-3.5 px-4 font-bold text-slate-700 text-xs shadow-silicone-pressed outline-none placeholder:text-slate-400"
+              />
+              <p className="text-[9px] text-slate-400 px-1 leading-relaxed">
+                {lang === 'zh'
+                  ? 'Supabase 控制台 → Settings → API → Project API Keys → anon public'
+                  : 'Supabase Dashboard → Settings → API → Project API Keys → anon public'}
+              </p>
+            </div>
+
+            {settingsError && (
+              <div className="flex items-center gap-2 text-rose-500 text-xs font-bold">
+                <AlertCircle size={13} /> {settingsError}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={handleSaveSettings}
+                disabled={settingsSaved}
+                className="flex-1 bg-indigo-600 text-white font-black py-3 rounded-2xl text-[11px] uppercase tracking-wide flex items-center justify-center gap-2 shadow-silicone active:shadow-silicone-pressed transition-all disabled:opacity-60"
+              >
+                {settingsSaved
+                  ? <><CheckCircle2 size={14} /> {lang === 'zh' ? '已保存，重新加载中…' : 'Saved — Reloading…'}</>
+                  : <><RefreshCw size={14} /> {lang === 'zh' ? '保存并重新连接' : 'Save & Reconnect'}</>}
+              </button>
+              {usingRuntimeCredentials && (
+                <button
+                  onClick={handleClearSettings}
+                  className="px-4 py-3 bg-[#f0f2f5] text-slate-500 font-black rounded-2xl text-[10px] uppercase shadow-silicone-pressed transition-all"
+                  title={lang === 'zh' ? '清除本地配置，使用环境变量' : 'Clear local config, use env vars'}
+                >
+                  {lang === 'zh' ? '清除' : 'Clear'}
+                </button>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
