@@ -6,10 +6,13 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 const envUrl = import.meta.env.VITE_SUPABASE_URL as string | undefined;
 const envKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
-if (!envUrl || !envKey) {
+export const envVarsMissing: boolean = !envUrl || !envKey;
+
+if (envVarsMissing) {
   console.error(
     '[Bahati] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. ' +
-    'Copy .env.example to .env.local and fill in your Supabase project credentials.',
+    'Copy .env.example to .env.local and fill in your Supabase project credentials. ' +
+    'If deploying to Vercel, set these variables under Settings → Environment Variables and redeploy.',
   );
 }
 
