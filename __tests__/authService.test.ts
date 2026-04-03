@@ -96,9 +96,7 @@ describe('fetchCurrentUserProfile', () => {
 
     const result = await fetchCurrentUserProfile('user-missing');
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error).toBe('Profile not found');
+    expect(result).toMatchObject({ success: false, error: 'Profile not found' });
   });
 
   it('returns Profile fetch failed for non-PGRST116 Supabase errors (transient)', async () => {
@@ -110,9 +108,7 @@ describe('fetchCurrentUserProfile', () => {
 
     const result = await fetchCurrentUserProfile('user-1');
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error).toBe('Profile fetch failed');
+    expect(result).toMatchObject({ success: false, error: 'Profile fetch failed' });
   });
 
   it('returns Profile not found when error has no code (legacy path)', async () => {
@@ -124,10 +120,8 @@ describe('fetchCurrentUserProfile', () => {
 
     const result = await fetchCurrentUserProfile('user-1');
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
     // No code → treated as "not found" (safe default)
-    expect(result.error).toBe('Profile not found');
+    expect(result).toMatchObject({ success: false, error: 'Profile not found' });
   });
 
   it('returns Invalid user role when role is not admin or driver', async () => {
@@ -139,9 +133,7 @@ describe('fetchCurrentUserProfile', () => {
 
     const result = await fetchCurrentUserProfile('user-2');
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error).toBe('Invalid user role');
+    expect(result).toMatchObject({ success: false, error: 'Invalid user role' });
   });
 
   it('returns Profile not found when data is null with no error', async () => {
@@ -150,9 +142,7 @@ describe('fetchCurrentUserProfile', () => {
 
     const result = await fetchCurrentUserProfile('user-3');
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error).toBe('Profile not found');
+    expect(result).toMatchObject({ success: false, error: 'Profile not found' });
   });
 
   it('includes driverId when driver_id is present in the row', async () => {
@@ -212,9 +202,7 @@ describe('restoreCurrentUserFromSession', () => {
 
     const result = await restoreCurrentUserFromSession();
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error).toBe('No active session');
+    expect(result).toMatchObject({ success: false, error: 'No active session' });
   });
 
   it('propagates Profile fetch failed (not No active session) when profile query is transient', async () => {
@@ -227,10 +215,8 @@ describe('restoreCurrentUserFromSession', () => {
 
     const result = await restoreCurrentUserFromSession();
 
-    expect(result.success).toBe(false);
-    if (result.success) return;
     // Must NOT be 'No active session' — the session is valid, the profile query failed
-    expect(result.error).toBe('Profile fetch failed');
+    expect(result).toMatchObject({ success: false, error: 'Profile fetch failed' });
   });
 });
 
