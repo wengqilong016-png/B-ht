@@ -181,9 +181,16 @@ BEGIN
   -- ── 5b. Update location's lastScore to the newly submitted reading ──
   -- Only on a fresh insert (v_rows_inserted = 1); idempotent replays
   -- (ON CONFLICT DO NOTHING) must not clobber the already-stored value.
+  -- Never move lastScore backwards here; lower/reset readings must go
+  -- through the explicit reset/admin workflow to avoid inflating a later
+  -- collection's revenue baseline.
   IF v_rows_inserted = 1 THEN
     UPDATE public.locations
-       SET "lastScore" = p_current_score
+       SET "lastScore" = CASE
+                            WHEN "lastScore" IS NULL OR p_current_score >= "lastScore"
+                              THEN p_current_score
+                            ELSE "lastScore"
+                          END
      WHERE id = p_location_id;
   END IF;
 
