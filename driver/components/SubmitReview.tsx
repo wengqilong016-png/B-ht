@@ -119,6 +119,12 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
   const handleSubmit = async () => {
     if (!selectedLocation || isProcessing) return;
+    if (!photoData) {
+      const ok = confirm(lang === 'zh'
+        ? '⚠️ 未附加照片，照片可作为收款凭证。是否仍要提交？'
+        : '⚠️ No photo attached. A photo serves as proof of collection. Continue anyway?');
+      if (!ok) return;
+    }
     if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? '⚠️ Coin stock insufficient, continue?' : '⚠️ Coin stock insufficient, continue?')) return;
 
     if (gpsCoords) { processSubmission(gpsCoords, 'live'); return; }
@@ -240,7 +246,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isProcessing || !currentScore || !photoData}
+          disabled={isProcessing || !currentScore}
           className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
