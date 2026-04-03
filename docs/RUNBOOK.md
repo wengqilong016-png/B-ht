@@ -673,13 +673,19 @@ chain after merge, without expanding scope.
 
 ### Canonical SQL helper
 
-- File: `scripts/stage10_post_merge_smoke.sql`
-- Open the file, replace `CASE-2026-001` with the resolved case ID, then run in Supabase SQL Editor or via `psql -f`.
+Run the following in Supabase SQL Editor, replacing `CASE-2026-001` with the resolved case ID:
 
-The SQL verifies:
-- case row + resolution metadata
-- `case_resolved` audit event presence and latest timestamp
-- `support_audit_log_event_type_check` contains `case_resolved`
+```sql
+SELECT id, status, resolution_outcome, resolution_notes, resolved_by, resolved_at
+FROM public.support_cases WHERE id = 'CASE-2026-001';
+
+SELECT id, case_id, event_type, actor_id, created_at
+FROM public.support_audit_log WHERE case_id = 'CASE-2026-001' AND event_type = 'case_resolved';
+
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.support_audit_log'::regclass AND conname = 'support_audit_log_event_type_check';
+```
 
 ### Fast manual SQL snippet
 
