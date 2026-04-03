@@ -2,7 +2,8 @@
 import React, { useState } from 'react';
 import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock, WifiOff } from 'lucide-react';
 import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
-import { supabase } from '../supabaseClient';
+import { updatePassword } from '../repositories/authRepository';
+import { updateDriverPhone } from '../repositories/driverRepository';
 import { updateUserEmail } from '../services/authService';
 import { useFormStatus } from '../hooks/useFormStatus';
 import { StatusIcon as StatusIconComponent } from './common/StatusIcon';
@@ -56,17 +57,13 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
       return;
     }
     pwdForm.setLoading();
-    if (!supabase) {
-      pwdForm.setError(t.updateError);
-      return;
-    }
-    const { error: pwdError } = await supabase.auth.updateUser({ password: newPwd });
-    if (!pwdError) {
+    try {
+      await updatePassword(newPwd);
       pwdForm.setSuccess(t.updateSuccess);
       setNewPwd('');
       setConfirmPwd('');
-    } else {
-      pwdForm.setError(pwdError.message ?? t.updateError);
+    } catch (err) {
+      pwdForm.setError((err as Error).message ?? t.updateError);
     }
   };
 
@@ -93,21 +90,18 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
       phoneForm.setError(t.updateError);
       return;
     }
-    if (!currentUser.driverId || !supabase) {
+    if (!currentUser.driverId) {
       phoneForm.setError(t.updateError);
       return;
     }
     phoneForm.setLoading();
-    const { error } = await supabase
-      .from('drivers')
-      .update({ phone: newPhone.trim() })
-      .eq('id', currentUser.driverId);
-    if (error) {
-      phoneForm.setError(error.message || t.updateError);
-    } else {
+    try {
+      await updateDriverPhone(currentUser.driverId, newPhone.trim());
       phoneForm.setSuccess(t.updateSuccess);
       onPhoneUpdated?.(currentUser.driverId, newPhone.trim());
       setNewPhone('');
+    } catch (err) {
+      phoneForm.setError((err as Error).message || t.updateError);
     }
   };
 
@@ -264,7 +258,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
           </div>
 
           {/* ── Update Phone (driver only) ── */}
-          {currentUser.role === 'driver' && currentUser.driverId && supabase && (
+          {currentUser.role === 'driver' && currentUser.driverId && (
             <div className={sectionClass}>
               <div className="flex items-center gap-2 mb-3">
                 <Phone size={14} className="text-emerald-400" />

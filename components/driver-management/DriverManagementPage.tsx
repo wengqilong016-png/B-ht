@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { Driver, Location, Transaction, DailySettlement } from '../../types';
-import { supabase } from '../../supabaseClient';
+import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
 import { useDriverManagement } from './hooks/useDriverManagement';
 import DriverSalaryModal from './DriverSalaryModal';
 import DriverToolbar, { SortField } from './DriverToolbar';
@@ -190,25 +190,20 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
       }
 
       try {
-        const { data, error } = await supabase.functions.invoke('create-driver', {
-          body: {
-            email,
-            password,
-            driver_id: form.username,
-            display_name: form.name,
-            username: form.username,
-          },
+        const result = await createDriverAccount({
+          email,
+          password,
+          username: form.username,
+          name: form.name,
         });
 
-        if (error || !data?.success) {
-          const msg = data?.error ?? error?.message ?? 'Unknown error';
-          const code = data?.code ?? '';
-          if (code === 'EMAIL_CONFLICT') {
+        if (result.success === false) {
+          if (result.code === 'EMAIL_CONFLICT') {
             alert(`邮箱已被注册 / Email already registered: ${email}`);
-          } else if (code === 'DRIVER_ID_CONFLICT') {
+          } else if (result.code === 'DRIVER_ID_CONFLICT') {
             alert(`司机账号已存在 / Driver ID already exists: ${form.username}`);
           } else {
-            alert(`创建司机失败 / Failed to create driver: ${msg}`);
+            alert(`创建司机失败 / Failed to create driver: ${result.message}`);
           }
           setIsSaving(false);
           return;
@@ -216,19 +211,11 @@ const DriverManagementPage: React.FC<DriverManagementProps> = ({
 
         // Edge Function created Auth user + drivers row + profiles row.
         // Persist business fields that the Edge Function doesn't handle.
-        const createdDriverId = data.driver_id as string;
-        const { error: updateError } = await supabase.from('drivers').update({
-          phone: driverData.phone,
-          vehicleInfo: driverData.vehicleInfo,
-          dailyFloatingCoins: driverData.dailyFloatingCoins,
-          baseSalary: driverData.baseSalary,
-          commissionRate: driverData.commissionRate,
-          initialDebt: driverData.initialDebt,
-          remainingDebt: driverData.initialDebt,
-        }).eq('id', createdDriverId);
-
-        if (updateError) {
-          console.error('Failed to persist business fields for new driver:', updateError);
+        const createdDriverId = result.driverId;
+        try {
+          await persistDriverBusinessFields(createdDriverId, driverData);
+        } catch (updateErr) {
+          console.error('Failed to persist business fields for new driver:', updateErr);
           alert('司机账号已创建，但部分业务信息未能保存。请重新编辑司机资料。\nDriver account created, but some business fields could not be saved. Please re-edit the driver profile.');
         }
 

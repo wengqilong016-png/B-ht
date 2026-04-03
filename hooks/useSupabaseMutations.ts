@@ -1,10 +1,15 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../supabaseClient';
 import { Location, Driver, Transaction, DailySettlement, AILog, User } from '../types';
 import { flushQueue, reportQueueHealthToServer } from '../offlineQueue';
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
 import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRoleScope';
 import { stripClientFields } from '../utils/stripClientFields';
+import { upsertDrivers, deleteDrivers as repoDeleteDrivers, updateDriverCoins } from '../repositories/driverRepository';
+import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
+import { upsertTransaction } from '../repositories/transactionRepository';
+import { upsertSettlement } from '../repositories/settlementRepository';
+import { insertAiLog } from '../repositories/aiLogRepository';
+import { supabase } from '../supabaseClient';
 
 export function useSupabaseMutations(isOnline: boolean, currentUser?: User | null) {
   const queryClient = useQueryClient();
@@ -51,11 +56,8 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousDrivers };
     },
     mutationFn: async (updatedDrivers: Driver[]) => {
-      const client = supabase;
-      if (isOnline && client) {
-        await Promise.all(updatedDrivers.map(d =>
-          client.from('drivers').upsert(stripClientFields(d as unknown as Record<string, unknown>))
-        ));
+      if (isOnline) {
+        await upsertDrivers(updatedDrivers.map(d => stripClientFields(d as unknown as Record<string, unknown>) as Partial<Driver>));
       }
     },
     onError: (_error, _variables, context) => {
@@ -76,11 +78,8 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousLocations };
     },
     mutationFn: async (updatedLocations: Location[]) => {
-      const client = supabase;
-      if (isOnline && client) {
-        await Promise.all(updatedLocations.map(l =>
-          client.from('locations').upsert(stripClientFields(l as unknown as Record<string, unknown>))
-        ));
+      if (isOnline) {
+        await upsertLocations(updatedLocations.map(l => stripClientFields(l as unknown as Record<string, unknown>) as Partial<Location>));
       }
     },
     onError: (_error, _variables, context) => {
@@ -101,8 +100,8 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousLocations };
     },
     mutationFn: async (ids: string[]) => {
-      if (isOnline && supabase) {
-        await supabase.from('locations').delete().in('id', ids);
+      if (isOnline) {
+        await repoDeleteLocations(ids);
       }
     },
     onError: (_error, _variables, context) => {
@@ -123,8 +122,8 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousDrivers };
     },
     mutationFn: async (ids: string[]) => {
-      if (isOnline && supabase) {
-        await supabase.from('drivers').delete().in('id', ids);
+      if (isOnline) {
+        await repoDeleteDrivers(ids);
       }
     },
     onError: (_error, _variables, context) => {
@@ -147,12 +146,12 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousTransactions };
     },
     mutationFn: async ({ txId, updates }: { txId: string; updates: Partial<Transaction> }) => {
-      if (isOnline && supabase) {
+      if (isOnline) {
         const txs = queryClient.getQueryData<Transaction[]>(transactionQueryKey) || [];
         const tx = txs.find(t => t.id === txId);
         if (tx) {
-          await supabase.from('transactions').upsert(
-            stripClientFields({ ...tx, ...updates } as unknown as Record<string, unknown>)
+          await upsertTransaction(
+            stripClientFields({ ...tx, ...updates } as unknown as Record<string, unknown>) as Partial<Transaction>
           );
         }
       }
@@ -185,12 +184,12 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousSettlements, previousDrivers };
     },
     mutationFn: async (settlement: DailySettlement) => {
-      if (isOnline && supabase) {
+      if (isOnline) {
         const nextDayStartingCoins = settlement.actualCoins || 0;
-        await supabase.from('daily_settlements').upsert(
-          stripClientFields(settlement as unknown as Record<string, unknown>)
+        await upsertSettlement(
+          stripClientFields(settlement as unknown as Record<string, unknown>) as Partial<DailySettlement>
         );
-        await supabase.from('drivers').update({ dailyFloatingCoins: nextDayStartingCoins }).eq('id', settlement.driverId);
+        await updateDriverCoins(settlement.driverId!, nextDayStartingCoins);
       }
     },
     onError: (_error, _variables, context) => {
@@ -212,8 +211,8 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
   const logAI = useMutation({
     mutationFn: async (log: AILog) => {
       queryClient.setQueryData(['aiLogs'], (old: AILog[] = []) => [{...log, isSynced: false}, ...old]);
-      if (isOnline && supabase) {
-        await supabase.from('ai_logs').insert({ ...log, isSynced: true });
+      if (isOnline) {
+        await insertAiLog(log);
       }
     },
     onSettled: () => {
