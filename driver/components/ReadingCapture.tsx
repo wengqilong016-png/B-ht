@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Scan, CheckCircle2, BrainCircuit, X, ArrowRight, RotateCcw, AlertTriangle, Satellite, Edit2, ChevronRight } from 'lucide-react';
+import { Scan, CheckCircle2, BrainCircuit, X, ArrowRight, RotateCcw, AlertTriangle, Satellite, Edit2, ChevronRight, WifiOff } from 'lucide-react';
+import { useGpsCapture } from '../hooks/useGpsCapture';
 import WizardStepBar from './WizardStepBar';
 import { Location, Driver, TRANSLATIONS, AILog } from '../../types';
 import { GoogleGenAI } from '@google/genai';
@@ -46,6 +47,21 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   const t = TRANSLATIONS[lang];
   const { isLowPerformance } = usePerformanceMode();
 
+  const { coords: gpsHookCoords, status: gpsHookStatus, request: requestGps } = useGpsCapture(gpsCoords);
+
+  // Keep draft in sync whenever the hook resolves coords or status
+  useEffect(() => {
+    if (gpsHookCoords) onUpdateGps(gpsHookCoords);
+  }, [gpsHookCoords]);
+
+  useEffect(() => {
+    if (gpsHookStatus === 'granted') onUpdateGpsPermission('granted');
+    else if (gpsHookStatus === 'denied') onUpdateGpsPermission('denied');
+  }, [gpsHookStatus]);
+
+  // Auto-request GPS on mount
+  useEffect(() => { requestGps(); }, []);
+
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [scannerStatus, setScannerStatus] = useState<'idle' | 'scanning' | 'review'>('idle');
 
@@ -54,23 +70,6 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   const scanIntervalRef = useRef<number | null>(null);
   const isProcessingRef = useRef(false);
   const lastScanTimeRef = useRef<number>(0);
-
-  const requestGps = () => {
-    if (!navigator.geolocation) return;
-    onUpdateGpsPermission('prompt');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        onUpdateGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        onUpdateGpsPermission('granted');
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) onUpdateGpsPermission('denied');
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  };
-
-  useEffect(() => { requestGps(); }, []);
 
   const startScanner = async () => {
     setIsScannerOpen(true);
@@ -298,36 +297,55 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         )}
       </div>
 
-      {/* GPS status */}
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${
-        gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' :
-        gpsCoords ? 'bg-emerald-50 border-emerald-200' :
-        'bg-slate-50 border-slate-200'
-      }`}>
-        <div className={`p-1.5 rounded-btn flex-shrink-0 ${
-          gpsPermission === 'denied' ? 'bg-rose-500 text-white' :
-          gpsCoords ? 'bg-emerald-500 text-white' :
-          'bg-slate-400 text-white'
-        }`}>
-          <Satellite size={13} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className={`text-[9px] font-black uppercase ${
-            gpsPermission === 'denied' ? 'text-rose-600' :
-            gpsCoords ? 'text-emerald-700' :
-            'text-slate-500'
-          }`}>
-            {gpsPermission === 'denied' ? 'GPS Denied — check browser settings' :
-             gpsCoords ? `GPS Locked (${gpsCoords.lat.toFixed(4)}, ${gpsCoords.lng.toFixed(4)})` :
-             'Acquiring GPS...'}
-          </p>
-        </div>
-        {!gpsCoords && (
-          <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
-            <RotateCcw size={12} />
-          </button>
-        )}
-      </div>
+      {/* GPS status — uses rich status from useGpsCapture */}
+      {(() => {
+        const isError = gpsHookStatus === 'denied' || gpsHookStatus === 'timeout' || gpsHookStatus === 'error';
+        const isGranted = gpsHookStatus === 'granted' && !!gpsHookCoords;
+        const isRequesting = gpsHookStatus === 'requesting' || gpsHookStatus === 'idle';
+        const containerCls = isGranted
+          ? 'bg-emerald-50 border-emerald-200'
+          : isError
+          ? 'bg-rose-50 border-rose-200'
+          : 'bg-slate-50 border-slate-200';
+        const iconCls = isGranted
+          ? 'bg-emerald-500 text-white'
+          : isError
+          ? 'bg-rose-500 text-white'
+          : 'bg-slate-400 text-white';
+        const textCls = isGranted
+          ? 'text-emerald-700'
+          : isError
+          ? 'text-rose-600'
+          : 'text-slate-500';
+        const label =
+          gpsHookStatus === 'granted' && gpsHookCoords
+            ? `GPS Locked (${gpsHookCoords.lat.toFixed(4)}, ${gpsHookCoords.lng.toFixed(4)})`
+            : gpsHookStatus === 'denied'
+            ? (lang === 'sw' ? 'GPS imekataliwa — angalia mipangilio ya kivinjari' : 'GPS denied — check browser settings')
+            : gpsHookStatus === 'timeout'
+            ? (lang === 'sw' ? 'GPS imechelewa — bonyeza kurudia' : 'GPS timed out — tap to retry')
+            : gpsHookStatus === 'error'
+            ? (lang === 'sw' ? 'GPS haipatikani — bonyeza kurudia' : 'GPS unavailable — tap to retry')
+            : (lang === 'sw' ? 'Inapata GPS...' : 'Acquiring GPS...');
+        return (
+          <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${containerCls}`}>
+            <div className={`p-1.5 rounded-btn flex-shrink-0 ${iconCls}`}>
+              {isRequesting
+                ? <WifiOff size={13} className="animate-pulse" />
+                : <Satellite size={13} />
+              }
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className={`text-[9px] font-black uppercase ${textCls}`}>{label}</p>
+            </div>
+            {!isGranted && (
+              <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
+                <RotateCcw size={12} />
+              </button>
+            )}
+          </div>
+        );
+      })()}
 
       {/* Next button */}
       <button

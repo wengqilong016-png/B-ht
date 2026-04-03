@@ -6,6 +6,7 @@ import {
   type FinanceCalculationResult,
 } from '../../services/financeCalculator';
 import { useCollectionDraft } from '../hooks/useCollectionDraft';
+import { useGpsCapture } from '../hooks/useGpsCapture';
 import MachineSelector from '../components/MachineSelector';
 import ReadingCapture from '../components/ReadingCapture';
 import FinanceSummary from '../components/FinanceSummary';
@@ -32,6 +33,18 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 }) => {
   const [step, setStep] = useState<FlowStep>('selection');
   const { draft, updateDraft, resetDraft } = useCollectionDraft();
+
+  // Shared GPS hook — request on mount and when reset/payout sub-views activate
+  const { coords: gpsCoords, status: gpsStatus, request: requestGps } = useGpsCapture(draft.gpsCoords);
+
+  // Keep draft GPS in sync with hook results
+  useEffect(() => {
+    if (gpsCoords) updateDraft({ gpsCoords });
+  }, [gpsCoords]);
+  useEffect(() => {
+    if (gpsStatus === 'granted') updateDraft({ gpsPermission: 'granted' });
+    else if (gpsStatus === 'denied') updateDraft({ gpsPermission: 'denied' });
+  }, [gpsStatus]);
 
   // Sub-views
   const [isRegistering, setIsRegistering] = useState(false);
@@ -102,20 +115,6 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const handleFullReset = () => {
     setStep('selection');
     resetDraft();
-  };
-
-  // Request GPS helper
-  const requestGps = () => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        updateDraft({ gpsCoords: { lat: pos.coords.latitude, lng: pos.coords.longitude }, gpsPermission: 'granted' });
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) updateDraft({ gpsPermission: 'denied' });
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
   };
 
   // Machine Registration sub-view
