@@ -2,7 +2,6 @@ import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { Layers, Coins, ScanLine, AlertTriangle, WifiOff, DatabaseBackup } from 'lucide-react';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';
 import { getPendingTransactions } from '../../offlineQueue';
-import OfflineRouteMap from '../../components/OfflineRouteMap';
 import MachineFilterBar from './MachineFilterBar';
 import MachineCard, { type MachineCardMeta } from './MachineCard';
 
@@ -261,16 +260,6 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         ))}
       </div>
 
-      {/* Offline Route Map */}
-      {allTransactions.length > 0 && (
-        <OfflineRouteMap
-          transactions={allTransactions}
-          driverId={currentDriver.id}
-          driverName={currentDriver.name}
-          isOnline={isOnline}
-          lang={lang}
-        />
-      )}
     </div>
   );
 };

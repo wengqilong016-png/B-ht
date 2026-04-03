@@ -18,6 +18,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { resolveCurrentDriver } from '../driverShellViewState';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface DriverCollectionFlowProps {
   onRegisterMachine?: (location: Location) => void;
@@ -31,13 +32,24 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, filteredTransactions, isOnline, drivers } = useAppData();
   const { logAI, syncOfflineData } = useMutations();
+  const queryClient = useQueryClient();
 
   const locations = filteredLocations;
   const allTransactions = filteredTransactions;
   const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
 
   const onLogAI = (log: Parameters<typeof logAI.mutate>[0]) => logAI.mutate(log);
-  const onSubmit = (_tx: Transaction) => syncOfflineData.mutate();
+  const onSubmit = (tx: Transaction) => {
+    // Optimistically update the location's lastScore in the cache so the
+    // machine card reflects the new reading immediately, before the server
+    // refetch triggered by syncOfflineData completes.
+    queryClient.setQueryData<Location[]>(['locations'], (old = []) =>
+      old.map(loc =>
+        loc.id === tx.locationId ? { ...loc, lastScore: tx.currentScore } : loc
+      )
+    );
+    syncOfflineData.mutate();
+  };
 
   if (!currentDriver) return null;
   const [step, setStep] = useState<FlowStep>('selection');
