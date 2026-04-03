@@ -43,11 +43,22 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     // Optimistically update the location's lastScore in the cache so the
     // machine card reflects the new reading immediately, before the server
     // refetch triggered by syncOfflineData completes.
-    queryClient.setQueryData<Location[]>(['locations'], (old = []) =>
-      old.map(loc =>
-        loc.id === tx.locationId ? { ...loc, lastScore: tx.currentScore } : loc
-      )
+    const currentLocations =
+      queryClient.getQueryData<Location[]>(['locations']) ?? locations;
+    const updatedLocations = currentLocations.map(loc =>
+      loc.id === tx.locationId ? { ...loc, lastScore: tx.currentScore } : loc
     );
+
+    queryClient.setQueryData<Location[]>(['locations'], updatedLocations);
+
+    try {
+      localStorage.setItem(
+        CONSTANTS.STORAGE_LOCATIONS_KEY,
+        JSON.stringify(updatedLocations)
+      );
+    } catch (error) {
+      console.warn('Failed to persist optimistic locations update locally.', error);
+    }
     syncOfflineData.mutate();
   };
 
