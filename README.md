@@ -12,77 +12,44 @@ View your app in AI Studio: https://ai.studio/apps/drive/19ZXHne5Pl7SQ2J0RPJvTJi
 
 ---
 
-### 第一步 / Step 1 — 打开 SQL Editor / Open SQL Editor
+### 全新部署 / Fresh deployment
 
-打开 Supabase Dashboard，选择你的项目，点击左侧 **SQL Editor**。
+打开 Supabase Dashboard → **SQL Editor**，将以下**单一文件**全部内容粘贴并运行：
 
-Open your Supabase Dashboard, select your project, click **SQL Editor** in the left sidebar.
+Open Supabase Dashboard → **SQL Editor**, paste and run this **single file**:
+
+```
+supabase/schema.sql
+```
+
+该文件包含所有表、函数、触发器和 RLS 策略，幂等（可重复执行）。
+
+This file contains all tables, functions, triggers and RLS policies. It is idempotent (safe to re-run).
 
 ---
 
-### 第二步 / Step 2 — 选择你的数据库配置路径 / Choose your database setup path
-
-`supabase/migrations/` 中包含**两类文件**，不要全部按顺序运行——请根据你的场景选择一条路径：
-
-The `supabase/migrations/` directory contains **two distinct types of files**. Do not run all of them blindly in order — choose one path based on your scenario:
-
----
-
-#### 路径 A：最小生产基线（仅核心登录 + 司机 + 点位）
-**Path A — Minimal production baseline (identity, driver, location only)**
-
-适用场景：全新生产项目，只需要登录、司机管理和点位分配功能。
-
-Use when: brand-new production project, only need login identity, driver records, and location assignment.
-
-在 SQL Editor 中运行此单一文件：
-
-Run this single file in SQL Editor:
-```
-supabase/migrations/20260325123000_production_v1_minimal_baseline.sql
-```
-
-详情见 `docs/PRODUCTION_V1_MINIMAL_SETUP.md`。
-
-See `docs/PRODUCTION_V1_MINIMAL_SETUP.md` for details.
-
----
-
-#### 路径 B：完整生产基线（含收款、结算、支持、诊断）
-**Path B — Full production baseline (all features)**
-
-适用场景：需要完整业务功能（收款、财务、支持工单、诊断）的生产部署。
-
-Use when: production deployment that needs the full business scope (collection, finance, support cases, diagnostics).
-
-按顺序运行以下四个文件：
-
-Apply these four files in order:
-```
-supabase/migrations/20260325130000_production_full_00_identity_and_assignment.sql
-supabase/migrations/20260325133000_production_full_01_business_flow.sql
-supabase/migrations/20260325140000_production_full_02_support_and_audit.sql
-supabase/migrations/20260325150000_production_full_03_diagnostics_and_health.sql
-```
-
-详情见 `docs/PRODUCTION_FULL_BASELINE_APPROACH.md`。
-
-See `docs/PRODUCTION_FULL_BASELINE_APPROACH.md` for details.
-
----
-
-#### 路径 C：对已有数据库做增量更新
-**Path C — Incremental update to an existing database**
+### 对已有数据库做增量更新 / Incremental update to an existing database
 
 适用场景：数据库已运行，只需补充新的 migration 文件。
 
-Use when: the database is already running and you only need to apply new incremental changes.
+Use when: the database is already running and you only need to apply new changes.
 
-> ⚠️ 只运行你尚未应用的那些 migration 文件，不要重新运行已有的文件。  
-> ⚠️ Apply only the specific migration files you have not yet applied. Do not re-run files already applied.
+`supabase/migrations/` 按时间顺序包含以下文件（依次应用）：
 
-> ⚠️ **不要**将 `20240101000000_initial_schema.sql` 或 `20240103000000_enable_rls.sql` 与上面的生产基线包混用——两者会产生冲突的 RLS 策略。  
-> ⚠️ Do **not** mix `20240101000000_initial_schema.sql` / `20240103000000_enable_rls.sql` with the production baseline packs above — they produce conflicting RLS policies.
+```
+20260325130000_production_full_00_identity_and_assignment.sql
+20260325133000_production_full_01_business_flow.sql
+20260325140000_production_full_02_support_and_audit.sql
+20260325150000_production_full_03_diagnostics_and_health.sql
+20260325155000_calculate_finance_v2.sql
+20260325156000_submit_collection_v2.sql
+20260327000000_stage16_fix_driver_flows.sql
+20260328000000_harden_automation_triggers.sql
+20260328000001_realtime_broadcast_triggers.sql
+```
+
+> ⚠️ 只运行你尚未应用的文件，不要重复运行。  
+> ⚠️ Apply only files you have not yet applied. Do not re-run already-applied files.
 
 ---
 
