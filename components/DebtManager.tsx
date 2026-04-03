@@ -20,7 +20,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
   const { updateLocations, updateDrivers } = useMutations();
 
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave);
-  const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
+  const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave);
 
   const t = TRANSLATIONS[lang];
   const activeDriverId = currentUser.driverId ?? currentUser.id;
