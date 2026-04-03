@@ -166,11 +166,8 @@ To verify the production settings are applied, log in to Supabase Dashboard → 
 If users are being prompted to change their password on every login, run the following in **Supabase Dashboard → SQL Editor**:
 
 ```sql
--- scripts/disable_force_password_change.sql
 UPDATE public.profiles SET must_change_password = FALSE;
 ```
-
-This script is also saved at `scripts/disable_force_password_change.sql` for reference.
 
 ## Security
 
@@ -202,28 +199,16 @@ stages 1 through 11A.  Run each step in order.
 
 ### Migration verification
 
-| Stage | Migration file | Key objects created |
-|-------|---------------|---------------------|
-| 1/2 | `20260322073000_calculate_finance_v2.sql` | `calculate_finance_v2()` function |
-| 2   | `20260322090000_submit_collection_v2.sql` | `submit_collection_v2()` function |
-| 6   | `20260322150000_fleet_queue_snapshots.sql` | `queue_health_reports` table |
-| 8   | `20260322200000_health_alerts.sql` | `health_alerts` table, `generate_health_alerts()` function |
-| 8.1 | `20260322200001_health_alerts_harden.sql` | RLS hardening, index improvements |
-| 9   | `20260322210000_support_audit_log.sql` | `support_audit_log` table, RLS policies |
-| 9   | `20260323030000_support_cases.sql`     | `support_cases` table, RLS policies |
-| 9   | `20260323040000_support_check_constraints.sql` | CHECK constraints on `status` and `event_type` |
-| 10  | `20260323100000_case_resolution.sql`           | Resolution columns on `support_cases`, extended event_type CHECK |
-| 10  | `20260324110000_support_resolution_consistency.sql` | `resolve_support_case_v1()` RPC, closed-resolution CHECK |
-| 11A | `20260325000000_stage11a_case_id_blank_check.sql` | CHECK constraint blocking blank/whitespace `case_id` (`NOT VALID`) |
+All schema objects are created by `supabase/schema.sql`. To verify they exist:
 
-Confirm each migration is applied:
-
-```sql
-SELECT version, name, executed_at
-FROM supabase_migrations.schema_migrations
-ORDER BY executed_at DESC
-LIMIT 10;
-```
+| Object | Verification query |
+|--------|-------------------|
+| `calculate_finance_v2()` | `SELECT proname FROM pg_proc WHERE proname = 'calculate_finance_v2';` |
+| `submit_collection_v2()` | `SELECT proname FROM pg_proc WHERE proname = 'submit_collection_v2';` |
+| `queue_health_reports` table | `SELECT to_regclass('public.queue_health_reports');` |
+| `health_alerts` table | `SELECT to_regclass('public.health_alerts');` |
+| `support_audit_log` table | `SELECT to_regclass('public.support_audit_log');` |
+| `support_cases` table | `SELECT to_regclass('public.support_cases');` |
 
 ### Post-deploy verification
 
@@ -288,7 +273,7 @@ SELECT COUNT(*) FROM public.support_cases;
 - [ ] Confirm the case status changes to `closed` and resolution metadata is saved.
 - [ ] Confirm a `case_resolved` audit event appears in the linked history.
 - [ ] Open a closed resolved case detail → confirm resolution notes and outcome are shown read-only.
-- [ ] Open `scripts/stage10_post_merge_smoke.sql`, replace `CASE-2026-001` with the case you just resolved, and run in Supabase SQL Editor (or `psql -f`). Confirm all checks pass.
+- [ ] Run the following smoke check in Supabase SQL Editor (replace `CASE-2026-001` with the case you just resolved) and confirm all checks pass.
 - [ ] Confirm the resolution columns exist:
 
 ```sql
@@ -319,11 +304,24 @@ WHERE case_id IS NOT NULL
 
 ### Stage 10 post-merge smoke SQL (repeatable)
 
-Use the canonical helper script at `scripts/stage10_post_merge_smoke.sql`.
+Run the following in Supabase SQL Editor, replacing `CASE-2026-001` with the case you just resolved via UI:
 
-1. Open `scripts/stage10_post_merge_smoke.sql` and replace `CASE-2026-001` with the case you just resolved via UI.
-2. Run the script in Supabase SQL Editor or via `psql -f`.
-3. Expect:
+```sql
+-- 1) Validate the case exists and is closed.
+SELECT id, status, resolution_outcome, resolution_notes, resolved_by, resolved_at
+FROM public.support_cases WHERE id = 'CASE-2026-001';
+
+-- 2) Validate one case_resolved audit event exists.
+SELECT id, case_id, event_type, actor_id, created_at
+FROM public.support_audit_log WHERE case_id = 'CASE-2026-001' AND event_type = 'case_resolved';
+
+-- 3) Confirm event_type CHECK includes 'case_resolved'.
+SELECT conname, pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conrelid = 'public.support_audit_log'::regclass AND conname = 'support_audit_log_event_type_check';
+```
+
+Expect:
    - `support_cases` row shows `status='closed'` and non-null resolution metadata.
    - one `case_resolved` row exists in `support_audit_log` for the same case.
    - `event_type` CHECK includes `case_resolved`.
