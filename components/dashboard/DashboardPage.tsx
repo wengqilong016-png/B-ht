@@ -206,9 +206,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     setPendingPayrollAction(actionKey);
     try {
       await action();
+      return true;
     } catch (error) {
       console.error('Payroll action failed.', error);
       alert(lang === 'zh' ? '❌ 工资操作失败，请重试。' : '❌ Payroll action failed. Please retry.');
+      return false;
     } finally {
       setPendingPayrollAction(current => (current === actionKey ? null : current));
     }
@@ -223,7 +225,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
 
     const actionKey = `payroll:${payrollModalState.driver.id}:${payrollModalState.month}:${payrollModalState.mode}`;
 
-    await runPayrollAction(actionKey, async () => {
+    const succeeded = await runPayrollAction(actionKey, async () => {
       if (payrollModalState.mode === 'create') {
         await createPayrollMutation.mutateAsync({
           driverId: payrollModalState.driver.id,
@@ -260,7 +262,9 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       });
     });
 
-    setPayrollModalState(null);
+    if (succeeded) {
+      setPayrollModalState(null);
+    }
   };
 
   return (
