@@ -64,12 +64,13 @@ const AppAdminShell: React.FC = () => {
     };
     return titles[view];
   }, [t, view]);
-  const adminQuickStats = [
-    { label: t.approvalCenter, value: totalApprovalBadge, tone: 'text-amber-200 bg-amber-500/10 border-amber-500/20' },
-    { label: t.sitesNav, value: filteredLocations.length || locations.length, tone: 'text-white bg-white/5 border-white/10' },
-    { label: t.driverFilterAll, value: filteredDrivers.length || drivers.length, tone: 'text-cyan-200 bg-cyan-500/10 border-cyan-500/20' },
-    { label: t.unsyncedLabel, value: unsyncedCount, tone: 'text-rose-200 bg-rose-500/10 border-rose-500/20' },
-  ];
+  const navStatByView: Partial<Record<AdminView, { value: number; label: string }>> = {
+    settlement: { value: totalApprovalBadge, label: t.pendingApproval },
+    map: { value: locations.filter(location => location.coords).length, label: t.mappedSites },
+    sites: { value: filteredLocations.length || locations.length, label: t.totalSites },
+    team: { value: filteredDrivers.length || drivers.length, label: t.totalDrivers },
+    history: { value: unsyncedCount, label: t.unsyncedLabel },
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
@@ -86,19 +87,11 @@ const AppAdminShell: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-800 p-4">
-          {adminQuickStats.map((stat) => (
-            <div key={stat.label} className={`rounded-2xl border px-3 py-2 ${stat.tone}`}>
-              <p className="text-[8px] font-black uppercase tracking-wide opacity-70">{stat.label}</p>
-              <p className="mt-1 text-lg font-black">{stat.value}</p>
-            </div>
-          ))}
-        </div>
-
         <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
           {adminNavItems.map((item) => {
             const active = view === item.id;
             const itemLabel = lang === 'zh' ? item.label : item.labelEn || item.label;
+            const stat = navStatByView[item.id];
             return (
               <button
                 key={item.id}
@@ -110,7 +103,14 @@ const AppAdminShell: React.FC = () => {
                 }`}
               >
                 <span className="flex-shrink-0">{item.icon}</span>
-                <span className="text-[10px] font-black uppercase leading-tight truncate">{itemLabel}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-black uppercase leading-tight truncate">{itemLabel}</span>
+                  {stat && (
+                    <span className={`mt-1 block text-[8px] font-bold uppercase truncate ${active ? 'text-slate-500' : 'text-slate-600 group-hover:text-slate-300'}`}>
+                      {stat.value} {stat.label}
+                    </span>
+                  )}
+                </div>
                 {item.badge && item.badge > 0 && (
                   <span className={`ml-auto flex-shrink-0 w-5 h-5 rounded-full text-[8px] font-black flex items-center justify-center ${active ? 'bg-slate-950 text-white' : 'bg-amber-500 text-white'}`}>
                     {item.badge > 9 ? '9+' : item.badge}
@@ -183,18 +183,11 @@ const AppAdminShell: React.FC = () => {
               <button onClick={handleLogout} className="p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </div>
           </div>
-          <div className="border-t border-slate-200 px-3 py-2 md:hidden">
-            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {adminQuickStats.map((stat) => (
-                <div key={stat.label} className="min-w-[88px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[7px] font-black uppercase tracking-wide text-slate-400">{stat.label}</p>
-                  <p className="mt-1 text-sm font-black text-slate-900">{stat.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
           <div className="md:hidden grid grid-cols-5 gap-1 border-t border-slate-200 px-2 py-2">
             {adminNavItems.map((item) => (
+              (() => {
+                const stat = navStatByView[item.id];
+                return (
               <button
                 key={item.id}
                 onClick={() => setView(item.id as AdminView)}
@@ -204,12 +197,19 @@ const AppAdminShell: React.FC = () => {
               >
                 {item.icon}
                 <span>{lang === 'zh' ? item.label : item.labelEn || item.label}</span>
+                {stat && (
+                  <span className={`text-[6px] font-bold normal-case ${view === item.id ? 'text-slate-300' : 'text-slate-500'}`}>
+                    {stat.value}
+                  </span>
+                )}
                 {item.badge && item.badge > 0 && (
                   <span className="absolute top-1 right-1 w-3.5 h-3.5 bg-amber-500 text-white rounded-full text-[6px] font-black flex items-center justify-center">
                     {item.badge}
                   </span>
                 )}
               </button>
+                );
+              })()
             ))}
           </div>
         </header>

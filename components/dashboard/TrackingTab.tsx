@@ -57,12 +57,12 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
 
   return (
     <div className="space-y-6 animate-in fade-in">
-      <div className="bg-white p-6 rounded-[32px] border border-slate-200 space-y-5">
+      <div className="bg-white p-5 rounded-[28px] border border-slate-200 space-y-4 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
-            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">Fleet Tracking</h2>
+            <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t.trackingTitle}</h2>
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1 mt-1">
-              <Radio size={12} className="text-indigo-600 animate-pulse" /> Driver Location & Point Management
+              <Radio size={12} className="text-indigo-600 animate-pulse" /> {t.trackingSubtitle}
             </p>
           </div>
           <div className="relative w-full lg:w-80">
@@ -77,20 +77,20 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-[24px] p-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-[20px] p-3">
             <p className="text-[9px] font-black text-emerald-500 uppercase">{t.liveNow}</p>
             <p className="text-2xl font-black text-emerald-700 mt-1">{trackingOverview.liveDrivers}</p>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-[24px] p-4">
+          <div className="bg-amber-50 border border-amber-200 rounded-[20px] p-3">
             <p className="text-[9px] font-black text-amber-500 uppercase">{t.staleGps}</p>
             <p className="text-2xl font-black text-amber-700 mt-1">{trackingOverview.staleDrivers}</p>
           </div>
-          <div className="bg-indigo-50 border border-indigo-200 rounded-[24px] p-4">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-[20px] p-3">
             <p className="text-[9px] font-black text-indigo-500 uppercase">{t.todaysCollections}</p>
             <p className="text-2xl font-black text-indigo-700 mt-1">{trackingOverview.todayCollections}</p>
           </div>
-          <div className="bg-rose-50 border border-rose-200 rounded-[24px] p-4">
+          <div className="bg-rose-50 border border-rose-200 rounded-[20px] p-3">
             <p className="text-[9px] font-black text-rose-500 uppercase">{t.attentionSites}</p>
             <p className="text-2xl font-black text-rose-700 mt-1">{trackingOverview.attentionSites}</p>
           </div>
@@ -131,7 +131,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
         {trackingDriverCards.map(({ driver, driverLocs, driverTxsToday, todayRevenue, attentionLocations, hasStaleGps, lastActiveMinutes }) => {
           const isExpanded = expandedDriverTracking === driver.id;
           return (
-            <div key={driver.id} className="bg-white border border-slate-200 rounded-[32px] overflow-hidden shadow-sm">
+            <div key={driver.id} className="bg-white border border-slate-200 rounded-[26px] overflow-hidden shadow-sm">
               <button
                 className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
                 onClick={() => { setExpandedDriverTracking(isExpanded ? null : driver.id); setTrackingEditLocId(null); }}
@@ -145,7 +145,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     <p className="text-[9px] font-bold text-slate-400 uppercase">
                       {driverLocs.length} locations • {driver.status === 'active'
                         ? (driver.lastActive ? `${lastActiveMinutes} min ago` : t.liveNow)
-                        : 'Offline'}
+                        : t.driverOffline}
                     </p>
                   </div>
                 </div>
@@ -192,7 +192,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     </div>
                   </div>
                   {driverLocs.length === 0 ? (
-                    <p className="text-center text-[10px] font-black text-slate-300 uppercase py-6">No locations assigned to this driver</p>
+                    <p className="text-center text-[10px] font-black text-slate-300 uppercase py-6">{t.noDriverLocations}</p>
                   ) : (
                     driverLocs.map(loc => {
                       const isEditingThis = trackingEditLocId === loc.id;
@@ -218,9 +218,9 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                             </button>
                           </div>
                           <div className="grid grid-cols-3 gap-2 text-[9px]">
-                            <div><span className="text-slate-400 font-bold uppercase block">Machine ID</span><span className="font-black text-slate-700">{loc.machineId}</span></div>
-                            <div><span className="text-slate-400 font-bold uppercase block">Last Score</span><span className="font-black text-slate-700">{loc.lastScore.toLocaleString()}</span></div>
-                            <div><span className="text-slate-400 font-bold uppercase block">Commission</span><span className="font-black text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</span></div>
+                            <div><span className="text-slate-400 font-bold uppercase block">{t.machineIdLabel}</span><span className="font-black text-slate-700">{loc.machineId}</span></div>
+                            <div><span className="text-slate-400 font-bold uppercase block">{t.lastScore}</span><span className="font-black text-slate-700">{loc.lastScore.toLocaleString()}</span></div>
+                            <div><span className="text-slate-400 font-bold uppercase block">{t.commissionLabel}</span><span className="font-black text-indigo-600">{(loc.commissionRate * 100).toFixed(0)}%</span></div>
                           </div>
                           <div className="flex flex-wrap gap-1.5 mt-3">
                             {loc.status !== 'active' && (
@@ -248,7 +248,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                             <div className="mt-3 border-t border-slate-200 pt-3 space-y-3 animate-in slide-in-from-top-2">
                               <div className="grid grid-cols-2 gap-2">
                                 <div>
-                                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">Commission (%)</label>
+                                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">{t.commissionLabel} (%)</label>
                                   <input
                                     type="number"
                                     value={trackingLocForm.commissionRate}
@@ -258,7 +258,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                                   />
                                 </div>
                                 <div>
-                                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">状态 Status</label>
+                                  <label className="text-[9px] font-black text-slate-400 uppercase mb-1 block">{lang === 'zh' ? '状态' : 'Status'}</label>
                                   <select
                                     value={trackingLocForm.status}
                                     onChange={e => setTrackingLocForm(f => ({ ...f, status: e.target.value as Location['status'] }))}
@@ -281,7 +281,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                                 }}
                                 className="w-full py-2.5 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase"
                               >
-                                Save Changes
+                                {t.saveChanges}
                               </button>
                             </div>
                           )}
@@ -292,7 +292,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                   {driver.currentGps && (
                     <div className="flex items-center gap-2 text-[9px] font-bold text-slate-400 uppercase pt-1">
                       <Navigation size={10} className="text-indigo-500 animate-pulse" />
-                      实时GPS: {driver.currentGps.lat.toFixed(4)}, {driver.currentGps.lng.toFixed(4)}
+                      GPS: {driver.currentGps.lat.toFixed(4)}, {driver.currentGps.lng.toFixed(4)}
                     </div>
                   )}
                 </div>
@@ -303,18 +303,18 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
       </div>
 
       <details className="group">
-        <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-5 rounded-[32px] border border-slate-200 shadow-sm select-none">
+        <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-4 rounded-[28px] border border-slate-200 shadow-sm select-none">
           <div className="flex items-center gap-3">
             <MapPin size={18} className="text-indigo-500" />
-            <span className="text-sm font-black text-slate-900 uppercase">Live Map</span>
+            <span className="text-sm font-black text-slate-900 uppercase">{t.liveMapTitle}</span>
           </div>
-          <span className="text-[10px] font-black text-slate-400 uppercase group-open:hidden">Expand ▼</span>
-          <span className="text-[10px] font-black text-slate-400 uppercase hidden group-open:block">Collapse ▲</span>
+          <span className="text-[10px] font-black text-slate-400 uppercase group-open:hidden">{t.mapExpand} ▼</span>
+          <span className="text-[10px] font-black text-slate-400 uppercase hidden group-open:block">{t.mapCollapse} ▲</span>
         </summary>
         <div className="mt-4">
           <MapErrorBoundary>
             <Suspense fallback={<MapLoadingFallback />}>
-              <LiveMap drivers={trackingDriverCards.map(item => item.driver)} locations={trackingVisibleLocations} transactions={trackingVisibleTransactions} />
+              <LiveMap drivers={trackingDriverCards.map(item => item.driver)} locations={trackingVisibleLocations} transactions={trackingVisibleTransactions} lang={lang} />
             </Suspense>
           </MapErrorBoundary>
         </div>

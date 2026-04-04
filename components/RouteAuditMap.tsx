@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Driver, Location, Transaction } from '../types';
+import { Driver, Location, Transaction, TRANSLATIONS } from '../types';
 import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 
 interface RouteAuditMapProps {
@@ -10,9 +10,11 @@ interface RouteAuditMapProps {
   locations: Location[];
   transactions: Transaction[];
   date: string; // YYYY-MM-DD
+  lang: 'zh' | 'sw';
 }
 
-const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transactions, date }) => {
+const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transactions, date, lang }) => {
+  const t = TRANSLATIONS[lang];
   // 1. 筛选该司机当日的所有交易
   const dailyTxs = useMemo(() => {
     return transactions
@@ -46,8 +48,10 @@ const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transa
     });
   }, [dailyTxs, locations]);
 
-  const center: [number, number] = auditData.length > 0 && auditData[0].tx.gps
-    ? [auditData[0].tx.gps.lat, auditData[0].tx.gps.lng]
+  const gpsAuditData = auditData.filter(item => item.tx.gps);
+
+  const center: [number, number] = gpsAuditData.length > 0 && gpsAuditData[0].tx.gps
+    ? [gpsAuditData[0].tx.gps!.lat, gpsAuditData[0].tx.gps!.lng]
     : [-6.7924, 39.2083];
 
   const offsiteCount = auditData.filter(d => d.isOffsite).length;
@@ -56,40 +60,41 @@ const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transa
     <div className="space-y-4">
       <div className="flex items-center justify-between px-2">
         <div>
-          <h3 className="text-sm font-black text-slate-900 uppercase text-center">巡检审计地图 (Google Maps 底图)</h3>
+          <h3 className="text-sm font-black text-slate-900 uppercase text-center">{t.routeAuditTitle}</h3>
           <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{driver.name} • {date}</p>
         </div>
         {offsiteCount > 0 ? (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 text-rose-600 rounded-xl border border-rose-100 animate-pulse">
             <AlertTriangle size={12} />
-            <span className="text-[10px] font-black uppercase">{offsiteCount} 处位置偏移异常</span>
+            <span className="text-[10px] font-black uppercase">{offsiteCount} {t.positionOffsetCount}</span>
           </div>
         ) : (
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-xl border border-emerald-100">
             <CheckCircle2 size={12} />
-            <span className="text-[10px] font-black uppercase">轨迹合规</span>
+            <span className="text-[10px] font-black uppercase">{t.routeCompliant}</span>
           </div>
         )}
       </div>
 
-      <div className="w-full h-[450px] rounded-[32px] overflow-hidden border-2 border-slate-100 relative shadow-inner">
+      {gpsAuditData.length === 0 ? (
+        <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+          <p className="text-sm font-black">{lang === 'zh' ? '当天没有可用 GPS 轨迹' : 'No GPS trail available for this day'}</p>
+        </div>
+      ) : (
+      <div className="w-full h-[420px] rounded-[28px] overflow-hidden border-2 border-slate-100 relative shadow-inner">
         <MapContainer center={center} zoom={14} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-          {/* 使用 Google Maps 卫星混合图层 */}
           <TileLayer
-            url="https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
-            subdomains={['mt0','mt1','mt2','mt3']}
-            attribution='&copy; Google Maps'
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
           />
           
-          {/* 渲染连接线（巡检路径） */}
           <Polyline 
-            positions={auditData.filter(d => d.tx.gps).map(d => [d.tx.gps!.lat, d.tx.gps!.lng])}
+            positions={gpsAuditData.map(d => [d.tx.gps!.lat, d.tx.gps!.lng])}
             pathOptions={{ color: '#6366f1', weight: 2, dashArray: '5, 10' }}
           />
 
-          {auditData.map(({ tx, loc, distance, isOffsite }, idx) => (
+          {gpsAuditData.map(({ tx, loc, distance, isOffsite }, idx) => (
             <React.Fragment key={tx.id}>
-              {/* 交易发生点 */}
               <Marker 
                 position={[tx.gps!.lat, tx.gps!.lng]}
                 icon={L.divIcon({
@@ -107,14 +112,13 @@ const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transa
                     </div>
                     {isOffsite && (
                       <div className="p-2 bg-rose-50 text-rose-600 rounded-lg border border-rose-100">
-                        <p className="text-[8px] font-black uppercase">⚠️ 偏离网点 {Math.round(distance)} 米</p>
+                        <p className="text-[8px] font-black uppercase">⚠️ {t.offsiteDistance} {Math.round(distance)} {t.metersUnit}</p>
                       </div>
                     )}
                   </div>
                 </Popup>
               </Marker>
 
-              {/* 渲染偏移线 */}
               {isOffsite && loc?.coords && (
                 <>
                   <Polyline 
@@ -134,18 +138,18 @@ const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transa
 
         {/* 悬浮图例 */}
         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md p-3 rounded-2xl border border-slate-200 shadow-lg z-[1000] space-y-2">
+           <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">{t.mapLegend}</p>
            <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-indigo-600 border border-white"></div>
-              <span className="text-[8px] font-black text-slate-600 uppercase">正常采集点</span>
+              <span className="text-[8px] font-black text-slate-600 uppercase">{t.normalCollectionPoint}</span>
            </div>
            <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-rose-500 border border-white animate-pulse"></div>
-              <span className="text-[8px] font-black text-slate-600 uppercase">异常偏移点</span>
+              <span className="text-[8px] font-black text-slate-600 uppercase">{t.offsitePoint}</span>
            </div>
-           <div className="w-full h-px bg-slate-100"></div>
-           <p className="text-[7px] font-bold text-slate-400 uppercase leading-tight">基于 Google 卫星图层分析</p>
         </div>
       </div>
+      )}
     </div>
   );
 };
