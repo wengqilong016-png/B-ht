@@ -9,7 +9,7 @@ interface ResetRequestProps {
   currentDriver: Driver;
   lang: 'zh' | 'sw';
   gpsCoords: { lat: number; lng: number } | null;
-  onSubmit: (tx: Transaction) => void;
+  onSubmit: (tx: Transaction) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -18,6 +18,7 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
   const [resetPhotoData, setResetPhotoData] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const resetFileRef = useRef<HTMLInputElement>(null);
 
   const handleResetPhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -32,7 +33,7 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
     }
   };
 
-  const handleSubmitResetRequest = () => {
+  const handleSubmitResetRequest = async () => {
     if (!resetPhotoData) {
       alert(lang === 'zh' ? '❌ 请拍照当前分数照片' : '❌ Photo of current score required!');
       return;
@@ -47,8 +48,16 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
       notes
     );
 
-    onSubmit(tx);
-    alert(lang === 'zh' ? '✅ 重置申请已提交，等待老板审批' : '✅ Reset request submitted, awaiting approval');
+    try {
+      setIsSubmitting(true);
+      await onSubmit(tx);
+      alert(lang === 'zh' ? '✅ 重置申请已提交，等待老板审批' : '✅ Reset request submitted, awaiting approval');
+    } catch (error) {
+      console.error('Reset request submission failed', error);
+      alert(lang === 'zh' ? '❌ 重置申请提交失败，请重试' : '❌ Reset request submission failed, please retry');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -104,11 +113,13 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
 
         <button
           onClick={handleSubmitResetRequest}
-          disabled={!resetPhotoData}
+          disabled={!resetPhotoData || isSubmitting}
           className="w-full py-4 bg-rose-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
         >
           <RefreshCw size={18} />
-          {lang === 'zh' ? '提交重置申请' : 'Submit Reset Request'}
+          {isSubmitting
+            ? (lang === 'zh' ? '提交中...' : 'Submitting...')
+            : (lang === 'zh' ? '提交重置申请' : 'Submit Reset Request')}
         </button>
       </div>
     </div>

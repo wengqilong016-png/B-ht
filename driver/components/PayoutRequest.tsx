@@ -8,7 +8,7 @@ interface PayoutRequestProps {
   currentDriver: Driver;
   lang: 'zh' | 'sw';
   gpsCoords: { lat: number; lng: number } | null;
-  onSubmit: (tx: Transaction) => void;
+  onSubmit: (tx: Transaction) => Promise<void>;
   onCancel: () => void;
 }
 
@@ -17,13 +17,14 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
   const [payoutAmount, setPayoutAmount] = useState<string>('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const availableDividend = location?.dividendBalance || 0;
   const parsedPayoutAmount = parseInt(payoutAmount, 10);
   const isValidAmount = !isNaN(parsedPayoutAmount) && parsedPayoutAmount > 0;
   const exceedsBalance = isValidAmount && parsedPayoutAmount > availableDividend;
 
-  const handleSubmitPayoutRequest = () => {
+  const handleSubmitPayoutRequest = async () => {
     if (!payoutAmount || isNaN(parsedPayoutAmount) || parsedPayoutAmount <= 0) {
       alert(lang === 'zh' ? '❌ 请输入有效提现金额' : '❌ Enter a valid payout amount!');
       return;
@@ -45,8 +46,16 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
       notes
     );
 
-    onSubmit(tx);
-    alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
+    try {
+      setIsSubmitting(true);
+      await onSubmit(tx);
+      alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
+    } catch (error) {
+      console.error('Payout request submission failed', error);
+      alert(lang === 'zh' ? '❌ 提现申请提交失败，请重试' : '❌ Payout request submission failed, please retry');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -105,11 +114,13 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
 
         <button
           onClick={handleSubmitPayoutRequest}
-          disabled={!isValidAmount || exceedsBalance}
+          disabled={!isValidAmount || exceedsBalance || isSubmitting}
           className="w-full py-4 bg-emerald-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 active:scale-95 transition-all flex items-center justify-center gap-3"
         >
           <Wallet size={18} />
-          {lang === 'zh' ? '提交提现申请' : 'Submit Payout Request'}
+          {isSubmitting
+            ? (lang === 'zh' ? '提交中...' : 'Submitting...')
+            : (lang === 'zh' ? '提交提现申请' : 'Submit Payout Request')}
         </button>
       </div>
     </div>

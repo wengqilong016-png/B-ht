@@ -39,9 +39,11 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
 
   const onLogAI = (log: Parameters<typeof logAI.mutate>[0]) => logAI.mutate(log);
-  const onSubmit = (tx: Transaction) => {
+  const onSubmit = async (tx: Transaction) => {
     if (tx.type === 'reset_request' || tx.type === 'payout_request') {
       if (tx.type === 'reset_request') {
+        await submitTransaction.mutateAsync(tx);
+
         const currentLocations =
           queryClient.getQueryData<Location[]>(['locations']) ?? locations;
         const updatedLocations = currentLocations.map(loc =>
@@ -57,9 +59,10 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         } catch (error) {
           console.warn('Failed to persist reset lock update locally.', error);
         }
+        return;
       }
 
-      submitTransaction.mutate(tx);
+      await submitTransaction.mutateAsync(tx);
       return;
     }
 
@@ -207,7 +210,10 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           currentDriver={currentDriver}
           lang={lang}
           gpsCoords={draft.gpsCoords}
-          onSubmit={(tx) => { onSubmit(tx); setResetRequestLocId(null); }}
+          onSubmit={async (tx) => {
+            await onSubmit(tx);
+            setResetRequestLocId(null);
+          }}
           onCancel={() => setResetRequestLocId(null)}
         />
       );
@@ -224,7 +230,10 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           currentDriver={currentDriver}
           lang={lang}
           gpsCoords={draft.gpsCoords}
-          onSubmit={(tx) => { onSubmit(tx); setPayoutRequestLocId(null); }}
+          onSubmit={async (tx) => {
+            await onSubmit(tx);
+            setPayoutRequestLocId(null);
+          }}
           onCancel={() => setPayoutRequestLocId(null)}
         />
       );
