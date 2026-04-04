@@ -162,22 +162,29 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   };
 
   return (
-    <div className="max-w-md mx-auto py-4 px-4 pb-20 animate-in fade-in space-y-4">
+    <div className="max-w-md mx-auto py-3 px-3 pb-20 animate-in fade-in space-y-3">
       <WizardStepBar current="confirm" lang={lang} />
 
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-subcard text-slate-500 hover:text-indigo-600 shadow-field transition-colors flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0">
           <ArrowRight size={18} className="rotate-180" />
         </button>
-        <div className="min-w-0">
-          <h2 className="text-base font-black text-slate-900 truncate leading-tight">{selectedLocation?.name}</h2>
-          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
-            {selectedLocation?.machineId} • {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
-          </p>
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-black text-slate-900 leading-tight">{selectedLocation?.name}</h2>
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
+                {selectedLocation?.machineId} • {selectedLocation?.area || '—'}
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+              {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="bg-slate-900 rounded-subcard p-5 text-white flex justify-between items-center">
+      <div className="bg-slate-900 rounded-2xl p-4 text-white flex justify-between items-center">
         <div>
           <p className="text-[10px] font-black uppercase opacity-60">{t.net}</p>
           <p className="text-[8px] font-bold opacity-40 uppercase mt-0.5">{t.cashToHandIn}</p>
@@ -185,7 +192,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         <p className="text-4xl font-black">TZS {calculations.netPayable.toLocaleString()}</p>
       </div>
 
-      <div className="bg-white rounded-subcard border border-slate-200 shadow-field divide-y divide-slate-100">
+      <div className="bg-white rounded-2xl border border-slate-200 divide-y divide-slate-100">
         {[
           { label: t.revenue, value: `TZS ${calculations.revenue.toLocaleString()}`, color: 'text-slate-900' },
           { label: t.retention, value: `− TZS ${calculations.finalRetention.toLocaleString()}`, color: 'text-amber-600' },
@@ -205,7 +212,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       </div>
 
       {photoData && (
-        <div className="h-20 rounded-subcard overflow-hidden border border-slate-200 shadow-field relative">
+        <div className="h-20 rounded-2xl overflow-hidden border border-slate-200 relative">
           <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
           <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
             <CheckCircle2 size={9} /> Photo Attached
@@ -213,7 +220,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </div>
       )}
 
-      <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${
+      <div className={`flex items-center gap-3 px-3 py-2.5 rounded-2xl border ${
         gpsPermission === 'denied' ? 'bg-rose-50 border-rose-200' :
         gpsCoords ? 'bg-emerald-50 border-emerald-200' :
         'bg-slate-50 border-slate-200'
@@ -237,14 +244,14 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           </p>
         </div>
         {!gpsCoords && gpsPermission !== 'denied' && (
-          <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
+          <button onClick={requestGps} className="p-1.5 bg-white rounded-xl border border-slate-200 text-indigo-600 flex-shrink-0">
             <RotateCcw size={12} />
           </button>
         )}
       </div>
 
       {calculations.isCoinStockNegative && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-200 rounded-subcard">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-rose-50 border border-rose-200 rounded-2xl">
           <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
           <p className="text-[9px] font-black text-rose-700 uppercase">
             {lang === 'zh' ? '⚠ 硬币库存不足，请确认后提交' : '⚠ Coin stock insufficient — confirm before submit'}
@@ -266,7 +273,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onBack}
-          className="py-4 bg-white border border-slate-200 text-slate-500 rounded-btn font-black uppercase text-xs shadow-field hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
+          className="py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-black uppercase text-xs hover:text-indigo-600 transition-colors flex items-center justify-center gap-2"
         >
           <ArrowRight size={15} className="rotate-180" />
           {lang === 'zh' ? '返回' : 'Back'}
@@ -274,7 +281,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         <button
           onClick={handleSubmit}
           disabled={isProcessing || !currentScore || isScoreBelowLastReading}
-          className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
+          className="py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-sm disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
           {submissionState.status === 'submitting' ? t.saving :

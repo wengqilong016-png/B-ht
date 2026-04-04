@@ -239,38 +239,45 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   };
 
   return (
-    <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+    <div className="max-w-md mx-auto py-3 px-3 animate-in fade-in space-y-3">
       <WizardStepBar current="capture" lang={lang} />
 
       {/* Location sub-header */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-subcard text-slate-500 hover:text-indigo-600 shadow-field transition-colors flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0">
           <ArrowRight size={18} className="rotate-180" />
         </button>
-        <div className="min-w-0">
-          <h2 className="text-base font-black text-slate-900 truncate leading-tight">{selectedLocation?.name}</h2>
-          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
-            {selectedLocation?.machineId} • {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
-          </p>
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-black text-slate-900 leading-tight">{selectedLocation?.name}</h2>
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
+                {selectedLocation?.machineId} • {selectedLocation?.area || '—'}
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+              {(selectedLocation?.lastScore ?? 0).toLocaleString()} last
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Score input */}
-      <div className="bg-white rounded-subcard border border-slate-200 p-5 shadow-field">
+      <div className="bg-white rounded-2xl border border-slate-200 p-4">
         <label className="text-[10px] font-black text-slate-400 uppercase block mb-3 tracking-widest">{t.currentReading}</label>
         <div className="flex items-center gap-3">
           <input
             type="number"
             value={currentScore}
             onChange={e => onUpdateScore(e.target.value)}
-            className="w-1/2 text-4xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200"
+            className="w-1/2 text-3xl font-black bg-transparent outline-none text-slate-900 placeholder:text-slate-200"
             placeholder="0000"
             inputMode="numeric"
             autoFocus
           />
           <button
             onClick={startScanner}
-            className={`flex-1 py-3.5 rounded-subcard shadow-field flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 border border-emerald-200 text-emerald-700' : 'bg-slate-900 text-white'}`}
+            className={`flex-1 py-3 rounded-2xl border flex items-center justify-center gap-2 transition-all active:scale-95 ${currentScore ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-900 border-slate-900 text-white'}`}
           >
             {currentScore ? <CheckCircle2 size={16} /> : <Scan size={16} />}
             <span className="text-[10px] font-black uppercase tracking-widest">{currentScore ? t.reScan : t.scanner}</span>
@@ -279,7 +286,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
 
         {/* Photo preview */}
         {photoData && !isScannerOpen && (
-          <div className="mt-4 h-24 w-full rounded-subcard overflow-hidden border border-slate-200 shadow-field relative">
+          <div className="mt-4 h-20 w-full rounded-2xl overflow-hidden border border-slate-200 relative">
             <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt="Proof" />
             <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
               <CheckCircle2 size={9} /> Photo
@@ -289,7 +296,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
 
         {/* Revenue preview */}
         {currentScore && (
-          <div className={`mt-4 p-4 rounded-subcard text-white flex justify-between items-center ${revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+          <div className={`mt-4 p-3 rounded-2xl text-white flex justify-between items-center ${revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
             <div>
               <p className="text-[9px] font-black uppercase opacity-60">{t.diff} {diff}</p>
               <p className="text-[9px] font-black uppercase opacity-60">{diff} × 200 TZS</p>
@@ -302,7 +309,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         )}
 
         {isScoreBelowLastReading && (
-          <div className="mt-3 p-3 rounded-subcard border border-rose-200 bg-rose-50">
+          <div className="mt-3 p-3 rounded-2xl border border-rose-200 bg-rose-50">
             <p className="text-[9px] font-black uppercase text-rose-600">
               {lang === 'zh'
                 ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请先确认是否应提交重置申请。`
@@ -312,6 +319,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         )}
       </div>
 
+      <div className="grid grid-cols-1 gap-2">
       {/* GPS status — uses rich status from useGpsCapture */}
       {(() => {
         const isError = gpsHookStatus === 'denied' || gpsHookStatus === 'timeout' || gpsHookStatus === 'error';
@@ -343,8 +351,8 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
             ? (lang === 'sw' ? 'GPS haipatikani — bonyeza kurudia' : 'GPS unavailable — tap to retry')
             : (lang === 'sw' ? 'Inapata GPS...' : 'Acquiring GPS...');
         return (
-          <div className={`flex items-center gap-3 px-4 py-3 rounded-subcard border ${containerCls}`}>
-            <div className={`p-1.5 rounded-btn flex-shrink-0 ${iconCls}`}>
+          <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border ${containerCls}`}>
+            <div className={`p-1.5 rounded-xl flex-shrink-0 ${iconCls}`}>
               {isRequesting
                 ? <WifiOff size={13} className="animate-pulse" />
                 : <Satellite size={13} />
@@ -354,19 +362,30 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
               <p className={`text-[9px] font-black uppercase ${textCls}`}>{label}</p>
             </div>
             {!isGranted && (
-              <button onClick={requestGps} className="p-1.5 bg-white rounded-btn shadow-field text-indigo-600 flex-shrink-0">
+              <button onClick={requestGps} className="p-1.5 bg-white rounded-xl border border-slate-200 text-indigo-600 flex-shrink-0">
                 <RotateCcw size={12} />
               </button>
             )}
           </div>
         );
       })()}
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-2xl border ${photoData ? 'bg-emerald-50 border-emerald-200' : 'bg-slate-50 border-slate-200'}`}>
+        <div className={`p-1.5 rounded-xl flex-shrink-0 ${photoData ? 'bg-emerald-500 text-white' : 'bg-slate-300 text-white'}`}>
+          {photoData ? <CheckCircle2 size={13} /> : <WifiOff size={13} />}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[9px] font-black uppercase ${photoData ? 'text-emerald-700' : 'text-slate-500'}`}>
+            {photoData ? (lang === 'zh' ? '现场照片已附加' : 'Evidence photo ready') : (lang === 'zh' ? '尚未附加现场照片' : 'No evidence photo yet')}
+          </p>
+        </div>
+      </div>
+      </div>
 
       {/* Next button */}
       <button
         onClick={onNext}
         disabled={!currentScore || isScoreBelowLastReading}
-        className="w-full py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-3"
+        className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-black uppercase text-sm disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-3"
       >
         <ChevronRight size={18} />
         {lang === 'zh' ? '下一步：金额确认' : 'Next: Financial Details'}

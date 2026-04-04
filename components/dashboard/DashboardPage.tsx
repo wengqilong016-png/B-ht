@@ -337,22 +337,32 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       )}
 
       {activeTab === 'team' && isAdmin && (
-        <div className="space-y-8 animate-in fade-in">
+        <div className="space-y-6 animate-in fade-in">
           <DriverManagement />
           {/* Payroll section merged into fleet tab */}
-          <div className="space-y-4 border-t border-slate-100 pt-6">
-            <div className="bg-white p-5 rounded-[28px] border border-slate-200 flex items-center gap-3">
+          <div className="space-y-3 border-t border-slate-100 pt-5">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center gap-3">
               <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl"><Receipt size={18} /></div>
               <div>
                 <h2 className="text-base font-black text-slate-900 uppercase">Payroll</h2>
                 <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Compensation Reports — Electronic Payslip</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-3">
               {payrollStats.map(({ driver, monthlyBreakdown }) => (
-                <div key={driver.id} className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm">
-                  <h3 className="font-black text-slate-900 uppercase mb-3 text-sm">{driver.name}</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div key={driver.id} className="bg-white p-4 rounded-2xl border border-slate-200">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-black text-slate-900 uppercase text-sm">{driver.name}</h3>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                        {monthlyBreakdown.length} payroll month{monthlyBreakdown.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+                      Base {driver.baseSalary?.toLocaleString() || 0}
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 gap-2">
                     {monthlyBreakdown.map((m, i) => {
                       const record = payrollRecordMap.get(`${driver.id}:${m.month}`);
                       const summary = record
@@ -376,9 +386,14 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                           };
 
                       return (
-                        <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div key={i} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                           <div className="flex justify-between items-start mb-2 gap-2">
-                            <span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span>
+                            <div>
+                              <span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span>
+                              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                                Revenue {summary.totalRevenue.toLocaleString()} · {summary.collectionCount} tx
+                              </p>
+                            </div>
                             <div className="flex flex-col items-end gap-1">
                               <span className="text-xs font-black text-indigo-600">TZS {summary.netPayable.toLocaleString()}</span>
                               {record && (

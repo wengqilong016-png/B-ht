@@ -141,10 +141,10 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
   }, [assignedLocations.length, locationCards]);
 
   return (
-    <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+    <div className="max-w-md mx-auto py-3 px-3 animate-in fade-in space-y-3">
       {/* Offline status banner */}
       {!isOnline && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-subcard">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-2xl">
           <WifiOff size={16} className="text-amber-500 flex-shrink-0" />
           <div className="min-w-0">
             <p className="text-[10px] font-black text-amber-700 uppercase">
@@ -165,7 +165,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
 
       {/* Online with pending queue */}
       {isOnline && offlineQueueCount > 0 && (
-        <div className="flex items-center gap-3 px-4 py-3 bg-indigo-50 border border-indigo-200 rounded-subcard">
+        <div className="flex items-center gap-3 px-3 py-2.5 bg-indigo-50 border border-indigo-200 rounded-2xl">
           <DatabaseBackup size={16} className="text-indigo-500 flex-shrink-0" />
           <div className="flex-1 min-w-0">
             <p className="text-[10px] font-black text-indigo-700 uppercase">
@@ -175,45 +175,38 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         </div>
       )}
 
-      <div className="flex items-center justify-between mb-2 px-1">
+      <div className="flex items-start justify-between gap-3 px-1">
         <div>
-          <h2 className="text-xl font-black text-slate-900 flex items-center gap-2 uppercase">
-            <ScanLine className="text-indigo-600" size={20} />
+          <h2 className="text-lg font-black text-slate-900 flex items-center gap-2 uppercase">
+            <ScanLine className="text-indigo-600" size={18} />
             {t.selectMachine}
           </h2>
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
             {todayDriverTransactions.length} {t.todaysCollections}
           </p>
         </div>
-        <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-subcard shadow-field">
+        <div className="flex items-center gap-2 bg-slate-900 px-3 py-2 rounded-xl">
           <Coins size={13} className="text-emerald-400" />
           <span className="text-xs font-black text-white">{(currentDriver?.dailyFloatingCoins ?? 0).toLocaleString()}</span>
         </div>
       </div>
 
-      {/* Overview stats */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="bg-white rounded-subcard border border-slate-200 p-3.5 shadow-field">
-          <p className="text-[9px] font-black text-slate-400 uppercase">{t.totalMachines}</p>
-          <p className="text-xl font-black text-slate-900 mt-1">{collectionOverview.totalMachines}</p>
-        </div>
-        <div className="bg-white rounded-subcard border border-slate-200 p-3.5 shadow-field">
-          <p className="text-[9px] font-black text-slate-400 uppercase">{t.pendingStops}</p>
-          <p className="text-xl font-black text-indigo-600 mt-1">{collectionOverview.pendingStops}</p>
-        </div>
-        <div className="bg-amber-50 rounded-subcard border border-amber-200 p-3.5 shadow-field">
-          <p className="text-[9px] font-black text-amber-500 uppercase">{t.urgentMachines}</p>
-          <p className="text-xl font-black text-amber-700 mt-1">{collectionOverview.urgentMachines}</p>
-        </div>
-        <div className="bg-emerald-50 rounded-subcard border border-emerald-200 p-3.5 shadow-field">
-          <p className="text-[9px] font-black text-emerald-500 uppercase">{t.nearbySites}</p>
-          <p className="text-xl font-black text-emerald-700 mt-1">
-            {gpsCoords ? collectionOverview.nearbySites : '-'}
-          </p>
-          {!gpsCoords && (
-            <p className="text-[8px] font-bold text-emerald-500 uppercase mt-0.5">{t.awaitingGps}</p>
-          )}
-        </div>
+      <div className="grid grid-cols-4 gap-2">
+        {[
+          { label: t.totalMachines, value: collectionOverview.totalMachines, tone: 'text-slate-900 bg-white border-slate-200' },
+          { label: t.pendingStops, value: collectionOverview.pendingStops, tone: 'text-indigo-700 bg-indigo-50 border-indigo-100' },
+          { label: t.urgentMachines, value: collectionOverview.urgentMachines, tone: 'text-amber-700 bg-amber-50 border-amber-100' },
+          {
+            label: t.nearbySites,
+            value: gpsCoords ? collectionOverview.nearbySites : '-',
+            tone: 'text-emerald-700 bg-emerald-50 border-emerald-100',
+          },
+        ].map((tile) => (
+          <div key={tile.label} className={`rounded-2xl border px-3 py-2 ${tile.tone}`}>
+            <p className="text-[8px] font-black uppercase tracking-wide opacity-70">{tile.label}</p>
+            <p className="mt-1 text-lg font-black">{tile.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Search, filters, area dropdown, register button */}
@@ -234,7 +227,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
 
       <div className="space-y-3">
         {isShowingAllLocations && (
-          <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-subcard flex items-center gap-2">
+          <div className="px-3 py-2 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
             <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
             <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
               {lang === 'zh' ? 'Showing all machines (none assigned)' : 'Showing all machines (none assigned)'}
@@ -242,7 +235,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
           </div>
         )}
         {locationCards.length === 0 && (
-          <div className="py-14 text-center bg-white rounded-card border border-dashed border-slate-200">
+          <div className="py-12 text-center bg-white rounded-2xl border border-dashed border-slate-200">
             <Layers size={36} className="mx-auto text-slate-200 mb-3" />
             <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.noMachinesAssigned}</p>
           </div>

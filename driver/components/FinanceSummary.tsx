@@ -56,24 +56,31 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
 
   return (
-    <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
+    <div className="max-w-md mx-auto py-3 px-3 animate-in fade-in space-y-3">
       <WizardStepBar current="amounts" lang={lang} />
 
       {/* Location sub-header */}
-      <div className="flex items-center gap-3 mb-5">
-        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-subcard text-slate-500 hover:text-indigo-600 shadow-field transition-colors flex-shrink-0">
+      <div className="flex items-center gap-3">
+        <button onClick={onBack} className="p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-indigo-600 transition-colors flex-shrink-0">
           <ArrowRight size={18} className="rotate-180" />
         </button>
-        <div className="min-w-0">
-          <h2 className="text-base font-black text-slate-900 truncate leading-tight">{selectedLocation?.name}</h2>
-          <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
-            {selectedLocation?.machineId} • {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
-          </p>
+        <div className="min-w-0 flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <h2 className="truncate text-sm font-black text-slate-900 leading-tight">{selectedLocation?.name}</h2>
+              <p className="text-[10px] font-black text-indigo-500 uppercase tracking-[0.15em]">
+                {selectedLocation?.machineId} • {selectedLocation?.area || '—'}
+              </p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+              {((selectedLocation?.commissionRate ?? 0) * 100).toFixed(0)}%
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Revenue summary */}
-      <div className={`p-4 rounded-subcard text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
+      <div className={`p-3 rounded-2xl text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
         <div>
           <p className="text-[9px] font-black uppercase opacity-60">{t.formula}</p>
           <p className="text-[9px] font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
@@ -99,7 +106,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       </div>
 
       {/* Owner Retention */}
-      <div className={`p-4 rounded-subcard border transition-all ${isOwnerRetaining ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
+      <div className={`p-4 rounded-2xl border transition-all ${isOwnerRetaining ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-100'}`}>
         <div className="flex justify-between items-center mb-3">
           <label className={`text-[10px] font-black uppercase flex items-center gap-2 ${isOwnerRetaining ? 'text-amber-600' : 'text-slate-400'}`}>
             <HandCoins size={13} /> {t.retention}
@@ -138,7 +145,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       </div>
 
       {/* Expenses */}
-      <div className="bg-rose-50 p-4 rounded-subcard border border-rose-100">
+      <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100">
         <div className="flex items-center justify-between mb-3">
           <label className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2">
             <Banknote size={13} /> Expenses / Advance
@@ -198,7 +205,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       </div>
 
       {/* Coin Exchange */}
-      <div className="bg-emerald-50 p-4 rounded-subcard border border-emerald-100">
+      <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
         <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500 rounded-btn text-white flex-shrink-0"><Coins size={16} /></div>
@@ -213,7 +220,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       </div>
 
       {/* Tip / Gratuity */}
-      <div className="bg-amber-50 p-4 rounded-subcard border border-amber-100">
+      <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
         <div className="flex items-center justify-between mb-2">
           <label className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-2 tracking-widest">
             <Gift size={13} /> {lang === 'zh' ? '小费支出 (正常5万-6万给1000-2000)' : 'Tip / Gratuity (Normal 1000-2000 for 50k-60k rev)'}
@@ -236,7 +243,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
         )}
       </div>
 
-      <div className="bg-indigo-50 p-4 rounded-subcard border border-indigo-100">
+      <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
         <div className="flex items-center justify-between mb-2">
           <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-2 tracking-widest">
             <ShieldAlert size={13} /> {lang === 'zh' ? '商家欠款手动扣减' : 'Manual Merchant Debt Deduction'}
