@@ -41,6 +41,7 @@ jobs:
         env:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
-          VITE_GEMINI_API_KEY: ${{ secrets.VITE_GEMINI_API_KEY }}
-          VITE_STATUS_API_BASE: ${{ secrets.VITE_STATUS_API_BASE }}
-          VITE_INTERNAL_API_KEY: ${{ secrets.VITE_INTERNAL_API_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_TRANSLATE_API_KEY: ${{ secrets.GOOGLE_TRANSLATE_API_KEY }}
+          STATUS_API_BASE: ${{ secrets.STATUS_API_BASE }}
+          INTERNAL_API_KEY: ${{ secrets.INTERNAL_API_KEY }}

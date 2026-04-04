@@ -1,6 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Analytics } from '@vercel/analytics/react';
 import './styles.css';
 import App from './App';
 
@@ -24,6 +25,7 @@ ReactDOM.createRoot(rootElement).render(
   <Root>
     <QueryClientProvider client={queryClient}>
       <App />
+      <Analytics />
     </QueryClientProvider>
   </Root>
 );

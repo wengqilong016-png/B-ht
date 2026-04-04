@@ -1,39 +1,38 @@
 import React, { useState, useEffect } from 'react';
 import { Smartphone, Battery, Signal, Database, Globe, RefreshCcw, Cpu } from 'lucide-react';
 
-const STATUS_API_BASE = import.meta.env.VITE_STATUS_API_BASE ?? 'http://localhost:5000';
-const STATUS_API_URL = `${STATUS_API_BASE.replace(/\/$/, '')}/api/status`;
+const STATUS_API_URL = '/api/status';
 
 const SystemStatus: React.FC = () => {
   const [status, setStatus] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [disabled, setDisabled] = useState(false);
 
   const fetchStatus = async () => {
-    const apiKey = import.meta.env.VITE_INTERNAL_API_KEY;
-    if (!apiKey) {
-      setError(true);
-      setLoading(false);
-      return;
-    }
     try {
       setLoading(true);
-      const res = await fetch(STATUS_API_URL, {
-        headers: {
-          'X-API-KEY': apiKey
-        }
-      });
-      
+      const res = await fetch(STATUS_API_URL);
+
+      if (res.status === 204) {
+        setDisabled(true);
+        setError(false);
+        setStatus(null);
+        return;
+      }
+
       if (!res.ok) {
         throw new Error(`HTTP error! status: ${res.status}`);
       }
-      
+
       const data = await res.json();
       setStatus(data);
+      setDisabled(false);
       setError(false);
     } catch (err) {
-      console.error('Local Status API unreachable', err);
+      console.error('Status API unreachable', err);
       setError(true);
+      setDisabled(false);
     } finally {
       setLoading(false);
     }
@@ -70,6 +69,20 @@ const SystemStatus: React.FC = () => {
         <button onClick={fetchStatus} className="p-2 bg-white rounded-xl shadow-sm text-rose-600 hover:bg-rose-100 transition-colors">
           <RefreshCcw size={16} />
         </button>
+      </div>
+    );
+  }
+
+  if (disabled && !status) {
+    return (
+      <div className="bg-slate-100 p-6 rounded-[28px] border border-slate-200 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-slate-500">
+          <Signal size={20} />
+          <div>
+            <p className="text-[10px] font-black uppercase">Monitoring Unavailable</p>
+            <p className="text-[8px] font-bold opacity-70">No server-side status source is configured for this deployment.</p>
+          </div>
+        </div>
       </div>
     );
   }
