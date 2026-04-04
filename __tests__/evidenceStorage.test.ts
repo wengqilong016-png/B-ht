@@ -68,23 +68,23 @@ describe('persistEvidencePhotoUrl() — pass-through cases', () => {
   });
 
   it('returns the data-URL unchanged when supabase.storage.from is unavailable', async () => {
-    jest.mock('../supabaseClient', () => ({ supabase: { storage: {} } }));
-    // Use a fresh import after overriding the mock
-    // (Simulate by overriding the mockStorageFrom to make storage.from undefined)
     const originalMock = jest.requireMock('../supabaseClient') as { supabase: any };
     const originalStorage = originalMock.supabase.storage;
-    originalMock.supabase.storage = {};
 
-    const result = await persistEvidencePhotoUrl(JPEG_DATA_URL, {
-      category: 'collection',
-      entityId: 'e-1',
-    });
+    try {
+      // Simulate storage.from being unavailable on the existing mocked module
+      originalMock.supabase.storage = {};
 
-    // Restore
-    originalMock.supabase.storage = originalStorage;
+      const result = await persistEvidencePhotoUrl(JPEG_DATA_URL, {
+        category: 'collection',
+        entityId: 'e-1',
+      });
 
-    // When storage.from is absent the function returns the original data-URL
-    expect(result).toBe(JPEG_DATA_URL);
+      // When storage.from is absent the function returns the original data-URL
+      expect(result).toBe(JPEG_DATA_URL);
+    } finally {
+      originalMock.supabase.storage = originalStorage;
+    }
   });
 });
 
