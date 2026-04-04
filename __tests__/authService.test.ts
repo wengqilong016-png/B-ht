@@ -16,6 +16,8 @@ const mockFrom = jest.fn<(...args: unknown[]) => unknown>();
 const mockGetUser = jest.fn<() => Promise<unknown>>();
 const mockGetSession = jest.fn<() => Promise<unknown>>();
 const mockSignOut = jest.fn<() => Promise<unknown>>();
+const mockSignInWithPassword = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockUpdateUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
 jest.mock('../supabaseClient', () => ({
   supabase: {
@@ -24,6 +26,8 @@ jest.mock('../supabaseClient', () => ({
       getUser: () => mockGetUser(),
       getSession: () => mockGetSession(),
       signOut: () => mockSignOut(),
+      signInWithPassword: (args: unknown) => mockSignInWithPassword(args),
+      updateUser: (args: unknown) => mockUpdateUser(args),
     },
   },
 }));
@@ -32,6 +36,8 @@ import {
   fetchCurrentUserProfile,
   restoreCurrentUserFromSession,
   signOutCurrentUser,
+  signInWithEmailPassword,
+  updateUserEmail,
 } from '../services/authService';
 
 // ── Query builder chain helper ─────────────────────────────────────────────
@@ -226,5 +232,73 @@ describe('signOutCurrentUser', () => {
   it('calls supabase.auth.signOut()', async () => {
     await signOutCurrentUser();
     expect(mockSignOut).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ══ signInWithEmailPassword ════════════════════════════════════════════════
+
+describe('signInWithEmailPassword', () => {
+  it('returns success with user on valid credentials', async () => {
+    const fakeUser = { id: 'user-1', email: 'a@b.com' };
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: fakeUser, session: {} },
+      error: null,
+    });
+
+    const result = await signInWithEmailPassword('a@b.com', 'password123');
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.user).toEqual(fakeUser);
+    expect(mockSignInWithPassword).toHaveBeenCalledWith({ email: 'a@b.com', password: 'password123' });
+  });
+
+  it('returns error with the Supabase error message when login fails', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: 'Invalid login credentials' },
+    });
+
+    const result = await signInWithEmailPassword('a@b.com', 'wrongpass');
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('Invalid login credentials');
+  });
+
+  it('returns "Login failed" fallback when Supabase error has no message', async () => {
+    mockSignInWithPassword.mockResolvedValue({
+      data: { user: null, session: null },
+      error: null,
+    });
+
+    const result = await signInWithEmailPassword('a@b.com', 'pass');
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('Login failed');
+  });
+});
+
+// ══ updateUserEmail ════════════════════════════════════════════════════════
+
+describe('updateUserEmail', () => {
+  it('returns success when the email update succeeds', async () => {
+    mockUpdateUser.mockResolvedValue({ data: {}, error: null });
+
+    const result = await updateUserEmail('new@example.com');
+
+    expect(result.success).toBe(true);
+    expect(mockUpdateUser).toHaveBeenCalledWith({ email: 'new@example.com' });
+  });
+
+  it('returns error with message when update fails', async () => {
+    mockUpdateUser.mockResolvedValue({ error: { message: 'Email already in use' } });
+
+    const result = await updateUserEmail('taken@example.com');
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('Email already in use');
   });
 });
