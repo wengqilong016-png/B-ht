@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Pencil, Trash2, Save, Loader2, Store, X } from 'lucide-react';
+import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } from 'lucide-react';
 import { Location, Driver, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 
@@ -33,6 +33,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
   lang,
 }) => {
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
+  const [viewingPhotoLoc, setViewingPhotoLoc] = useState<Location | null>(null);
   const [locEditForm, setLocEditForm] = useState({
     name: '',
     area: '',
@@ -132,11 +133,13 @@ const SitesTab: React.FC<SitesTabProps> = ({
           </select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {managedLocations.map(loc => (
+          {managedLocations.map(loc => {
+            const sitePhotoUrl = loc.machinePhotoUrl || loc.ownerPhotoUrl;
+            return (
             <div key={loc.id} className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
               <div className="h-36 bg-slate-100 relative overflow-hidden">
-                {loc.machinePhotoUrl ? (
-                  <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 400, 400)} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
+                {sitePhotoUrl ? (
+                  <img src={getOptimizedImageUrl(sitePhotoUrl, 400, 400)} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2 bg-slate-100 text-slate-300">
                     <Store size={32} />
@@ -144,6 +147,16 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   </div>
                 )}
                 <div className={`absolute top-2 right-2 px-2 py-0.5 rounded text-[8px] font-black uppercase backdrop-blur-sm ${loc.status === 'active' ? 'bg-emerald-500/80 text-white' : loc.status === 'maintenance' ? 'bg-amber-500/80 text-white' : 'bg-rose-500/80 text-white'}`}>{loc.status}</div>
+                {sitePhotoUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setViewingPhotoLoc(loc)}
+                    className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-xl bg-slate-950/75 px-2.5 py-1.5 text-[8px] font-black uppercase text-white backdrop-blur-sm"
+                  >
+                    <ImageIcon size={11} />
+                    {lang === 'zh' ? '查看照片' : 'View Photo'}
+                  </button>
+                )}
               </div>
               <div className="p-4">
                 <div className="flex justify-between items-start mb-3">
@@ -181,7 +194,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
         </div>
       </div>
 
@@ -316,6 +330,29 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 {isSavingLoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Changes
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {viewingPhotoLoc && (
+        <div className="fixed inset-0 z-[85] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setViewingPhotoLoc(null)}>
+          <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div>
+                <h3 className="text-sm font-black text-slate-900 uppercase">{viewingPhotoLoc.name}</h3>
+                <p className="text-[9px] font-bold text-slate-400 uppercase">{viewingPhotoLoc.machineId}</p>
+              </div>
+              <button onClick={() => setViewingPhotoLoc(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="bg-slate-50 p-4">
+              <img
+                src={getOptimizedImageUrl(viewingPhotoLoc.machinePhotoUrl || viewingPhotoLoc.ownerPhotoUrl || '', 1200, 1200)}
+                alt={viewingPhotoLoc.name}
+                className="w-full max-h-[70vh] object-contain rounded-[24px] border border-slate-200 bg-white"
+              />
             </div>
           </div>
         </div>

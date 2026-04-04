@@ -145,6 +145,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         coords: resolvedGps,
         status: 'active',
         commissionRate: commValue,
+        machinePhotoUrl: machinePhoto || undefined,
         ownerPhotoUrl: machinePhoto || undefined,
         assignedDriverId: currentDriver.id
     };
