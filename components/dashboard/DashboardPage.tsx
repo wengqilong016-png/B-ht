@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Receipt } from 'lucide-react';
-import { Driver, Location, DailySettlement, Transaction } from '../../types';
+import { Driver, Location, DailySettlement, MonthlyPayroll, Transaction } from '../../types';
 import DriverManagement from '../driver-management';
 import DashboardTabs from './DashboardTabs';
 import OverviewTab from './OverviewTab';
@@ -8,10 +9,17 @@ import TrackingTab from './TrackingTab';
 import SitesTab from './SitesTab';
 import SettlementTab from './SettlementTab';
 import AiLogsTab from './AiLogsTab';
+import PayrollActionModal from './PayrollActionModal';
 import { useDashboardData } from './hooks/useDashboardData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
+import {
+  cancelMonthlyPayroll,
+  createMonthlyPayroll,
+  fetchMonthlyPayrolls,
+  markMonthlyPayrollPaid,
+} from '../../repositories/monthlyPayrollRepository';
 
 export interface DashboardProps {
   onNavigate?: (view: any) => void;
@@ -21,12 +29,32 @@ export interface DashboardProps {
 
 type TabKey = 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking';
 
+type PayrollModalState = {
+  mode: 'create' | 'pay' | 'cancel';
+  driver: {
+    id: string;
+    name: string;
+    baseSalary: number;
+  };
+  month: string;
+  summary: {
+    commission: number;
+    loans: number;
+    shortage: number;
+    netPayable: number;
+    collectionCount: number;
+    totalRevenue: number;
+  };
+  record?: MonthlyPayroll | null;
+};
+
 const DashboardPage: React.FC<DashboardProps> = React.memo(({
   onNavigate,
   initialTab,
   hideTabs,
 }) => {
   const { currentUser, lang } = useAuth();
+  const queryClient = useQueryClient();
   const {
     filteredTransactions: transactions,
     filteredDrivers: drivers,
@@ -77,6 +105,8 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const isAdmin = currentUser.role === 'admin';
   const activeDriverId = currentUser.driverId ?? currentUser.id;
   const todayStr = new Date().toISOString().split('T')[0];
+  const [pendingPayrollAction, setPendingPayrollAction] = useState<string | null>(null);
+  const [payrollModalState, setPayrollModalState] = useState<PayrollModalState | null>(null);
 
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab || (isAdmin ? 'overview' : 'settlement'));
 
@@ -135,8 +165,120 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     aiLogTypeFilter,
   });
 
+  const { data: monthlyPayrolls = [] } = useQuery({
+    queryKey: ['monthlyPayrolls'],
+    queryFn: () => fetchMonthlyPayrolls(),
+    enabled: isAdmin,
+    staleTime: 1000 * 60,
+  });
+
+  const createPayrollMutation = useMutation({
+    mutationFn: createMonthlyPayroll,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthlyPayrolls'] });
+    },
+  });
+
+  const markPayrollPaidMutation = useMutation({
+    mutationFn: markMonthlyPayrollPaid,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthlyPayrolls'] });
+    },
+  });
+
+  const cancelPayrollMutation = useMutation({
+    mutationFn: ({ payrollId, note }: { payrollId: string; note?: string }) =>
+      cancelMonthlyPayroll(payrollId, note),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['monthlyPayrolls'] });
+    },
+  });
+
+  const payrollRecordMap = useMemo(() => {
+    const map = new Map<string, MonthlyPayroll>();
+    for (const payroll of monthlyPayrolls) {
+      map.set(`${payroll.driverId}:${payroll.month}`, payroll);
+    }
+    return map;
+  }, [monthlyPayrolls]);
+
+  const runPayrollAction = async (actionKey: string, action: () => Promise<unknown>) => {
+    setPendingPayrollAction(actionKey);
+    try {
+      await action();
+    } catch (error) {
+      console.error('Payroll action failed.', error);
+      alert(lang === 'zh' ? '❌ 工资操作失败，请重试。' : '❌ Payroll action failed. Please retry.');
+    } finally {
+      setPendingPayrollAction(current => (current === actionKey ? null : current));
+    }
+  };
+
+  const submitPayrollModal = async (payload: {
+    note?: string;
+    paymentMethod?: MonthlyPayroll['paymentMethod'];
+    paymentProofUrl?: string;
+  }) => {
+    if (!payrollModalState) return;
+
+    const actionKey = `payroll:${payrollModalState.driver.id}:${payrollModalState.month}:${payrollModalState.mode}`;
+
+    await runPayrollAction(actionKey, async () => {
+      if (payrollModalState.mode === 'create') {
+        await createPayrollMutation.mutateAsync({
+          driverId: payrollModalState.driver.id,
+          month: payrollModalState.month,
+          baseSalary: payrollModalState.driver.baseSalary,
+          commission: payrollModalState.summary.commission,
+          privateLoanDeduction: payrollModalState.summary.loans,
+          shortageDeduction: payrollModalState.summary.shortage,
+          netPayable: payrollModalState.summary.netPayable,
+          collectionCount: payrollModalState.summary.collectionCount,
+          totalRevenue: payrollModalState.summary.totalRevenue,
+          note: payload.note,
+        });
+        return;
+      }
+
+      if (!payrollModalState.record) {
+        throw new Error('Payroll record unavailable');
+      }
+
+      if (payrollModalState.mode === 'pay') {
+        await markPayrollPaidMutation.mutateAsync({
+          payrollId: payrollModalState.record.id,
+          paymentMethod: payload.paymentMethod || 'bank_transfer',
+          note: payload.note,
+          paymentProofUrl: payload.paymentProofUrl,
+        });
+        return;
+      }
+
+      await cancelPayrollMutation.mutateAsync({
+        payrollId: payrollModalState.record.id,
+        note: payload.note,
+      });
+    });
+
+    setPayrollModalState(null);
+  };
+
   return (
     <div className="space-y-8">
+      {payrollModalState && (
+        <PayrollActionModal
+          mode={payrollModalState.mode}
+          driver={payrollModalState.driver}
+          month={payrollModalState.month}
+          summary={payrollModalState.summary}
+          record={payrollModalState.record}
+          isSubmitting={pendingPayrollAction === `payroll:${payrollModalState.driver.id}:${payrollModalState.month}:${payrollModalState.mode}`}
+          lang={lang}
+          onClose={() => setPayrollModalState(null)}
+          onSubmit={submitPayrollModal}
+        />
+      )}
+
       <DashboardTabs
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -207,23 +349,136 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                 <div key={driver.id} className="bg-white p-5 rounded-[28px] border border-slate-200 shadow-sm">
                   <h3 className="font-black text-slate-900 uppercase mb-3 text-sm">{driver.name}</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {monthlyBreakdown.map((m, i) => (
-                      <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <div className="flex justify-between mb-1"><span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span><span className="text-xs font-black text-indigo-600">TZS {m.netPayout.toLocaleString()}</span></div>
-                        <div className="grid grid-cols-3 gap-1 text-[8px] text-slate-400 mb-2">
-                          <span>Base: {(driver.baseSalary || 0).toLocaleString()}</span>
-                          <span>Comm: {m.commission.toLocaleString()}</span>
-                          <span>Short: {m.shortage.toLocaleString()}</span>
+                    {monthlyBreakdown.map((m, i) => {
+                      const record = payrollRecordMap.get(`${driver.id}:${m.month}`);
+                      const summary = record
+                        ? {
+                            baseSalary: record.baseSalary,
+                            commission: record.commission,
+                            loans: record.privateLoanDeduction,
+                            shortage: record.shortageDeduction,
+                            netPayable: record.netPayable,
+                            collectionCount: record.collectionCount,
+                            totalRevenue: record.totalRevenue,
+                          }
+                        : {
+                            baseSalary: driver.baseSalary || 0,
+                            commission: m.commission,
+                            loans: m.loans,
+                            shortage: m.shortage,
+                            netPayable: m.netPayout,
+                            collectionCount: m.collectionCount,
+                            totalRevenue: m.totalRevenue,
+                          };
+
+                      return (
+                        <div key={i} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex justify-between items-start mb-2 gap-2">
+                            <span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span>
+                            <div className="flex flex-col items-end gap-1">
+                              <span className="text-xs font-black text-indigo-600">TZS {summary.netPayable.toLocaleString()}</span>
+                              {record && (
+                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                                  record.status === 'paid'
+                                    ? 'bg-emerald-100 text-emerald-700'
+                                    : record.status === 'cancelled'
+                                      ? 'bg-slate-200 text-slate-500'
+                                      : 'bg-amber-100 text-amber-700'
+                                }`}>
+                                  {record.status}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-1 text-[8px] text-slate-400 mb-3">
+                            <span>Base: {summary.baseSalary.toLocaleString()}</span>
+                            <span>Comm: {summary.commission.toLocaleString()}</span>
+                            <span>Loans: {summary.loans.toLocaleString()}</span>
+                            <span>Short: {summary.shortage.toLocaleString()}</span>
+                          </div>
+                          {record?.paidAt && (
+                            <div className="mb-2 space-y-2">
+                              <p className="text-[8px] font-bold text-emerald-600">
+                                Paid {new Date(record.paidAt).toLocaleString()} · {record.paymentMethod || 'other'}
+                              </p>
+                              {record.paymentProofUrl && (
+                                <img
+                                  src={record.paymentProofUrl}
+                                  alt="Payroll proof"
+                                  className="w-full h-24 object-cover rounded-xl border border-slate-200"
+                                />
+                              )}
+                            </div>
+                          )}
+                          <div className="flex gap-2 flex-wrap">
+                            <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
+                            <button
+                              onClick={() => {
+                                const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nBase: TZS ${summary.baseSalary.toLocaleString()}\nComm: TZS ${summary.commission.toLocaleString()}\nLoans: TZS ${summary.loans.toLocaleString()}\nShortage: TZS ${summary.shortage.toLocaleString()}\nNet: TZS ${summary.netPayable.toLocaleString()}`;
+                                window.open(`https://wa.me/${driver.phone?.replace(/\+/g, '')}?text=${encodeURIComponent(msg)}`);
+                              }}
+                              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase"
+                            >
+                              WhatsApp
+                            </button>
+                            {(!record || record.status === 'cancelled') && (
+                              <button
+                                onClick={() => setPayrollModalState({
+                                  mode: 'create',
+                                  driver: {
+                                    id: driver.id,
+                                    name: driver.name,
+                                    baseSalary: summary.baseSalary,
+                                  },
+                                  month: m.month,
+                                  summary,
+                                  record: record || null,
+                                })}
+                                className="w-full py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                              >
+                                {record?.status === 'cancelled' ? 'Reopen Payroll' : 'Generate Payroll'}
+                              </button>
+                            )}
+                            {record?.status === 'pending' && (
+                              <>
+                                <button
+                                  onClick={() => setPayrollModalState({
+                                    mode: 'pay',
+                                    driver: {
+                                      id: driver.id,
+                                      name: driver.name,
+                                      baseSalary: summary.baseSalary,
+                                    },
+                                    month: m.month,
+                                    summary,
+                                    record,
+                                  })}
+                                  className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                                >
+                                  Mark Paid
+                                </button>
+                                <button
+                                  onClick={() => setPayrollModalState({
+                                    mode: 'cancel',
+                                    driver: {
+                                      id: driver.id,
+                                      name: driver.name,
+                                      baseSalary: summary.baseSalary,
+                                    },
+                                    month: m.month,
+                                    summary,
+                                    record,
+                                  })}
+                                  className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
-                          <button onClick={() => {
-                            const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nBase: TZS ${(driver.baseSalary || 0).toLocaleString()}\nComm: TZS ${m.commission.toLocaleString()}\nNet: TZS ${m.netPayout.toLocaleString()}`;
-                            window.open(`https://wa.me/${driver.phone?.replace(/\+/g, '')}?text=${encodeURIComponent(msg)}`);
-                          }} className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase">WhatsApp</button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                     {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-[10px] text-slate-300 font-black uppercase py-4">No payroll data</p>}
                   </div>
                 </div>

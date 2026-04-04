@@ -3,7 +3,7 @@ import { supabase } from '../supabaseClient';
 export const EVIDENCE_BUCKET = 'evidence';
 
 interface EvidenceUploadOptions {
-  category: 'collection' | 'reset-request';
+  category: 'collection' | 'reset-request' | 'payroll';
   entityId: string;
   driverId?: string | null;
 }

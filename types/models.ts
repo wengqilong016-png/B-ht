@@ -139,6 +139,29 @@ export interface DailySettlement {
   isSynced?: boolean;
 }
 
+export interface MonthlyPayroll {
+  id: string;
+  driverId: string;
+  driverName: string;
+  month: string;
+  baseSalary: number;
+  commission: number;
+  privateLoanDeduction: number;
+  shortageDeduction: number;
+  netPayable: number;
+  collectionCount: number;
+  totalRevenue: number;
+  status: 'pending' | 'paid' | 'cancelled';
+  paymentMethod?: 'cash' | 'bank_transfer' | 'mobile_money' | 'other';
+  paymentProofUrl?: string;
+  note?: string;
+  createdAt: string;
+  paidAt?: string;
+  paidBy?: string;
+  paidByName?: string;
+  isSynced?: boolean;
+}
+
 /**
  * Patch payload sent by a driver when requesting a location data update.
  * Keys match the camelCase column names in public.locations.

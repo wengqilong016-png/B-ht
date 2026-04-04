@@ -168,7 +168,7 @@ export function useDashboardData({
         const commission = Math.floor(totalRevenue * (driver.commissionRate || 0.05));
         const shortage = monthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
         const netPayout = (driver.baseSalary || 0) + commission - loans - shortage;
-        return { month, totalRevenue, commission, loans, shortage, netPayout };
+        return { month, totalRevenue, commission, loans, shortage, netPayout, collectionCount: monthTxs.length };
       }).filter(m => m.totalRevenue > 0 || m.shortage > 0);
       return { driver, monthlyBreakdown };
     });
