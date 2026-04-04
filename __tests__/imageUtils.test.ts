@@ -283,7 +283,6 @@ describe('compressAndResizeImage()', () => {
     jest.spyOn(document, 'createElement').mockImplementation((tag: string, ...rest: any[]) => {
       if (tag === 'canvas') {
         const canvas = origCreate(tag) as HTMLCanvasElement;
-        const origWidthDesc = Object.getOwnPropertyDescriptor(HTMLCanvasElement.prototype, 'width');
         Object.defineProperty(canvas, 'width', {
           set(v: number) { capturedWidth = v; },
           get() { return capturedWidth; },
