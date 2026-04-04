@@ -45,6 +45,9 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
   const { isLowPerformance } = usePerformanceMode();
+  const parsedCurrentScore = parseInt(currentScore, 10);
+  const hasNumericScore = !isNaN(parsedCurrentScore);
+  const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
 
   const { coords: gpsHookCoords, status: gpsHookStatus, request: requestGps } = useGpsCapture(gpsCoords);
 
@@ -297,6 +300,16 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
             </div>
           </div>
         )}
+
+        {isScoreBelowLastReading && (
+          <div className="mt-3 p-3 rounded-subcard border border-rose-200 bg-rose-50">
+            <p className="text-[9px] font-black uppercase text-rose-600">
+              {lang === 'zh'
+                ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请先确认是否应提交重置申请。`
+                : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Confirm whether this should be a reset request instead.`}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* GPS status — uses rich status from useGpsCapture */}
@@ -352,7 +365,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
       {/* Next button */}
       <button
         onClick={onNext}
-        disabled={!currentScore}
+        disabled={!currentScore || isScoreBelowLastReading}
         className="w-full py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-3"
       >
         <ChevronRight size={18} />

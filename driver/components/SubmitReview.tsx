@@ -48,6 +48,9 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   onSubmit, onBack, onReset, onUpdateGps, onUpdateGpsPermission,
 }) => {
   const t = TRANSLATIONS[lang];
+  const parsedCurrentScore = parseInt(currentScore, 10);
+  const hasNumericScore = !isNaN(parsedCurrentScore);
+  const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
   // GPS-acquisition local state (distinct from the submission state machine)
   const [gpsResolving, setGpsResolving] = useState(false);
   const { state: submissionState, submit: submitCollection, reset: resetSubmissionState } = useCollectionSubmission();
@@ -119,6 +122,14 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
   const handleSubmit = async () => {
     if (!selectedLocation || isProcessing) return;
+    if (isScoreBelowLastReading) {
+      alert(
+        lang === 'zh'
+          ? `❌ 当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回核对读数或提交重置申请。`
+          : `❌ Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back to verify the reading or submit a reset request.`,
+      );
+      return;
+    }
     if (!photoData) {
       const ok = confirm(lang === 'zh'
         ? '⚠️ 未附加照片，照片可作为收款凭证。是否仍要提交？'
@@ -236,6 +247,17 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </div>
       )}
 
+      {isScoreBelowLastReading && (
+        <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-200 rounded-subcard">
+          <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
+          <p className="text-[9px] font-black text-rose-700 uppercase">
+            {lang === 'zh'
+              ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，不能按普通收款提交。`
+              : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}); normal collection submit is blocked.`}
+          </p>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onBack}
@@ -246,7 +268,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
         </button>
         <button
           onClick={handleSubmit}
-          disabled={isProcessing || !currentScore}
+          disabled={isProcessing || !currentScore || isScoreBelowLastReading}
           className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-sm shadow-field-md disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
         >
           {isProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}

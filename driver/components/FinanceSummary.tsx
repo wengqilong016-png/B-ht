@@ -48,6 +48,9 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   onNext, onBack, previewSource,
 }) => {
   const t = TRANSLATIONS[lang];
+  const parsedCurrentScore = parseInt(currentScore, 10);
+  const hasNumericScore = !isNaN(parsedCurrentScore);
+  const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
 
   return (
     <div className="max-w-md mx-auto py-4 px-4 animate-in fade-in space-y-4">
@@ -231,6 +234,15 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       </div>
 
       {/* Navigation */}
+      {isScoreBelowLastReading && (
+        <div className="p-3 rounded-subcard border border-rose-200 bg-rose-50">
+          <p className="text-[9px] font-black uppercase text-rose-600">
+            {lang === 'zh'
+              ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回重新核对读数或改走重置申请。`
+              : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back and confirm the reading or use the reset request flow.`}
+          </p>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onBack}
@@ -241,7 +253,8 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
         </button>
         <button
           onClick={onNext}
-          className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-xs shadow-field-md active:scale-95 transition-all flex items-center justify-center gap-2"
+          disabled={isScoreBelowLastReading}
+          className="py-4 bg-indigo-600 text-white rounded-btn font-black uppercase text-xs shadow-field-md active:scale-95 transition-all flex items-center justify-center gap-2 disabled:bg-slate-300 disabled:cursor-not-allowed"
         >
           {lang === 'zh' ? '确认提交' : 'Review & Submit'}
           <ChevronRight size={15} />

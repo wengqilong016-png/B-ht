@@ -27,6 +27,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
   const { loc, distanceMeters, daysSinceActive, isLocked, isUrgent, isPending } = item;
   const machineShortId = loc.machineId ? loc.machineId.substring(0, 6).toUpperCase() : '---';
   const isNear9999 = (loc.lastScore ?? 0) >= 9000;
+  const hasDividendBalance = (loc.dividendBalance ?? 0) > 0;
 
   return (
     <div className="bg-white rounded-subcard border border-slate-200 shadow-field hover:shadow-field-md transition-shadow overflow-hidden">
@@ -115,8 +116,12 @@ const MachineCard: React.FC<MachineCardProps> = ({
             </button>
           )}
           <button
-            onClick={(e) => { e.stopPropagation(); onRequestPayout(loc.id); }}
-            className="flex-1 py-2.5 text-[9px] font-black uppercase text-emerald-500 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasDividendBalance) onRequestPayout(loc.id);
+            }}
+            disabled={!hasDividendBalance}
+            className="flex-1 py-2.5 text-[9px] font-black uppercase text-emerald-500 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
           >
             <Wallet size={11} /> {lang === 'zh' ? '分红提现' : 'Payout'}
           </button>

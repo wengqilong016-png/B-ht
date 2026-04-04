@@ -158,7 +158,20 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining]);
 
   const handleSelectMachine = (locId: string) => {
-    updateDraft({ selectedLocId: locId, draftTxId: `TX-${Date.now()}` });
+    updateDraft({
+      selectedLocId: locId,
+      draftTxId: `TX-${Date.now()}`,
+      currentScore: '',
+      photoData: null,
+      aiReviewData: null,
+      expenses: '',
+      expenseType: 'public',
+      expenseCategory: 'fuel',
+      coinExchange: '',
+      ownerRetention: '',
+      isOwnerRetaining: true,
+      tip: '',
+    });
     setStep('capture');
   };
 

@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Transaction } from '../../types';
 
 const DRAFT_STORAGE_KEY = 'bahati_collection_draft';
@@ -92,6 +92,10 @@ export function useCollectionDraft() {
     } catch { /* ignore */ }
     return null;
   }, []);
+
+  useEffect(() => {
+    saveDraft(draft);
+  }, [draft, saveDraft]);
 
   return { draft, updateDraft, resetDraft, saveDraft, loadDraft };
 }
