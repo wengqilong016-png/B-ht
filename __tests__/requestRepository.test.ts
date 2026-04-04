@@ -1,10 +1,18 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
 
 const mockRpc = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockUpload = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGetPublicUrl = jest.fn<(path: string) => { data: { publicUrl: string } }>();
 
 jest.mock('../supabaseClient', () => ({
   supabase: {
     rpc: (...args: unknown[]) => mockRpc(...args),
+    storage: {
+      from: () => ({
+        upload: (...args: unknown[]) => mockUpload(...args),
+        getPublicUrl: (path: string) => mockGetPublicUrl(path),
+      }),
+    },
   },
 }));
 
@@ -12,6 +20,12 @@ import { createPayoutRequest, createResetRequest } from '../repositories/request
 
 beforeEach(() => {
   mockRpc.mockReset();
+  mockUpload.mockReset();
+  mockGetPublicUrl.mockReset();
+  mockUpload.mockResolvedValue({ error: null });
+  mockGetPublicUrl.mockImplementation((path: string) => ({
+    data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/evidence/${path}` },
+  }));
 });
 
 describe('requestRepository', () => {
@@ -30,12 +44,13 @@ describe('requestRepository', () => {
       notes: 'reset needed',
     } as any);
 
+    expect(mockUpload).toHaveBeenCalledTimes(1);
     expect(mockRpc).toHaveBeenCalledWith('create_reset_request_v1', {
       p_tx_id: 'RST-1',
       p_location_id: 'loc-1',
       p_driver_id: 'drv-1',
       p_gps: { lat: -6.8, lng: 39.3 },
-      p_photo_url: 'data:image/jpeg;base64,abc',
+      p_photo_url: 'https://example.supabase.co/storage/v1/object/public/evidence/reset-request/drv-1/RST-1.jpg',
       p_notes: 'reset needed',
     });
     expect(result.type).toBe('reset_request');
