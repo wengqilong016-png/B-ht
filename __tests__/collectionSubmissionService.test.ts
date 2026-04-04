@@ -14,8 +14,18 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 // mock that module and control what the `rpc` mock returns.
 
 const mockRpc = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockUpload = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockGetPublicUrl = jest.fn<(path: string) => { data: { publicUrl: string } }>();
 jest.mock('../supabaseClient', () => ({
-  supabase: { rpc: (...args: unknown[]) => mockRpc(...args) },
+  supabase: {
+    rpc: (...args: unknown[]) => mockRpc(...args),
+    storage: {
+      from: () => ({
+        upload: (...args: unknown[]) => mockUpload(...args),
+        getPublicUrl: (path: string) => mockGetPublicUrl(path),
+      }),
+    },
+  },
 }));
 
 import { submitCollectionV2, CollectionSubmissionInput } from '../services/collectionSubmissionService';
@@ -77,6 +87,12 @@ const serverRow = {
 
 beforeEach(() => {
   mockRpc.mockReset();
+  mockUpload.mockReset();
+  mockGetPublicUrl.mockReset();
+  mockUpload.mockResolvedValue({ error: null });
+  mockGetPublicUrl.mockImplementation((path: string) => ({
+    data: { publicUrl: `https://example.supabase.co/storage/v1/object/public/evidence/${path}` },
+  }));
 });
 
 describe('submitCollectionV2', () => {
@@ -116,11 +132,22 @@ describe('submitCollectionV2', () => {
     expect(rpcParams['p_current_score']).toBe(1200);
     expect(rpcParams['p_expenses']).toBe(5000);
     expect(rpcParams['p_tip']).toBe(0);
+    expect(String(rpcParams['p_photo_url'])).toContain('/storage/v1/object/public/evidence/');
 
     // Pre-computed finance fields must NOT be sent
     expect(rpcParams).not.toHaveProperty('revenue');
     expect(rpcParams).not.toHaveProperty('netPayable');
     expect(rpcParams).not.toHaveProperty('commission');
+  });
+
+  it('uploads inline evidence before calling the RPC', async () => {
+    mockRpc.mockResolvedValue({ data: serverRow, error: null });
+
+    await submitCollectionV2(baseInput);
+
+    expect(mockUpload).toHaveBeenCalledTimes(1);
+    const [path] = mockUpload.mock.calls[0] as [string, Blob];
+    expect(path).toBe('collection/drv-001/TX-test-001.jpg');
   });
 
   it('forwards driver id as p_driver_id (server enforces ownership)', async () => {

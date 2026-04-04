@@ -15,6 +15,7 @@
 
 import { Transaction } from '../types';
 import { supabase } from '../supabaseClient';
+import { persistEvidencePhotoUrl } from './evidenceStorage';
 
 /**
  * Raw inputs accepted by the server write entrypoint.
@@ -64,6 +65,20 @@ export async function submitCollectionV2(
     return { success: false, error: 'Supabase not configured' };
   }
 
+  let persistedPhotoUrl: string | null;
+  try {
+    persistedPhotoUrl = await persistEvidencePhotoUrl(input.photoUrl, {
+      category: 'collection',
+      entityId: input.txId,
+      driverId: input.driverId,
+    });
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Evidence upload failed',
+    };
+  }
+
   let data: unknown;
   let error: { message: string } | null;
   try {
@@ -78,7 +93,7 @@ export async function submitCollectionV2(
       p_owner_retention:   input.ownerRetention,
       p_coin_exchange:     input.coinExchange,
       p_gps:               input.gps,
-      p_photo_url:         input.photoUrl,
+      p_photo_url:         persistedPhotoUrl,
       p_ai_score:          input.aiScore,
       p_anomaly_flag:      input.anomalyFlag,
       p_notes:             input.notes,
@@ -123,7 +138,7 @@ export async function submitCollectionV2(
     extraIncome:           Number(row['extraIncome'] ?? 0),
     netPayable:            Number(row['netPayable'] ?? 0),
     gps:                   (row['gps'] as { lat: number; lng: number }) ?? input.gps ?? { lat: 0, lng: 0 },
-    photoUrl:              row['photoUrl'] != null ? String(row['photoUrl']) : undefined,
+    photoUrl:              row['photoUrl'] != null ? String(row['photoUrl']) : persistedPhotoUrl ?? undefined,
     dataUsageKB:           Number(row['dataUsageKB'] ?? 120),
     aiScore:               row['aiScore'] != null ? Number(row['aiScore']) : undefined,
     isAnomaly:             Boolean(row['isAnomaly']),
