@@ -40,7 +40,10 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     updateLocations,
     deleteLocations,
     updateTransaction,
-    saveSettlement,
+    createSettlement,
+    reviewSettlement,
+    approveExpenseRequest,
+    reviewAnomalyTransaction,
     approveResetRequest,
     approvePayoutRequest,
     syncOfflineData,
@@ -50,7 +53,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutate(locationsToSave);
   const onDeleteLocations = (ids: string[]) => deleteLocations.mutate(ids);
   const onUpdateTransaction = (txId: string, updates: Partial<Transaction>) => updateTransaction.mutate({ txId, updates });
-  const onSaveSettlement = (settlement: DailySettlement) => saveSettlement.mutate(settlement);
+  const onCreateSettlement = (settlement: DailySettlement) => createSettlement.mutate(settlement);
+  const onReviewSettlement = (settlementId: string, status: 'confirmed' | 'rejected') =>
+    reviewSettlement.mutate({ settlementId, status });
+  const onApproveExpenseRequest = (txId: string, approve: boolean) => approveExpenseRequest.mutate({ txId, approve });
+  const onReviewAnomalyTransaction = (txId: string, approve: boolean) => reviewAnomalyTransaction.mutate({ txId, approve });
   const onApproveResetRequest = (txId: string, approve: boolean) => approveResetRequest.mutate({ txId, approve });
   const onApprovePayoutRequest = (txId: string, approve: boolean) => approvePayoutRequest.mutate({ txId, approve });
   const onSync = async () => syncOfflineData.mutate();
@@ -231,8 +238,10 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           currentUser={currentUser}
           activeDriverId={activeDriverId}
           todayStr={todayStr}
-          onUpdateTransaction={onUpdateTransaction}
-          onSaveSettlement={onSaveSettlement}
+          onCreateSettlement={onCreateSettlement}
+          onReviewSettlement={onReviewSettlement}
+          onApproveExpenseRequest={onApproveExpenseRequest}
+          onReviewAnomalyTransaction={onReviewAnomalyTransaction}
           onApproveResetRequest={onApproveResetRequest}
           onApprovePayoutRequest={onApprovePayoutRequest}
           lang={lang}

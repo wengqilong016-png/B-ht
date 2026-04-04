@@ -43,7 +43,6 @@ const AppAdminShell: React.FC = () => {
     deleteLocations,
     deleteDrivers,
     updateTransaction,
-    saveSettlement,
     logAI,
   } = useMutations();
   const [view, setView] = useState<AdminView>('dashboard');

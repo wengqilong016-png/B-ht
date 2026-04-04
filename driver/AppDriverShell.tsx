@@ -25,7 +25,7 @@ const AppDriverShell: React.FC = () => {
   } = useAppData();
   const {
     syncOfflineData, updateDrivers, updateLocations, deleteLocations,
-    updateTransaction, saveSettlement, logAI,
+    updateTransaction, logAI,
   } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<DriverView>('collect');

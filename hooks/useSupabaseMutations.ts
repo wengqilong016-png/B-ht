@@ -6,10 +6,15 @@ import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRol
 import { stripClientFields } from '../utils/stripClientFields';
 import { upsertDrivers, deleteDrivers as repoDeleteDrivers, updateDriverCoins } from '../repositories/driverRepository';
 import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
-import { approvePayoutRequest as repoApprovePayoutRequest, approveResetRequest as repoApproveResetRequest } from '../repositories/approvalRepository';
+import {
+  approveExpenseRequest as repoApproveExpenseRequest,
+  approvePayoutRequest as repoApprovePayoutRequest,
+  approveResetRequest as repoApproveResetRequest,
+  reviewAnomalyTransaction as repoReviewAnomalyTransaction,
+} from '../repositories/approvalRepository';
 import { createPayoutRequest, createResetRequest } from '../repositories/requestRepository';
 import { upsertTransaction } from '../repositories/transactionRepository';
-import { upsertSettlement } from '../repositories/settlementRepository';
+import { createSettlement as repoCreateSettlement, reviewSettlement as repoReviewSettlement } from '../repositories/settlementRepository';
 import { insertAiLog } from '../repositories/aiLogRepository';
 import { supabase } from '../supabaseClient';
 import { shouldApplySettlementDriverCoinUpdate } from '../utils/settlementRules';
@@ -233,34 +238,84 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     }
   });
 
-  const saveSettlement = useMutation({
+  const createSettlement = useMutation({
     onMutate: async (settlement: DailySettlement) => {
       await queryClient.cancelQueries({ queryKey: ['dailySettlements'] });
-      await queryClient.cancelQueries({ queryKey: ['drivers'] });
       const previousSettlements = queryClient.getQueryData<DailySettlement[]>(settlementQueryKey);
-      const previousDrivers = queryClient.getQueryData<Driver[]>(['drivers']);
       queryClient.setQueryData(settlementQueryKey, (old: DailySettlement[] = []) => {
         const exists = old.find(s => s.id === settlement.id);
         if (exists) return old.map(s => s.id === settlement.id ? { ...settlement, isSynced: false } : s);
         return [{ ...settlement, isSynced: false }, ...old];
       });
-      if (shouldApplySettlementDriverCoinUpdate(settlement.status)) {
-        const nextDayStartingCoins = settlement.actualCoins || 0;
-        queryClient.setQueryData(['drivers'], (old: Driver[] = []) =>
-          old.map(d => d.id === settlement.driverId ? { ...d, dailyFloatingCoins: nextDayStartingCoins, isSynced: false } : d)
-        );
-      }
-      return { previousSettlements, previousDrivers };
+      return { previousSettlements };
     },
     mutationFn: async (settlement: DailySettlement) => {
+      if (!isOnline) throw new Error('Settlement submission requires online mode');
+      await repoCreateSettlement(settlement);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousSettlements !== undefined) {
+        queryClient.setQueryData(settlementQueryKey, context.previousSettlements);
+      }
+    },
+    onSettled: () => {
       if (isOnline) {
-        await upsertSettlement(
-          stripClientFields(settlement as unknown as Record<string, unknown>) as Partial<DailySettlement>
+        queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
+      }
+    }
+  });
+
+  const reviewSettlement = useMutation({
+    onMutate: async ({
+      settlementId,
+      status,
+      note,
+    }: {
+      settlementId: string;
+      status: 'confirmed' | 'rejected';
+      note?: string;
+    }) => {
+      await queryClient.cancelQueries({ queryKey: ['dailySettlements'] });
+      await queryClient.cancelQueries({ queryKey: ['drivers'] });
+      const previousSettlements = queryClient.getQueryData<DailySettlement[]>(settlementQueryKey);
+      const previousDrivers = queryClient.getQueryData<Driver[]>(['drivers']);
+      const targetSettlement = previousSettlements?.find(settlement => settlement.id === settlementId);
+
+      queryClient.setQueryData(settlementQueryKey, (old: DailySettlement[] = []) =>
+        old.map(settlement =>
+          settlement.id === settlementId
+            ? { ...settlement, status, note: note ?? settlement.note, isSynced: false }
+            : settlement
+        )
+      );
+
+      if (targetSettlement?.driverId && shouldApplySettlementDriverCoinUpdate(status)) {
+        const nextDayStartingCoins = targetSettlement.actualCoins || 0;
+        queryClient.setQueryData(['drivers'], (old: Driver[] = []) =>
+          old.map(driver =>
+            driver.id === targetSettlement.driverId
+              ? { ...driver, dailyFloatingCoins: nextDayStartingCoins, isSynced: false }
+              : driver
+          )
         );
-        if (shouldApplySettlementDriverCoinUpdate(settlement.status)) {
-          const nextDayStartingCoins = settlement.actualCoins || 0;
-          await updateDriverCoins(settlement.driverId!, nextDayStartingCoins);
-        }
+      }
+
+      return { previousSettlements, previousDrivers };
+    },
+    mutationFn: async ({
+      settlementId,
+      status,
+      note,
+    }: {
+      settlementId: string;
+      status: 'confirmed' | 'rejected';
+      note?: string;
+    }) => {
+      if (!isOnline) throw new Error('Settlement review requires online mode');
+      const reviewedSettlement = await repoReviewSettlement(settlementId, status, note);
+      if (reviewedSettlement.driverId && shouldApplySettlementDriverCoinUpdate(reviewedSettlement.status)) {
+        const nextDayStartingCoins = reviewedSettlement.actualCoins || 0;
+        await updateDriverCoins(reviewedSettlement.driverId, nextDayStartingCoins);
       }
     },
     onError: (_error, _variables, context) => {
@@ -327,6 +382,73 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (isOnline) {
         queryClient.invalidateQueries({ queryKey: ['transactions'] });
         queryClient.invalidateQueries({ queryKey: ['locations'] });
+      }
+    }
+  });
+
+  const approveExpenseRequest = useMutation({
+    onMutate: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
+
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
+        old.map(tx =>
+          tx.id === txId
+            ? { ...tx, expenseStatus: approve ? 'approved' : 'rejected', isSynced: false }
+            : tx
+        )
+      );
+
+      return { previousTransactions };
+    },
+    mutationFn: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      if (!isOnline) throw new Error('Expense approval requires online mode');
+      await repoApproveExpenseRequest(txId, approve);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      }
+    }
+  });
+
+  const reviewAnomalyTransaction = useMutation({
+    onMutate: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
+
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
+        old.map(tx =>
+          tx.id === txId
+            ? {
+                ...tx,
+                approvalStatus: approve ? 'approved' : 'rejected',
+                isAnomaly: approve ? false : tx.isAnomaly,
+                isSynced: false,
+              }
+            : tx
+        )
+      );
+
+      return { previousTransactions };
+    },
+    mutationFn: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      if (!isOnline) throw new Error('Anomaly review requires online mode');
+      await repoReviewAnomalyTransaction(txId, approve);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
       }
     }
   });
@@ -402,7 +524,10 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     deleteDrivers,
     updateTransaction,
     submitTransaction,
-    saveSettlement,
+    createSettlement,
+    reviewSettlement,
+    approveExpenseRequest,
+    reviewAnomalyTransaction,
     approveResetRequest,
     approvePayoutRequest,
     logAI

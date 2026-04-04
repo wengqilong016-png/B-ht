@@ -30,8 +30,10 @@ interface SettlementTabProps {
   currentUser: UserType;
   activeDriverId: string;
   todayStr: string;
-  onUpdateTransaction: (txId: string, updates: Partial<Transaction>) => void;
-  onSaveSettlement: (settlement: DailySettlement) => void;
+  onCreateSettlement: (settlement: DailySettlement) => void;
+  onReviewSettlement: (settlementId: string, status: 'confirmed' | 'rejected') => void;
+  onApproveExpenseRequest: (txId: string, approve: boolean) => void;
+  onReviewAnomalyTransaction: (txId: string, approve: boolean) => void;
   onApproveResetRequest: (txId: string, approve: boolean) => void;
   onApprovePayoutRequest: (txId: string, approve: boolean) => void;
   lang: 'zh' | 'sw';
@@ -52,8 +54,10 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   currentUser,
   activeDriverId,
   todayStr,
-  onUpdateTransaction,
-  onSaveSettlement,
+  onCreateSettlement,
+  onReviewSettlement,
+  onApproveExpenseRequest,
+  onReviewAnomalyTransaction,
   onApproveResetRequest,
   onApprovePayoutRequest,
   lang,
@@ -116,8 +120,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <button onClick={() => onSaveSettlement({ ...s, status: 'confirmed' })} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">✓ Approve</button>
-                    <button onClick={() => onSaveSettlement({ ...s, status: 'rejected' })} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">✗ Reject</button>
+                    <button onClick={() => onReviewSettlement(s.id, 'confirmed')} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">✓ Approve</button>
+                    <button onClick={() => onReviewSettlement(s.id, 'rejected')} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">✗ Reject</button>
                   </div>
                 </div>
               ))}
@@ -167,8 +171,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                         <div className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-xl">{tx.locationName}</div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'approved' })} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ Approve</button>
-                        <button onClick={() => onUpdateTransaction(tx.id, { expenseStatus: 'rejected' })} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase">✗ Reject</button>
+                        <button onClick={() => onApproveExpenseRequest(tx.id, true)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ Approve</button>
+                        <button onClick={() => onApproveExpenseRequest(tx.id, false)} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase">✗ Reject</button>
                       </div>
                     </div>
                   );
@@ -218,8 +222,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'approved', isAnomaly: false })} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ {t.approveBtn}</button>
-                        <button onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'rejected' })} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase">✗ {t.rejectBtn}</button>
+                        <button onClick={() => onReviewAnomalyTransaction(tx.id, true)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ {t.approveBtn}</button>
+                        <button onClick={() => onReviewAnomalyTransaction(tx.id, false)} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase">✗ {t.rejectBtn}</button>
                       </div>
                     </div>
                   );
@@ -416,7 +420,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 timestamp: new Date().toISOString(),
                 isSynced: false,
               };
-              onSaveSettlement(settlement);
+              onCreateSettlement(settlement);
               alert('✅ Settlement submitted! Waiting for approval.');
               setActualCash('');
               setActualCoins('');

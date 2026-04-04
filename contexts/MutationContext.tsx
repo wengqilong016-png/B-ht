@@ -11,7 +11,10 @@ interface MutationContextValue {
   deleteDrivers: UseMutationResult<unknown, unknown, string[], unknown>;
   updateTransaction: UseMutationResult<unknown, unknown, { txId: string; updates: Partial<Transaction> }, unknown>;
   submitTransaction: UseMutationResult<unknown, unknown, Transaction, unknown>;
-  saveSettlement: UseMutationResult<unknown, unknown, DailySettlement, unknown>;
+  createSettlement: UseMutationResult<unknown, unknown, DailySettlement, unknown>;
+  reviewSettlement: UseMutationResult<unknown, unknown, { settlementId: string; status: 'confirmed' | 'rejected'; note?: string }, unknown>;
+  approveExpenseRequest: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
+  reviewAnomalyTransaction: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
   approveResetRequest: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
   approvePayoutRequest: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
   logAI: UseMutationResult<unknown, unknown, AILog, unknown>;
