@@ -47,7 +47,7 @@ export function useDashboardData({
   );
 
   const todayDriverTxs = useMemo(
-    () => myTransactions.filter(t => t.timestamp.startsWith(todayStr)),
+    () => myTransactions.filter(t => t.type === 'collection' && t.timestamp.startsWith(todayStr)),
     [myTransactions, todayStr]
   );
 
@@ -57,7 +57,9 @@ export function useDashboardData({
   );
 
   const totalArrears = useMemo(
-    () => myTransactions.filter(tx => tx.paymentStatus === 'unpaid').reduce((sum, tx) => sum + tx.netPayable, 0),
+    () => myTransactions
+      .filter(tx => tx.type === 'collection' && tx.paymentStatus !== 'paid')
+      .reduce((sum, tx) => sum + tx.netPayable, 0),
     [myTransactions]
   );
 
@@ -95,7 +97,7 @@ export function useDashboardData({
   const todayDriverStats = useMemo(() => {
     const txByDriver = new Map<string, Transaction[]>();
     for (const t of transactions) {
-      if (!t.timestamp.startsWith(todayStr)) continue;
+      if (!t.timestamp.startsWith(todayStr) || t.type !== 'collection') continue;
       const arr = txByDriver.get(t.driverId);
       if (arr) arr.push(t);
       else txByDriver.set(t.driverId, [t]);
@@ -115,15 +117,20 @@ export function useDashboardData({
 
   // Payroll System
   const payrollStats = useMemo(() => {
-    const months = Array.from(new Set(transactions.map(t => t.timestamp.substring(0, 7)))).sort().reverse();
+    const confirmedSettlements = dailySettlements.filter(s => s.status === 'confirmed');
+    const paidCollections = transactions.filter(t => t.type === 'collection' && t.paymentStatus === 'paid');
+    const months = Array.from(new Set([
+      ...confirmedSettlements.map(s => s.date.substring(0, 7)),
+      ...paidCollections.map(t => t.timestamp.substring(0, 7)),
+    ])).sort().reverse();
     const txByDriver = new Map<string, Transaction[]>();
-    transactions.forEach(t => {
+    paidCollections.forEach(t => {
       const arr = txByDriver.get(t.driverId);
       if (arr) arr.push(t);
       else txByDriver.set(t.driverId, [t]);
     });
     const settlementByDriver = new Map<string, DailySettlement[]>();
-    dailySettlements.filter(s => s.status === 'confirmed').forEach(s => {
+    confirmedSettlements.forEach(s => {
       const arr = settlementByDriver.get(s.driverId);
       if (arr) arr.push(s);
       else settlementByDriver.set(s.driverId, [s]);
@@ -152,12 +159,12 @@ export function useDashboardData({
       const monthlyBreakdown = (months as string[]).map((month: string) => {
         const monthTxs = txByMonth.get(month) ?? [];
         const monthSettlements = settlByMonth.get(month) ?? [];
-        // Single pass to accumulate revenue and loans together
-        let totalRevenue = 0, loans = 0;
+        // Single pass to accumulate private-loan recoveries from paid collections.
+        let loans = 0;
         for (const t of monthTxs) {
-          totalRevenue += t.revenue;
           if (t.expenseType === 'private') loans += t.expenses;
         }
+        const totalRevenue = monthSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
         const commission = Math.floor(totalRevenue * (driver.commissionRate || 0.05));
         const shortage = monthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
         const netPayout = (driver.baseSalary || 0) + commission - loans - shortage;
@@ -201,7 +208,7 @@ export function useDashboardData({
     // Single pass replaces .filter().reduce() (two iterations → one)
     let todayRev = 0;
     for (const t of transactions) {
-      if (t.timestamp.startsWith(todayStr)) todayRev += t.revenue;
+      if (t.type === 'collection' && t.timestamp.startsWith(todayStr)) todayRev += t.revenue;
     }
     const riskyDrivers = drivers.filter(d => d.remainingDebt > 100000);
     return { todayRev, riskyDrivers, stagnantMachines: locations.filter(l => l.status === 'broken') };

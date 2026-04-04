@@ -51,6 +51,7 @@ function makeRawInput(txId: string): CollectionSubmissionInput {
     currentScore: 200,
     expenses: 0,
     tip: 0,
+    startupDebtDeduction: 0,
     isOwnerRetaining: true,
     ownerRetention: null,
     coinExchange: 0,

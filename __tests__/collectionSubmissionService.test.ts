@@ -38,6 +38,7 @@ const baseInput: CollectionSubmissionInput = {
   currentScore: 1200,
   expenses: 5000,
   tip: 0,
+  startupDebtDeduction: 0,
   isOwnerRetaining: true,
   ownerRetention: null,
   coinExchange: 10000,
@@ -70,7 +71,7 @@ const serverRow = {
   coinExchange: 10000,
   extraIncome: 0,
   netPayable: 29000,
-  paymentStatus: 'paid',
+  paymentStatus: 'pending',
   gps: { lat: -6.7924, lng: 39.2083 },
   photoUrl: 'data:image/jpeg;base64,abc',
   aiScore: 1195,
@@ -117,6 +118,7 @@ describe('submitCollectionV2', () => {
     expect(tx.expenseType).toBe('public');
     expect(tx.expenseCategory).toBe('fuel');
     expect(tx.expenseStatus).toBe('pending');
+    expect(tx.paymentStatus).toBe('pending');
   });
 
   it('passes raw inputs to the RPC (does not send pre-computed finance)', async () => {

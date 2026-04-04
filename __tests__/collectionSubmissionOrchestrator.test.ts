@@ -81,6 +81,7 @@ function makeInput(overrides: Partial<OrchestrateCollectionSubmissionInput> = {}
       revenue: 50,
       commission: 10,
       finalRetention: 12,
+      startupDebtDeduction: 0,
       netPayable: 8,
       remainingCoins: 20,
       isCoinStockNegative: false,

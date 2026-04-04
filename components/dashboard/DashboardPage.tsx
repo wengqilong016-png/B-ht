@@ -53,7 +53,9 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutate(locationsToSave);
   const onDeleteLocations = (ids: string[]) => deleteLocations.mutate(ids);
   const onUpdateTransaction = (txId: string, updates: Partial<Transaction>) => updateTransaction.mutate({ txId, updates });
-  const onCreateSettlement = (settlement: DailySettlement) => createSettlement.mutate(settlement);
+  const onCreateSettlement = async (settlement: DailySettlement) => {
+    await createSettlement.mutateAsync(settlement);
+  };
   const onReviewSettlement = (settlementId: string, status: 'confirmed' | 'rejected') =>
     reviewSettlement.mutate({ settlementId, status });
   const onApproveExpenseRequest = (txId: string, approve: boolean) => approveExpenseRequest.mutate({ txId, approve });

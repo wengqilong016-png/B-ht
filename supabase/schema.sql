@@ -116,7 +116,7 @@ CREATE TABLE IF NOT EXISTS public.locations (
     "commissionRate"       NUMERIC DEFAULT 0.15,
     "lastScore"            BIGINT DEFAULT 0,
     status                 TEXT NOT NULL DEFAULT 'active'
-                           CHECK (status IN ('active', 'inactive')),
+                           CHECK (status IN ('active', 'inactive', 'maintenance', 'broken')),
     coords                 JSONB,
     "assignedDriverId"     TEXT REFERENCES public.drivers(id) ON DELETE SET NULL,
     "ownerName"            TEXT,
@@ -1210,6 +1210,7 @@ DECLARE
     v_caller_profile RECORD;
     v_settlement RECORD;
     v_next_note TEXT;
+    v_payment_status TEXT;
 BEGIN
     IF auth.uid() IS NULL THEN
         RAISE EXCEPTION 'Authentication required' USING ERRCODE = '42501';
@@ -1247,6 +1248,7 @@ BEGIN
     END IF;
 
     v_next_note := COALESCE(p_note, v_settlement.note);
+    v_payment_status := CASE WHEN p_status = 'confirmed' THEN 'paid' ELSE 'rejected' END;
 
     UPDATE public.daily_settlements
        SET status = p_status,
@@ -1255,6 +1257,12 @@ BEGIN
            "adminName" = COALESCE(v_caller_profile.display_name, 'Admin'),
            "isSynced" = TRUE
      WHERE id = p_settlement_id;
+
+    UPDATE public.transactions
+       SET "paymentStatus" = v_payment_status
+     WHERE "driverId" = v_settlement."driverId"
+       AND type = 'collection'
+       AND ("timestamp" AT TIME ZONE 'UTC')::date = v_settlement."date";
 
     IF p_status = 'confirmed' AND v_settlement."driverId" IS NOT NULL THEN
         UPDATE public.drivers
@@ -1288,17 +1296,21 @@ CREATE OR REPLACE FUNCTION public.calculate_finance_v2(
     p_expenses           INTEGER DEFAULT 0,
     p_tip                INTEGER DEFAULT 0,
     p_is_owner_retaining BOOLEAN DEFAULT TRUE,
-    p_owner_retention    INTEGER DEFAULT NULL
+    p_owner_retention    INTEGER DEFAULT NULL,
+    p_startup_debt_deduction_request INTEGER DEFAULT 0,
+    p_startup_debt_balance NUMERIC DEFAULT 0
 )
 RETURNS JSON LANGUAGE plpgsql STABLE SECURITY DEFINER
 SET search_path = public, pg_temp
 AS $$
 DECLARE
-    v_diff            INTEGER;
-    v_revenue         BIGINT;
-    v_commission      BIGINT;
-    v_final_retention BIGINT;
-    v_net_payable     BIGINT;
+    v_diff                           INTEGER;
+    v_revenue                        BIGINT;
+    v_commission                     BIGINT;
+    v_final_retention                BIGINT;
+    v_available_after_core_deductions BIGINT;
+    v_startup_debt_deduction         BIGINT;
+    v_net_payable                    BIGINT;
 BEGIN
     v_diff     := GREATEST(0, p_current_score - p_previous_score);
     v_revenue  := v_diff * 200;
@@ -1310,23 +1322,32 @@ BEGIN
         v_final_retention := 0;
     END IF;
 
-    v_net_payable := GREATEST(
+    v_available_after_core_deductions := GREATEST(
         0,
         v_revenue - v_final_retention - ABS(COALESCE(p_expenses, 0)) - ABS(COALESCE(p_tip, 0))
     );
+
+    v_startup_debt_deduction := LEAST(
+        GREATEST(0, COALESCE(p_startup_debt_deduction_request, 0)),
+        GREATEST(0, COALESCE(p_startup_debt_balance, 0)),
+        v_available_after_core_deductions
+    );
+
+    v_net_payable := GREATEST(0, v_available_after_core_deductions - v_startup_debt_deduction);
 
     RETURN json_build_object(
         'diff',           v_diff,
         'revenue',        v_revenue,
         'commission',     v_commission,
         'finalRetention', v_final_retention,
+        'startupDebtDeduction', v_startup_debt_deduction,
         'netPayable',     v_net_payable
     );
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.calculate_finance_v2(INTEGER, INTEGER, NUMERIC, INTEGER, INTEGER, BOOLEAN, INTEGER) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION public.calculate_finance_v2(INTEGER, INTEGER, NUMERIC, INTEGER, INTEGER, BOOLEAN, INTEGER) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.calculate_finance_v2(INTEGER, INTEGER, NUMERIC, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, NUMERIC) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.calculate_finance_v2(INTEGER, INTEGER, NUMERIC, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, NUMERIC) TO authenticated;
 
 -- ── submit_collection_v2 ─────────────────────────────────────────────────────
 -- 服务端授权收款提交，鉴权 + 幂等 (ON CONFLICT DO NOTHING)
@@ -1339,6 +1360,7 @@ CREATE OR REPLACE FUNCTION public.submit_collection_v2(
     p_current_score      INTEGER,
     p_expenses           INTEGER DEFAULT 0,
     p_tip                INTEGER DEFAULT 0,
+    p_startup_debt_deduction INTEGER DEFAULT 0,
     p_is_owner_retaining BOOLEAN DEFAULT TRUE,
     p_owner_retention    INTEGER DEFAULT NULL,
     p_coin_exchange      INTEGER DEFAULT 0,
@@ -1362,6 +1384,8 @@ DECLARE
     v_revenue         BIGINT;
     v_commission      BIGINT;
     v_final_retention BIGINT;
+    v_available_after_core_deductions BIGINT;
+    v_startup_debt_deduction BIGINT;
     v_net_payable     BIGINT;
     v_now             TIMESTAMPTZ := NOW();
     v_rows_inserted   INTEGER;
@@ -1385,7 +1409,7 @@ BEGIN
         END IF;
     END IF;
 
-    SELECT id, name, "lastScore", "commissionRate", "machineId" INTO v_location
+    SELECT id, name, "lastScore", "commissionRate", "machineId", "remainingStartupDebt" INTO v_location
     FROM public.locations WHERE id = p_location_id;
 
     IF NOT FOUND THEN
@@ -1408,10 +1432,18 @@ BEGIN
         v_final_retention := 0;
     END IF;
 
-    v_net_payable := GREATEST(
+    v_available_after_core_deductions := GREATEST(
         0,
         v_revenue - v_final_retention - ABS(COALESCE(p_expenses, 0)) - ABS(COALESCE(p_tip, 0))
     );
+
+    v_startup_debt_deduction := LEAST(
+        GREATEST(0, COALESCE(p_startup_debt_deduction, 0)),
+        GREATEST(0, COALESCE(v_location."remainingStartupDebt", 0)),
+        v_available_after_core_deductions
+    );
+
+    v_net_payable := GREATEST(0, v_available_after_core_deductions - v_startup_debt_deduction);
 
     INSERT INTO public.transactions (
         id, "timestamp", "uploadTimestamp",
@@ -1429,9 +1461,9 @@ BEGIN
         p_location_id, v_location.name, p_driver_id, v_driver.name,
         v_location."lastScore", p_current_score,
         v_revenue, v_commission, v_final_retention,
-        0, 0,
+        0, v_startup_debt_deduction,
         COALESCE(p_expenses, 0), COALESCE(p_coin_exchange, 0), 0, v_net_payable,
-        'paid', p_gps, p_photo_url,
+        'pending', p_gps, p_photo_url,
         p_ai_score, COALESCE(p_anomaly_flag, FALSE), FALSE, TRUE,
         'collection', 120, COALESCE(p_reported_status, 'active'), p_notes,
         CASE WHEN COALESCE(p_expenses, 0) > 0 THEN p_expense_type     ELSE NULL END,
@@ -1449,7 +1481,11 @@ BEGIN
             WHEN "lastScore" IS NULL OR p_current_score >= "lastScore"
                 THEN p_current_score
             ELSE "lastScore"
-        END
+        END,
+            "remainingStartupDebt" = GREATEST(
+                0,
+                COALESCE("remainingStartupDebt", 0) - v_startup_debt_deduction
+            )
         WHERE id = p_location_id;
     END IF;
 
@@ -1504,12 +1540,12 @@ BEGIN
         'commission',           v_commission,
         'ownerRetention',       v_final_retention,
         'debtDeduction',        0,
-        'startupDebtDeduction', 0,
+        'startupDebtDeduction', v_startup_debt_deduction,
         'expenses',             COALESCE(p_expenses, 0),
         'coinExchange',         COALESCE(p_coin_exchange, 0),
         'extraIncome',          0,
         'netPayable',           v_net_payable,
-        'paymentStatus',        'paid',
+        'paymentStatus',        'pending',
         'gps',                  p_gps,
         'photoUrl',             p_photo_url,
         'aiScore',              p_ai_score,
@@ -1526,8 +1562,8 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.submit_collection_v2(TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
-GRANT  EXECUTE ON FUNCTION public.submit_collection_v2(TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.submit_collection_v2(TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT  EXECUTE ON FUNCTION public.submit_collection_v2(TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT) TO authenticated;
 
 -- ── resolve_support_case_v1 ──────────────────────────────────────────────────
 

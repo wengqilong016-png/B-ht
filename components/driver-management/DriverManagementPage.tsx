@@ -261,24 +261,34 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
     const currentMonthTxs = transactions.filter(t => {
       const txDate = new Date(t.timestamp);
       return t.driverId === id &&
+        t.type === 'collection' &&
+        t.paymentStatus === 'paid' &&
         txDate.getMonth() === currentMonth &&
         txDate.getFullYear() === currentYear;
     });
+    const currentMonthSettlements = dailySettlements.filter(s => {
+      const settlementDate = new Date(s.date);
+      return s.driverId === id &&
+        s.status === 'confirmed' &&
+        settlementDate.getMonth() === currentMonth &&
+        settlementDate.getFullYear() === currentYear;
+    });
 
-    const revenue = currentMonthTxs.reduce((sum, t) => sum + t.revenue, 0);
-    const expenses = currentMonthTxs.reduce((sum, t) => sum + t.expenses, 0);
+    const revenue = currentMonthSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
+    const expenses = currentMonthTxs.reduce((sum, t) => sum + (t.expenseType === 'private' ? t.expenses : 0), 0);
     const base = driver.baseSalary ?? 300000;
     const rate = driver.commissionRate ?? 0.05;
     const comm = Math.floor(revenue * rate);
     const maxDeduction = Math.floor((base + comm) * 0.2);
     const debt = Math.min(driver.remainingDebt, maxDeduction);
+    const shortage = currentMonthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
 
     return {
       driver,
-      revenue, expenses, base, comm, debt, rate,
+      revenue, expenses, base, comm, debt: debt + shortage, rate,
       txCount: currentMonthTxs.length,
       month: now.toLocaleString('zh-CN', { month: 'long' }),
-      total: base + comm - debt
+      total: base + comm - debt - shortage
     };
   };
 

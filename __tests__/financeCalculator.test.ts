@@ -58,6 +58,7 @@ function makeInput(overrides: Partial<CollectionFinanceInput> = {}): CollectionF
     ownerRetention: '',
     isOwnerRetaining: false,
     tip: '0',
+    startupDebtDeduction: '0',
     initialFloat: 0,
     ...overrides,
   };
@@ -117,6 +118,17 @@ describe('calculateCollectionFinanceLocal', () => {
   it('deducts tip from netPayable', () => {
     const result = calculateCollectionFinanceLocal(makeInput({ tip: '2000' }));
     expect(result.netPayable).toBe(40000 - 2000);
+  });
+
+  it('deducts manual merchant debt up to remaining startup debt and available cash', () => {
+    const result = calculateCollectionFinanceLocal(
+      makeInput({
+        selectedLocation: makeLocation({ remainingStartupDebt: 7000 }),
+        startupDebtDeduction: '9000',
+      }),
+    );
+    expect(result.startupDebtDeduction).toBe(7000);
+    expect(result.netPayable).toBe(40000 - 7000);
   });
 
   it('clamps netPayable to 0 when deductions exceed revenue', () => {

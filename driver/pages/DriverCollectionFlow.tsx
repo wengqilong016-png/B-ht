@@ -119,7 +119,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     calculateCollectionFinanceLocal({
       selectedLocation: null,
       currentScore: '', expenses: '', coinExchange: '',
-      ownerRetention: '', isOwnerRetaining: false, tip: '',
+      ownerRetention: '', isOwnerRetaining: false, tip: '', startupDebtDeduction: '',
       initialFloat: 0,
     })
   );
@@ -132,8 +132,9 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     ownerRetention: draft.ownerRetention,
     isOwnerRetaining: draft.isOwnerRetaining,
     tip: draft.tip,
+    startupDebtDeduction: draft.startupDebtDeduction,
     initialFloat: currentDriver?.dailyFloatingCoins || 0,
-  }), [selectedLocation, draft.currentScore, draft.expenses, draft.coinExchange, draft.ownerRetention, draft.isOwnerRetaining, draft.tip, currentDriver?.dailyFloatingCoins]);
+  }), [selectedLocation, draft.currentScore, draft.expenses, draft.coinExchange, draft.ownerRetention, draft.isOwnerRetaining, draft.tip, draft.startupDebtDeduction, currentDriver?.dailyFloatingCoins]);
 
   const requestIdRef = useRef<number>(0);
   useEffect(() => {
@@ -174,6 +175,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       ownerRetention: '',
       isOwnerRetaining: true,
       tip: '',
+      startupDebtDeduction: '',
     });
     setStep('capture');
   };
@@ -305,6 +307,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         ownerRetention={draft.ownerRetention}
         isOwnerRetaining={draft.isOwnerRetaining}
         tip={draft.tip}
+        startupDebtDeduction={draft.startupDebtDeduction}
         calculations={financeResult}
         previewSource={financeResult.source}
         onUpdateExpenses={(v) => updateDraft({ expenses: v })}
@@ -314,6 +317,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         onUpdateOwnerRetention={(v) => updateDraft({ ownerRetention: v })}
         onUpdateIsOwnerRetaining={(v) => updateDraft({ isOwnerRetaining: v })}
         onUpdateTip={(v) => updateDraft({ tip: v })}
+        onUpdateStartupDebtDeduction={(v) => updateDraft({ startupDebtDeduction: v })}
         onNext={() => setStep('confirm')}
         onBack={() => setStep('capture')}
       />
@@ -335,6 +339,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       expenseCategory={draft.expenseCategory}
       coinExchange={draft.coinExchange}
       tip={draft.tip}
+      startupDebtDeduction={draft.startupDebtDeduction}
       draftTxId={draft.draftTxId}
       gpsCoords={draft.gpsCoords}
       gpsPermission={draft.gpsPermission}

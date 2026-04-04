@@ -14,6 +14,7 @@ export interface CollectionSubmissionCalculations {
   revenue: number;
   commission: number;
   finalRetention: number;
+  startupDebtDeduction: number;
   netPayable: number;
   remainingCoins: number;
   isCoinStockNegative: boolean;
@@ -85,7 +86,11 @@ function normalizeReportedStatus(
     }
   }
 
-  return fallbackStatus ?? 'active';
+  if (fallbackStatus === 'maintenance' || fallbackStatus === 'broken') {
+    return fallbackStatus;
+  }
+
+  return 'active';
 }
 
 export function buildCollectionSubmissionInput(
@@ -113,6 +118,7 @@ export function buildCollectionSubmissionInput(
     currentScore:    userScore,
     expenses:        expenseValue,
     tip:             parseInteger(input.tip),
+    startupDebtDeduction: input.calculations.startupDebtDeduction,
     isOwnerRetaining: input.isOwnerRetaining,
     ownerRetention:  input.isOwnerRetaining && input.ownerRetention !== ''
       ? ((value) => (isNaN(value) ? null : value))(parseInt(input.ownerRetention, 10))
@@ -162,6 +168,7 @@ export async function orchestrateCollectionSubmission(
         revenue: input.calculations.revenue,
         commission: input.calculations.commission,
         ownerRetention: input.calculations.finalRetention,
+        startupDebtDeduction: input.calculations.startupDebtDeduction,
         expenses: rawInput.expenses,
         coinExchange: rawInput.coinExchange,
         netPayable: input.calculations.netPayable,
@@ -175,7 +182,7 @@ export async function orchestrateCollectionSubmission(
     offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
     offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
     offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
-    offlineTransaction.paymentStatus = 'paid';
+    offlineTransaction.paymentStatus = 'pending';
     offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
     offlineTransaction.reportedStatus = rawInput.reportedStatus;
 
@@ -204,6 +211,7 @@ export async function orchestrateCollectionSubmission(
       revenue: input.calculations.revenue,
       commission: input.calculations.commission,
       ownerRetention: input.calculations.finalRetention,
+      startupDebtDeduction: input.calculations.startupDebtDeduction,
       expenses: rawInput.expenses,
       coinExchange: rawInput.coinExchange,
       netPayable: input.calculations.netPayable,
@@ -217,7 +225,7 @@ export async function orchestrateCollectionSubmission(
   offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
   offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
   offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
-  offlineTransaction.paymentStatus = 'paid';
+  offlineTransaction.paymentStatus = 'pending';
   offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
   offlineTransaction.reportedStatus = rawInput.reportedStatus;
 

@@ -16,6 +16,7 @@ export interface CollectionDraft {
   ownerRetention: string;
   isOwnerRetaining: boolean;
   tip: string;
+  startupDebtDeduction: string;
   gpsCoords: { lat: number; lng: number } | null;
   gpsPermission: 'prompt' | 'granted' | 'denied';
   gpsSource: 'live' | 'exif' | 'estimated' | null;
@@ -41,6 +42,7 @@ const EMPTY_DRAFT: CollectionDraft = {
   ownerRetention: '',
   isOwnerRetaining: true,
   tip: '',
+  startupDebtDeduction: '',
   gpsCoords: null,
   gpsPermission: 'prompt',
   gpsSource: null,

@@ -15,7 +15,7 @@ export interface Location {
   remainingStartupDebt: number;
   isNewOffice?: boolean;
   coords?: { lat: number; lng: number };
-  status: 'active' | 'maintenance' | 'broken';
+  status: 'active' | 'inactive' | 'maintenance' | 'broken';
   lastRevenueDate?: string;
   commissionRate: number;
   resetLocked?: boolean;
@@ -158,7 +158,7 @@ export interface LocationChangePatch {
   remainingStartupDebt?: number;
   isNewOffice?: boolean;
   lastRevenueDate?: string;
-  status?: 'active' | 'maintenance' | 'broken';
+  status?: 'active' | 'inactive' | 'maintenance' | 'broken';
 }
 
 /**

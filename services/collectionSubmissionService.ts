@@ -30,6 +30,8 @@ export interface CollectionSubmissionInput {
   expenses: number;
   /** Tip / gratuity paid out by the driver at the machine site (deducted from net payable). */
   tip: number;
+  /** Manual merchant/site debt deduction for this collection. */
+  startupDebtDeduction: number;
   isOwnerRetaining: boolean;
   /** Explicit owner retention amount; null means "use commission as retention". */
   ownerRetention: number | null;
@@ -89,6 +91,7 @@ export async function submitCollectionV2(
       p_current_score:     input.currentScore,
       p_expenses:          input.expenses,
       p_tip:               input.tip,
+      p_startup_debt_deduction: input.startupDebtDeduction,
       p_is_owner_retaining: input.isOwnerRetaining,
       p_owner_retention:   input.ownerRetention,
       p_coin_exchange:     input.coinExchange,
@@ -146,7 +149,7 @@ export async function submitCollectionV2(
     isSynced:              true,
     type:                  'collection',
     approvalStatus:        'approved',
-    paymentStatus:         'paid',
+    paymentStatus:         (row['paymentStatus'] as Transaction['paymentStatus']) ?? 'pending',
     reportedStatus:        (row['reportedStatus'] as Transaction['reportedStatus']) ?? 'active',
     notes:                 row['notes'] != null ? String(row['notes']) : undefined,
     expenseType:           row['expenseType'] != null

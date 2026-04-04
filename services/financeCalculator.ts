@@ -8,6 +8,7 @@ export interface FinanceCalculationResult {
   revenue: number;
   commission: number;
   finalRetention: number;
+  startupDebtDeduction: number;
   netPayable: number;
   remainingCoins: number;
   isCoinStockNegative: boolean;
@@ -22,6 +23,7 @@ export interface CollectionFinanceInput {
   ownerRetention: string;
   isOwnerRetaining: boolean;
   tip: string;
+  startupDebtDeduction: string;
   initialFloat?: number;
 }
 
@@ -30,6 +32,7 @@ const EMPTY_RESULT: FinanceCalculationResult = {
   revenue: 0,
   commission: 0,
   finalRetention: 0,
+  startupDebtDeduction: 0,
   netPayable: 0,
   remainingCoins: 0,
   isCoinStockNegative: false,
@@ -53,7 +56,15 @@ export function calculateCollectionFinanceLocal(input: CollectionFinanceInput): 
 
   const expenseValue = parseInt(input.expenses, 10) || 0;
   const tipValue = parseInt(input.tip, 10) || 0;
-  const netPayable = Math.max(0, revenue - finalRetention - expenseValue - tipValue);
+  const requestedStartupDebtDeduction = Math.max(0, parseInt(input.startupDebtDeduction, 10) || 0);
+  const remainingStartupDebt = Math.max(0, selectedLocation.remainingStartupDebt || 0);
+  const availableAfterCoreDeductions = Math.max(0, revenue - finalRetention - expenseValue - tipValue);
+  const startupDebtDeduction = Math.min(
+    requestedStartupDebtDeduction,
+    remainingStartupDebt,
+    availableAfterCoreDeductions,
+  );
+  const netPayable = Math.max(0, availableAfterCoreDeductions - startupDebtDeduction);
   const exchangeValue = parseInt(input.coinExchange, 10) || 0;
   const initialFloat = input.initialFloat || 0;
   const remainingCoins = initialFloat + netPayable - exchangeValue;
@@ -63,6 +74,7 @@ export function calculateCollectionFinanceLocal(input: CollectionFinanceInput): 
     revenue,
     commission,
     finalRetention,
+    startupDebtDeduction,
     netPayable,
     remainingCoins,
     isCoinStockNegative: remainingCoins < 0,
@@ -91,13 +103,15 @@ export async function calculateCollectionFinancePreview(
       p_owner_retention: input.isOwnerRetaining && input.ownerRetention !== ''
         ? parseInt(input.ownerRetention, 10) || 0
         : null,
+      p_startup_debt_deduction_request: Math.max(0, parseInt(input.startupDebtDeduction, 10) || 0),
+      p_startup_debt_balance: Math.max(0, selectedLocation.remainingStartupDebt || 0),
     });
 
     if (error || !data) {
       return fallback;
     }
 
-    const payload = data as Partial<Record<'diff' | 'revenue' | 'commission' | 'finalRetention' | 'netPayable', number>>;
+    const payload = data as Partial<Record<'diff' | 'revenue' | 'commission' | 'finalRetention' | 'startupDebtDeduction' | 'netPayable', number>>;
     const exchangeValue = parseInt(input.coinExchange, 10) || 0;
     const initialFloat = input.initialFloat || 0;
     const netPayable = Number(payload.netPayable ?? fallback.netPayable);
@@ -108,6 +122,7 @@ export async function calculateCollectionFinancePreview(
       revenue: Number(payload.revenue ?? fallback.revenue),
       commission: Number(payload.commission ?? fallback.commission),
       finalRetention: Number(payload.finalRetention ?? fallback.finalRetention),
+      startupDebtDeduction: Number(payload.startupDebtDeduction ?? fallback.startupDebtDeduction),
       netPayable,
       remainingCoins,
       isCoinStockNegative: remainingCoins < 0,

@@ -30,7 +30,7 @@ interface SettlementTabProps {
   currentUser: UserType;
   activeDriverId: string;
   todayStr: string;
-  onCreateSettlement: (settlement: DailySettlement) => void;
+  onCreateSettlement: (settlement: DailySettlement) => Promise<void>;
   onReviewSettlement: (settlementId: string, status: 'confirmed' | 'rejected') => void;
   onApproveExpenseRequest: (txId: string, approve: boolean) => void;
   onReviewAnomalyTransaction: (txId: string, approve: boolean) => void;
@@ -400,7 +400,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 
           <button
             disabled={!actualCash || !actualCoins}
-            onClick={() => {
+            onClick={async () => {
               const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
               const actual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
               const settlement: DailySettlement = {
@@ -420,10 +420,15 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 timestamp: new Date().toISOString(),
                 isSynced: false,
               };
-              onCreateSettlement(settlement);
-              alert('✅ Settlement submitted! Waiting for approval.');
-              setActualCash('');
-              setActualCoins('');
+              try {
+                await onCreateSettlement(settlement);
+                alert('✅ Settlement submitted! Waiting for approval.');
+                setActualCash('');
+                setActualCoins('');
+              } catch (error) {
+                console.error('Settlement submission failed.', error);
+                alert(lang === 'zh' ? '❌ 结算提交失败，请重试。' : '❌ Settlement submission failed. Please retry.');
+              }
             }}
             className="w-full py-7 bg-silicone-gradient text-indigo-600 rounded-[40px] font-black uppercase text-sm shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 transition-all disabled:opacity-30"
           >

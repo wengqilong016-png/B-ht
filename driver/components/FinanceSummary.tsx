@@ -19,11 +19,13 @@ interface FinanceSummaryProps {
   ownerRetention: string;
   isOwnerRetaining: boolean;
   tip: string;
+  startupDebtDeduction: string;
   calculations: {
     diff: number;
     revenue: number;
     commission: number;
     finalRetention: number;
+    startupDebtDeduction: number;
     netPayable: number;
     remainingCoins: number;
     isCoinStockNegative: boolean;
@@ -35,6 +37,7 @@ interface FinanceSummaryProps {
   onUpdateOwnerRetention: (val: string) => void;
   onUpdateIsOwnerRetaining: (val: boolean) => void;
   onUpdateTip: (val: string) => void;
+  onUpdateStartupDebtDeduction: (val: string) => void;
   onNext: () => void;
   onBack: () => void;
   previewSource?: FinanceCalculationSource;
@@ -42,9 +45,9 @@ interface FinanceSummaryProps {
 
 const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   selectedLocation, lang, currentScore, expenses, expenseType, expenseCategory,
-  coinExchange, ownerRetention, isOwnerRetaining, tip, calculations,
+  coinExchange, ownerRetention, isOwnerRetaining, tip, startupDebtDeduction, calculations,
   onUpdateExpenses, onUpdateExpenseType, onUpdateExpenseCategory,
-  onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining, onUpdateTip,
+  onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining, onUpdateTip, onUpdateStartupDebtDeduction,
   onNext, onBack, previewSource,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -233,6 +236,36 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
         )}
       </div>
 
+      <div className="bg-indigo-50 p-4 rounded-subcard border border-indigo-100">
+        <div className="flex items-center justify-between mb-2">
+          <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-2 tracking-widest">
+            <ShieldAlert size={13} /> {lang === 'zh' ? '商家欠款手动扣减' : 'Manual Merchant Debt Deduction'}
+          </label>
+          <span className="text-[8px] font-black text-indigo-400 uppercase">
+            {lang === 'zh'
+              ? `剩余 ${selectedLocation.remainingStartupDebt.toLocaleString()}`
+              : `Balance ${selectedLocation.remainingStartupDebt.toLocaleString()}`}
+          </span>
+        </div>
+        <div className="flex items-center gap-3">
+          <div className="flex items-baseline gap-1 border-b border-indigo-200 px-1 flex-1">
+            <span className="text-xs font-black text-indigo-300">TZS</span>
+            <input
+              type="number"
+              value={startupDebtDeduction}
+              onChange={e => onUpdateStartupDebtDeduction(e.target.value)}
+              className="w-full text-2xl font-black bg-transparent outline-none text-indigo-900 placeholder:text-indigo-200"
+              placeholder="0"
+            />
+          </div>
+        </div>
+        <p className="text-[8px] font-black text-indigo-400 uppercase mt-2">
+          {lang === 'zh'
+            ? '手动填写，本次只会按可扣上限和剩余商家欠款计入。'
+            : 'Manual entry. This run is capped by available cash and remaining merchant debt.'}
+        </p>
+      </div>
+
       {/* Navigation */}
       {isScoreBelowLastReading && (
         <div className="p-3 rounded-subcard border border-rose-200 bg-rose-50">
@@ -240,6 +273,15 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             {lang === 'zh'
               ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回重新核对读数或改走重置申请。`
               : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back and confirm the reading or use the reset request flow.`}
+          </p>
+        </div>
+      )}
+      {calculations.startupDebtDeduction > 0 && (
+        <div className="p-3 rounded-subcard border border-indigo-200 bg-indigo-50">
+          <p className="text-[9px] font-black uppercase text-indigo-700">
+            {lang === 'zh'
+              ? `本次将代商家回收欠款 TZS ${calculations.startupDebtDeduction.toLocaleString()}。`
+              : `This collection will recover TZS ${calculations.startupDebtDeduction.toLocaleString()} of merchant debt.`}
           </p>
         </div>
       )}
