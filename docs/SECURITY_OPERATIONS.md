@@ -99,9 +99,10 @@ git push --force
 |---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
-| `VITE_GEMINI_API_KEY` | Yes | Google Gemini API key |
-| `VITE_STATUS_API_BASE` | Optional | Base URL for the status API |
-| `VITE_INTERNAL_API_KEY` | Optional | API key for the internal status API |
+| `GEMINI_API_KEY` | Yes, if AI scan is enabled | Server-side Gemini API key |
+| `GOOGLE_TRANSLATE_API_KEY` | Optional | Server-side Google Translate API key |
+| `STATUS_API_BASE` | Optional | Server-side base URL for the status API |
+| `INTERNAL_API_KEY` | Optional | Server-side API key for the internal status API |
 
 4. Click **Save** and then **Redeploy** to apply the new variables.
 
@@ -119,9 +120,10 @@ All `VITE_*` variables are injected at build time through the GitHub Actions wor
 2. Add the following secrets:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
-   - `VITE_GEMINI_API_KEY`
-   - `VITE_STATUS_API_BASE` (if used)
-   - `VITE_INTERNAL_API_KEY` (if used)
+   - `GEMINI_API_KEY`
+   - `GOOGLE_TRANSLATE_API_KEY` (if used)
+   - `STATUS_API_BASE` (if used)
+   - `INTERNAL_API_KEY` (if used)
    - `FIREBASE_SERVICE_ACCOUNT`
    - `FIREBASE_PROJECT_ID`
 

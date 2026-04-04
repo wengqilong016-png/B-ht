@@ -3,5 +3,3 @@ Allow: /
 Disallow: /admin
 Disallow: /login
 Disallow: /settings
-
-Sitemap: https://bahatiwin.space/sitemap.xml

@@ -3,7 +3,7 @@
  *
  * Tests for services/translateService.ts
  *
- * The service makes a fetch call to the Google Translate API.
+ * The service makes a fetch call to the same-origin translation API.
  * We mock global fetch to control responses without network access.
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
@@ -15,15 +15,11 @@ beforeEach(() => {
   jest.clearAllMocks();
   // @ts-ignore
   global.fetch = mockFetch;
-  // The vite transform replaces import.meta.env.VITE_GEMINI_API_KEY with
-  // process.env.VITE_GEMINI_API_KEY, so set it here.
-  process.env.VITE_GEMINI_API_KEY = 'test-key';
 });
 
 afterEach(() => {
   // @ts-ignore
   delete global.fetch;
-  delete process.env.VITE_GEMINI_API_KEY;
 });
 
 import { translateToChinese } from '../services/translateService';
@@ -45,8 +41,9 @@ describe('translateToChinese()', () => {
 
   it('returns translated text on successful API response', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
-        data: { translations: [{ translatedText: '你好' }] },
+        translatedText: '你好',
       }),
     } as Response);
 
@@ -56,8 +53,9 @@ describe('translateToChinese()', () => {
 
   it('returns original text when API response lacks translated text', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
-        data: { translations: [{ translatedText: '' }] },
+        translatedText: '',
       }),
     } as Response);
 
@@ -75,6 +73,7 @@ describe('translateToChinese()', () => {
 
   it('returns original text when response JSON parsing fails', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => { throw new Error('Invalid JSON'); },
     } as unknown as Response);
 
@@ -84,17 +83,19 @@ describe('translateToChinese()', () => {
 
   it('calls the translation API with the provided text', async () => {
     mockFetch.mockResolvedValue({
+      ok: true,
       json: async () => ({
-        data: { translations: [{ translatedText: '世界' }] },
+        translatedText: '世界',
       }),
     } as Response);
 
     await translateToChinese('World');
 
     expect(mockFetch).toHaveBeenCalledTimes(1);
-    const [, initArg] = mockFetch.mock.calls[0] as [string, RequestInit];
+    const [urlArg, initArg] = mockFetch.mock.calls[0] as [string, RequestInit];
+    expect(urlArg).toBe('/api/translate');
     const body = JSON.parse(initArg.body as string);
-    expect(body.q).toBe('World');
+    expect(body.text).toBe('World');
     expect(body.target).toBe('zh');
   });
 });

@@ -3,7 +3,6 @@ import { Scan, CheckCircle2, BrainCircuit, X, ArrowRight, RotateCcw, AlertTriang
 import { useGpsCapture } from '../hooks/useGpsCapture';
 import WizardStepBar from './WizardStepBar';
 import { Location, Driver, TRANSLATIONS, AILog } from '../../types';
-import { GoogleGenAI } from '@google/genai';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
 import { usePerformanceMode } from '../hooks/usePerformanceMode';
 import {
@@ -120,6 +119,27 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     }
   };
 
+  const requestAiReview = async (imageBase64: string) => {
+    const response = await fetch('/api/scan-meter', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ imageBase64 }),
+    });
+
+    if (response.status === 204) {
+      throw new Error('AI_UNAVAILABLE');
+    }
+
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new Error(payload?.error || `AI request failed with ${response.status}`);
+    }
+
+    return response.json() as Promise<{ score: string; condition: string; notes: string }>;
+  };
+
   const captureAndAnalyze = async () => {
     if (!videoRef.current || !canvasRef.current || isProcessingRef.current) return;
     if (videoRef.current.readyState !== 4) return;
@@ -152,25 +172,8 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
     const base64Image = compressCanvasImage(canvas, isLowPerformance, { quality: isLowPerformance ? 0.5 : 0.6 }).split(',')[1];
 
     try {
-      const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-      if (!apiKey || apiKey === 'YOUR_KEY') throw new Error("Missing API Key");
-
-      const ai = new GoogleGenAI({ apiKey });
       const modelName = 'gemini-1.5-flash';
-      const prompt = `Analyze this vending machine counter image.\n1. Read the red 7-segment LED number.\n2. Check for screen damage or physical tampering.\nReturn JSON: {"score": "12345", "condition": "Normal" | "Damaged" | "Unclear", "notes": "Short observation"}`;
-
-      const response = await ai.models.generateContent({
-        model: modelName,
-        contents: [{ parts: [
-          { inlineData: { data: base64Image, mimeType: 'image/jpeg' } },
-          { text: prompt }
-        ]}],
-        config: { responseMimeType: 'application/json', temperature: 0.1 }
-      });
-
-      const resultText = response.text?.trim();
-      if (!resultText) throw new Error("Empty AI response");
-      const result = JSON.parse(resultText);
+      const result = await requestAiReview(base64Image);
       const detectedScore = result.score?.replace(/\D/g, '');
 
       if (detectedScore && detectedScore.length >= 1) {
@@ -208,10 +211,9 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         clearCanvasMemory(canvas);
       }
     } catch (e: any) {
-      if (e.message.includes("API Key") || e.message.includes("403")) {
-        alert(lang === 'zh' ? "AI key invalid, switching to manual mode." : "AI unavailable, using manual photo mode.");
-        takeManualPhoto();
-      }
+      console.error('AI meter scan failed', e);
+      alert(lang === 'zh' ? 'AI 不可用，已切换为手动拍照模式。' : 'AI unavailable, switching to manual photo mode.');
+      takeManualPhoto();
     } finally {
       isProcessingRef.current = false;
     }

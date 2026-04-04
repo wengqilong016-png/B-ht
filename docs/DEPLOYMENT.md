@@ -21,15 +21,16 @@ want to update dependencies and regenerate `package-lock.json`.
 
 ## Environment Variables
 
-All frontend variables **must** be prefixed with `VITE_` so that Vite exposes them to the browser bundle via `import.meta.env`.
+Only browser-safe frontend variables should be prefixed with `VITE_`. Any secret used by a Vercel Function must stay server-side and must not use the `VITE_` prefix.
 
 | Variable | Description | Required |
 |---|---|---|
 | `VITE_SUPABASE_URL` | Your Supabase project URL (e.g. `https://xxxx.supabase.co`) | Yes |
 | `VITE_SUPABASE_ANON_KEY` | Supabase anonymous/public key | Yes |
-| `VITE_GEMINI_API_KEY` | Google Gemini API key | Yes |
-| `VITE_STATUS_API_BASE` | Base URL for an external status API | Optional |
-| `VITE_INTERNAL_API_KEY` | API key sent as `X-API-KEY` header to the status API | Optional |
+| `GEMINI_API_KEY` | Server-side Gemini API key used by `/api/scan-meter` | Yes, if AI scan is enabled |
+| `GOOGLE_TRANSLATE_API_KEY` | Server-side Google Translate API key used by `/api/translate` | Optional |
+| `STATUS_API_BASE` | Server-side base URL for an external status API | Optional |
+| `INTERNAL_API_KEY` | Server-side key sent as `X-API-KEY` to the status API | Optional |
 
 > **Note on Supabase credentials:** `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` are required for the app to connect to Supabase. If they are not set, the client is initialized with empty strings and logs a console error: `[Bahati] VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY must be set. Copy .env.example to .env.local and fill in your Supabase project credentials.` There are no built-in fallback credentials — the app will not connect to Supabase until valid values are configured.
 
@@ -57,9 +58,10 @@ cp .env.example .env.local
 ```dotenv
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your_anon_key_here
-VITE_GEMINI_API_KEY=your_gemini_api_key_here
-VITE_STATUS_API_BASE=http://localhost:5000
-VITE_INTERNAL_API_KEY=your_internal_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+GOOGLE_TRANSLATE_API_KEY=your_google_translate_api_key_here
+STATUS_API_BASE=http://localhost:5000
+INTERNAL_API_KEY=your_internal_api_key_here
 ```
 
 Then start the dev server:
@@ -192,7 +194,7 @@ stages 1 through 11A.  Run each step in order.
 - [ ] Confirm all required migrations are present in `supabase/migrations/`
       (see table below).
 - [ ] Confirm `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and
-      `VITE_GEMINI_API_KEY` are set in the deployment platform (Vercel /
+      `GEMINI_API_KEY` are set in the deployment platform (Vercel /
       Firebase).
 - [ ] Check [status.supabase.com](https://status.supabase.com) — no active
       incidents.
