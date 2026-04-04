@@ -3,8 +3,8 @@
  *
  * Tests for utils/imageUtils.ts and driver/utils/imageOptimization.ts
  */
-import { describe, it, expect } from '@jest/globals';
-import { getOptimizedImageUrl } from '../utils/imageUtils';
+import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { getOptimizedImageUrl, compressAndResizeImage } from '../utils/imageUtils';
 import {
   compressCanvasImage,
   getOptimalVideoConstraints,
@@ -164,5 +164,210 @@ describe('getMinimumAICallInterval()', () => {
 
   it('returns 2000ms for high-performance', () => {
     expect(getMinimumAICallInterval(false)).toBe(2000);
+  });
+});
+
+// ── compressAndResizeImage ────────────────────────────────────────────────────
+
+/**
+ * compressAndResizeImage uses FileReader, Image, and HTMLCanvasElement — none of
+ * which are fully implemented by jsdom.  We mock them at the module boundary so
+ * we can exercise every code path (success, canvas null, toBlob null, img error,
+ * reader error) without touching real browser APIs.
+ */
+describe('compressAndResizeImage()', () => {
+  // ── helpers ──────────────────────────────────────────────────────────────
+
+  function makeFile(name = 'photo.jpg', type = 'image/jpeg', size = 1024): File {
+    const buf = new Uint8Array(size);
+    return new File([buf], name, { type });
+  }
+
+  /**
+   * Install a FileReader mock that synchronously triggers onload with a
+   * fake data-URL result.
+   */
+  function mockFileReader(dataUrl: string): void {
+    (global as any).FileReader = class {
+      result = dataUrl;
+      readAsDataURL(_blob: Blob) {
+        // trigger onload in the next microtask to match real async behaviour
+        Promise.resolve().then(() => this.onload?.({ target: this } as any));
+      }
+      onload: ((e: any) => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+    };
+  }
+
+  /**
+   * Install an Image mock that triggers onload synchronously with the given
+   * pixel dimensions.
+   */
+  function mockImage(width: number, height: number): void {
+    (global as any).Image = class {
+      width = 0;
+      height = 0;
+      onload: (() => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+      set src(_val: string) {
+        this.width = width;
+        this.height = height;
+        Promise.resolve().then(() => this.onload?.());
+      }
+    };
+  }
+
+  /**
+   * Install an Image mock that triggers onerror.
+   */
+  function mockImageError(): void {
+    (global as any).Image = class {
+      width = 0;
+      height = 0;
+      onload: (() => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+      set src(_val: string) {
+        Promise.resolve().then(() => this.onerror?.(new Error('Image load error')));
+      }
+    };
+  }
+
+  /**
+   * Build a canvas mock whose toBlob callback receives `blobResult`.
+   * getContext returns a fully-functional stub.
+   */
+  function mockCanvas(blobResult: Blob | null, contextNull = false): void {
+    const origCreate = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag: string, ...rest: any[]) => {
+      if (tag === 'canvas') {
+        const canvas = origCreate(tag) as HTMLCanvasElement;
+        canvas.getContext = contextNull
+          ? () => null
+          : () =>
+              ({
+                imageSmoothingEnabled: false,
+                imageSmoothingQuality: 'low',
+                drawImage: jest.fn(),
+              } as any);
+        canvas.toBlob = (cb: (blob: Blob | null) => void) => {
+          Promise.resolve().then(() => cb(blobResult));
+        };
+        return canvas;
+      }
+      return origCreate(tag, ...rest);
+    });
+  }
+
+  beforeEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('resolves with a Blob for a small image (no resize needed)', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImage(800, 600); // both dimensions under 1024
+    const fakeBlob = new Blob(['data'], { type: 'image/jpeg' });
+    mockCanvas(fakeBlob);
+
+    const file = makeFile();
+    const result = await compressAndResizeImage(file);
+    expect(result).toBe(fakeBlob);
+  });
+
+  it('scales down a landscape image wider than 1024px', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImage(2048, 512); // width > 1024
+    const fakeBlob = new Blob(['scaled'], { type: 'image/jpeg' });
+
+    let capturedWidth = 0;
+    const origCreate = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag: string, ...rest: any[]) => {
+      if (tag === 'canvas') {
+        const canvas = origCreate(tag) as HTMLCanvasElement;
+        Object.defineProperty(canvas, 'width', {
+          set(v: number) { capturedWidth = v; },
+          get() { return capturedWidth; },
+        });
+        canvas.getContext = () => ({
+          imageSmoothingEnabled: false,
+          imageSmoothingQuality: 'low',
+          drawImage: jest.fn(),
+        } as any);
+        canvas.toBlob = (cb: (blob: Blob | null) => void) => Promise.resolve().then(() => cb(fakeBlob));
+        return canvas;
+      }
+      return origCreate(tag, ...rest);
+    });
+
+    await compressAndResizeImage(makeFile());
+    expect(capturedWidth).toBe(1024);
+  });
+
+  it('scales down a portrait image taller than 1024px', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImage(400, 2000); // height > 1024
+    const fakeBlob = new Blob(['scaled'], { type: 'image/jpeg' });
+
+    let capturedHeight = 0;
+    const origCreate = document.createElement.bind(document);
+    jest.spyOn(document, 'createElement').mockImplementation((tag: string, ...rest: any[]) => {
+      if (tag === 'canvas') {
+        const canvas = origCreate(tag) as HTMLCanvasElement;
+        Object.defineProperty(canvas, 'height', {
+          set(v: number) { capturedHeight = v; },
+          get() { return capturedHeight; },
+        });
+        canvas.getContext = () => ({
+          imageSmoothingEnabled: false,
+          imageSmoothingQuality: 'low',
+          drawImage: jest.fn(),
+        } as any);
+        canvas.toBlob = (cb: (blob: Blob | null) => void) => Promise.resolve().then(() => cb(fakeBlob));
+        return canvas;
+      }
+      return origCreate(tag, ...rest);
+    });
+
+    await compressAndResizeImage(makeFile());
+    expect(capturedHeight).toBe(1024);
+  });
+
+  it('rejects when canvas.getContext returns null', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImage(100, 100);
+    mockCanvas(null, true /* contextNull */);
+
+    await expect(compressAndResizeImage(makeFile())).rejects.toThrow(
+      'Failed to get canvas 2d context',
+    );
+  });
+
+  it('rejects when toBlob returns null', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImage(100, 100);
+    mockCanvas(null /* blob = null */);
+
+    await expect(compressAndResizeImage(makeFile())).rejects.toThrow(
+      'Canvas to Blob conversion failed',
+    );
+  });
+
+  it('rejects when Image fires onerror', async () => {
+    mockFileReader('data:image/jpeg;base64,/9j/');
+    mockImageError();
+
+    await expect(compressAndResizeImage(makeFile())).rejects.toBeTruthy();
+  });
+
+  it('rejects when FileReader fires onerror', async () => {
+    (global as any).FileReader = class {
+      result = null;
+      readAsDataURL(_blob: Blob) {
+        Promise.resolve().then(() => this.onerror?.(new Error('Read error')));
+      }
+      onload: ((e: any) => void) | null = null;
+      onerror: ((e: any) => void) | null = null;
+    };
+
+    await expect(compressAndResizeImage(makeFile())).rejects.toBeTruthy();
   });
 });
