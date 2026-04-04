@@ -88,7 +88,10 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
     deleteLocations,
     deleteDrivers,
     updateTransaction,
+    submitTransaction,
     saveSettlement,
+    approveResetRequest,
+    approvePayoutRequest,
     logAI,
   } = useSupabaseMutations(isOnline, currentUser);
 
@@ -136,8 +139,32 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   );
 
   const mutationValue = useMemo(
-    () => ({ syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI }),
-    [syncOfflineData, updateDrivers, updateLocations, deleteLocations, deleteDrivers, updateTransaction, saveSettlement, logAI]
+    () => ({
+      syncOfflineData,
+      updateDrivers,
+      updateLocations,
+      deleteLocations,
+      deleteDrivers,
+      updateTransaction,
+      submitTransaction,
+      saveSettlement,
+      approveResetRequest,
+      approvePayoutRequest,
+      logAI,
+    }),
+    [
+      syncOfflineData,
+      updateDrivers,
+      updateLocations,
+      deleteLocations,
+      deleteDrivers,
+      updateTransaction,
+      submitTransaction,
+      saveSettlement,
+      approveResetRequest,
+      approvePayoutRequest,
+      logAI,
+    ]
   );
 
   return (

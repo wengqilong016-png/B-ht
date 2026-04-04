@@ -57,6 +57,14 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
     };
   };
 
+  const hasGps = (tx: Transaction) =>
+    tx.gps != null && Number.isFinite(tx.gps.lat) && Number.isFinite(tx.gps.lng);
+
+  const mappableTransactions = useMemo(
+    () => filteredTransactions.filter(hasGps),
+    [filteredTransactions]
+  );
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 bg-white p-5 rounded-[32px] border border-slate-200 shadow-sm">
@@ -189,7 +197,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                       <div className="grid grid-cols-2 gap-3 pt-2">
                          {(() => {
                             const loc = locations.find(l => l.id === tx.locationId);
-                            const dist = (loc?.coords && tx.gps.lat !== 0) ? getDistance(tx.gps.lat, tx.gps.lng, loc.coords.lat, loc.coords.lng) : null;
+                            const dist = (loc?.coords && hasGps(tx) && tx.gps.lat !== 0)
+                              ? getDistance(tx.gps.lat, tx.gps.lng, loc.coords.lat, loc.coords.lng)
+                              : null;
                             const isFar = dist !== null && dist > 200;
                             const isMedium = dist !== null && dist > 50 && dist <= 200;
 
@@ -253,7 +263,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
       ) : (
         <div className="bg-slate-900 rounded-[40px] h-[550px] relative overflow-hidden border border-slate-800 shadow-2xl">
           {/* Real Map Background Layer */}
-          {filteredTransactions.length > 0 ? (
+          {mappableTransactions.length > 0 ? (
             <div className="absolute inset-0">
                <iframe 
                 width="100%" 
@@ -266,7 +276,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
               
               {/* Overlay Interactive Markers */}
               <div className="absolute inset-0 z-10">
-                {filteredTransactions.map((tx) => {
+                {mappableTransactions.map((tx) => {
                   const coords = mapCoords(tx.gps.lat, tx.gps.lng);
                   const isActive = activeMapTx?.id === tx.id;
                   

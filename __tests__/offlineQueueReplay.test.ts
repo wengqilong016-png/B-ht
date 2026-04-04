@@ -3,10 +3,12 @@
  *
  * Focused tests for Stage-3 offline replay and idempotency hardening:
  *   - Collection entries with rawInput are replayed via submitCollection callback
+ *   - Reset / payout requests are replayed via authoritative callbacks
  *   - Duplicate txId replay (server returns persisted row) is treated as success
  *   - Permanent errors dead-letter entries immediately
  *   - Transient errors apply exponential backoff
  *   - Collection entries with rawInput without a submitCollection callback are dead-lettered
+ *   - Reset / payout requests without their callbacks are dead-lettered
  *   - classifyError correctly categorizes error messages
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
@@ -207,11 +209,46 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
     expect(deadLetters.some(d => d.id === tx.id)).toBe(true);
   });
 
-  it('falls back to direct upsert for entries without rawInput', async () => {
+  it('routes reset requests through submitResetRequest callback', async () => {
     const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
 
-    // Enqueue without rawInput (non-collection or legacy entry)
-    const tx = makeTx({ type: 'payout_request' });
+    const tx = makeTx({ type: 'reset_request', notes: 'jammed bill acceptor' });
+    await enqueueTransaction(tx);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+    const submitResetRequest = jest.fn<(tx: any) => Promise<any>>()
+      .mockResolvedValue({ ...tx, isSynced: true, resetLocked: true });
+
+    const flushed = await flushQueue(supabase, { submitResetRequest });
+
+    expect(submitResetRequest).toHaveBeenCalledTimes(1);
+    expect(upsertMock).not.toHaveBeenCalled();
+    expect(flushed).toBe(1);
+  });
+
+  it('routes payout requests through submitPayoutRequest callback', async () => {
+    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+
+    const tx = makeTx({ type: 'payout_request', payoutAmount: 25000 });
+    await enqueueTransaction(tx);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+    const submitPayoutRequest = jest.fn<(tx: any) => Promise<any>>()
+      .mockResolvedValue({ ...tx, isSynced: true });
+
+    const flushed = await flushQueue(supabase, { submitPayoutRequest });
+
+    expect(submitPayoutRequest).toHaveBeenCalledTimes(1);
+    expect(upsertMock).not.toHaveBeenCalled();
+    expect(flushed).toBe(1);
+  });
+
+  it('falls back to direct upsert only for legacy entries without authoritative callbacks', async () => {
+    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+
+    const tx = makeTx({ type: 'expense' });
     await enqueueTransaction(tx);
 
     const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
@@ -220,10 +257,35 @@ describe('flushQueue — collection replay via submitCollection callback', () =>
 
     const flushed = await flushQueue(supabase, { submitCollection });
 
-    // submitCollection must NOT be called; direct upsert handles non-collection entries
     expect(submitCollection).not.toHaveBeenCalled();
     expect(upsertMock).toHaveBeenCalledTimes(1);
     expect(flushed).toBe(1);
+  });
+
+  it('dead-letters reset requests when submitResetRequest callback is absent', async () => {
+    const { enqueueTransaction, flushQueue, getDeadLetterItems } = await import('../offlineQueue');
+
+    const tx = makeTx({ type: 'reset_request' });
+    await enqueueTransaction(tx);
+
+    const flushed = await flushQueue(makeSupabaseStub());
+
+    expect(flushed).toBe(0);
+    const deadLetters = await getDeadLetterItems();
+    expect(deadLetters.some(d => d.id === tx.id)).toBe(true);
+  });
+
+  it('dead-letters payout requests when submitPayoutRequest callback is absent', async () => {
+    const { enqueueTransaction, flushQueue, getDeadLetterItems } = await import('../offlineQueue');
+
+    const tx = makeTx({ type: 'payout_request', payoutAmount: 15000 });
+    await enqueueTransaction(tx);
+
+    const flushed = await flushQueue(makeSupabaseStub());
+
+    expect(flushed).toBe(0);
+    const deadLetters = await getDeadLetterItems();
+    expect(deadLetters.some(d => d.id === tx.id)).toBe(true);
   });
 
   it('calls onProgress after each successful flush', async () => {

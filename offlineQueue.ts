@@ -62,6 +62,8 @@ export interface FlushOptions {
    * at the call site.
    */
   submitCollection?: (input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>;
+  submitResetRequest?: (tx: Transaction) => Promise<Transaction>;
+  submitPayoutRequest?: (tx: Transaction) => Promise<Transaction>;
   /** Called after each successful individual flush. */
   onProgress?: (flushed: number, total: number) => void;
 }
@@ -334,7 +336,41 @@ export async function flushQueue(
         continue;
       }
 
-      // ── Generic upsert fallback (non-collection / legacy entries without rawInput) ──
+      if (entry.type === 'reset_request') {
+        if (!options?.submitResetRequest) {
+          await recordRetryFailure(
+            tx.id,
+            'submitResetRequest callback unavailable for reset request replay',
+            'permanent',
+          );
+          continue;
+        }
+
+        const result = await options.submitResetRequest(entry);
+        await markSynced(tx.id, result);
+        flushed++;
+        options.onProgress?.(flushed, pending.length);
+        continue;
+      }
+
+      if (entry.type === 'payout_request') {
+        if (!options?.submitPayoutRequest) {
+          await recordRetryFailure(
+            tx.id,
+            'submitPayoutRequest callback unavailable for payout request replay',
+            'permanent',
+          );
+          continue;
+        }
+
+        const result = await options.submitPayoutRequest(entry);
+        await markSynced(tx.id, result);
+        flushed++;
+        options.onProgress?.(flushed, pending.length);
+        continue;
+      }
+
+      // ── Generic upsert fallback (legacy entries without authoritative callbacks) ──
       const { error } = await supabaseClient
         .from('transactions')
         .upsert({ ...tx, isSynced: true });
@@ -546,6 +582,8 @@ export interface ManualReplayOptions {
    * Inject `submitCollectionV2` from `services/collectionSubmissionService`.
    */
   submitCollection?: (input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>;
+  submitResetRequest?: (tx: Transaction) => Promise<Transaction>;
+  submitPayoutRequest?: (tx: Transaction) => Promise<Transaction>;
   /** Supabase client used for the direct-upsert fallback path. */
   supabaseClient: SupabaseClient;
 }
@@ -626,7 +664,33 @@ export async function replayDeadLetterItem(
       }
     }
 
-    // ── Direct upsert fallback (non-collection / legacy entries) ────────────
+    if (entry.type === 'reset_request') {
+      if (!options.submitResetRequest) {
+        return {
+          success: false,
+          error: 'submitResetRequest callback required to replay a reset request through the authoritative path',
+        };
+      }
+
+      const result = await options.submitResetRequest(entry);
+      await markSynced(id, result);
+      return { success: true, transaction: result };
+    }
+
+    if (entry.type === 'payout_request') {
+      if (!options.submitPayoutRequest) {
+        return {
+          success: false,
+          error: 'submitPayoutRequest callback required to replay a payout request through the authoritative path',
+        };
+      }
+
+      const result = await options.submitPayoutRequest(entry);
+      await markSynced(id, result);
+      return { success: true, transaction: result };
+    }
+
+    // ── Direct upsert fallback (legacy entries) ─────────────────────────────
     const { error } = await options.supabaseClient
       .from('transactions')
       .upsert({ ...entry, isSynced: true });

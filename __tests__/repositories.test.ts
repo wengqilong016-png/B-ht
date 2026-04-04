@@ -246,6 +246,10 @@ describe('settlementRepository', () => {
       const result = await fetchSettlements();
       expect(result).toEqual(rows);
       expect(mockFrom).toHaveBeenCalledWith('daily_settlements');
+      const chain = mockFrom.mock.results.at(-1)?.value as QueryChain | undefined;
+      expect(chain?.select).toHaveBeenCalledWith(expect.stringContaining('transferProofUrl'));
+      expect(chain?.select).toHaveBeenCalledWith(expect.stringContaining('checkInAt'));
+      expect(chain?.select).toHaveBeenCalledWith(expect.stringContaining('hasCheckedOut'));
     });
 
     it('returns empty array when data is null', async () => {

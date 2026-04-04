@@ -25,7 +25,6 @@ interface SettlementTabProps {
   payrollStats: PayrollEntry[];
   driverMap: Map<string, Driver>;
   locationMap: Map<string, Location>;
-  locations: Location[];
   todayDriverTxs: Transaction[];
   myProfile: Driver | undefined;
   currentUser: UserType;
@@ -33,7 +32,8 @@ interface SettlementTabProps {
   todayStr: string;
   onUpdateTransaction: (txId: string, updates: Partial<Transaction>) => void;
   onSaveSettlement: (settlement: DailySettlement) => void;
-  onUpdateLocations: (locations: Location[]) => void;
+  onApproveResetRequest: (txId: string, approve: boolean) => void;
+  onApprovePayoutRequest: (txId: string, approve: boolean) => void;
   lang: 'zh' | 'sw';
 }
 
@@ -47,7 +47,6 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   payrollStats,
   driverMap,
   locationMap,
-  locations,
   todayDriverTxs,
   myProfile,
   currentUser,
@@ -55,7 +54,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   todayStr,
   onUpdateTransaction,
   onSaveSettlement,
-  onUpdateLocations,
+  onApproveResetRequest,
+  onApprovePayoutRequest,
   lang,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -265,23 +265,13 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       )}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            onUpdateTransaction(tx.id, { approvalStatus: 'approved' });
-                            if (loc) {
-                              onUpdateLocations(locations.map(l => l.id === loc.id ? { ...l, lastScore: 0, resetLocked: false, isSynced: false } : l));
-                            }
-                          }}
+                          onClick={() => onApproveResetRequest(tx.id, true)}
                           className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
                         >
                           ✓ {t.approveBtn} & Reset to 0
                         </button>
                         <button
-                          onClick={() => {
-                            onUpdateTransaction(tx.id, { approvalStatus: 'rejected' });
-                            if (loc) {
-                              onUpdateLocations(locations.map(l => l.id === loc.id ? { ...l, resetLocked: false, isSynced: false } : l));
-                            }
-                          }}
+                          onClick={() => onApproveResetRequest(tx.id, false)}
                           className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
                         >
                           ✗ {t.rejectBtn}
@@ -328,19 +318,13 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => {
-                            onUpdateTransaction(tx.id, { approvalStatus: 'approved' });
-                            if (loc && tx.payoutAmount) {
-                              const newBalance = Math.max(0, (loc.dividendBalance || 0) - tx.payoutAmount);
-                              onUpdateLocations(locations.map(l => l.id === loc.id ? { ...l, dividendBalance: newBalance, isSynced: false } : l));
-                            }
-                          }}
+                          onClick={() => onApprovePayoutRequest(tx.id, true)}
                           className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
                         >
                           ✓ {t.approveBtn}
                         </button>
                         <button
-                          onClick={() => onUpdateTransaction(tx.id, { approvalStatus: 'rejected' })}
+                          onClick={() => onApprovePayoutRequest(tx.id, false)}
                           className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
                         >
                           ✗ {t.rejectBtn}

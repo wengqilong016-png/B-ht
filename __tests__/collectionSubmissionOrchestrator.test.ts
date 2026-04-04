@@ -112,6 +112,25 @@ describe('buildCollectionSubmissionInput', () => {
     expect(input.gps).toBeNull();
     expect(input.notes).toContain('[GPS: none]');
   });
+
+  it('maps damaged AI condition to broken reported status', () => {
+    const input = buildCollectionSubmissionInput(
+      makeInput({ aiReviewData: { score: '152', condition: 'Damaged', notes: 'Glass cracked' } }),
+    );
+
+    expect(input.reportedStatus).toBe('broken');
+  });
+
+  it('preserves maintenance when AI condition is not recognized', () => {
+    const input = buildCollectionSubmissionInput(
+      makeInput({
+        selectedLocation: { ...makeLocation(), status: 'maintenance' } as Location,
+        aiReviewData: { score: '152', condition: 'Needs service soon', notes: 'Monitor' },
+      }),
+    );
+
+    expect(input.reportedStatus).toBe('maintenance');
+  });
 });
 
 describe('orchestrateCollectionSubmission', () => {

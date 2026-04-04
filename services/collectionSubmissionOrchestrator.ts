@@ -67,6 +67,27 @@ function parseInteger(value: string): number {
   return parseInt(value, 10) || 0;
 }
 
+function normalizeReportedStatus(
+  condition: string | null | undefined,
+  fallbackStatus: Location['status'] | undefined,
+): 'active' | 'maintenance' | 'broken' {
+  const normalizedCondition = condition?.trim().toLowerCase();
+
+  if (normalizedCondition) {
+    if (['damaged', 'issue', 'broken', 'fault', 'error'].includes(normalizedCondition)) {
+      return 'broken';
+    }
+    if (['maintenance', 'repair', 'servicing'].includes(normalizedCondition)) {
+      return 'maintenance';
+    }
+    if (['normal', 'active', 'ok', 'healthy'].includes(normalizedCondition)) {
+      return 'active';
+    }
+  }
+
+  return fallbackStatus ?? 'active';
+}
+
 export function buildCollectionSubmissionInput(
   input: OrchestrateCollectionSubmissionInput,
 ): CollectionSubmissionInput {
@@ -74,7 +95,10 @@ export function buildCollectionSubmissionInput(
   const userScore = parseInteger(input.currentScore) || (input.selectedLocation?.lastScore || 0);
   const recognizedScore = input.aiReviewData?.score ? parseInt(input.aiReviewData.score, 10) : undefined;
   const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
-  const reportedStatus = (input.aiReviewData?.condition === 'Damaged' ? 'broken' : 'active') as 'active' | 'maintenance' | 'broken';
+  const reportedStatus = normalizeReportedStatus(
+    input.aiReviewData?.condition,
+    input.selectedLocation?.status,
+  );
 
   const notes = [
     input.aiReviewData?.notes,
