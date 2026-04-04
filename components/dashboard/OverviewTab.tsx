@@ -38,30 +38,31 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   lang,
 }) => {
   const [revDrilldown, setRevDrilldown] = React.useState<'none' | 'drivers' | string>('none');
+  const t = TRANSLATIONS[lang];
 
   return (
-    <div className="space-y-8 animate-in fade-in">
+    <div className="space-y-5 animate-in fade-in">
       {revDrilldown === 'none' ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <button
               onClick={() => setRevDrilldown('drivers')}
-              className="bg-silicone-gradient p-8 rounded-[40px] text-left shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed transition-all border border-white/80 group"
+              className="rounded-[28px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition-all hover:border-indigo-200 hover:bg-indigo-50/40 group"
             >
-              <p className="text-[10px] font-black uppercase text-slate-400 group-hover:text-indigo-600 transition-colors">Today's Revenue ↗</p>
-              <p className="text-3xl font-black text-slate-800">TZS {bossStats.todayRev.toLocaleString()}</p>
+              <p className="text-[9px] font-black uppercase text-slate-400 group-hover:text-indigo-600 transition-colors">{t.revenue} ↗</p>
+              <p className="mt-1 text-2xl font-black text-slate-900">TZS {bossStats.todayRev.toLocaleString()}</p>
             </button>
-            <div className="bg-[#f5f7fa] p-8 rounded-[40px] shadow-silicone border border-white/80">
-              <p className="text-[10px] font-black uppercase text-slate-400">Anomalies</p>
-              <p className="text-3xl font-black text-rose-500">{bossStats.stagnantMachines.length}</p>
+            <div className="rounded-[28px] border border-rose-100 bg-rose-50 px-5 py-4">
+              <p className="text-[9px] font-black uppercase text-rose-400">{t.attentionSites}</p>
+              <p className="mt-1 text-2xl font-black text-rose-700">{bossStats.stagnantMachines.length}</p>
             </div>
-            <div className="bg-[#f5f7fa] p-8 rounded-[40px] shadow-silicone border border-white/80">
-              <p className="text-[10px] font-black uppercase text-slate-400">High-risk Debt</p>
-              <p className="text-3xl font-black text-amber-500">{bossStats.riskyDrivers.length}</p>
+            <div className="rounded-[28px] border border-amber-100 bg-amber-50 px-5 py-4">
+              <p className="text-[9px] font-black uppercase text-amber-500">{t.highRiskAssets}</p>
+              <p className="mt-1 text-2xl font-black text-amber-700">{bossStats.riskyDrivers.length}</p>
             </div>
           </div>
-          <div className="bg-[#f5f7fa] p-6 rounded-[40px] shadow-silicone border border-white/80">
-            <SmartInsights transactions={transactions} locations={locations} drivers={drivers} />
+          <div className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm">
+            <SmartInsights transactions={transactions} locations={locations} drivers={drivers} lang={lang} />
           </div>
         </>
       ) : revDrilldown === 'drivers' ? (
@@ -69,8 +70,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className="flex items-center gap-3 mb-2">
             <button onClick={() => setRevDrilldown('none')} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
             <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase">Today's Revenue — By Driver</h3>
-              <p className="text-[10px] text-slate-400 font-bold">Today's Revenue by Driver</p>
+              <h3 className="text-sm font-black text-slate-900 uppercase">{t.revenue} — {lang === 'zh' ? '按司机查看' : 'By Driver'}</h3>
+              <p className="text-[10px] text-slate-400 font-bold">{lang === 'zh' ? '按司机查看今日营收明细' : "Today's revenue by driver"}</p>
             </div>
           </div>
           {todayDriverStats.map(({ driver, driverTxs, driverRev, driverCommission, driverNet }) => (

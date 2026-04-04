@@ -36,12 +36,12 @@ const AppDriverShell: React.FC = () => {
   const assignedMachineCount = filteredLocations.filter((location) => location.assignedDriverId === activeDriverId).length || filteredLocations.length;
   const todayCollectionCount = filteredTransactions.filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection')).length;
   const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;
-  const quickStats = [
-    { label: t.todaysCollections, value: todayCollectionCount, tone: 'text-amber-200 bg-amber-500/10 border-amber-500/20' },
-    { label: t.assignedMachines, value: assignedMachineCount, tone: 'text-white bg-white/5 border-white/10' },
-    { label: t.unsyncedLabel, value: unsyncedCount, tone: 'text-rose-200 bg-rose-500/10 border-rose-500/20' },
-    { label: t.pendingSettlementShort, value: pendingSettlementCount, tone: 'text-cyan-200 bg-cyan-500/10 border-cyan-500/20' },
-  ];
+  const navStatByView: Partial<Record<DriverView, { value: number; label: string }>> = {
+    collect: { value: todayCollectionCount, label: t.todaysCollections },
+    settlement: { value: pendingSettlementCount, label: t.pendingSettlementShort },
+    history: { value: unsyncedCount, label: t.unsyncedLabel },
+    status: { value: assignedMachineCount, label: t.assignedMachines },
+  };
 
   return (
     <div className="flex h-screen overflow-hidden bg-slate-100">
@@ -60,17 +60,10 @@ const AppDriverShell: React.FC = () => {
         <div className="border-b border-slate-800 p-4">
           <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" fullWidth />
         </div>
-        <div className="grid grid-cols-2 gap-2 border-b border-slate-800 p-4">
-          {quickStats.map((stat) => (
-            <div key={stat.label} className={`rounded-2xl border px-3 py-2 ${stat.tone}`}>
-              <p className="text-[8px] font-black uppercase tracking-wide opacity-70">{stat.label}</p>
-              <p className="mt-1 text-lg font-black">{stat.value}</p>
-            </div>
-          ))}
-        </div>
         <nav className="flex-1 space-y-1 p-3">
           {DRIVER_NAV_ITEMS.map((item) => {
             const active = view === item.id;
+            const stat = navStatByView[item.id];
             return (
               <button
                 key={item.id}
@@ -82,7 +75,14 @@ const AppDriverShell: React.FC = () => {
                 }`}
               >
                 <span>{item.icon}</span>
-                <span className="text-[11px] font-black uppercase tracking-wide">{item.getLabel(lang, t)}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="block text-[11px] font-black uppercase tracking-wide">{item.getLabel(lang, t)}</span>
+                  {stat && (
+                    <span className={`mt-1 block text-[8px] font-bold uppercase truncate ${active ? 'text-slate-500' : 'text-slate-600'}`}>
+                      {stat.value} {stat.label}
+                    </span>
+                  )}
+                </div>
               </button>
             );
           })}
@@ -118,16 +118,6 @@ const AppDriverShell: React.FC = () => {
               <button onClick={() => setShowAccountSettings(true)} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900 lg:hidden"><Settings size={15}/></button>
             </div>
           </div>
-          <div className="border-t border-slate-200 px-3 py-2 lg:hidden">
-            <div className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {quickStats.map((stat) => (
-                <div key={stat.label} className="min-w-[88px] rounded-2xl border border-slate-200 bg-slate-50 px-3 py-2">
-                  <p className="text-[7px] font-black uppercase tracking-wide text-slate-400">{stat.label}</p>
-                  <p className="mt-1 text-sm font-black text-slate-900">{stat.value}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </header>
 
         <main className="relative flex-1 overflow-y-auto overflow-x-hidden bg-slate-100">
@@ -145,6 +135,7 @@ const AppDriverShell: React.FC = () => {
           <div className="grid grid-cols-5 gap-1">
             {DRIVER_NAV_ITEMS.map((item) => {
               const active = view === item.id;
+              const stat = navStatByView[item.id];
               return (
                 <button
                   key={item.id}
@@ -155,6 +146,11 @@ const AppDriverShell: React.FC = () => {
                 >
                   {item.icon}
                   <span className="truncate">{item.getLabel(lang, t)}</span>
+                  {stat && (
+                    <span className={`text-[6px] font-bold normal-case ${active ? 'text-slate-300' : 'text-slate-500'}`}>
+                      {stat.value}
+                    </span>
+                  )}
                 </button>
               );
             })}

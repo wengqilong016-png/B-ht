@@ -3,8 +3,8 @@ import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { Driver, Location, Transaction } from '../types';
-import { Navigation, Clock, ShieldCheck, Route, Map as MapIcon, Satellite } from 'lucide-react';
+import { Driver, Location, Transaction, TRANSLATIONS } from '../types';
+import { Navigation, Clock, ShieldCheck, Route } from 'lucide-react';
 import { MapErrorBoundary, MapLoadingFallback } from './MapErrorBoundary';
 
 const RouteAuditMap = lazy(() => import('./RouteAuditMap'));
@@ -47,12 +47,13 @@ interface LiveMapProps {
   locations: Location[];
   transactions: Transaction[];
   onNavigate?: (id: string) => void;
+  lang: 'zh' | 'sw';
 }
 
-const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) => {
+const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lang }) => {
   const [auditDriverId, setAuditDriverId] = useState<string | null>(null);
   const [auditDate, setAuditDate] = useState(new Date().toISOString().split('T')[0]);
-  const [mapMode, setMapMode] = useState<'standard' | 'satellite'>('standard');
+  const t = TRANSLATIONS[lang];
 
   const defaultCenter: [number, number] = [-6.7924, 39.2083];
   const activeDrivers = useMemo(() => drivers.filter(d => d.currentGps), [drivers]);
@@ -87,28 +88,27 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
   }, [activeDrivers]);
 
   const getTimeAgo = (dateStr?: string) => {
-    if (!dateStr) return '未知';
+    if (!dateStr) return lang === 'zh' ? '未知' : 'Unknown';
     const seconds = Math.floor((new Date().getTime() - new Date(dateStr).getTime()) / 1000);
-    if (seconds < 60) return '刚刚';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}分钟前`;
-    return `${Math.floor(seconds / 3600)}小时前`;
+    if (seconds < 60) return lang === 'zh' ? '刚刚' : 'Just now';
+    if (seconds < 3600) return lang === 'zh' ? `${Math.floor(seconds / 60)}分钟前` : `${Math.floor(seconds / 60)} min ago`;
+    return lang === 'zh' ? `${Math.floor(seconds / 3600)}小时前` : `${Math.floor(seconds / 3600)} hr ago`;
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* GPS unavailable banner */}
       {isUsingDefaultCenter && (
         <div className="flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-xs text-amber-700">
           <span>⚠️</span>
-          <span>GPS 信号不可用，显示默认位置 · GPS unavailable, showing default location</span>
+          <span>{t.gpsUnavailableBanner}</span>
         </div>
       )}
-      {/* 顶部综合控制栏 */}
-      <div className="bg-slate-900 rounded-[32px] p-4 flex flex-wrap items-center justify-between gap-4 border border-white/10 shadow-xl">
+      <div className="bg-slate-900 rounded-[28px] p-4 flex flex-wrap items-center justify-between gap-4 border border-white/10 shadow-xl">
          <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 border-r border-white/10">
                <ShieldCheck size={18} className="text-indigo-400" />
-               <span className="text-[10px] font-black text-white uppercase tracking-widest">审计与全览</span>
+               <span className="text-[10px] font-black text-white uppercase tracking-widest">{t.trackingTitle}</span>
             </div>
             
             <select 
@@ -129,20 +129,8 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
               />
             )}
          </div>
-
-         <div className="flex bg-white/5 p-1 rounded-xl">
-            <button 
-              onClick={() => setMapMode('standard')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${mapMode === 'standard' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-               <MapIcon size={12}/> Standard
-            </button>
-            <button 
-              onClick={() => setMapMode('satellite')}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-[9px] font-black uppercase transition-all ${mapMode === 'satellite' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-               <Satellite size={12}/> Satellite
-            </button>
+         <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-black uppercase text-slate-300">
+           {activeDrivers.length} {t.liveNow} · {mappedLocations.length} {t.mappedSites}
          </div>
       </div>
 
@@ -155,25 +143,18 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
                 locations={locations}
                 transactions={transactions}
                 date={auditDate}
+                lang={lang}
               />
             </Suspense>
           </MapErrorBoundary>
         </div>
       ) : (
-        <div className="w-full h-[650px] rounded-[40px] overflow-hidden border-4 border-white shadow-2xl relative">
+        <div className="w-full h-[520px] rounded-[32px] overflow-hidden border-2 border-white shadow-xl relative">
           <MapContainer center={dynamicCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
-            {mapMode === 'standard' ? (
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-            ) : (
-              <TileLayer
-                url="https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}"
-                subdomains={['mt0','mt1','mt2','mt3']}
-                attribution='&copy; Google Maps'
-              />
-            )}
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
             
             {Object.entries(trajectories).map(([driverId, path]) => (
               <Polyline 
@@ -190,7 +171,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
                     <p className="text-xs font-black text-slate-900">{driver.name}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.vehicleInfo.plate}</p>
                     <div className="mt-2 text-[10px] space-y-1">
-                      <div className="flex justify-between"><span>上次活跃:</span><b>{getTimeAgo(driver.lastActive)}</b></div>
+                      <div className="flex justify-between"><span>{lang === 'zh' ? '上次活跃:' : 'Last active:'}</span><b>{getTimeAgo(driver.lastActive)}</b></div>
                     </div>
                   </div>
                 </Popup>
@@ -212,12 +193,12 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions }) =
           <div className="absolute top-4 right-4 z-[1000] bg-white/90 backdrop-blur-md p-4 rounded-3xl border border-white/20 shadow-xl pointer-events-none">
              <div className="flex items-center gap-4">
                 <div className="flex flex-col items-center">
-                   <span className="text-[10px] font-black text-slate-400 uppercase leading-none">活跃司机</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{t.liveNow}</span>
                    <span className="text-lg font-black text-indigo-600">{activeDrivers.length}</span>
                 </div>
                 <div className="w-px h-8 bg-slate-200"></div>
                 <div className="flex flex-col items-center">
-                   <span className="text-[10px] font-black text-slate-400 uppercase leading-none">巡检路径</span>
+                   <span className="text-[10px] font-black text-slate-400 uppercase leading-none">{t.trackedRoutes}</span>
                    <span className="text-lg font-black text-indigo-600 flex items-center gap-1"><Route size={16}/> {Object.keys(trajectories).length}</span>
                 </div>
              </div>

@@ -1,14 +1,17 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { BrainCircuit, TrendingDown, TrendingUp, AlertTriangle, Zap, CalendarClock, DollarSign, Activity } from 'lucide-react';
-import { Transaction, Location, Driver } from '../types';
+import { Transaction, Location, Driver, TRANSLATIONS } from '../types';
 
 interface SmartInsightsProps {
   transactions: Transaction[];
   locations: Location[];
   drivers: Driver[];
+  lang: 'zh' | 'sw';
 }
 
-const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }) => {
+const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, lang }) => {
+  const t = TRANSLATIONS[lang];
+  const [showAll, setShowAll] = useState(false);
   // 核心 AI 算法：计算每台机器的“健康度”和“异动指标”
   const insights = useMemo(() => {
     const now = new Date();
@@ -86,87 +89,101 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations }
   }, [transactions, locations]);
 
   const totalRiskCount = useMemo(() => insights.filter(i => i.riskLevel === 'high').length, [insights]);
+  const visibleInsights = showAll ? insights : insights.slice(0, 3);
 
   return (
-    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      
-      {/* AI 大脑总控看板 */}
-      <div className="bg-gradient-to-br from-slate-900 to-indigo-900 rounded-[40px] p-8 text-white shadow-2xl relative overflow-hidden">
-        <div className="absolute top-0 right-0 p-6 opacity-20"><BrainCircuit size={160} /></div>
-        <div className="relative z-10">
-          <div className="flex items-center gap-3 mb-6">
-             <div className="p-3 bg-indigo-500/30 rounded-2xl backdrop-blur-md border border-white/10">
-                <BrainCircuit className="text-indigo-300" size={24}/>
-             </div>
-             <div>
-               <h2 className="text-xl font-black tracking-tight">AI 商业智能分析</h2>
-               <p className="text-[10px] font-bold text-indigo-300 uppercase tracking-[0.2em] mt-1">Smart BI Engine</p>
-             </div>
+    <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+      <div className="rounded-[28px] bg-gradient-to-br from-slate-950 to-indigo-900 p-5 text-white shadow-xl relative overflow-hidden">
+        <div className="absolute right-4 top-4 opacity-10"><BrainCircuit size={72} /></div>
+        <div className="relative z-10 flex flex-col gap-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="rounded-2xl border border-white/10 bg-white/10 p-2.5">
+                <BrainCircuit className="text-indigo-200" size={18} />
+              </div>
+              <div>
+                <h2 className="text-sm font-black uppercase tracking-wide">{t.aiBusinessInsights}</h2>
+                <p className="text-[10px] font-bold text-indigo-200 uppercase tracking-[0.18em]">{t.aiBusinessInsightsSubtitle}</p>
+              </div>
+            </div>
+            {insights.length > 3 && (
+              <button
+                type="button"
+                onClick={() => setShowAll(current => !current)}
+                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[9px] font-black uppercase text-white"
+              >
+                {showAll ? t.showLessInsights : t.showAllInsights}
+              </button>
+            )}
           </div>
-          
-          <div className="grid grid-cols-2 gap-4 mt-8">
-             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/5">
-                <p className="text-[10px] font-black text-indigo-300 uppercase">高风险资产</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-4xl font-black">{totalRiskCount}</p>
-                  <span className="text-xs text-rose-400 font-bold">台设备异常</span>
-                </div>
-             </div>
-             <div className="bg-white/10 backdrop-blur-md rounded-3xl p-5 border border-white/5">
-                <p className="text-[10px] font-black text-emerald-300 uppercase">系统健康度</p>
-                <div className="flex items-baseline gap-2 mt-1">
-                  <p className="text-4xl font-black">{Math.max(0, 100 - totalRiskCount * 5)}</p>
-                  <span className="text-xs text-emerald-400 font-bold">/ 100</span>
-                </div>
-             </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
+              <p className="text-[9px] font-black uppercase text-indigo-200">{t.highRiskAssets}</p>
+              <div className="mt-1 flex items-baseline gap-2">
+                <p className="text-3xl font-black">{totalRiskCount}</p>
+                <span className="text-[10px] font-bold text-rose-300">{t.affectedMachines}</span>
+              </div>
+            </div>
+            <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
+              <p className="text-[9px] font-black uppercase text-emerald-200">{t.systemHealth}</p>
+              <div className="mt-1 flex items-baseline gap-2">
+                <p className="text-3xl font-black">{Math.max(0, 100 - totalRiskCount * 5)}</p>
+                <span className="text-[10px] font-bold text-emerald-300">/ 100</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* 智能洞察列表 */}
       <div className="space-y-4">
-        <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest px-2">需立即介入的运营建议 (Actionable Insights)</h3>
+        <div className="flex items-center justify-between gap-3 px-1">
+          <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.actionableInsights}</h3>
+          {insights.length > 0 && (
+            <span className="text-[10px] font-black text-slate-500">{visibleInsights.length}/{insights.length}</span>
+          )}
+        </div>
         
         {insights.length === 0 ? (
-           <div className="bg-emerald-50 rounded-[32px] p-8 text-center border border-emerald-100">
-              <Zap size={40} className="mx-auto text-emerald-400 mb-3" />
-              <p className="text-sm font-black text-emerald-700">业务运行完美！</p>
-              <p className="text-[10px] text-emerald-600 mt-1">AI 未检测到任何异常跌落或闲置资产。</p>
+           <div className="rounded-[24px] border border-emerald-100 bg-emerald-50 p-6 text-center">
+              <Zap size={32} className="mx-auto mb-3 text-emerald-400" />
+              <p className="text-sm font-black text-emerald-700">{t.businessHealthy}</p>
+              <p className="mt-1 text-[10px] text-emerald-600">{t.aiNoIssuesSub}</p>
            </div>
         ) : (
-           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-             {insights.map((insight, idx) => (
-               <div key={insight.loc.id} className={`bg-white rounded-[32px] p-6 border shadow-sm transition-all hover:shadow-xl ${insight.riskLevel === 'high' ? 'border-rose-200 shadow-rose-100/50' : 'border-amber-200 shadow-amber-100/50'}`}>
+           <div className="grid grid-cols-1 gap-3">
+             {visibleInsights.map((insight, idx) => (
+               <div key={insight.loc.id} className={`rounded-[24px] border bg-white p-4 shadow-sm transition-all hover:shadow-md ${insight.riskLevel === 'high' ? 'border-rose-200' : 'border-amber-200'}`}>
                  <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="text-sm font-black text-slate-900">{insight.loc.name}</h4>
                       <p className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">{insight.loc.area} • {insight.loc.machineId}</p>
                     </div>
-                    <div className={`p-2 rounded-xl ${insight.riskLevel === 'high' ? 'bg-rose-50 text-rose-500' : 'bg-amber-50 text-amber-500'}`}>
+                    <div className={`rounded-xl p-2 ${insight.riskLevel === 'high' ? 'bg-rose-50 text-rose-500' : 'bg-amber-50 text-amber-500'}`}>
                        {insight.riskLevel === 'high' ? <AlertTriangle size={18} /> : <CalendarClock size={18} />}
                     </div>
                  </div>
 
                  <div className="space-y-3">
-                    <div className={`p-3 rounded-2xl flex items-start gap-3 ${insight.riskLevel === 'high' ? 'bg-rose-50' : 'bg-amber-50'}`}>
+                    <div className={`rounded-2xl p-3 flex items-start gap-3 ${insight.riskLevel === 'high' ? 'bg-rose-50' : 'bg-amber-50'}`}>
                        {insight.trend === 'down' ? <TrendingDown className="text-rose-500 mt-0.5" size={16}/> : insight.trend === 'up' ? <TrendingUp className="text-emerald-500 mt-0.5" size={16}/> : <Activity className="text-amber-500 mt-0.5" size={16}/>}
                        <div>
-                          <p className={`text-[10px] font-black uppercase mb-1 ${insight.riskLevel === 'high' ? 'text-rose-700' : 'text-amber-700'}`}>发现异常</p>
+                          <p className={`text-[10px] font-black uppercase mb-1 ${insight.riskLevel === 'high' ? 'text-rose-700' : 'text-amber-700'}`}>{t.anomalyDetected}</p>
                           <p className={`text-xs font-bold leading-relaxed ${insight.riskLevel === 'high' ? 'text-rose-600' : 'text-amber-600'}`}>{insight.warningMsg}</p>
                        </div>
                     </div>
                     
-                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 flex items-start gap-3">
+                    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 flex items-start gap-3">
                        <Zap className="text-indigo-500 mt-0.5" size={16}/>
                        <div>
-                          <p className="text-[10px] font-black text-indigo-700 uppercase mb-1">AI 决策建议</p>
+                          <p className="text-[10px] font-black text-indigo-700 uppercase mb-1">{t.aiDecisionSuggestion}</p>
                           <p className="text-xs font-bold text-slate-600 leading-relaxed">{insight.actionSuggestion}</p>
                        </div>
                     </div>
                  </div>
 
                  <div className="mt-4 pt-4 border-t border-slate-100 flex justify-between items-center text-[10px] font-black">
-                    <span className="text-slate-400 uppercase">7天营收概览</span>
+                    <span className="text-slate-400 uppercase">{t.sevenDayRevenue}</span>
                     <span className="text-slate-700 flex items-center gap-1"><DollarSign size={10}/> {insight.totalRevenue.toLocaleString()} TZS</span>
                  </div>
                </div>
