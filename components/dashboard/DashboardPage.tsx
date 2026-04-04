@@ -56,12 +56,21 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const onCreateSettlement = async (settlement: DailySettlement) => {
     await createSettlement.mutateAsync(settlement);
   };
-  const onReviewSettlement = (settlementId: string, status: 'confirmed' | 'rejected') =>
-    reviewSettlement.mutate({ settlementId, status });
-  const onApproveExpenseRequest = (txId: string, approve: boolean) => approveExpenseRequest.mutate({ txId, approve });
-  const onReviewAnomalyTransaction = (txId: string, approve: boolean) => reviewAnomalyTransaction.mutate({ txId, approve });
-  const onApproveResetRequest = (txId: string, approve: boolean) => approveResetRequest.mutate({ txId, approve });
-  const onApprovePayoutRequest = (txId: string, approve: boolean) => approvePayoutRequest.mutate({ txId, approve });
+  const onReviewSettlement = async (settlementId: string, status: 'confirmed' | 'rejected') => {
+    await reviewSettlement.mutateAsync({ settlementId, status });
+  };
+  const onApproveExpenseRequest = async (txId: string, approve: boolean) => {
+    await approveExpenseRequest.mutateAsync({ txId, approve });
+  };
+  const onReviewAnomalyTransaction = async (txId: string, approve: boolean) => {
+    await reviewAnomalyTransaction.mutateAsync({ txId, approve });
+  };
+  const onApproveResetRequest = async (txId: string, approve: boolean) => {
+    await approveResetRequest.mutateAsync({ txId, approve });
+  };
+  const onApprovePayoutRequest = async (txId: string, approve: boolean) => {
+    await approvePayoutRequest.mutateAsync({ txId, approve });
+  };
   const onSync = async () => syncOfflineData.mutate();
   const isSyncing = syncOfflineData.isPending;
   const offlineCount = unsyncedCount;

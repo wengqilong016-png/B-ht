@@ -275,20 +275,19 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
     });
 
     const revenue = currentMonthSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
-    const expenses = currentMonthTxs.reduce((sum, t) => sum + (t.expenseType === 'private' ? t.expenses : 0), 0);
+    const loans = currentMonthTxs.reduce((sum, t) => sum + (t.expenseType === 'private' ? t.expenses : 0), 0);
     const base = driver.baseSalary ?? 300000;
     const rate = driver.commissionRate ?? 0.05;
     const comm = Math.floor(revenue * rate);
-    const maxDeduction = Math.floor((base + comm) * 0.2);
-    const debt = Math.min(driver.remainingDebt, maxDeduction);
     const shortage = currentMonthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
+    const totalDeductions = loans + shortage;
 
     return {
       driver,
-      revenue, expenses, base, comm, debt: debt + shortage, rate,
+      revenue, loans, shortage, base, comm, rate,
       txCount: currentMonthTxs.length,
       month: now.toLocaleString('zh-CN', { month: 'long' }),
-      total: base + comm - debt - shortage
+      total: base + comm - totalDeductions
     };
   };
 

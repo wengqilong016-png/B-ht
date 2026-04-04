@@ -31,11 +31,11 @@ interface SettlementTabProps {
   activeDriverId: string;
   todayStr: string;
   onCreateSettlement: (settlement: DailySettlement) => Promise<void>;
-  onReviewSettlement: (settlementId: string, status: 'confirmed' | 'rejected') => void;
-  onApproveExpenseRequest: (txId: string, approve: boolean) => void;
-  onReviewAnomalyTransaction: (txId: string, approve: boolean) => void;
-  onApproveResetRequest: (txId: string, approve: boolean) => void;
-  onApprovePayoutRequest: (txId: string, approve: boolean) => void;
+  onReviewSettlement: (settlementId: string, status: 'confirmed' | 'rejected') => Promise<void>;
+  onApproveExpenseRequest: (txId: string, approve: boolean) => Promise<void>;
+  onReviewAnomalyTransaction: (txId: string, approve: boolean) => Promise<void>;
+  onApproveResetRequest: (txId: string, approve: boolean) => Promise<void>;
+  onApprovePayoutRequest: (txId: string, approve: boolean) => Promise<void>;
   lang: 'zh' | 'sw';
 }
 
@@ -65,6 +65,23 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const t = TRANSLATIONS[lang];
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
+  const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
+
+  const cashAmount = parseInt(actualCash) || 0;
+  const coinAmount = parseInt(actualCoins) || 0;
+  const hasSettlementInput = actualCash.trim() !== '' || actualCoins.trim() !== '';
+
+  const runApprovalAction = async (actionKey: string, action: () => Promise<void>) => {
+    setPendingActionKey(actionKey);
+    try {
+      await action();
+    } catch (error) {
+      console.error('Approval action failed.', error);
+      alert(lang === 'zh' ? '❌ 审批失败，请重试。' : '❌ Approval failed. Please retry.');
+    } finally {
+      setPendingActionKey(current => (current === actionKey ? null : current));
+    }
+  };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4">
@@ -120,9 +137,21 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                     </div>
                   )}
                   <div className="flex gap-2">
-                    <button onClick={() => onReviewSettlement(s.id, 'confirmed')} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100">✓ Approve</button>
-                    <button onClick={() => onReviewSettlement(s.id, 'rejected')} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase">✗ Reject</button>
-                  </div>
+                        <button
+                          disabled={pendingActionKey === `settlement:${s.id}`}
+                          onClick={() => runApprovalAction(`settlement:${s.id}`, () => onReviewSettlement(s.id, 'confirmed'))}
+                          className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50"
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          disabled={pendingActionKey === `settlement:${s.id}`}
+                          onClick={() => runApprovalAction(`settlement:${s.id}`, () => onReviewSettlement(s.id, 'rejected'))}
+                          className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50"
+                        >
+                          ✗ Reject
+                        </button>
+                      </div>
                 </div>
               ))}
             </div>
@@ -171,8 +200,20 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                         <div className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-xl">{tx.locationName}</div>
                       </div>
                       <div className="flex gap-2">
-                        <button onClick={() => onApproveExpenseRequest(tx.id, true)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ Approve</button>
-                        <button onClick={() => onApproveExpenseRequest(tx.id, false)} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase">✗ Reject</button>
+                        <button
+                          disabled={pendingActionKey === `expense:${tx.id}`}
+                          onClick={() => runApprovalAction(`expense:${tx.id}`, () => onApproveExpenseRequest(tx.id, true))}
+                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          disabled={pendingActionKey === `expense:${tx.id}`}
+                          onClick={() => runApprovalAction(`expense:${tx.id}`, () => onApproveExpenseRequest(tx.id, false))}
+                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
+                        >
+                          ✗ Reject
+                        </button>
                       </div>
                     </div>
                   );
@@ -222,8 +263,20 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                         </div>
                       )}
                       <div className="flex gap-2">
-                        <button onClick={() => onReviewAnomalyTransaction(tx.id, true)} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase">✓ {t.approveBtn}</button>
-                        <button onClick={() => onReviewAnomalyTransaction(tx.id, false)} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase">✗ {t.rejectBtn}</button>
+                        <button
+                          disabled={pendingActionKey === `anomaly:${tx.id}`}
+                          onClick={() => runApprovalAction(`anomaly:${tx.id}`, () => onReviewAnomalyTransaction(tx.id, true))}
+                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
+                        >
+                          ✓ {t.approveBtn}
+                        </button>
+                        <button
+                          disabled={pendingActionKey === `anomaly:${tx.id}`}
+                          onClick={() => runApprovalAction(`anomaly:${tx.id}`, () => onReviewAnomalyTransaction(tx.id, false))}
+                          className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
+                        >
+                          ✗ {t.rejectBtn}
+                        </button>
                       </div>
                     </div>
                   );
@@ -269,14 +322,16 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       )}
                       <div className="flex gap-2">
                         <button
-                          onClick={() => onApproveResetRequest(tx.id, true)}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
+                          disabled={pendingActionKey === `reset:${tx.id}`}
+                          onClick={() => runApprovalAction(`reset:${tx.id}`, () => onApproveResetRequest(tx.id, true))}
+                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
                         >
                           ✓ {t.approveBtn} & Reset to 0
                         </button>
                         <button
-                          onClick={() => onApproveResetRequest(tx.id, false)}
-                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
+                          disabled={pendingActionKey === `reset:${tx.id}`}
+                          onClick={() => runApprovalAction(`reset:${tx.id}`, () => onApproveResetRequest(tx.id, false))}
+                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
                         >
                           ✗ {t.rejectBtn}
                         </button>
@@ -322,14 +377,16 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       </div>
                       <div className="flex gap-2">
                         <button
-                          onClick={() => onApprovePayoutRequest(tx.id, true)}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase"
+                          disabled={pendingActionKey === `payout:${tx.id}`}
+                          onClick={() => runApprovalAction(`payout:${tx.id}`, () => onApprovePayoutRequest(tx.id, true))}
+                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
                         >
                           ✓ {t.approveBtn}
                         </button>
                         <button
-                          onClick={() => onApprovePayoutRequest(tx.id, false)}
-                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase"
+                          disabled={pendingActionKey === `payout:${tx.id}`}
+                          onClick={() => runApprovalAction(`payout:${tx.id}`, () => onApprovePayoutRequest(tx.id, false))}
+                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
                         >
                           ✗ {t.rejectBtn}
                         </button>
@@ -386,23 +443,24 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
             </div>
           </div>
 
-          {actualCash && (
-            <div className={`p-8 rounded-[40px] flex justify-between items-center animate-in slide-in-from-top-4 shadow-silicone border border-white/40 ${parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-emerald-50' : 'bg-rose-50'}`}>
+          {hasSettlementInput && (
+            <div className={`p-8 rounded-[40px] flex justify-between items-center animate-in slide-in-from-top-4 shadow-silicone border border-white/40 ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-emerald-50' : 'bg-rose-50'}`}>
               <div>
-                <p className={`text-[10px] font-black uppercase ${parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-400' : 'text-rose-400'}`}>Variance</p>
-                <p className={`text-2xl font-black ${parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {(parseInt(actualCash) + (parseInt(actualCoins) || 0) - todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0)).toLocaleString()}</p>
+                <p className={`text-[10px] font-black uppercase ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-400' : 'text-rose-400'}`}>Variance</p>
+                <p className={`text-2xl font-black ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {(cashAmount + coinAmount - todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0)).toLocaleString()}</p>
               </div>
-              <div className={`p-4 rounded-2xl shadow-silicone-sm ${parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-white text-emerald-500' : 'bg-white text-rose-500'}`}>
-                {parseInt(actualCash) + (parseInt(actualCoins) || 0) === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? <ThumbsUp size={32} /> : <AlertTriangle size={32} />}
+              <div className={`p-4 rounded-2xl shadow-silicone-sm ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-white text-emerald-500' : 'bg-white text-rose-500'}`}>
+                {cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? <ThumbsUp size={32} /> : <AlertTriangle size={32} />}
               </div>
             </div>
           )}
 
           <button
-            disabled={!actualCash || !actualCoins}
+            disabled={!hasSettlementInput || pendingActionKey === 'driver:settlement-submit'}
             onClick={async () => {
+              setPendingActionKey('driver:settlement-submit');
               const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
-              const actual = (parseInt(actualCash) || 0) + (parseInt(actualCoins) || 0);
+              const actual = cashAmount + coinAmount;
               const settlement: DailySettlement = {
                 id: `STL-${Date.now()}`,
                 date: todayStr,
@@ -413,8 +471,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 totalExpenses: todayDriverTxs.reduce((sum, tx) => sum + tx.expenses, 0),
                 driverFloat: myProfile?.dailyFloatingCoins || 0,
                 expectedTotal: totalNet,
-                actualCash: parseInt(actualCash) || 0,
-                actualCoins: parseInt(actualCoins) || 0,
+                actualCash: cashAmount,
+                actualCoins: coinAmount,
                 shortage: actual - totalNet,
                 status: 'pending',
                 timestamp: new Date().toISOString(),
@@ -428,6 +486,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
               } catch (error) {
                 console.error('Settlement submission failed.', error);
                 alert(lang === 'zh' ? '❌ 结算提交失败，请重试。' : '❌ Settlement submission failed. Please retry.');
+              } finally {
+                setPendingActionKey(current => (current === 'driver:settlement-submit' ? null : current));
               }
             }}
             className="w-full py-7 bg-silicone-gradient text-indigo-600 rounded-[40px] font-black uppercase text-sm shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 transition-all disabled:opacity-30"

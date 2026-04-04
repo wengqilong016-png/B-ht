@@ -58,7 +58,7 @@ export function useDashboardData({
 
   const totalArrears = useMemo(
     () => myTransactions
-      .filter(tx => tx.type === 'collection' && tx.paymentStatus !== 'paid')
+      .filter(tx => tx.type === 'collection' && tx.paymentStatus === 'unpaid')
       .reduce((sum, tx) => sum + tx.netPayable, 0),
     [myTransactions]
   );

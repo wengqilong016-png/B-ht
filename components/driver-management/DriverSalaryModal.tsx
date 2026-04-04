@@ -4,10 +4,10 @@ import { X, Calculator, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
 interface SalaryData {
   driver: { name: string };
   revenue: number;
-  expenses: number;
   base: number;
   comm: number;
-  debt: number;
+  loans: number;
+  shortage: number;
   rate: number;
   txCount: number;
   month: string;
@@ -53,8 +53,12 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
             <span className="text-sm font-black text-emerald-600">+ TZS {salaryData.comm.toLocaleString()}</span>
           </div>
           <div className="flex justify-between items-center">
-            <span className="text-xs font-black text-slate-500 uppercase">欠款抵扣 (Deduction)</span>
-            <span className="text-sm font-black text-rose-500">- TZS {salaryData.debt.toLocaleString()}</span>
+            <span className="text-xs font-black text-slate-500 uppercase">私人借款 (Private Loans)</span>
+            <span className="text-sm font-black text-rose-500">- TZS {salaryData.loans.toLocaleString()}</span>
+          </div>
+          <div className="flex justify-between items-center">
+            <span className="text-xs font-black text-slate-500 uppercase">短款抵扣 (Shortage)</span>
+            <span className="text-sm font-black text-rose-500">- TZS {salaryData.shortage.toLocaleString()}</span>
           </div>
           <div className="h-px bg-slate-100 my-2"></div>
           <div className="flex justify-between items-center">
@@ -65,7 +69,7 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
 
         <div className="bg-slate-50 p-3 rounded-xl flex items-center gap-2">
           <AlertCircle size={14} className="text-slate-400" />
-          <p className="text-[9px] font-bold text-slate-400 leading-tight">注：欠款抵扣已自动限制在总额的 20% 以内。</p>
+          <p className="text-[9px] font-bold text-slate-400 leading-tight">注：工资按已确认结算、私人借款和短款结果生成，不再读取司机当前总欠款。</p>
         </div>
 
         <button onClick={onClose} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">确认并关闭</button>
