@@ -84,7 +84,11 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
   const copy = ACTION_COPY[mode];
   const isPayMode = mode === 'pay';
   const isCancelMode = mode === 'cancel';
-  const canSubmit = !isSubmitting && !isUploading && (!isPayMode || !!paymentMethod);
+  const requiresProof = isPayMode;
+  const canSubmit =
+    !isSubmitting &&
+    !isUploading &&
+    (!isPayMode || (!!paymentMethod && !!proofPreview));
 
   const title = useMemo(() => {
     if (lang === 'zh') {
@@ -124,6 +128,10 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
           entityId: record?.id || `${driver.id}-${month}`,
           driverId: driver.id,
         });
+      } catch (error) {
+        console.error('Failed to upload payroll proof.', error);
+        alert(lang === 'zh' ? '❌ 工资凭证上传失败，请重试。' : '❌ Failed to upload payroll proof. Please retry.');
+        return;
       } finally {
         setIsUploading(false);
       }
@@ -200,13 +208,20 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
               </div>
 
               <div>
-                <label className="text-[10px] font-black text-slate-500 uppercase block mb-2">Payment Proof</label>
+                <label className="text-[10px] font-black text-slate-500 uppercase block mb-2">
+                  Payment Proof {requiresProof ? '*' : ''}
+                </label>
                 <input
                   type="file"
                   accept="image/*"
                   onChange={event => handleFileChange(event.target.files?.[0] || null)}
                   className="block w-full text-xs font-bold text-slate-500"
                 />
+                {!proofPreview && (
+                  <p className="mt-2 text-[10px] font-bold text-rose-500 uppercase">
+                    {lang === 'zh' ? '请先上传工资支付凭证。' : 'Upload payment proof before confirming payroll.'}
+                  </p>
+                )}
                 {proofPreview && (
                   <img src={proofPreview} alt="Payroll proof" className="mt-3 w-full h-44 object-cover rounded-2xl border border-slate-200" />
                 )}

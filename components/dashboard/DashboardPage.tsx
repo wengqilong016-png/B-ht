@@ -427,6 +427,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                             </button>
                             {(!record || record.status === 'cancelled') && (
                               <button
+                                disabled={!!pendingPayrollAction}
                                 onClick={() => setPayrollModalState({
                                   mode: 'create',
                                   driver: {
@@ -446,6 +447,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                             {record?.status === 'pending' && (
                               <>
                                 <button
+                                  disabled={!!pendingPayrollAction}
                                   onClick={() => setPayrollModalState({
                                     mode: 'pay',
                                     driver: {
@@ -462,6 +464,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                                   Mark Paid
                                 </button>
                                 <button
+                                  disabled={!!pendingPayrollAction}
                                   onClick={() => setPayrollModalState({
                                     mode: 'cancel',
                                     driver: {
