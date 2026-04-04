@@ -33,8 +33,35 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const parseCoordinateInput = (value: string) => {
+    const normalized = value.trim().replace(',', '.');
+    if (!normalized) {
+      return Number.NaN;
+    }
+
+    return Number.parseFloat(normalized);
+  };
+
+  const resolveManualGps = () => {
+    const lat = parseCoordinateInput(manualLat);
+    const lng = parseCoordinateInput(manualLng);
+    const valid = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
+
+    return valid ? { lat, lng } : null;
+  };
+
   const fetchGps = () => {
     setIsGpsLoading(true);
+    if (!navigator.geolocation) {
+      alert(
+        lang === 'zh'
+          ? '当前浏览器不支持 GPS，请改用手动填写经纬度。'
+          : 'Kifaa hiki hakiungi mkono GPS. Tumia kuandika latitude/longitude kwa mkono.'
+      );
+      setIsGpsLoading(false);
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(
       (pos) => { 
         setGps({ lat: pos.coords.latitude, lng: pos.coords.longitude });
@@ -43,7 +70,10 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         setIsGpsLoading(false); 
       },
       (err) => { 
-        alert(lang === 'zh' ? "GPS 获取失败，请检查定位权限。" : "GPS imeshindwa"); 
+        const message = lang === 'zh'
+          ? `GPS 获取失败：${err.message || '请检查定位权限，或改用手动坐标。'}`
+          : `GPS imeshindwa: ${err.message || 'Angalia ruhusa za location au tumia koordineti za mkono.'}`;
+        alert(message); 
         setIsGpsLoading(false); 
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -51,16 +81,13 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   };
 
   const applyManualGps = () => {
-    const lat = Number.parseFloat(manualLat);
-    const lng = Number.parseFloat(manualLng);
-    const valid = Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
-
-    if (!valid) {
+    const manualGps = resolveManualGps();
+    if (!manualGps) {
       alert(lang === 'zh' ? '请输入有效的纬度/经度坐标。' : 'Weka latitude na longitude sahihi.');
       return;
     }
 
-    setGps({ lat, lng });
+    setGps(manualGps);
   };
 
   const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,8 +107,19 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   };
 
   const handleSubmit = async () => {
-    if (!machineId || !shopName || !area || !gps || !ownerName) {
-      alert(lang === 'zh' ? "请填写所有带 * 的必填项，并获取 GPS 定位。" : "Tafadhali jaza nafasi zote na washa GPS");
+    const resolvedGps = gps ?? resolveManualGps();
+
+    if (!machineId || !shopName || !area || !ownerName) {
+      alert(lang === 'zh' ? "请填写所有带 * 的必填项。" : "Tafadhali jaza nafasi zote zenye alama ya *");
+      return;
+    }
+
+    if (!resolvedGps) {
+      alert(
+        lang === 'zh'
+          ? '请获取 GPS，或手动填写有效经纬度后直接提交。'
+          : 'Pata GPS au andika latitude/longitude sahihi kabla ya kutuma.'
+      );
       return;
     }
 
@@ -104,7 +142,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         initialStartupDebt: debtValue,
         remainingStartupDebt: debtValue,
         isNewOffice: true,
-        coords: gps,
+        coords: resolvedGps,
         status: 'active',
         commissionRate: commValue,
         ownerPhotoUrl: machinePhoto || undefined,
