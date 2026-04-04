@@ -15,6 +15,7 @@
 import { Transaction, safeRandomUUID } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
+import { appendCollectionSubmissionAudit } from './services/collectionSubmissionAudit';
 
 const DB_NAME    = 'bahati_offline_db';
 const DB_VERSION = 2;
@@ -318,6 +319,21 @@ export async function flushQueue(
 
         const result = await options.submitCollection(replayInput);
         if (result.success) {
+          appendCollectionSubmissionAudit({
+            timestamp: new Date().toISOString(),
+            event: 'queue_flush_success',
+            txId: result.transaction.id,
+            locationId: result.transaction.locationId,
+            locationName: result.transaction.locationName,
+            driverId: result.transaction.driverId,
+            resolvedScore: result.transaction.currentScore,
+            previousScore: result.transaction.previousScore,
+            source: 'server',
+            metadata: {
+              paymentStatus: result.transaction.paymentStatus,
+              approvalStatus: result.transaction.approvalStatus,
+            },
+          });
           // Write the server-authoritative transaction back into the queued
           // entry so locally-computed finance values are replaced by the
           // persisted row before marking synced.  This also handles duplicate
@@ -330,6 +346,18 @@ export async function flushQueue(
           // Cast to narrow the union: TypeScript's control flow narrowing is not
           // reliably applied to discriminated unions in this project's tsconfig.
           const failResult = result as { success: false; error: string };
+          appendCollectionSubmissionAudit({
+            timestamp: new Date().toISOString(),
+            event: 'queue_flush_failure',
+            txId: tx.id,
+            locationId: tx.locationId,
+            locationName: tx.locationName,
+            driverId: tx.driverId,
+            resolvedScore: tx.currentScore,
+            previousScore: tx.previousScore,
+            source: 'offline',
+            reason: failResult.error,
+          });
           const category = classifyError(failResult.error);
           await recordRetryFailure(tx.id, failResult.error, category);
         }

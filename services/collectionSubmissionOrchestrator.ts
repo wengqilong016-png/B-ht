@@ -6,6 +6,7 @@ import {
   type CollectionSubmissionInput,
   type CollectionSubmissionResult,
 } from './collectionSubmissionService';
+import { appendCollectionSubmissionAudit } from './collectionSubmissionAudit';
 
 export type SubmissionGpsSource = 'live' | 'exif' | 'estimated' | 'none';
 
@@ -97,7 +98,23 @@ export function buildCollectionSubmissionInput(
   input: OrchestrateCollectionSubmissionInput,
 ): CollectionSubmissionInput {
   const expenseValue = parseInteger(input.expenses);
-  const userScore = parseInteger(input.currentScore) || (input.selectedLocation?.lastScore || 0);
+  const trimmedScore = input.currentScore.trim();
+  const parsedScore = Number.parseInt(trimmedScore, 10);
+  if (trimmedScore === '' || Number.isNaN(parsedScore)) {
+    appendCollectionSubmissionAudit({
+      timestamp: new Date().toISOString(),
+      event: 'submit_invalid_score',
+      txId: input.draftTxId,
+      locationId: input.selectedLocation.id,
+      locationName: input.selectedLocation.name,
+      driverId: input.currentDriver.id,
+      currentScoreRaw: input.currentScore,
+      previousScore: input.selectedLocation.lastScore,
+      reason: 'Current score was empty or non-numeric before submission',
+    });
+    throw new Error('Invalid current score');
+  }
+  const userScore = parsedScore;
   const recognizedScore = input.aiReviewData?.score ? parseInt(input.aiReviewData.score, 10) : undefined;
   const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
   const reportedStatus = normalizeReportedStatus(
@@ -141,9 +158,42 @@ export async function orchestrateCollectionSubmission(
 ): Promise<OrchestratedCollectionSubmissionResult> {
   const rawInput = buildCollectionSubmissionInput(input);
 
+  appendCollectionSubmissionAudit({
+    timestamp: new Date().toISOString(),
+    event: 'submit_attempt',
+    txId: input.draftTxId,
+    locationId: input.selectedLocation.id,
+    locationName: input.selectedLocation.name,
+    driverId: input.currentDriver.id,
+    currentScoreRaw: input.currentScore,
+    resolvedScore: rawInput.currentScore,
+    previousScore: input.selectedLocation.lastScore,
+    metadata: {
+      isOnline: input.isOnline,
+      gpsSourceType: input.gpsSourceType,
+      reportedStatus: rawInput.reportedStatus,
+    },
+  });
+
   if (input.isOnline) {
     const result = await deps.submitCollectionV2(rawInput);
     if (result.success) {
+      appendCollectionSubmissionAudit({
+        timestamp: new Date().toISOString(),
+        event: 'submit_server_success',
+        txId: result.transaction.id,
+        locationId: result.transaction.locationId,
+        locationName: result.transaction.locationName,
+        driverId: result.transaction.driverId,
+        currentScoreRaw: input.currentScore,
+        resolvedScore: result.transaction.currentScore,
+        previousScore: result.transaction.previousScore,
+        source: 'server',
+        metadata: {
+          paymentStatus: result.transaction.paymentStatus,
+          approvalStatus: result.transaction.approvalStatus,
+        },
+      });
       return {
         source: 'server',
         transaction: result.transaction,
@@ -157,6 +207,21 @@ export async function orchestrateCollectionSubmission(
       // reliably applied to discriminated unions in this project's tsconfig.
       (result as { success: false; error: string }).error,
     );
+    appendCollectionSubmissionAudit({
+      timestamp: new Date().toISOString(),
+      event: 'submit_server_failure',
+      txId: input.draftTxId,
+      locationId: input.selectedLocation.id,
+      locationName: input.selectedLocation.name,
+      driverId: input.currentDriver.id,
+      currentScoreRaw: input.currentScore,
+      resolvedScore: rawInput.currentScore,
+      previousScore: input.selectedLocation.lastScore,
+      reason: (result as { success: false; error: string }).error,
+      metadata: {
+        fallback: 'offline_queue',
+      },
+    });
 
     const offlineTransaction = deps.createCollectionTransaction(
       input.selectedLocation,
@@ -188,6 +253,19 @@ export async function orchestrateCollectionSubmission(
 
     try {
       await deps.enqueueTransaction(offlineTransaction, rawInput);
+      appendCollectionSubmissionAudit({
+        timestamp: new Date().toISOString(),
+        event: 'submit_offline_enqueued',
+        txId: offlineTransaction.id,
+        locationId: offlineTransaction.locationId,
+        locationName: offlineTransaction.locationName,
+        driverId: offlineTransaction.driverId,
+        currentScoreRaw: input.currentScore,
+        resolvedScore: offlineTransaction.currentScore,
+        previousScore: offlineTransaction.previousScore,
+        source: 'offline',
+        reason: (result as { success: false; error: string }).error,
+      });
     } catch (error) {
       deps.logger.warn('[collectionSubmissionOrchestrator] IDB enqueue failed:', error);
     }
@@ -231,6 +309,19 @@ export async function orchestrateCollectionSubmission(
 
   try {
     await deps.enqueueTransaction(offlineTransaction, rawInput);
+    appendCollectionSubmissionAudit({
+      timestamp: new Date().toISOString(),
+      event: 'submit_offline_enqueued',
+      txId: offlineTransaction.id,
+      locationId: offlineTransaction.locationId,
+      locationName: offlineTransaction.locationName,
+      driverId: offlineTransaction.driverId,
+      currentScoreRaw: input.currentScore,
+      resolvedScore: offlineTransaction.currentScore,
+      previousScore: offlineTransaction.previousScore,
+      source: 'offline',
+      reason: 'Offline mode at submit time',
+    });
   } catch (error) {
     deps.logger.warn('[collectionSubmissionOrchestrator] IDB enqueue failed:', error);
   }
