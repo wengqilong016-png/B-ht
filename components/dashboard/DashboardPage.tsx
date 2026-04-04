@@ -35,13 +35,24 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     aiLogs,
     unsyncedCount,
   } = useAppData();
-  const { updateDrivers, updateLocations, deleteLocations, updateTransaction, saveSettlement, syncOfflineData } = useMutations();
+  const {
+    updateDrivers,
+    updateLocations,
+    deleteLocations,
+    updateTransaction,
+    saveSettlement,
+    approveResetRequest,
+    approvePayoutRequest,
+    syncOfflineData,
+  } = useMutations();
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutate(locationsToSave);
   const onDeleteLocations = (ids: string[]) => deleteLocations.mutate(ids);
   const onUpdateTransaction = (txId: string, updates: Partial<Transaction>) => updateTransaction.mutate({ txId, updates });
   const onSaveSettlement = (settlement: DailySettlement) => saveSettlement.mutate(settlement);
+  const onApproveResetRequest = (txId: string, approve: boolean) => approveResetRequest.mutate({ txId, approve });
+  const onApprovePayoutRequest = (txId: string, approve: boolean) => approvePayoutRequest.mutate({ txId, approve });
   const onSync = async () => syncOfflineData.mutate();
   const isSyncing = syncOfflineData.isPending;
   const offlineCount = unsyncedCount;
@@ -215,7 +226,6 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           payrollStats={payrollStats}
           driverMap={driverMap}
           locationMap={locationMap}
-          locations={locations}
           todayDriverTxs={todayDriverTxs}
           myProfile={myProfile}
           currentUser={currentUser}
@@ -223,7 +233,8 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           todayStr={todayStr}
           onUpdateTransaction={onUpdateTransaction}
           onSaveSettlement={onSaveSettlement}
-          onUpdateLocations={onUpdateLocations}
+          onApproveResetRequest={onApproveResetRequest}
+          onApprovePayoutRequest={onApprovePayoutRequest}
           lang={lang}
         />
       )}

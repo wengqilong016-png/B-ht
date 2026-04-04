@@ -6,7 +6,8 @@
  * Coverage:
  *   - getReplayIneligibilityReason guards (already-synced, not-dead-letter, eligible)
  *   - replayDeadLetterItem routes collection entries through submitCollection callback
- *   - replayDeadLetterItem falls back to direct upsert for non-collection entries
+ *   - replayDeadLetterItem routes reset / payout requests through authoritative callbacks
+ *   - replayDeadLetterItem falls back to direct upsert only for legacy entries
  *   - Successful replay marks the entry synced with server-authoritative data
  *   - Failed replay keeps the entry in dead-letter with updated lastError
  *   - Missing submitCollection callback is rejected without touching the queue
@@ -302,33 +303,107 @@ describe('replayDeadLetterItem — collection replay (rawInput present)', () => 
   });
 });
 
-// ── replayDeadLetterItem — direct upsert fallback (no rawInput) ───────────────
+// ── replayDeadLetterItem — authoritative request replay / legacy fallback ─────
 
-describe('replayDeadLetterItem — direct upsert fallback (no rawInput)', () => {
-  it('uses direct upsert for entries without rawInput and marks synced on success', async () => {
+describe('replayDeadLetterItem — request replay and legacy fallback (no rawInput)', () => {
+  it('uses submitResetRequest for reset requests and marks synced on success', async () => {
     const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
-    const tx = makeTx({ type: 'payout_request' });
+    const tx = makeTx({ type: 'reset_request' });
     await enqueueTransaction(tx); // no rawInput
     deadLetterEntry(tx.id);
 
     const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
     const supabase = { from: () => ({ upsert: upsertMock }) } as any;
-    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>();
+    const submitResetRequest = jest.fn<(tx: any) => Promise<any>>()
+      .mockResolvedValue({ ...tx, isSynced: true, resetLocked: true });
 
-    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase, submitCollection });
+    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase, submitResetRequest });
 
     expect(result.success).toBe(true);
-    expect(upsertMock).toHaveBeenCalledTimes(1);
-    expect(submitCollection).not.toHaveBeenCalled();
+    expect(submitResetRequest).toHaveBeenCalledTimes(1);
+    expect(upsertMock).not.toHaveBeenCalled();
 
     const stored = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
     const entry = stored.find((t: any) => t.id === tx.id);
     expect(entry?.isSynced).toBe(true);
   });
 
-  it('keeps entry in dead-letter with updated lastError on upsert failure', async () => {
+  it('uses submitPayoutRequest for payout requests and marks synced on success', async () => {
     const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
-    const tx = makeTx({ type: 'payout_request' });
+    const tx = makeTx({ type: 'payout_request', payoutAmount: 25000 });
+    await enqueueTransaction(tx);
+    deadLetterEntry(tx.id);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+    const submitPayoutRequest = jest.fn<(tx: any) => Promise<any>>()
+      .mockResolvedValue({ ...tx, isSynced: true });
+
+    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase, submitPayoutRequest });
+
+    expect(result.success).toBe(true);
+    expect(submitPayoutRequest).toHaveBeenCalledTimes(1);
+    expect(upsertMock).not.toHaveBeenCalled();
+
+    const stored = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    const entry = stored.find((t: any) => t.id === tx.id);
+    expect(entry?.isSynced).toBe(true);
+  });
+
+  it('rejects reset replay when submitResetRequest callback is not supplied', async () => {
+    const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
+    const tx = makeTx({ type: 'reset_request' });
+    await enqueueTransaction(tx);
+    deadLetterEntry(tx.id);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+
+    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase });
+
+    expect(result.success).toBe(false);
+    expect((result as any).error).toMatch(/submitResetRequest callback required/i);
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('rejects payout replay when submitPayoutRequest callback is not supplied', async () => {
+    const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
+    const tx = makeTx({ type: 'payout_request', payoutAmount: 12000 });
+    await enqueueTransaction(tx);
+    deadLetterEntry(tx.id);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+
+    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase });
+
+    expect(result.success).toBe(false);
+    expect((result as any).error).toMatch(/submitPayoutRequest callback required/i);
+    expect(upsertMock).not.toHaveBeenCalled();
+  });
+
+  it('uses direct upsert for legacy entries without authoritative callbacks', async () => {
+    const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
+    const tx = makeTx({ type: 'expense' });
+    await enqueueTransaction(tx);
+    deadLetterEntry(tx.id);
+
+    const upsertMock = jest.fn<() => Promise<unknown>>().mockResolvedValue({ error: null });
+    const supabase = { from: () => ({ upsert: upsertMock }) } as any;
+
+    const result = await replayDeadLetterItem(tx.id, { supabaseClient: supabase });
+
+    expect(result.success).toBe(true);
+    expect(upsertMock).toHaveBeenCalledTimes(1);
+
+    const stored = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    const entry = stored.find((t: any) => t.id === tx.id);
+    expect(entry?.isSynced).toBe(true);
+  });
+
+  it('keeps legacy entries in dead-letter with updated lastError on upsert failure', async () => {
+    const { enqueueTransaction, replayDeadLetterItem } = await import('../offlineQueue');
+    const tx = makeTx({ type: 'expense' });
     await enqueueTransaction(tx);
     deadLetterEntry(tx.id);
 

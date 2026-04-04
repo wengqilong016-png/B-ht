@@ -31,7 +31,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 }) => {
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, filteredTransactions, isOnline, drivers } = useAppData();
-  const { logAI, syncOfflineData } = useMutations();
+  const { logAI, submitTransaction, syncOfflineData } = useMutations();
   const queryClient = useQueryClient();
 
   const locations = filteredLocations;
@@ -40,6 +40,29 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 
   const onLogAI = (log: Parameters<typeof logAI.mutate>[0]) => logAI.mutate(log);
   const onSubmit = (tx: Transaction) => {
+    if (tx.type === 'reset_request' || tx.type === 'payout_request') {
+      if (tx.type === 'reset_request') {
+        const currentLocations =
+          queryClient.getQueryData<Location[]>(['locations']) ?? locations;
+        const updatedLocations = currentLocations.map(loc =>
+          loc.id === tx.locationId ? { ...loc, resetLocked: true } : loc
+        );
+        queryClient.setQueryData<Location[]>(['locations'], updatedLocations);
+
+        try {
+          localStorage.setItem(
+            CONSTANTS.STORAGE_LOCATIONS_KEY,
+            JSON.stringify(updatedLocations)
+          );
+        } catch (error) {
+          console.warn('Failed to persist reset lock update locally.', error);
+        }
+      }
+
+      submitTransaction.mutate(tx);
+      return;
+    }
+
     // Optimistically update the location's lastScore in the cache so the
     // machine card reflects the new reading immediately, before the server
     // refetch triggered by syncOfflineData completes.

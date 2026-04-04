@@ -7,7 +7,8 @@ const SETTLEMENT_FIELDS = [
   'id', 'date', 'adminId', 'adminName', 'driverId', 'driverName',
   'totalRevenue', 'totalNetPayable', 'totalExpenses', 'driverFloat',
   'expectedTotal', 'actualCash', 'actualCoins', 'shortage', 'note',
-  'timestamp', 'status',
+  'timestamp', 'transferProofUrl', 'checkInAt', 'checkOutAt',
+  'checkInGps', 'checkOutGps', 'hasCheckedIn', 'hasCheckedOut', 'status',
 ].join(', ');
 
 export interface FetchSettlementsOptions {

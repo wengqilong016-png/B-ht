@@ -10,7 +10,10 @@ interface MutationContextValue {
   deleteLocations: UseMutationResult<unknown, unknown, string[], unknown>;
   deleteDrivers: UseMutationResult<unknown, unknown, string[], unknown>;
   updateTransaction: UseMutationResult<unknown, unknown, { txId: string; updates: Partial<Transaction> }, unknown>;
+  submitTransaction: UseMutationResult<unknown, unknown, Transaction, unknown>;
   saveSettlement: UseMutationResult<unknown, unknown, DailySettlement, unknown>;
+  approveResetRequest: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
+  approvePayoutRequest: UseMutationResult<unknown, unknown, { txId: string; approve: boolean }, unknown>;
   logAI: UseMutationResult<unknown, unknown, AILog, unknown>;
 }
 

@@ -1,15 +1,18 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Location, Driver, Transaction, DailySettlement, AILog, User } from '../types';
-import { flushQueue, reportQueueHealthToServer } from '../offlineQueue';
+import { enqueueTransaction, flushQueue, reportQueueHealthToServer } from '../offlineQueue';
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
 import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRoleScope';
 import { stripClientFields } from '../utils/stripClientFields';
 import { upsertDrivers, deleteDrivers as repoDeleteDrivers, updateDriverCoins } from '../repositories/driverRepository';
 import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
+import { approvePayoutRequest as repoApprovePayoutRequest, approveResetRequest as repoApproveResetRequest } from '../repositories/approvalRepository';
+import { createPayoutRequest, createResetRequest } from '../repositories/requestRepository';
 import { upsertTransaction } from '../repositories/transactionRepository';
 import { upsertSettlement } from '../repositories/settlementRepository';
 import { insertAiLog } from '../repositories/aiLogRepository';
 import { supabase } from '../supabaseClient';
+import { shouldApplySettlementDriverCoinUpdate } from '../utils/settlementRules';
 
 export function useSupabaseMutations(isOnline: boolean, currentUser?: User | null) {
   const queryClient = useQueryClient();
@@ -31,7 +34,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
 
       // 1. Flush offline queue (IndexedDB)
       try {
-        await flushQueue(supabase, { submitCollection: submitCollectionV2 });
+        await flushQueue(supabase, {
+          submitCollection: submitCollectionV2,
+          submitResetRequest: createResetRequest,
+          submitPayoutRequest: createPayoutRequest,
+        });
         // Report queue health for fleet-wide diagnostics (driver devices only).
         if (currentUser?.role === 'driver' && currentUser.driverId) {
           reportQueueHealthToServer(supabase, currentUser.driverId, currentUser.name).catch(() => {});
@@ -166,6 +173,66 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     }
   });
 
+  const submitTransaction = useMutation({
+    onMutate: async (tx: Transaction) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['locations'] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
+      const previousLocations = queryClient.getQueryData<Location[]>(['locations']);
+
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) => {
+        const withoutExisting = old.filter(existing => existing.id !== tx.id);
+        return [{ ...tx, isSynced: false }, ...withoutExisting];
+      });
+
+      if (tx.type === 'reset_request') {
+        queryClient.setQueryData(['locations'], (old: Location[] = []) =>
+          old.map(location =>
+            location.id === tx.locationId
+              ? { ...location, resetLocked: true, isSynced: false }
+              : location
+          )
+        );
+      }
+
+      return { previousTransactions, previousLocations };
+    },
+    mutationFn: async (tx: Transaction) => {
+      if (isOnline) {
+        if (tx.type === 'reset_request') {
+          await createResetRequest(tx);
+          return;
+        }
+
+        if (tx.type === 'payout_request') {
+          await createPayoutRequest(tx);
+          return;
+        }
+
+        await upsertTransaction(
+          stripClientFields({ ...tx, isSynced: true } as unknown as Record<string, unknown>) as Partial<Transaction>
+        );
+        return;
+      }
+
+      await enqueueTransaction(tx);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+      }
+      if (context?.previousLocations !== undefined) {
+        queryClient.setQueryData(['locations'], context.previousLocations);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['locations'] });
+      }
+    }
+  });
+
   const saveSettlement = useMutation({
     onMutate: async (settlement: DailySettlement) => {
       await queryClient.cancelQueries({ queryKey: ['dailySettlements'] });
@@ -177,19 +244,23 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         if (exists) return old.map(s => s.id === settlement.id ? { ...settlement, isSynced: false } : s);
         return [{ ...settlement, isSynced: false }, ...old];
       });
-      const nextDayStartingCoins = settlement.actualCoins || 0;
-      queryClient.setQueryData(['drivers'], (old: Driver[] = []) =>
-        old.map(d => d.id === settlement.driverId ? { ...d, dailyFloatingCoins: nextDayStartingCoins, isSynced: false } : d)
-      );
+      if (shouldApplySettlementDriverCoinUpdate(settlement.status)) {
+        const nextDayStartingCoins = settlement.actualCoins || 0;
+        queryClient.setQueryData(['drivers'], (old: Driver[] = []) =>
+          old.map(d => d.id === settlement.driverId ? { ...d, dailyFloatingCoins: nextDayStartingCoins, isSynced: false } : d)
+        );
+      }
       return { previousSettlements, previousDrivers };
     },
     mutationFn: async (settlement: DailySettlement) => {
       if (isOnline) {
-        const nextDayStartingCoins = settlement.actualCoins || 0;
         await upsertSettlement(
           stripClientFields(settlement as unknown as Record<string, unknown>) as Partial<DailySettlement>
         );
-        await updateDriverCoins(settlement.driverId!, nextDayStartingCoins);
+        if (shouldApplySettlementDriverCoinUpdate(settlement.status)) {
+          const nextDayStartingCoins = settlement.actualCoins || 0;
+          await updateDriverCoins(settlement.driverId!, nextDayStartingCoins);
+        }
       }
     },
     onError: (_error, _variables, context) => {
@@ -204,6 +275,109 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (isOnline) {
         queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
         queryClient.invalidateQueries({ queryKey: ['drivers'] });
+      }
+    }
+  });
+
+  const approveResetRequest = useMutation({
+    onMutate: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['locations'] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
+      const previousLocations = queryClient.getQueryData<Location[]>(['locations']);
+      const targetTx = previousTransactions?.find(tx => tx.id === txId);
+
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
+        old.map(tx =>
+          tx.id === txId
+            ? { ...tx, approvalStatus: approve ? 'approved' : 'rejected', isSynced: false }
+            : tx
+        )
+      );
+
+      if (targetTx) {
+        queryClient.setQueryData(['locations'], (old: Location[] = []) =>
+          old.map(location => {
+            if (location.id !== targetTx.locationId) return location;
+            return {
+              ...location,
+              lastScore: approve ? 0 : location.lastScore,
+              resetLocked: false,
+              isSynced: false,
+            };
+          })
+        );
+      }
+
+      return { previousTransactions, previousLocations };
+    },
+    mutationFn: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      if (!isOnline) throw new Error('Reset approval requires online mode');
+      await repoApproveResetRequest(txId, approve);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+      }
+      if (context?.previousLocations !== undefined) {
+        queryClient.setQueryData(['locations'], context.previousLocations);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['locations'] });
+      }
+    }
+  });
+
+  const approvePayoutRequest = useMutation({
+    onMutate: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
+      await queryClient.cancelQueries({ queryKey: ['locations'] });
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
+      const previousLocations = queryClient.getQueryData<Location[]>(['locations']);
+      const targetTx = previousTransactions?.find(tx => tx.id === txId);
+
+      queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
+        old.map(tx =>
+          tx.id === txId
+            ? { ...tx, approvalStatus: approve ? 'approved' : 'rejected', isSynced: false }
+            : tx
+        )
+      );
+
+      if (approve && targetTx?.payoutAmount) {
+        queryClient.setQueryData(['locations'], (old: Location[] = []) =>
+          old.map(location => {
+            if (location.id !== targetTx.locationId) return location;
+            return {
+              ...location,
+              dividendBalance: Math.max(0, (location.dividendBalance || 0) - targetTx.payoutAmount!),
+              isSynced: false,
+            };
+          })
+        );
+      }
+
+      return { previousTransactions, previousLocations };
+    },
+    mutationFn: async ({ txId, approve }: { txId: string; approve: boolean }) => {
+      if (!isOnline) throw new Error('Payout approval requires online mode');
+      await repoApprovePayoutRequest(txId, approve);
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+      }
+      if (context?.previousLocations !== undefined) {
+        queryClient.setQueryData(['locations'], context.previousLocations);
+      }
+    },
+    onSettled: () => {
+      if (isOnline) {
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
+        queryClient.invalidateQueries({ queryKey: ['locations'] });
       }
     }
   });
@@ -227,7 +401,10 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     deleteLocations,
     deleteDrivers,
     updateTransaction,
+    submitTransaction,
     saveSettlement,
+    approveResetRequest,
+    approvePayoutRequest,
     logAI
   };
 }
