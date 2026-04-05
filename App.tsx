@@ -9,6 +9,7 @@ import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
 import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
+import UpdatePrompt from './shared/UpdatePrompt';
 import { AuthProvider, DataProvider, MutationProvider } from './contexts';
 import Login from './components/Login';
 import type { User } from './types';
@@ -181,6 +182,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
       <AuthProvider value={authValue}>
         <DataProvider value={dataValue}>
           <MutationProvider value={mutationValue}>
+            <UpdatePrompt lang={lang} />
             <AppRouterShell />
           </MutationProvider>
         </DataProvider>
