@@ -112,7 +112,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
       syncing: '同步中...',
       offline:  '离线',
       failed:   '同步失败·将自动重试',
-      queued:   `${Math.max(pendingCount, unsyncedCount)} 条待同步`,
+      queued:   `${pendingCount} 条待同步`,
       retry_waiting: `${retryWaitingCount} 条等待重试`,
       dead_letter: `${deadLetterCount} 条需处理`,
       synced:   relTime === 'just now' ? '刚同步' : relTime ? `${relTime}前同步` : '已同步',
@@ -121,7 +121,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
       syncing: 'Syncing...',
       offline:  'Offline',
       failed:   'Failed · Will Retry',
-      queued:   `${Math.max(pendingCount, unsyncedCount)} Pending`,
+      queued:   `${pendingCount} Pending`,
       retry_waiting: `${retryWaitingCount} Retry Waiting`,
       dead_letter: `${deadLetterCount} Needs Review`,
       synced:   relTime === 'just now' ? 'Synced just now' : relTime ? `Synced ${relTime} ago` : 'Synced',
@@ -154,7 +154,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
       {
         key: 'queued',
         label: isZh ? '待同步' : 'Queued',
-        value: Math.max(pendingCount, unsyncedCount),
+        value: pendingCount,
       },
       {
         key: 'retry',

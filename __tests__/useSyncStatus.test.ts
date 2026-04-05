@@ -32,7 +32,7 @@ beforeEach(() => {
 });
 
 describe('useSyncStatus()', () => {
-  it('returns initial state with isOnline and unsyncedCount', () => {
+  it('does not show queued state when local unsynced count exists but queue health is empty', () => {
     const { result } = renderHook(() =>
       useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 3, userId: 'u1' })
     );
@@ -40,7 +40,8 @@ describe('useSyncStatus()', () => {
     expect(result.current.unsyncedCount).toBe(3);
     expect(result.current.isSyncing).toBe(false);
     expect(result.current.syncFailed).toBe(false);
-    expect(result.current.state).toBe('queued');
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.state).toBe('synced');
   });
 
   it('isSyncing is true when mutation is pending', () => {

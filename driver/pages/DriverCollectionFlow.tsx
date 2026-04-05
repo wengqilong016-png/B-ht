@@ -20,6 +20,7 @@ import { useMutations } from '../../contexts/MutationContext';
 import { resolveCurrentDriver } from '../driverShellViewState';
 import { useQueryClient } from '@tanstack/react-query';
 import { localDB } from '../../services/localDB';
+import { getQueueHealthSummary } from '../../offlineQueue';
 
 interface DriverCollectionFlowProps {
   onRegisterMachine?: (location: Location) => Promise<void>;
@@ -101,7 +102,14 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     });
 
     if (isOnline) {
-      syncOfflineData.mutate();
+      try {
+        const queueHealth = await getQueueHealthSummary();
+        if (queueHealth.pending > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0) {
+          syncOfflineData.mutate();
+        }
+      } catch (error) {
+        console.warn('Failed to inspect queue health after submission.', error);
+      }
     }
   };
 
@@ -201,14 +209,19 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 
   // Auto-fill retention when conditions met
   useEffect(() => {
-    if (selectedLocation && draft.currentScore && draft.isOwnerRetaining && draft.ownerRetention === '') {
+    if (
+      selectedLocation &&
+      draft.currentScore &&
+      draft.isOwnerRetaining &&
+      (draft.ownerRetention === '' || (draft.ownerRetention === '0' && financeResult.commission > 0))
+    ) {
       const score = parseInt(draft.currentScore) || 0;
       const diff = Math.max(0, score - selectedLocation.lastScore);
       const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
       const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
       updateDraft({ ownerRetention: Math.floor(revenue * rate).toString() });
     }
-  }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining]);
+  }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining, draft.ownerRetention, financeResult.commission]);
 
   const handleSelectMachine = (locId: string) => {
     updateDraft({
