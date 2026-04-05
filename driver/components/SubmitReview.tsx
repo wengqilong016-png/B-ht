@@ -72,18 +72,18 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       onSubmit(transaction);
       resetSubmissionState();
       if (source === 'server') {
-        alert(lang === 'zh' ? '✅ 采集记录已保存，返回工作台。' : '✅ Collection report saved. Returning to the workbench.');
+        alert(lang === 'zh' ? '✅ 已提交到云端' : '✅ Imetumwa kwenye seva');
       } else {
         alert(
           lang === 'zh'
-            ? '✅ 离线已保存，恢复网络后会自动上传，现返回工作台。'
-            : '✅ Saved offline and queued. Returning to the workbench.'
+            ? '✅ 已加入待同步队列'
+            : '✅ Imeongezwa kwenye foleni'
         );
       }
       onReset();
     } else if (submissionState.status === 'error') {
       resetSubmissionState();
-      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Submission failed, please retry');
+      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Imeshindwa, jaribu tena');
     }
   }, [submissionState, lang, onSubmit, onReset, resetSubmissionState]);
 

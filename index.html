@@ -148,6 +148,28 @@
           navigator.serviceWorker.register('sw.js')
             .then(function(registration) {
               console.log('SW registered: ', registration);
+
+              // Detect when a new SW is installed (waiting to activate)
+              // and notify the React app so it can show an update banner.
+              function notifyUpdate(reg) {
+                if (reg.waiting) {
+                  window.dispatchEvent(new CustomEvent('sw-update-ready', { detail: { registration: reg } }));
+                }
+              }
+
+              // New SW found while page is open
+              registration.addEventListener('updatefound', function() {
+                var newWorker = registration.installing;
+                if (!newWorker) return;
+                newWorker.addEventListener('statechange', function() {
+                  if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                    notifyUpdate(registration);
+                  }
+                });
+              });
+
+              // SW already waiting when page loaded (e.g. hard refresh)
+              notifyUpdate(registration);
             })
             .catch(function(registrationError) {
               console.log('SW registration failed: ', registrationError);

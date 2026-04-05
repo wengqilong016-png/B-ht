@@ -26,6 +26,13 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Allow the app to trigger skipWaiting on demand (e.g. from an update banner).
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 self.addEventListener('fetch', (event) => {
   // Always use the network for HTML navigation requests so that a fresh
   // index.html (with the correct asset hashes) is returned after each
