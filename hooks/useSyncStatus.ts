@@ -139,9 +139,9 @@ export function useSyncStatus({
     }
   }, [refreshQueueHealth, syncMutation.isSuccess, userId]);
 
-  const pendingCount = Math.max(queueHealth.pending, unsyncedCount);
+  const pendingCount = queueHealth.pending;
   const hasQueuedEntries =
-    pendingCount > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0;
+    queueHealth.pending > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0;
 
   const state: SyncStatus['state'] = !isOnline
     ? 'offline'

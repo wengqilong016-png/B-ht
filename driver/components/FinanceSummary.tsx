@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, HandCoins, Banknote, Coins, Trophy, ChevronRight, Gift, ShieldAlert } from 'lucide-react';
+import { ArrowRight, HandCoins, Banknote, Coins, Trophy, ChevronRight, ShieldAlert } from 'lucide-react';
 import WizardStepBar from './WizardStepBar';
 import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
@@ -57,7 +57,11 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   const displayedExpenseValue = isTipExpense ? tip : expenses;
   const currentDividendBalance = Number(selectedLocation.dividendBalance || 0);
   const projectedDividendBalance = currentDividendBalance + calculations.finalRetention;
-  const displayedOwnerAmount = ownerRetention === '' ? String(calculations.commission) : ownerRetention;
+  const shouldShowComputedOwnerAmount =
+    ownerRetention === '' || (ownerRetention === '0' && calculations.commission > 0);
+  const displayedOwnerAmount = shouldShowComputedOwnerAmount
+    ? String(calculations.commission)
+    : ownerRetention;
   const parsedCurrentScore = parseInt(currentScore, 10);
   const hasNumericScore = !isNaN(parsedCurrentScore);
   const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
@@ -160,11 +164,11 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
           <p className={`text-[8px] font-black uppercase ${isOwnerRetaining ? 'text-amber-500' : 'text-emerald-500'}`}>
             {isOwnerRetaining
               ? (lang === 'zh'
-                  ? `系统建议 TZS ${calculations.commission.toLocaleString()}，本次将留存到分红余额`
-                  : `System default TZS ${calculations.commission.toLocaleString()} retained into dividend balance`)
+                  ? `默认按系统计算 TZS ${calculations.commission.toLocaleString()}，可直接修改`
+                  : `Defaulted to system amount TZS ${calculations.commission.toLocaleString()}, editable`)
               : (lang === 'zh'
-                  ? `系统建议 TZS ${calculations.commission.toLocaleString()}，本次将现场支付给商家`
-                  : `System default TZS ${calculations.commission.toLocaleString()} paid to the owner this run`)}
+                  ? `默认按系统计算 TZS ${calculations.commission.toLocaleString()}，本次支付给商家`
+                  : `Defaulted to system amount TZS ${calculations.commission.toLocaleString()} to pay the owner`)}
           </p>
           <div className={`grid grid-cols-2 gap-2 rounded-2xl border px-3 py-2 ${isOwnerRetaining ? 'border-amber-200 bg-white/70' : 'border-emerald-200 bg-white/70'}`}>
             <div>
@@ -233,6 +237,11 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             ? '司机预支已移到债务窗口处理。'
             : 'Driver advances now live in the debt window.'}
         </p>
+        {isTipExpense && (parseInt(tip) || 0) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
+          <p className="mt-2 text-[8px] font-black uppercase text-amber-700">
+            ⚠️ {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue – confirm with admin'}
+          </p>
+        )}
       </div>
 
       {/* Coin Exchange */}
@@ -247,33 +256,6 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             className="w-full text-2xl font-black bg-transparent outline-none text-emerald-900 placeholder:text-emerald-200"
             placeholder="0"
           />
-        </div>
-      </div>
-      </div>
-
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-      <div className="bg-amber-50 p-3 rounded-2xl border border-amber-100">
-        <div className="flex items-center justify-between mb-2">
-          <label className="text-[10px] font-black text-amber-600 uppercase flex items-center gap-2 tracking-widest">
-            <Gift size={13} /> {lang === 'zh' ? '现场提示' : 'Field Note'}
-          </label>
-        </div>
-        <div className="rounded-2xl border border-amber-200 bg-white/70 px-3 py-3">
-          <p className="text-[9px] font-black uppercase text-amber-700">
-            {lang === 'zh'
-              ? '小费支出已并入公账支出的第一项。'
-              : 'Tip expense is now the first company-expense option.'}
-          </p>
-          <p className="mt-2 text-[8px] font-black uppercase text-amber-500">
-            {lang === 'zh'
-              ? '司机预支请到司机自己的债务窗口处理。'
-              : 'Use the driver debt window for personal advances.'}
-          </p>
-          {isTipExpense && (parseInt(tip) || 0) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
-            <p className="mt-2 text-[8px] font-black uppercase text-amber-700">
-              ⚠️ {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue – confirm with admin'}
-            </p>
-          )}
         </div>
       </div>
 
