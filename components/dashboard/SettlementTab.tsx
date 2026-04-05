@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Calculator, CheckCircle2, Banknote, Receipt, ThumbsUp, AlertTriangle, ShieldAlert, RefreshCw, Wallet } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
+import { Calculator, CheckCircle2, Banknote, ThumbsUp, AlertTriangle, ShieldAlert, RefreshCw, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 
@@ -71,6 +71,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
+  const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const myPendingSettlements = pendingSettlements
     .filter(settlement => settlement.driverId === activeDriverId && settlement.status === 'pending')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
@@ -91,318 +92,289 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
     }
   };
 
+  // Build unified approval task list for admin view
+  type ApprovalTaskType = 'settlement' | 'expense' | 'anomaly' | 'reset' | 'payout';
+  interface ApprovalTask {
+    key: string;
+    type: ApprovalTaskType;
+    id: string;
+    driverName: string;
+    locationName: string;
+    amount: number;
+    timestamp: string;
+    severity: number;
+    /** extra data for expanded detail */
+    extra: Record<string, unknown>;
+  }
+  const approvalTasks = useMemo<ApprovalTask[]>(() => {
+    const tasks: ApprovalTask[] = [
+      ...pendingSettlements.map(s => ({
+        key: `settlement:${s.id}`,
+        type: 'settlement' as ApprovalTaskType,
+        id: s.id,
+        driverName: s.driverName ?? '',
+        locationName: lang === 'zh' ? '日结汇总' : 'Daily summary',
+        amount: s.expectedTotal,
+        timestamp: s.timestamp,
+        severity: 4,
+        extra: { settlement: s },
+      })),
+      ...anomalyTransactions.map(tx => ({
+        key: `anomaly:${tx.id}`,
+        type: 'anomaly' as ApprovalTaskType,
+        id: tx.id,
+        driverName: tx.driverName,
+        locationName: tx.locationName,
+        amount: tx.revenue,
+        timestamp: tx.timestamp,
+        severity: 3,
+        extra: { tx },
+      })),
+      ...pendingResetRequests.map(tx => ({
+        key: `reset:${tx.id}`,
+        type: 'reset' as ApprovalTaskType,
+        id: tx.id,
+        driverName: tx.driverName,
+        locationName: tx.locationName,
+        amount: tx.currentScore,
+        timestamp: tx.timestamp,
+        severity: 3,
+        extra: { tx },
+      })),
+      ...pendingExpenses.map(tx => ({
+        key: `expense:${tx.id}`,
+        type: 'expense' as ApprovalTaskType,
+        id: tx.id,
+        driverName: tx.driverName,
+        locationName: tx.locationName,
+        amount: tx.expenses,
+        timestamp: tx.timestamp,
+        severity: 2,
+        extra: { tx },
+      })),
+      ...pendingPayoutRequests.map(tx => ({
+        key: `payout:${tx.id}`,
+        type: 'payout' as ApprovalTaskType,
+        id: tx.id,
+        driverName: tx.driverName,
+        locationName: tx.locationName,
+        amount: tx.payoutAmount || 0,
+        timestamp: tx.timestamp,
+        severity: 2,
+        extra: { tx },
+      })),
+    ];
+    return tasks.sort((a, b) =>
+      b.severity !== a.severity
+        ? b.severity - a.severity
+        : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    );
+  }, [lang, pendingSettlements, anomalyTransactions, pendingResetRequests, pendingExpenses, pendingPayoutRequests]);
+
+  const TYPE_CONFIG: Record<ApprovalTaskType, { label: string; labelEn: string; pillClass: string; iconBg: string; icon: React.ReactNode }> = {
+    settlement: { label: '日结', labelEn: 'Settlement', pillClass: 'bg-amber-100 text-amber-700', iconBg: 'bg-amber-100 text-amber-700', icon: <Calculator size={14} /> },
+    anomaly:    { label: '异常', labelEn: 'Anomaly',    pillClass: 'bg-amber-50 text-amber-600',  iconBg: 'bg-amber-100 text-amber-700', icon: <ShieldAlert size={14} /> },
+    reset:      { label: '重置', labelEn: 'Reset',      pillClass: 'bg-purple-50 text-purple-600', iconBg: 'bg-purple-100 text-purple-700', icon: <RefreshCw size={14} /> },
+    expense:    { label: '费用', labelEn: 'Expense',    pillClass: 'bg-rose-50 text-rose-600',    iconBg: 'bg-rose-100 text-rose-700',  icon: <AlertTriangle size={14} /> },
+    payout:     { label: '提现', labelEn: 'Payout',     pillClass: 'bg-emerald-50 text-emerald-700', iconBg: 'bg-emerald-100 text-emerald-700', icon: <Wallet size={14} /> },
+  };
+
   return (
     <div className="space-y-4 animate-in slide-in-from-right-4">
       {isAdmin ? (
-        <div className="space-y-4">
-          {/* Part 1: Settlement Approvals */}
+        <div className="space-y-3">
+          {/* Unified approval task-flow header */}
           <div className="bg-white p-4 rounded-2xl border border-slate-200 flex justify-between items-center">
             <div>
               <h3 className="text-lg font-black text-slate-900 uppercase">{t.approvalCenter}</h3>
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                {lang === 'zh' ? '结算任务' : 'Settlement tasks'} ({pendingSettlements.length}) • {t.anomalyReview} ({anomalyTransactions.length}) • {t.resetApproval} ({pendingResetRequests.length}) • {t.payoutApproval} ({pendingPayoutRequests.length})
+                {[
+                  pendingSettlements.length > 0 && `${lang === 'zh' ? '结算' : 'Settlement'} ${pendingSettlements.length}`,
+                  anomalyTransactions.length > 0 && `${lang === 'zh' ? '异常' : 'Anomaly'} ${anomalyTransactions.length}`,
+                  pendingResetRequests.length > 0 && `${lang === 'zh' ? '重置' : 'Reset'} ${pendingResetRequests.length}`,
+                  pendingExpenses.length > 0 && `${lang === 'zh' ? '费用' : 'Expense'} ${pendingExpenses.length}`,
+                  pendingPayoutRequests.length > 0 && `${lang === 'zh' ? '提现' : 'Payout'} ${pendingPayoutRequests.length}`,
+                ].filter(Boolean).join(' • ') || (lang === 'zh' ? '暂无待处理任务' : 'No pending tasks')}
               </p>
             </div>
-            <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
+            <div className="flex items-center gap-2">
+              {approvalTasks.length > 0 && (
+                <span className="w-7 h-7 rounded-full bg-amber-500 text-white text-xs font-black flex items-center justify-center">
+                  {approvalTasks.length > 9 ? '9+' : approvalTasks.length}
+                </span>
+              )}
+              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
+            </div>
           </div>
 
-          {pendingSettlements.length === 0 ? (
+          {/* Unified task list */}
+          {approvalTasks.length === 0 ? (
             <div className="py-10 text-center bg-white rounded-2xl border border-dashed border-slate-200">
               <CheckCircle2 size={40} className="mx-auto text-emerald-200 mb-3" />
               <p className="text-xs font-black text-slate-400 uppercase tracking-widest">{t.allSettlementsProcessed}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {pendingSettlements.map(s => (
-                <div key={s.id} className={`${taskCard} border-amber-200 relative overflow-hidden`}>
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <p className="text-sm font-black text-slate-900 uppercase">{s.driverName}</p>
-                      <p className="text-[9px] font-bold text-slate-400 uppercase">{new Date(s.timestamp).toLocaleString()}</p>
-                    </div>
-                    <div className={`${pill} bg-amber-100 text-amber-700`}>{t.pendingApproval}</div>
+            <div className="space-y-2">
+              {approvalTasks.map(task => {
+                const cfg = TYPE_CONFIG[task.type];
+                const typeLabel = lang === 'zh' ? cfg.label : cfg.labelEn;
+                const isExpanded = expandedKey === task.key;
+                const isPending = pendingActionKey === task.key;
+
+                return (
+                  <div key={task.key} className={`${taskCard} overflow-hidden transition-all`}>
+                    {/* Compact row — always visible */}
+                    <button
+                      type="button"
+                      className="w-full flex items-center gap-3 text-left"
+                      onClick={() => setExpandedKey(isExpanded ? null : task.key)}
+                    >
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${cfg.iconBg}`}>
+                        {cfg.icon}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className={`${pill} ${cfg.pillClass}`}>{typeLabel}</span>
+                          <span className="text-[10px] font-black text-slate-900 truncate">{task.driverName}</span>
+                        </div>
+                        <p className="text-[9px] font-bold text-slate-400 truncate mt-0.5">{task.locationName} · {new Date(task.timestamp).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-GB')}</p>
+                      </div>
+                      <div className="flex-shrink-0 flex items-center gap-2">
+                        <span className="text-[10px] font-black text-slate-700">
+                          {task.type === 'reset' ? task.amount.toLocaleString() : `TZS ${task.amount.toLocaleString()}`}
+                        </span>
+                        {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
+                      </div>
+                    </button>
+
+                    {/* Expanded detail */}
+                    {isExpanded && (
+                      <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
+                        {task.type === 'settlement' && (() => {
+                          const s = (task.extra as { settlement: DailySettlement }).settlement;
+                          return (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-slate-50 p-3 rounded-xl">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
+                                  <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-xl">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{t.actualSubmittedLabel}</p>
+                                  <p className="text-xs font-black text-indigo-600">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
+                                </div>
+                              </div>
+                              {s.shortage !== 0 && (
+                                <div className={`p-3 rounded-xl flex items-center justify-between ${s.shortage < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                                  <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? t.shortage : t.surplus}</span>
+                                  <span className="text-xs font-black">TZS {Math.abs(s.shortage).toLocaleString()}</span>
+                                </div>
+                              )}
+                              {(s as unknown as { transferProofUrl?: string }).transferProofUrl && (
+                                <img src={(s as unknown as { transferProofUrl: string }).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
+                              )}
+                              <div className="flex gap-2">
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                              </div>
+                            </>
+                          );
+                        })()}
+
+                        {task.type === 'expense' && (() => {
+                          const tx = (task.extra as { tx: Transaction }).tx;
+                          const categoryLabel = {
+                            fuel: `⛽ ${t.fuelLabel}`, repair: `🔧 ${t.repairLabel}`, fine: `🚨 ${t.fineLabel}`,
+                            allowance: `🍽 ${t.allowanceLabel}`, salary_advance: `💰 ${t.salaryAdvanceLabel}`, other: `📋 ${t.otherLabel}`,
+                          }[tx.expenseCategory || 'other'] || `📋 ${t.otherLabel}`;
+                          return (
+                            <>
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="text-[9px] font-bold text-slate-500">{categoryLabel}</p>
+                                  <p className="text-xs font-black text-slate-900">TZS {tx.expenses.toLocaleString()}</p>
+                                </div>
+                                <div className={`${pill} ${tx.expenseType === 'private' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
+                                  {tx.expenseType === 'private' ? t.loanLabel : t.companyLabel}
+                                </div>
+                              </div>
+                              <div className="flex gap-2">
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                              </div>
+                            </>
+                          );
+                        })()}
+
+                        {task.type === 'anomaly' && (() => {
+                          const tx = (task.extra as { tx: Transaction }).tx;
+                          return (
+                            <>
+                              <div className="grid grid-cols-2 gap-2">
+                                <div className="bg-slate-50 p-2 rounded-xl">
+                                  <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'zh' ? '司机输入' : 'Driver Input'}</p>
+                                  <p className="text-xs font-black text-slate-900">{tx.currentScore}</p>
+                                </div>
+                                <div className="bg-amber-50 p-2 rounded-xl">
+                                  <p className="text-[8px] font-black text-amber-400 uppercase">{lang === 'zh' ? 'AI 识别' : 'AI Detected'}</p>
+                                  <p className="text-xs font-black text-amber-700">{tx.aiScore ?? 'N/A'}</p>
+                                </div>
+                              </div>
+                              {tx.photoUrl && (
+                                <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-24 object-cover rounded-xl border border-slate-200" />
+                              )}
+                              <div className="flex gap-2">
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                              </div>
+                            </>
+                          );
+                        })()}
+
+                        {task.type === 'reset' && (() => {
+                          const tx = (task.extra as { tx: Transaction }).tx;
+                          const loc = locationMap.get(tx.locationId);
+                          return (
+                            <>
+                              <div className="bg-slate-50 p-3 rounded-xl">
+                                <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'zh' ? '重置前当前分数' : 'Current Score (Before Reset)'}</p>
+                                <p className="text-lg font-black text-purple-700">{tx.currentScore}</p>
+                                {loc?.machineId && <p className="text-[8px] font-bold text-slate-400 mt-0.5">{loc.machineId}</p>}
+                              </div>
+                              {tx.photoUrl && (
+                                <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
+                              )}
+                              <div className="flex gap-2">
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                              </div>
+                            </>
+                          );
+                        })()}
+
+                        {task.type === 'payout' && (() => {
+                          const tx = (task.extra as { tx: Transaction }).tx;
+                          const loc = locationMap.get(tx.locationId);
+                          return (
+                            <>
+                              <div className="bg-emerald-50 p-3 rounded-xl text-center">
+                                <p className="text-[8px] font-black text-emerald-400 uppercase">{t.payoutAmount}</p>
+                                <p className="text-2xl font-black text-emerald-700">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
+                                <p className="text-[8px] font-bold text-slate-400 mt-1">{t.availableBalance}: TZS {(loc?.dividendBalance || 0).toLocaleString()}</p>
+                                {loc?.ownerName && <p className="text-[8px] font-bold text-slate-400">{t.ownerLabel}: {loc.ownerName}</p>}
+                              </div>
+                              <div className="flex gap-2">
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                              </div>
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
                   </div>
-                  <div className="grid grid-cols-2 gap-2 mb-3">
-                    <div className="bg-slate-50 p-3 rounded-xl">
-                      <p className="text-[8px] font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
-                      <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
-                    </div>
-                    <div className="bg-slate-50 p-3 rounded-xl">
-                      <p className="text-[8px] font-black text-slate-400 uppercase">{t.actualSubmittedLabel}</p>
-                      <p className="text-xs font-black text-indigo-600">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  {s.shortage !== 0 && (
-                    <div className={`p-3 rounded-xl mb-4 flex items-center justify-between ${s.shortage < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                      <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? t.shortage : t.surplus}</span>
-                      <span className="text-xs font-black">TZS {Math.abs(s.shortage).toLocaleString()}</span>
-                    </div>
-                  )}
-                  {(s as any).transferProofUrl && (
-                    <div className="mb-3">
-                      <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{t.settlementProof}</p>
-                      <img src={(s as any).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
-                    </div>
-                  )}
-                  <div className="flex gap-2">
-                        <button
-                          disabled={pendingActionKey === `settlement:${s.id}`}
-                          onClick={() => runApprovalAction(`settlement:${s.id}`, () => onReviewSettlement(s.id, 'confirmed'))}
-                          className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50"
-                        >
-                          ✓ {t.approveBtn}
-                        </button>
-                        <button
-                          disabled={pendingActionKey === `settlement:${s.id}`}
-                          onClick={() => runApprovalAction(`settlement:${s.id}`, () => onReviewSettlement(s.id, 'rejected'))}
-                          className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✗ {t.rejectBtn}
-                        </button>
-                      </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Part 2: Expense Approval Requests */}
-          {pendingExpenses.length > 0 && (
-            <div className="space-y-4">
-              <div className="bg-rose-50 p-4 rounded-2xl border border-rose-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-rose-800 uppercase">{t.expenseRequests}</h3>
-                  <p className="text-[9px] font-bold text-rose-500 uppercase">{t.expenseRequestsSubtitle} ({pendingExpenses.length})</p>
-                </div>
-                <div className="bg-rose-200 text-rose-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingExpenses.length} {t.pendingApproval}</div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {pendingExpenses.map(tx => {
-                  const driver = driverMap.get(tx.driverId);
-                  const categoryLabel = {
-                    fuel: `⛽ ${t.fuelLabel}`,
-                    repair: `🔧 ${t.repairLabel}`,
-                    fine: `🚨 ${t.fineLabel}`,
-                    allowance: `🍽 ${t.allowanceLabel}`,
-                    salary_advance: `💰 ${t.salaryAdvanceLabel}`,
-                    other: `📋 ${t.otherLabel}`,
-                  }[tx.expenseCategory || 'other'] || `📋 ${t.otherLabel}`;
-                  return (
-                    <div key={tx.id} className={`${taskCard} border-rose-100`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-rose-100 text-rose-700 rounded-xl flex items-center justify-center font-black text-xs">{driver?.name?.charAt(0) || '?'}</div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
-                            <p className="text-[8px] font-bold text-slate-400">{new Date(tx.timestamp).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <div className={`${pill} ${tx.expenseType === 'private' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
-                          {tx.expenseType === 'private' ? t.loanLabel : t.companyLabel}
-                        </div>
-                      </div>
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <p className="text-[9px] font-bold text-slate-500">{categoryLabel}</p>
-                          <p className="text-xs font-black text-slate-900">TZS {tx.expenses.toLocaleString()}</p>
-                        </div>
-                        <div className="text-[8px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-xl">{tx.locationName}</div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          disabled={pendingActionKey === `expense:${tx.id}`}
-                          onClick={() => runApprovalAction(`expense:${tx.id}`, () => onApproveExpenseRequest(tx.id, true))}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✓ {t.approveBtn}
-                        </button>
-                        <button
-                          disabled={pendingActionKey === `expense:${tx.id}`}
-                          onClick={() => runApprovalAction(`expense:${tx.id}`, () => onApproveExpenseRequest(tx.id, false))}
-                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✗ {t.rejectBtn}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Part 3: AI Anomaly Review */}
-          {anomalyTransactions.length > 0 && (
-            <div className="space-y-4">
-              <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-amber-800 uppercase flex items-center gap-2"><ShieldAlert size={16} /> {t.anomalyReview}</h3>
-                  <p className="text-[9px] font-bold text-amber-500 uppercase">{t.anomalyFlagged} ({anomalyTransactions.length})</p>
-                </div>
-                <div className="bg-amber-200 text-amber-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{anomalyTransactions.length}</div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {anomalyTransactions.map(tx => {
-                  const driver = driverMap.get(tx.driverId);
-                  return (
-                    <div key={tx.id} className={`${taskCard} border-amber-200`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-amber-100 text-amber-700 rounded-xl flex items-center justify-center font-black text-xs">{driver?.name?.charAt(0) || '?'}</div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
-                            <p className="text-[8px] font-bold text-slate-400">{tx.locationName} — {new Date(tx.timestamp).toLocaleDateString()}</p>
-                          </div>
-                        </div>
-                        <div className={`${pill} bg-amber-50 text-amber-600`}>⚠️ {t.issueStatus}</div>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 mb-3">
-                        <div className="bg-slate-50 p-2 rounded-xl">
-                          <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'zh' ? '司机输入' : 'Driver Input'}</p>
-                          <p className="text-xs font-black text-slate-900">{tx.currentScore}</p>
-                        </div>
-                        <div className="bg-amber-50 p-2 rounded-xl">
-                          <p className="text-[8px] font-black text-amber-400 uppercase">{lang === 'zh' ? 'AI 识别' : 'AI Detected'}</p>
-                          <p className="text-xs font-black text-amber-700">{tx.aiScore ?? 'N/A'}</p>
-                        </div>
-                      </div>
-                      {tx.photoUrl && (
-                        <div className="mb-3">
-                          <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-24 object-cover rounded-xl border border-slate-200" />
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          disabled={pendingActionKey === `anomaly:${tx.id}`}
-                          onClick={() => runApprovalAction(`anomaly:${tx.id}`, () => onReviewAnomalyTransaction(tx.id, true))}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✓ {t.approveBtn}
-                        </button>
-                        <button
-                          disabled={pendingActionKey === `anomaly:${tx.id}`}
-                          onClick={() => runApprovalAction(`anomaly:${tx.id}`, () => onReviewAnomalyTransaction(tx.id, false))}
-                          className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✗ {t.rejectBtn}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Part 4: Reset Approval */}
-          {pendingResetRequests.length > 0 && (
-            <div className="space-y-4">
-              <div className="bg-purple-50 p-4 rounded-2xl border border-purple-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-purple-800 uppercase flex items-center gap-2"><RefreshCw size={16} /> {t.resetApproval}</h3>
-                  <p className="text-[9px] font-bold text-purple-500 uppercase">9999 Overflow Reset Requests ({pendingResetRequests.length})</p>
-                </div>
-                <div className="bg-purple-200 text-purple-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingResetRequests.length}</div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {pendingResetRequests.map(tx => {
-                  const loc = locationMap.get(tx.locationId);
-                  return (
-                    <div key={tx.id} className={`${taskCard} border-purple-200`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-purple-100 text-purple-700 rounded-xl flex items-center justify-center font-black text-xs"><RefreshCw size={14} /></div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-900">{tx.driverName}</p>
-                            <p className="text-[8px] font-bold text-slate-400">{tx.locationName} — {loc?.machineId}</p>
-                          </div>
-                        </div>
-                        <div className={`${pill} bg-purple-50 text-purple-600`}>{t.resetApproval}</div>
-                      </div>
-                      <div className="bg-slate-50 p-3 rounded-xl mb-3">
-                        <p className="text-[8px] font-black text-slate-400 uppercase">Current Score (Before Reset)</p>
-                        <p className="text-lg font-black text-purple-700">{tx.currentScore}</p>
-                      </div>
-                      {tx.photoUrl && (
-                        <div className="mb-3">
-                          <p className="text-[8px] font-black text-slate-400 uppercase mb-1">{t.paymentProof}</p>
-                          <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
-                        </div>
-                      )}
-                      <div className="flex gap-2">
-                        <button
-                          disabled={pendingActionKey === `reset:${tx.id}`}
-                          onClick={() => runApprovalAction(`reset:${tx.id}`, () => onApproveResetRequest(tx.id, true))}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✓ {t.approveAndReset}
-                        </button>
-                        <button
-                          disabled={pendingActionKey === `reset:${tx.id}`}
-                          onClick={() => runApprovalAction(`reset:${tx.id}`, () => onApproveResetRequest(tx.id, false))}
-                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✗ {t.rejectBtn}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Part 5: Payout Approval */}
-          {pendingPayoutRequests.length > 0 && (
-            <div className="space-y-4">
-              <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100 flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-black text-emerald-800 uppercase flex items-center gap-2"><Wallet size={16} /> {t.payoutApproval}</h3>
-                  <p className="text-[9px] font-bold text-emerald-500 uppercase">{t.ownerWithdrawal} ({pendingPayoutRequests.length})</p>
-                </div>
-                <div className="bg-emerald-200 text-emerald-800 px-3 py-1 rounded-lg text-[10px] font-black uppercase">{pendingPayoutRequests.length}</div>
-              </div>
-              <div className="grid grid-cols-1 gap-3">
-                {pendingPayoutRequests.map(tx => {
-                  const loc = locationMap.get(tx.locationId);
-                  return (
-                    <div key={tx.id} className={`${taskCard} border-emerald-200`}>
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center font-black text-xs"><Wallet size={14} /></div>
-                          <div>
-                            <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>
-                            <p className="text-[8px] font-bold text-slate-400">{t.ownerLabel}: {loc?.ownerName || 'N/A'} — {t.submittedBy}: {tx.driverName}</p>
-                          </div>
-                        </div>
-                        <div className={`${pill} bg-emerald-50 text-emerald-600`}>{t.payoutApproval}</div>
-                      </div>
-                      <div className="bg-emerald-50 p-3 rounded-xl mb-3 text-center">
-                        <p className="text-[8px] font-black text-emerald-400 uppercase">{t.payoutAmount}</p>
-                        <p className="text-2xl font-black text-emerald-700">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
-                        <p className="text-[8px] font-bold text-slate-400 mt-1">
-                          {t.availableBalance}: TZS {(loc?.dividendBalance || 0).toLocaleString()}
-                        </p>
-                      </div>
-                      <div className="flex gap-2">
-                        <button
-                          disabled={pendingActionKey === `payout:${tx.id}`}
-                          onClick={() => runApprovalAction(`payout:${tx.id}`, () => onApprovePayoutRequest(tx.id, true))}
-                          className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✓ {t.approveBtn}
-                        </button>
-                        <button
-                          disabled={pendingActionKey === `payout:${tx.id}`}
-                          onClick={() => runApprovalAction(`payout:${tx.id}`, () => onApprovePayoutRequest(tx.id, false))}
-                          className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50"
-                        >
-                          ✗ {t.rejectBtn}
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                );
+              })}
             </div>
           )}
         </div>
