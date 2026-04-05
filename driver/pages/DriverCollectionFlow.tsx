@@ -285,6 +285,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         onCancel={() => setIsRegistering(false)}
         currentDriver={currentDriver}
         lang={lang}
+        existingMachineIds={locations.map((location) => location.machineId)}
       />
     );
   }

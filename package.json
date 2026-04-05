@@ -14,6 +14,7 @@
     "typecheck": "tsc --noEmit",
     "test": "jest --no-coverage --passWithNoTests",
     "test:ci": "jest --no-coverage",
+    "test:selfcheck:machine": "jest --no-coverage machineWorkflowSelfCheck",
     "test:coverage": "jest --coverage --passWithNoTests",
     "test:watch": "jest --watch --passWithNoTests",
     "cap:sync": "npx cap sync",

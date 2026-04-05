@@ -3,15 +3,17 @@ import React, { useState, useRef } from 'react';
 import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
 import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
 import { compressAndResizeImage } from '../utils/imageUtils';
+import { normalizeMachineId } from '../utils/locationWorkflow';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => Promise<void>;
   onCancel: () => void;
   currentDriver: Driver;
   lang: 'zh' | 'sw';
+  existingMachineIds?: string[];
 }
 
-const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSubmit, onCancel, currentDriver, lang }) => {
+const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSubmit, onCancel, currentDriver, lang, existingMachineIds = [] }) => {
   const [machineId, setMachineId] = useState('');
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -108,9 +110,19 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
 
   const handleSubmit = async () => {
     const resolvedGps = gps ?? resolveManualGps();
+    const normalizedMachineId = normalizeMachineId(machineId);
 
-    if (!machineId || !shopName || !area || !ownerName) {
+    if (!normalizedMachineId || !shopName || !area || !ownerName) {
       alert(lang === 'zh' ? "请填写所有带 * 的必填项。" : "Tafadhali jaza nafasi zote zenye alama ya *");
+      return;
+    }
+
+    if (existingMachineIds.some((id) => normalizeMachineId(id) === normalizedMachineId)) {
+      alert(
+        lang === 'zh'
+          ? `机器编号 ${normalizedMachineId} 已存在，请检查后再提交。`
+          : `Machine ID ${normalizedMachineId} already exists. Please use a different ID.`
+      );
       return;
     }
 
@@ -136,7 +148,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         name: shopName,
         ownerName: ownerName,
         area: area,
-        machineId: machineId,
+        machineId: normalizedMachineId,
         shopOwnerPhone: ownerPhone,
         lastScore: parseInt(initialScore) || 0,
         initialStartupDebt: debtValue,

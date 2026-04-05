@@ -56,7 +56,9 @@ export function calculateCollectionFinanceLocal(input: CollectionFinanceInput): 
   const commissionRate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
   const commission = Math.floor(revenue * commissionRate);
 
-  const finalRetention = input.ownerRetention !== '' ? parseAmount(input.ownerRetention) : commission;
+  const finalRetention = input.isOwnerRetaining
+    ? (input.ownerRetention !== '' ? parseAmount(input.ownerRetention) : commission)
+    : 0;
 
   const expenseValue = parseInt(input.expenses, 10) || 0;
   const tipValue = parseInt(input.tip, 10) || 0;

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } from 'lucide-react';
-import { Location, Driver, TRANSLATIONS } from '../../types';
+import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
+import { getLocationDeletionDiagnostics, normalizeMachineId } from '../../utils/locationWorkflow';
 
 interface SitesTabProps {
   managedLocations: Location[];
@@ -14,7 +15,10 @@ interface SitesTabProps {
   drivers: Driver[];
   locations: Location[];
   onUpdateLocations: (locations: Location[]) => Promise<void> | void;
-  onDeleteLocations?: (ids: string[]) => void;
+  onDeleteLocations?: (ids: string[]) => Promise<void> | void;
+  transactions: Transaction[];
+  pendingResetRequests: Transaction[];
+  pendingPayoutRequests: Transaction[];
   lang: 'zh' | 'sw';
 }
 
@@ -30,6 +34,9 @@ const SitesTab: React.FC<SitesTabProps> = ({
   locations,
   onUpdateLocations,
   onDeleteLocations,
+  transactions,
+  pendingResetRequests,
+  pendingPayoutRequests,
   lang,
 }) => {
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
@@ -50,6 +57,19 @@ const SitesTab: React.FC<SitesTabProps> = ({
     remainingStartupDebt: '',
   });
   const [isSavingLoc, setIsSavingLoc] = useState(false);
+  const deletionDiagnosticsById = useMemo(() => {
+    return new Map(
+      managedLocations.map((loc) => [
+        loc.id,
+        getLocationDeletionDiagnostics({
+          location: loc,
+          transactions,
+          pendingResetRequests,
+          pendingPayoutRequests,
+        }),
+      ]),
+    );
+  }, [managedLocations, pendingPayoutRequests, pendingResetRequests, transactions]);
 
   const handleEditLocation = (loc: Location) => {
     setEditingLoc(loc);
@@ -72,9 +92,26 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
   const handleSaveLocation = async () => {
     if (!editingLoc) return;
+    const normalizedMachineId = normalizeMachineId(locEditForm.machineId);
     const parsedLat = Number.parseFloat(locEditForm.latitude);
     const parsedLng = Number.parseFloat(locEditForm.longitude);
     const hasManualCoords = locEditForm.latitude.trim() !== '' || locEditForm.longitude.trim() !== '';
+
+    if (!normalizedMachineId) {
+      alert('请输入有效机器编号。\nEnter a valid machine ID.');
+      return;
+    }
+
+    const duplicateMachineExists = locations.some(
+      (location) =>
+        location.id !== editingLoc.id &&
+        normalizeMachineId(location.machineId) === normalizedMachineId,
+    );
+
+    if (duplicateMachineExists) {
+      alert(`机器编号 ${normalizedMachineId} 已存在。\nMachine ID ${normalizedMachineId} already exists.`);
+      return;
+    }
 
     if (hasManualCoords) {
       const coordsValid =
@@ -95,7 +132,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
       ...editingLoc,
       name: locEditForm.name,
       area: locEditForm.area,
-      machineId: locEditForm.machineId,
+      machineId: normalizedMachineId,
       coords: hasManualCoords
         ? { lat: parsedLat, lng: parsedLng }
         : editingLoc.coords,
@@ -120,9 +157,32 @@ const SitesTab: React.FC<SitesTabProps> = ({
     }
   };
 
-  const handleDeleteLocation = (locId: string) => {
-    if (!window.confirm('确认删除此机器点位？此操作不可撤销。\nDelete this location? This cannot be undone.')) return;
-    if (onDeleteLocations) onDeleteLocations([locId]);
+  const handleDeleteLocation = async (locId: string) => {
+    const diagnostics = deletionDiagnosticsById.get(locId);
+    if (!diagnostics) return;
+
+    if (diagnostics.blockers.length > 0) {
+      alert(
+        `当前机器还不能删除：\n- ${diagnostics.blockers.join('\n- ')}\n\nPlease clear the blockers above before deleting this machine.`,
+      );
+      return;
+    }
+
+    const warningText =
+      diagnostics.warnings.length > 0
+        ? `\n\n删除提醒：\n- ${diagnostics.warnings.join('\n- ')}`
+        : '';
+
+    if (!window.confirm(`确认删除此机器点位？此操作不可撤销。\nDelete this location? This cannot be undone.${warningText}`)) return;
+    if (!onDeleteLocations) return;
+
+    try {
+      await onDeleteLocations([locId]);
+    } catch (error) {
+      console.error('Failed to delete location:', error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`删除失败，系统拒绝了本次操作。\nDelete failed: ${message}`);
+    }
   };
 
   return (
@@ -141,6 +201,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {managedLocations.map(loc => {
             const sitePhotoUrl = loc.machinePhotoUrl || loc.ownerPhotoUrl;
+            const deletionDiagnostics = deletionDiagnosticsById.get(loc.id);
+            const deleteBlocked = (deletionDiagnostics?.blockers.length ?? 0) > 0;
             return (
             <div key={loc.id} className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
               <div className="h-36 bg-slate-100 relative overflow-hidden">
@@ -177,7 +239,14 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     )}
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => handleDeleteLocation(loc.id)} className="p-2 text-slate-300 hover:text-rose-500 bg-slate-50 rounded-xl transition-colors"><Trash2 size={13} /></button>
+                    <button
+                      onClick={() => void handleDeleteLocation(loc.id)}
+                      disabled={deleteBlocked}
+                      title={deleteBlocked ? deletionDiagnostics?.blockers.join(' | ') : 'Delete location'}
+                      className="p-2 text-slate-300 hover:text-rose-500 bg-slate-50 rounded-xl transition-colors disabled:cursor-not-allowed disabled:text-slate-200 disabled:bg-slate-100"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                     <button onClick={() => handleEditLocation(loc)} className="p-2 text-slate-400 hover:text-indigo-600 bg-slate-50 rounded-xl transition-colors"><Pencil size={13} /></button>
                   </div>
                 </div>
@@ -199,6 +268,11 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   <p className="text-[8px] font-bold text-slate-400 uppercase mt-2 truncate">Owner: {loc.ownerName}</p>
                 )}
                 <div className="mt-2 space-y-1">
+                  {deleteBlocked && (
+                    <p className="text-[8px] font-bold text-rose-500 uppercase truncate">
+                      {lang === 'zh' ? '删除被阻止' : 'Delete blocked'}: {deletionDiagnostics?.blockers[0]}
+                    </p>
+                  )}
                   {loc.createdAt && (
                     <p className="text-[8px] font-bold text-slate-400 uppercase truncate">
                       {lang === 'zh' ? '注册时间' : 'Registered'}: {new Date(loc.createdAt).toLocaleString()}
@@ -335,8 +409,9 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
             <div className="p-6 border-t border-slate-100 bg-slate-50 flex gap-3">
               <button
-                onClick={() => handleDeleteLocation(editingLoc.id)}
-                className="p-3 bg-rose-50 border border-rose-100 text-rose-500 rounded-2xl hover:bg-rose-100 transition-colors"
+                onClick={() => void handleDeleteLocation(editingLoc.id)}
+                disabled={(deletionDiagnosticsById.get(editingLoc.id)?.blockers.length ?? 0) > 0}
+                className="p-3 bg-rose-50 border border-rose-100 text-rose-500 rounded-2xl hover:bg-rose-100 transition-colors disabled:cursor-not-allowed disabled:bg-slate-100 disabled:border-slate-200 disabled:text-slate-300"
                 title="删除点位"
               >
                 <Trash2 size={16} />

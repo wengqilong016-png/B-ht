@@ -56,3 +56,6 @@ supabase/.temp/
 
 # Firebase local cache
 .firebase/
+
+# Local Codex skills and agent metadata
+.codex/

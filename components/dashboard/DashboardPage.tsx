@@ -80,7 +80,9 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave).then(() => {});
-  const onDeleteLocations = (ids: string[]) => deleteLocations.mutate(ids);
+  const onDeleteLocations = async (ids: string[]) => {
+    await deleteLocations.mutateAsync(ids);
+  };
   const onUpdateTransaction = (txId: string, updates: Partial<Transaction>) => updateTransaction.mutate({ txId, updates });
   const onCreateSettlement = async (settlement: DailySettlement) => {
     await createSettlement.mutateAsync(settlement);
@@ -325,20 +327,23 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       )}
 
       {activeTab === 'locations' && isAdmin && (
-        <SitesTab
-          managedLocations={managedLocations}
-          allAreas={allAreas}
-          siteSearch={siteSearch}
-          setSiteSearch={setSiteSearch}
+                <SitesTab
+                  managedLocations={managedLocations}
+                  allAreas={allAreas}
+                  siteSearch={siteSearch}
+                  setSiteSearch={setSiteSearch}
           siteFilterArea={siteFilterArea}
           setSiteFilterArea={setSiteFilterArea}
           driverMap={driverMap}
-          drivers={drivers}
-          locations={locations}
-          onUpdateLocations={onUpdateLocations}
-          onDeleteLocations={onDeleteLocations}
-          lang={lang}
-        />
+                  drivers={drivers}
+                  locations={locations}
+                  onUpdateLocations={onUpdateLocations}
+                  onDeleteLocations={onDeleteLocations}
+                  transactions={transactions}
+                  pendingResetRequests={pendingResetRequests}
+                  pendingPayoutRequests={pendingPayoutRequests}
+                  lang={lang}
+                />
       )}
 
       {activeTab === 'team' && isAdmin && (
