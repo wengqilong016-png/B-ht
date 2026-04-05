@@ -6,7 +6,6 @@ import {
 import { TRANSLATIONS } from '../types';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import SyncStatusPill from '../shared/SyncStatusPill';
-import DriverSyncDock from '../shared/DriverSyncDock';
 import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
@@ -105,7 +104,7 @@ const AppDriverShell: React.FC = () => {
       </aside>
 
       <div className="flex-1 flex min-w-0 flex-col overflow-hidden">
-        <header className="z-30 border-b border-slate-200 bg-white/95 backdrop-blur pt-[max(env(safe-area-inset-top),0px)]">
+        <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur pt-[max(env(safe-area-inset-top),0px)]">
           <div className="flex items-center justify-between gap-3 px-3 py-3 md:px-4">
             <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400">{t.driverWorkspace}</p>
@@ -119,10 +118,13 @@ const AppDriverShell: React.FC = () => {
               <button onClick={() => setShowAccountSettings(true)} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900 lg:hidden"><Settings size={15}/></button>
             </div>
           </div>
+          <div className="px-3 pb-3 md:hidden">
+            <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" fullWidth />
+          </div>
         </header>
 
         <main className="relative flex-1 overflow-y-auto overflow-x-hidden bg-slate-100">
-          <div className="mx-auto max-w-7xl p-3 pb-44 md:p-5 md:pb-32 lg:p-6 lg:pb-6">
+          <div className="mx-auto max-w-7xl p-3 pb-28 md:p-5 md:pb-32 lg:p-6 lg:pb-6">
             <Suspense fallback={<ShellLoadingFallback />}>
               <DriverShellViewRenderer
                 view={view}
@@ -132,9 +134,7 @@ const AppDriverShell: React.FC = () => {
           </div>
         </main>
 
-        <DriverSyncDock syncStatus={syncStatus} lang={lang} />
-
-        <nav className="lg:hidden border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur supports-[padding:max(0px)]:pb-[max(0.5rem,env(safe-area-inset-bottom))]">
+        <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 px-2 py-2 backdrop-blur supports-[padding:max(0px)]:pb-[max(0.5rem,env(safe-area-inset-bottom))] lg:hidden">
           <div className="grid grid-cols-5 gap-1">
             {DRIVER_NAV_ITEMS.map((item) => {
               const active = view === item.id;

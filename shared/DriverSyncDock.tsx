@@ -105,40 +105,57 @@ const DriverSyncDock: React.FC<DriverSyncDockProps> = ({ syncStatus, lang }) => 
   }[state];
 
   const shellColor = {
-    offline: 'border-rose-200 bg-rose-50/95',
-    syncing: 'border-indigo-200 bg-white/95',
-    failed: 'border-rose-200 bg-rose-50/95',
-    pending: 'border-amber-200 bg-amber-50/95',
-    synced: 'border-emerald-200 bg-emerald-50/95',
+    offline: 'border-rose-200/80 bg-white/92',
+    syncing: 'border-indigo-200/80 bg-white/92',
+    failed: 'border-rose-200/80 bg-white/92',
+    pending: 'border-amber-200/80 bg-white/92',
+    synced: 'border-emerald-200/80 bg-white/88',
   }[state];
+
+  const accentColor = {
+    offline: 'bg-rose-50 text-rose-600',
+    syncing: 'bg-indigo-50 text-indigo-600',
+    failed: 'bg-rose-50 text-rose-600',
+    pending: 'bg-amber-50 text-amber-600',
+    synced: 'bg-emerald-50 text-emerald-600',
+  }[state];
+
+  const isActionable = Boolean(content.cta);
+  const isQuiet = state === 'synced';
 
   return (
     <div className="pointer-events-none fixed inset-x-0 bottom-[calc(4.5rem+max(env(safe-area-inset-bottom),0px))] z-40 px-3 lg:hidden">
-      <div className={`pointer-events-auto mx-auto max-w-md rounded-2xl border shadow-[0_18px_40px_rgba(15,23,42,0.12)] backdrop-blur ${shellColor}`}>
-        <div className="flex items-center gap-3 px-3 py-3">
-          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm">
+      <div
+        className={`pointer-events-auto mx-auto rounded-2xl border shadow-[0_12px_28px_rgba(15,23,42,0.10)] backdrop-blur ${shellColor} ${
+          isQuiet ? 'max-w-[260px]' : 'max-w-sm'
+        }`}
+      >
+        <div className={`flex items-center gap-2.5 px-3 ${isQuiet ? 'py-2.5' : 'py-2.5'}`}>
+          <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-xl ${accentColor}`}>
             {icon}
           </div>
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[10px] font-black uppercase tracking-wide text-slate-900">
+            <p className="truncate text-[9px] font-black uppercase tracking-wide text-slate-900">
               {content.title}
             </p>
-            <p className="truncate text-[9px] font-bold text-slate-500">
-              {content.subtitle}
-            </p>
+            {!isQuiet && (
+              <p className="truncate text-[8px] font-bold text-slate-500">
+                {content.subtitle}
+              </p>
+            )}
           </div>
-          {content.cta ? (
+          {isActionable ? (
             <button
               type="button"
               onClick={trigger}
               disabled={!isOnline || isSyncing}
-              className="shrink-0 rounded-xl bg-slate-900 px-3 py-2 text-[9px] font-black uppercase text-white disabled:cursor-not-allowed disabled:bg-slate-300"
+              className="shrink-0 rounded-xl bg-slate-900 px-2.5 py-2 text-[8px] font-black uppercase text-white disabled:cursor-not-allowed disabled:bg-slate-300"
             >
               {content.cta}
             </button>
           ) : (
-            <div className="rounded-xl bg-white/80 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
-              {isZh ? '状态' : 'Status'}
+            <div className="rounded-xl bg-slate-100 px-2 py-1 text-[7px] font-black uppercase text-slate-500">
+              {state === 'synced' ? (isZh ? '稳定' : 'OK') : (isZh ? '状态' : 'Status')}
             </div>
           )}
         </div>
