@@ -518,6 +518,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       {activeTab === 'settlement' && (
         <SettlementTab
           isAdmin={isAdmin}
+          unsyncedCollectionsCount={unsyncedCount}
           pendingSettlements={pendingSettlements}
           pendingExpenses={pendingExpenses}
           anomalyTransactions={anomalyTransactions}

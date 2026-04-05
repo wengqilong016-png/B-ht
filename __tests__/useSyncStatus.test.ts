@@ -7,6 +7,11 @@ import { describe, it, expect, beforeEach } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import type { SyncMutationHandle } from '../hooks/useSyncStatus';
+import { getQueueHealthSummary } from '../offlineQueue';
+
+jest.mock('../offlineQueue', () => ({
+  getQueueHealthSummary: jest.fn(async () => ({ pending: 0, retryWaiting: 0, deadLetter: 0 })),
+}));
 
 const LS_KEY_PREFIX = 'bahati:lastSyncedAt';
 const EXPIRY_MS = 24 * 60 * 60 * 1000;
@@ -23,6 +28,7 @@ function makeMutation(overrides: Partial<SyncMutationHandle> = {}): SyncMutation
 
 beforeEach(() => {
   localStorage.clear();
+  (getQueueHealthSummary as jest.Mock).mockResolvedValue({ pending: 0, retryWaiting: 0, deadLetter: 0 });
 });
 
 describe('useSyncStatus()', () => {
@@ -34,6 +40,7 @@ describe('useSyncStatus()', () => {
     expect(result.current.unsyncedCount).toBe(3);
     expect(result.current.isSyncing).toBe(false);
     expect(result.current.syncFailed).toBe(false);
+    expect(result.current.state).toBe('queued');
   });
 
   it('isSyncing is true when mutation is pending', () => {
@@ -100,5 +107,39 @@ describe('useSyncStatus()', () => {
     );
     act(() => result.current.trigger());
     expect(mutate).toHaveBeenCalledTimes(1);
+  });
+
+  it('derives retry_waiting from queue health summary', async () => {
+    (getQueueHealthSummary as jest.Mock).mockResolvedValue({
+      pending: 0,
+      retryWaiting: 2,
+      deadLetter: 0,
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 2, userId: 'u6' })
+    );
+
+    await act(async () => {});
+
+    expect(result.current.retryWaitingCount).toBe(2);
+    expect(result.current.state).toBe('retry_waiting');
+  });
+
+  it('derives dead_letter from queue health summary', async () => {
+    (getQueueHealthSummary as jest.Mock).mockResolvedValue({
+      pending: 0,
+      retryWaiting: 0,
+      deadLetter: 1,
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 1, userId: 'u7' })
+    );
+
+    await act(async () => {});
+
+    expect(result.current.deadLetterCount).toBe(1);
+    expect(result.current.state).toBe('dead_letter');
   });
 });

@@ -294,8 +294,10 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     }) => {
       await queryClient.cancelQueries({ queryKey: ['dailySettlements'] });
       await queryClient.cancelQueries({ queryKey: ['drivers'] });
+      await queryClient.cancelQueries({ queryKey: ['transactions'] });
       const previousSettlements = queryClient.getQueryData<DailySettlement[]>(settlementQueryKey);
       const previousDrivers = queryClient.getQueryData<Driver[]>(['drivers']);
+      const previousTransactions = queryClient.getQueryData<Transaction[]>(transactionQueryKey);
       const targetSettlement = previousSettlements?.find(settlement => settlement.id === settlementId);
 
       queryClient.setQueryData(settlementQueryKey, (old: DailySettlement[] = []) =>
@@ -306,6 +308,20 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         )
       );
       persistQuerySnapshot<DailySettlement>(settlementQueryKey, settlementStorageKey);
+
+      if (targetSettlement?.driverId && targetSettlement.date) {
+        const nextPaymentStatus: Transaction['paymentStatus'] = status === 'confirmed' ? 'paid' : 'rejected';
+        queryClient.setQueryData(transactionQueryKey, (old: Transaction[] = []) =>
+          old.map(tx => {
+            const txDate = tx.timestamp?.slice(0, 10);
+            if (tx.type !== 'collection') return tx;
+            if (tx.driverId !== targetSettlement.driverId) return tx;
+            if (txDate !== targetSettlement.date) return tx;
+            return { ...tx, paymentStatus: nextPaymentStatus, isSynced: false };
+          })
+        );
+        persistQuerySnapshot<Transaction>(transactionQueryKey, transactionStorageKey);
+      }
 
       if (targetSettlement?.driverId && shouldApplySettlementDriverCoinUpdate(status)) {
         const nextDayStartingCoins = targetSettlement.actualCoins || 0;
@@ -318,7 +334,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         );
       }
 
-      return { previousSettlements, previousDrivers };
+      return { previousSettlements, previousDrivers, previousTransactions };
     },
     mutationFn: async ({
       settlementId,
@@ -341,6 +357,10 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         queryClient.setQueryData(settlementQueryKey, context.previousSettlements);
         persistQuerySnapshot<DailySettlement>(settlementQueryKey, settlementStorageKey);
       }
+      if (context?.previousTransactions !== undefined) {
+        queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
+        persistQuerySnapshot<Transaction>(transactionQueryKey, transactionStorageKey);
+      }
       if (context?.previousDrivers !== undefined) {
         queryClient.setQueryData(['drivers'], context.previousDrivers);
       }
@@ -349,6 +369,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (isOnline) {
         queryClient.invalidateQueries({ queryKey: ['dailySettlements'] });
         queryClient.invalidateQueries({ queryKey: ['drivers'] });
+        queryClient.invalidateQueries({ queryKey: ['transactions'] });
       }
     }
   });

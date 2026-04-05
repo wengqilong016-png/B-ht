@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { getQueueHealthSummary } from '../offlineQueue';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -16,6 +17,10 @@ export interface SyncStatus {
   isSyncing: boolean;
   syncFailed: boolean;
   unsyncedCount: number;
+  pendingCount: number;
+  retryWaitingCount: number;
+  deadLetterCount: number;
+  state: 'synced' | 'queued' | 'retry_waiting' | 'syncing' | 'failed' | 'dead_letter' | 'offline';
   /** Date of the most recent successful full sync, or null if never synced */
   lastSyncedAt: Date | null;
   trigger: () => void;
@@ -71,9 +76,23 @@ export function useSyncStatus({
   /** Auth user ID used to scope the localStorage key (prevents cross-user bleed). */
   userId?: string;
 }): SyncStatus {
+  const [queueHealth, setQueueHealth] = useState({
+    pending: 0,
+    retryWaiting: 0,
+    deadLetter: 0,
+  });
   const [lastSyncedAt, setLastSyncedAt] = useState<Date | null>(
     () => (userId ? readLastSyncedAt(userId) : null)
   );
+
+  const refreshQueueHealth = useCallback(async () => {
+    try {
+      const summary = await getQueueHealthSummary();
+      setQueueHealth(summary);
+    } catch {
+      setQueueHealth({ pending: 0, retryWaiting: 0, deadLetter: 0 });
+    }
+  }, []);
 
   // If the userId changes (e.g. a different user session without a full unmount),
   // reload lastSyncedAt from localStorage for the new user.
@@ -81,20 +100,72 @@ export function useSyncStatus({
     setLastSyncedAt(userId ? readLastSyncedAt(userId) : null);
   }, [userId]);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    const load = async () => {
+      try {
+        const summary = await getQueueHealthSummary();
+        if (!cancelled) setQueueHealth(summary);
+      } catch {
+        if (!cancelled) {
+          setQueueHealth({ pending: 0, retryWaiting: 0, deadLetter: 0 });
+        }
+      }
+    };
+
+    load();
+
+    if (unsyncedCount === 0 && !syncMutation.isPending && !syncMutation.isError) {
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    const timer = window.setInterval(load, 10_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(timer);
+    };
+  }, [syncMutation.isError, syncMutation.isPending, unsyncedCount]);
+
   // Record the timestamp each time a sync completes successfully.
   useEffect(() => {
     if (syncMutation.isSuccess) {
       const now = new Date();
       setLastSyncedAt(now);
       if (userId) writeLastSyncedAt(userId, now);
+      refreshQueueHealth();
     }
-  }, [syncMutation.isSuccess, userId]);
+  }, [refreshQueueHealth, syncMutation.isSuccess, userId]);
+
+  const pendingCount = Math.max(queueHealth.pending, unsyncedCount);
+  const hasQueuedEntries =
+    pendingCount > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0;
+
+  const state: SyncStatus['state'] = !isOnline
+    ? 'offline'
+    : syncMutation.isPending
+    ? 'syncing'
+    : queueHealth.deadLetter > 0
+    ? 'dead_letter'
+    : queueHealth.retryWaiting > 0
+    ? 'retry_waiting'
+    : syncMutation.isError
+    ? 'failed'
+    : hasQueuedEntries
+    ? 'queued'
+    : 'synced';
 
   return {
     isOnline,
     isSyncing: syncMutation.isPending,
     syncFailed: syncMutation.isError,
     unsyncedCount,
+    pendingCount,
+    retryWaitingCount: queueHealth.retryWaiting,
+    deadLetterCount: queueHealth.deadLetter,
+    state,
     lastSyncedAt,
     trigger: syncMutation.mutate,
   };

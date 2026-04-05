@@ -20,6 +20,7 @@ interface PayrollEntry {
 
 interface SettlementTabProps {
   isAdmin: boolean;
+  unsyncedCollectionsCount: number;
   pendingSettlements: DailySettlement[];
   pendingExpenses: Transaction[];
   anomalyTransactions: Transaction[];
@@ -44,6 +45,7 @@ interface SettlementTabProps {
 
 const SettlementTab: React.FC<SettlementTabProps> = ({
   isAdmin,
+  unsyncedCollectionsCount,
   pendingSettlements,
   pendingExpenses,
   anomalyTransactions,
@@ -407,6 +409,19 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
       ) : (
         // Driver view: Today's Settlement
         <div className="space-y-4 animate-in zoom-in-95">
+          {unsyncedCollectionsCount > 0 && (
+            <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
+              <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+                {lang === 'zh' ? '待同步提醒' : 'Sync Reminder'}
+              </p>
+              <p className="mt-1 text-[11px] font-bold leading-relaxed">
+                {lang === 'zh'
+                  ? `当前还有 ${unsyncedCollectionsCount} 条收款记录待同步，最新汇总可能还未完全计入。`
+                  : `${unsyncedCollectionsCount} collection records are still waiting to sync, so the latest totals may not be final yet.`}
+              </p>
+            </div>
+          )}
+
           {myPendingSettlements.length > 0 && (
             <div className="bg-amber-50 p-4 rounded-3xl border border-amber-100 space-y-3">
               <div className="flex items-center justify-between gap-3">
