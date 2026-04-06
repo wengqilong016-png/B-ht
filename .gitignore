@@ -50,6 +50,12 @@ BAHATI_DATA_BACKUP.json
 
 # Build / test cache artefacts
 coverage/
+test-results/
+playwright-report/
+
+# Android keystore files — never commit signing keys
+*.keystore
+*.jks
 
 # Supabase local dev temp files
 supabase/.temp/
