@@ -68,3 +68,63 @@ describe('i18n — t() helper', () => {
     expect(t('sw', unknownKey)).toBe(unknownKey);
   });
 });
+
+describe('i18n — driver-component required keys', () => {
+  /**
+   * These keys are used directly by ReadingCapture.tsx and SubmitReview.tsx via
+   * `const t = TRANSLATIONS[lang]`. If any key is missing, the UI renders blank
+   * text silently (no TypeScript error because TRANSLATIONS is Record<string,string>).
+   */
+  const DRIVER_REQUIRED_KEYS = [
+    // ReadingCapture & SubmitReview — GPS status badge
+    'gpsAcquiring',
+    'gpsLocked',
+    'gpsDenied',
+    'gpsTimedOut',
+    'gpsUnavailable',
+    // ReadingCapture & SubmitReview — photo badge
+    'photoReady',
+    'noPhotoYet',
+    // ReadingCapture — "Next" button label
+    'nextFinancialStep',
+    // SubmitReview — submit button / GPS acquiring label (existing but verified here)
+    'acquiringGps',
+    'confirmSubmit',
+    'saving',
+    // SubmitReview — summary labels
+    'net',
+    'cashToHandIn',
+    'score',
+    'exchange',
+    'coinStock',
+    'coinUnit',
+    'revenue',
+    'retention',
+    'expenses',
+    'paymentProof',
+  ];
+
+  it('all driver-required keys are present in sw', () => {
+    const missing = DRIVER_REQUIRED_KEYS.filter(k => !(k in TRANSLATIONS.sw));
+    expect(missing).toEqual([]);
+  });
+
+  it('all driver-required keys are present in zh', () => {
+    const missing = DRIVER_REQUIRED_KEYS.filter(k => !(k in TRANSLATIONS.zh));
+    expect(missing).toEqual([]);
+  });
+
+  it('all driver-required keys have non-empty string values in sw', () => {
+    const empty = DRIVER_REQUIRED_KEYS.filter(
+      k => typeof TRANSLATIONS.sw[k] !== 'string' || TRANSLATIONS.sw[k].trim() === '',
+    );
+    expect(empty).toEqual([]);
+  });
+
+  it('all driver-required keys have non-empty string values in zh', () => {
+    const empty = DRIVER_REQUIRED_KEYS.filter(
+      k => typeof TRANSLATIONS.zh[k] !== 'string' || TRANSLATIONS.zh[k].trim() === '',
+    );
+    expect(empty).toEqual([]);
+  });
+});
