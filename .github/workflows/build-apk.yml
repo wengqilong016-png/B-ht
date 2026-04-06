@@ -75,27 +75,31 @@ jobs:
             rm android/app/bahati.keystore
           else
             echo "Keystore decoded: ${KEYSTORE_SIZE} bytes"
+            # Verify Java can read the keystore directly
+            if keytool -list \
+                -keystore android/app/bahati.keystore \
+                -storepass "${KEYSTORE_PASSWORD}" \
+                -storetype PKCS12 -noprompt 2>/dev/null; then
+              echo "Keystore is Java-compatible, no conversion needed."
+            else
+              echo "Keystore needs conversion — applying OpenSSL legacy re-encode..."
+              openssl pkcs12 \
+                -in android/app/bahati.keystore \
+                -passin "pass:${KEYSTORE_PASSWORD}" \
+                -passout "pass:${KEYSTORE_PASSWORD}" \
+                -out android/app/bahati-compat.keystore \
+                -legacy 2>/dev/null \
+              || openssl pkcs12 \
+                -in android/app/bahati.keystore \
+                -passin "pass:${KEYSTORE_PASSWORD}" \
+                -passout "pass:${KEYSTORE_PASSWORD}" \
+                -out android/app/bahati-compat.keystore
+              mv android/app/bahati-compat.keystore android/app/bahati.keystore
+              echo "Keystore converted."
+            fi
+            echo "KEYSTORE_FILE=bahati.keystore" >> "$GITHUB_ENV"
             echo "SIGNING_AVAILABLE=true" >> "$GITHUB_ENV"
           fi
-        shell: bash
-
-      - name: Convert keystore to Java-compatible format
-        if: (github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/')) && env.SIGNING_AVAILABLE == 'true'
-        run: |
-          openssl pkcs12 \
-            -in android/app/bahati.keystore \
-            -passin "pass:${KEYSTORE_PASSWORD}" \
-            -passout "pass:${KEYSTORE_PASSWORD}" \
-            -out android/app/bahati-compat.keystore \
-            -legacy 2>/dev/null \
-          || openssl pkcs12 \
-            -in android/app/bahati.keystore \
-            -passin "pass:${KEYSTORE_PASSWORD}" \
-            -passout "pass:${KEYSTORE_PASSWORD}" \
-            -out android/app/bahati-compat.keystore
-          mv android/app/bahati-compat.keystore android/app/bahati.keystore
-          echo "Keystore converted successfully."
-          echo "KEYSTORE_FILE=bahati.keystore" >> "$GITHUB_ENV"
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         shell: bash
