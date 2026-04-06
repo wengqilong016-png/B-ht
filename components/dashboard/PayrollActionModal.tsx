@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { X, Receipt, Wallet, Ban } from 'lucide-react';
 import { persistEvidencePhotoUrl } from '../../services/evidenceStorage';
 import { TRANSLATIONS, type MonthlyPayroll } from '../../types';
+import { useToast } from '../../contexts/ToastContext';
 
 type PayrollActionMode = 'create' | 'pay' | 'cancel';
 
@@ -68,6 +69,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
   onSubmit,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { showToast } = useToast();
   const [note, setNote] = useState(record?.note || '');
   const [paymentMethod, setPaymentMethod] = useState<MonthlyPayroll['paymentMethod']>(
     record?.paymentMethod || 'bank_transfer',
@@ -103,7 +105,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
       setProofPreview(dataUrl);
     } catch (error) {
       console.error('Failed to preview payroll proof.', error);
-      alert(lang === 'zh' ? '❌ 凭证预览失败，请重试。' : '❌ Failed to preview payment proof. Please retry.');
+      showToast(lang === 'zh' ? '凭证预览失败，请重试。' : 'Failed to preview payment proof. Please retry.', 'error');
       setProofFile(null);
       setProofPreview(record?.paymentProofUrl || null);
     }
@@ -122,7 +124,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
         });
       } catch (error) {
         console.error('Failed to upload payroll proof.', error);
-        alert(lang === 'zh' ? '❌ 工资凭证上传失败，请重试。' : '❌ Failed to upload payroll proof. Please retry.');
+        showToast(lang === 'zh' ? '工资凭证上传失败，请重试。' : 'Failed to upload payroll proof. Please retry.', 'error');
         return;
       } finally {
         setIsUploading(false);

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ArrowRight, Wallet } from 'lucide-react';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { createPayoutRequestTransaction } from '../../utils/transactionBuilder';
+import { useToast } from '../../contexts/ToastContext';
 
 interface PayoutRequestProps {
   location: Location;
@@ -17,6 +18,7 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
   location, currentDriver, lang, isOnline, gpsCoords, onSubmit, onCancel,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { showToast } = useToast();
   const [payoutAmount, setPayoutAmount] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -27,11 +29,11 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
 
   const handleSubmitPayoutRequest = async () => {
     if (!payoutAmount || isNaN(parsedPayoutAmount) || parsedPayoutAmount <= 0) {
-      alert(lang === 'zh' ? '❌ 请输入有效提现金额' : '❌ Enter a valid payout amount!');
+      showToast(lang === 'zh' ? '请输入有效提现金额' : 'Enter a valid payout amount!', 'warning');
       return;
     }
     if (parsedPayoutAmount > availableDividend) {
-      alert(lang === 'zh' ? `❌ 提现金额超过可用余额 (TZS ${availableDividend.toLocaleString()})` : `❌ Amount exceeds available balance (TZS ${availableDividend.toLocaleString()})`);
+      showToast(lang === 'zh' ? `提现金额超过可用余额 (TZS ${availableDividend.toLocaleString()})` : `Amount exceeds available balance (TZS ${availableDividend.toLocaleString()})`, 'error');
       return;
     }
 
@@ -50,10 +52,10 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
     try {
       setIsSubmitting(true);
       await onSubmit(tx);
-      alert(lang === 'zh' ? '✅ 提现申请已提交，等待老板审批' : '✅ Payout request submitted, awaiting approval');
+      showToast(lang === 'zh' ? '提现申请已提交，等待老板审批' : 'Payout request submitted, awaiting approval', 'success');
     } catch (error) {
       console.error('Payout request submission failed', error);
-      alert(lang === 'zh' ? '❌ 提现申请提交失败，请重试' : '❌ Payout request submission failed, please retry');
+      showToast(lang === 'zh' ? '提现申请提交失败，请重试' : 'Payout request submission failed, please retry', 'error');
     } finally {
       setIsSubmitting(false);
     }

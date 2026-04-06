@@ -11,6 +11,8 @@ import { NotificationProvider } from './notifications/NotificationProvider';
 import AppRouterShell from './shared/AppRouterShell';
 import UpdatePrompt from './shared/UpdatePrompt';
 import { AuthProvider, DataProvider, MutationProvider } from './contexts';
+import { ToastProvider } from './contexts/ToastContext';
+import { ConfirmProvider } from './contexts/ConfirmContext';
 import Login from './components/Login';
 import type { User } from './types';
 
@@ -225,7 +227,11 @@ const App: React.FC = () => {
 export default function AppWithBoundary() {
   return (
     <ErrorBoundary>
-      <App />
+      <ToastProvider>
+        <ConfirmProvider>
+          <App />
+        </ConfirmProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 }

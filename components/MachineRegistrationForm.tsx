@@ -4,6 +4,7 @@ import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building
 import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
 import { compressAndResizeImage } from '../utils/imageUtils';
 import { normalizeMachineId } from '../utils/locationWorkflow';
+import { useToast } from '../contexts/ToastContext';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => Promise<void>;
@@ -14,6 +15,7 @@ interface MachineRegistrationFormProps {
 }
 
 const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSubmit, onCancel, currentDriver, lang, existingMachineIds = [] }) => {
+  const { showToast } = useToast();
   const [machineId, setMachineId] = useState('');
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -55,10 +57,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const fetchGps = () => {
     setIsGpsLoading(true);
     if (!navigator.geolocation) {
-      alert(
+      showToast(
         lang === 'zh'
           ? '当前浏览器不支持 GPS，请改用手动填写经纬度。'
-          : 'Kifaa hiki hakiungi mkono GPS. Tumia kuandika latitude/longitude kwa mkono.'
+          : 'Kifaa hiki hakiungi mkono GPS. Tumia kuandika latitude/longitude kwa mkono.',
+        'warning',
       );
       setIsGpsLoading(false);
       return;
@@ -75,7 +78,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         const message = lang === 'zh'
           ? `GPS 获取失败：${err.message || '请检查定位权限，或改用手动坐标。'}`
           : `GPS imeshindwa: ${err.message || 'Angalia ruhusa za location au tumia koordineti za mkono.'}`;
-        alert(message); 
+        showToast(message, 'error');
         setIsGpsLoading(false); 
       },
       { enableHighAccuracy: true, timeout: 10000 }
@@ -85,7 +88,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const applyManualGps = () => {
     const manualGps = resolveManualGps();
     if (!manualGps) {
-      alert(lang === 'zh' ? '请输入有效的纬度/经度坐标。' : 'Weka latitude na longitude sahihi.');
+      showToast(lang === 'zh' ? '请输入有效的纬度/经度坐标。' : 'Weka latitude na longitude sahihi.', 'warning');
       return;
     }
 
@@ -113,24 +116,26 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
     const normalizedMachineId = normalizeMachineId(machineId);
 
     if (!normalizedMachineId || !shopName || !area || !ownerName) {
-      alert(lang === 'zh' ? "请填写所有带 * 的必填项。" : "Tafadhali jaza nafasi zote zenye alama ya *");
+      showToast(lang === 'zh' ? '请填写所有带 * 的必填项。' : 'Tafadhali jaza nafasi zote zenye alama ya *', 'warning');
       return;
     }
 
     if (existingMachineIds.some((id) => normalizeMachineId(id) === normalizedMachineId)) {
-      alert(
+      showToast(
         lang === 'zh'
           ? `机器编号 ${normalizedMachineId} 已存在，请检查后再提交。`
-          : `Machine ID ${normalizedMachineId} already exists. Please use a different ID.`
+          : `Machine ID ${normalizedMachineId} already exists. Please use a different ID.`,
+        'error',
       );
       return;
     }
 
     if (!resolvedGps) {
-      alert(
+      showToast(
         lang === 'zh'
           ? '请获取 GPS，或手动填写有效经纬度后直接提交。'
-          : 'Pata GPS au andika latitude/longitude sahihi kabla ya kutuma.'
+          : 'Pata GPS au andika latitude/longitude sahihi kabla ya kutuma.',
+        'warning',
       );
       return;
     }
@@ -171,10 +176,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
       setIsSuccess(true);
     } catch (error) {
       console.error('Machine registration failed:', error);
-      alert(
+      showToast(
         lang === 'zh'
           ? '机器注册失败，数据还没有保存到系统。请检查网络后重试。'
-          : 'Usajili wa mashine umeshindikana. Data haijahifadhiwa kwenye mfumo. Tafadhali jaribu tena.'
+          : 'Usajili wa mashine umeshindikana. Data haijahifadhiwa kwenye mfumo. Tafadhali jaribu tena.',
+        'error',
       );
     } finally {
       setIsSubmitting(false);

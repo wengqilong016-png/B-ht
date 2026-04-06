@@ -3,6 +3,7 @@ import { ArrowRight, RefreshCw, Camera, CheckCircle2 } from 'lucide-react';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
 import { createResetRequestTransaction } from '../../utils/transactionBuilder';
+import { useToast } from '../../contexts/ToastContext';
 
 interface ResetRequestProps {
   location: Location;
@@ -18,6 +19,7 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
   location, currentDriver, lang, isOnline, gpsCoords, onSubmit, onCancel,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { showToast } = useToast();
   const [resetPhotoData, setResetPhotoData] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const resetFileRef = useRef<HTMLInputElement>(null);
@@ -36,7 +38,7 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
 
   const handleSubmitResetRequest = async () => {
     if (!resetPhotoData) {
-      alert(lang === 'zh' ? '❌ 请拍照当前分数照片' : '❌ Photo of current score required!');
+      showToast(lang === 'zh' ? '请拍照当前分数照片' : 'Photo of current score required!', 'warning');
       return;
     }
 
@@ -52,10 +54,10 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
     try {
       setIsSubmitting(true);
       await onSubmit(tx);
-      alert(lang === 'zh' ? '✅ 重置申请已提交，等待老板审批' : '✅ Reset request submitted, awaiting approval');
+      showToast(lang === 'zh' ? '重置申请已提交，等待老板审批' : 'Reset request submitted, awaiting approval', 'success');
     } catch (error) {
       console.error('Reset request submission failed', error);
-      alert(lang === 'zh' ? '❌ 重置申请提交失败，请重试' : '❌ Reset request submission failed, please retry');
+      showToast(lang === 'zh' ? '重置申请提交失败，请重试' : 'Reset request submission failed, please retry', 'error');
     } finally {
       setIsSubmitting(false);
     }

@@ -3,6 +3,8 @@ import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } f
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { getLocationDeletionDiagnostics, normalizeMachineId } from '../../utils/locationWorkflow';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface SitesTabProps {
   managedLocations: Location[];
@@ -41,6 +43,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
   isOnline,
   lang,
 }) => {
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
   const [viewingPhotoLoc, setViewingPhotoLoc] = useState<Location | null>(null);
   const [locEditForm, setLocEditForm] = useState({
@@ -100,7 +104,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     const hasManualCoords = locEditForm.latitude.trim() !== '' || locEditForm.longitude.trim() !== '';
 
     if (!normalizedMachineId) {
-      alert('请输入有效机器编号。\nEnter a valid machine ID.');
+      showToast('请输入有效机器编号。\nEnter a valid machine ID.', 'warning');
       return;
     }
 
@@ -111,7 +115,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     );
 
     if (duplicateMachineExists) {
-      alert(`机器编号 ${normalizedMachineId} 已存在。\nMachine ID ${normalizedMachineId} already exists.`);
+      showToast(`机器编号 ${normalizedMachineId} 已存在。\nMachine ID ${normalizedMachineId} already exists.`, 'error');
       return;
     }
 
@@ -123,7 +127,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
         Math.abs(parsedLng) <= 180;
 
       if (!coordsValid) {
-        alert('请输入有效的 Latitude / Longitude 坐标。\nEnter valid latitude / longitude coordinates.');
+        showToast('请输入有效的 Latitude / Longitude 坐标。\nEnter valid latitude / longitude coordinates.', 'warning');
         return;
       }
     }
@@ -151,10 +155,11 @@ const SitesTab: React.FC<SitesTabProps> = ({
     try {
       await onUpdateLocations(locations.map(l => l.id === updated.id ? updated : l));
       setEditingLoc(null);
+      showToast(lang === 'zh' ? '点位已保存' : 'Location saved', 'success');
     } catch (error) {
       console.error('Failed to save location changes:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      alert(`点位保存失败，未写入系统。\nFailed to save location changes: ${message}`);
+      showToast(`点位保存失败，未写入系统。\nFailed to save: ${message}`, 'error');
     } finally {
       setIsSavingLoc(false);
     }
@@ -162,10 +167,11 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
   const handleDeleteLocation = async (locId: string) => {
     if (!isOnline) {
-      alert(
+      showToast(
         lang === 'zh'
-          ? '⚠️ 当前处于离线状态，无法删除机器。请联网后再操作。'
-          : '⚠️ You are offline. Cannot delete a machine while offline. Please reconnect and try again.',
+          ? '当前处于离线状态，无法删除机器。请联网后再操作。'
+          : 'You are offline. Cannot delete a machine while offline. Please reconnect.',
+        'warning',
       );
       return;
     }
@@ -173,9 +179,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     if (!diagnostics) return;
 
     if (diagnostics.blockers.length > 0) {
-      alert(
-        `当前机器还不能删除：\n- ${diagnostics.blockers.join('\n- ')}\n\nPlease clear the blockers above before deleting this machine.`,
-      );
+      showToast(`当前机器还不能删除：${diagnostics.blockers[0]}`, 'error');
       return;
     }
 
@@ -184,15 +188,22 @@ const SitesTab: React.FC<SitesTabProps> = ({
         ? `\n\n删除提醒：\n- ${diagnostics.warnings.join('\n- ')}`
         : '';
 
-    if (!window.confirm(`确认删除此机器点位？此操作不可撤销。\nDelete this location? This cannot be undone.${warningText}`)) return;
-    if (!onDeleteLocations) return;
+    const ok = await confirm({
+      title: lang === 'zh' ? '确认删除机器点位' : 'Confirm Delete Location',
+      message: `此操作不可撤销。\nDelete this location? This cannot be undone.${warningText}`,
+      confirmLabel: lang === 'zh' ? '确认删除' : 'Delete',
+      cancelLabel: lang === 'zh' ? '取消' : 'Cancel',
+      destructive: true,
+    });
+    if (!ok || !onDeleteLocations) return;
 
     try {
       await onDeleteLocations([locId]);
+      showToast(lang === 'zh' ? '机器已删除' : 'Location deleted', 'success');
     } catch (error) {
       console.error('Failed to delete location:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      alert(`删除失败，系统拒绝了本次操作。\nDelete failed: ${message}`);
+      showToast(`删除失败，系统拒绝了本次操作。\nDelete failed: ${message}`, 'error');
     }
   };
 

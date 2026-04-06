@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Calculator, CheckCircle2, Banknote, ThumbsUp, AlertTriangle, ShieldAlert, RefreshCw, Wallet, ChevronDown, ChevronUp } from 'lucide-react';
 import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
+import { useToast } from '../../contexts/ToastContext';
 
 const taskCard = 'bg-white rounded-2xl border p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]';
 const pill = 'inline-flex items-center rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wide';
@@ -70,6 +71,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   lang,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { showToast } = useToast();
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
@@ -92,10 +94,11 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 
   const runApprovalAction = async (actionKey: string, action: () => Promise<void>) => {
     if (!isOnline) {
-      alert(
+      showToast(
         lang === 'zh'
-          ? '⚠️ 当前处于离线状态，审批操作需要联网才能进行。'
-          : '⚠️ You are offline. Approval actions require an internet connection.',
+          ? '当前处于离线状态，审批操作需要联网才能进行。'
+          : 'You are offline. Approval actions require an internet connection.',
+        'warning',
       );
       return;
     }
@@ -104,7 +107,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
       await action();
     } catch (error) {
       console.error('Approval action failed.', error);
-      alert(lang === 'zh' ? '❌ 审批失败，请重试。' : '❌ Approval failed. Please retry.');
+      showToast(lang === 'zh' ? '审批失败，请重试。' : 'Approval failed. Please retry.', 'error');
     } finally {
       setPendingActionKey(current => (current === actionKey ? null : current));
     }
@@ -572,12 +575,12 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 };
                 try {
                   await onCreateSettlement(settlement);
-                  alert(lang === 'zh' ? '✅ 结算已提交，等待审批。' : '✅ Settlement submitted. Waiting for approval.');
+                  showToast(lang === 'zh' ? '结算已提交，等待审批。' : 'Settlement submitted. Waiting for approval.', 'success');
                   setActualCash('');
                   setActualCoins('');
                 } catch (error) {
                   console.error('Settlement submission failed.', error);
-                  alert(lang === 'zh' ? '❌ 结算提交失败，请重试。' : '❌ Settlement submission failed. Please retry.');
+                  showToast(lang === 'zh' ? '结算提交失败，请重试。' : 'Settlement submission failed. Please retry.', 'error');
                 } finally {
                   setPendingActionKey(current => (current === 'driver:settlement-submit' ? null : current));
                 }

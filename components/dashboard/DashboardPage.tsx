@@ -21,6 +21,8 @@ import {
   fetchMonthlyPayrolls,
   markMonthlyPayrollPaid,
 } from '../../repositories/monthlyPayrollRepository';
+import { useToast } from '../../contexts/ToastContext';
+import PageErrorBoundary from '../PageErrorBoundary';
 
 export interface DashboardProps {
   onNavigate?: (view: any) => void;
@@ -110,6 +112,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const isAdmin = currentUser.role === 'admin';
   const activeDriverId = currentUser.driverId ?? currentUser.id;
   const todayStr = getTodayLocalDate();
+  const { showToast } = useToast();
   const [pendingPayrollAction, setPendingPayrollAction] = useState<string | null>(null);
   const [payrollModalState, setPayrollModalState] = useState<PayrollModalState | null>(null);
 
@@ -214,7 +217,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       return true;
     } catch (error) {
       console.error('Payroll action failed.', error);
-      alert(lang === 'zh' ? '❌ 工资操作失败，请重试。' : '❌ Payroll action failed. Please retry.');
+      showToast(lang === 'zh' ? '工资操作失败，请重试。' : 'Payroll action failed. Please retry.', 'error');
       return false;
     } finally {
       setPendingPayrollAction(current => (current === actionKey ? null : current));
@@ -297,6 +300,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       />
 
       {activeTab === 'overview' && isAdmin && (
+        <PageErrorBoundary name="总览">
         <OverviewTab
           bossStats={bossStats}
           todayDriverStats={todayDriverStats}
@@ -310,9 +314,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           lang={lang}
           onOpenTab={(tab) => setActiveTab(tab)}
         />
+        </PageErrorBoundary>
       )}
 
       {activeTab === 'tracking' && isAdmin && (
+        <PageErrorBoundary name="追踪">
         <TrackingTab
           trackingDriverCards={trackingDriverCards}
           trackingOverview={trackingOverview}
@@ -326,9 +332,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           onUpdateLocations={onUpdateLocations}
           lang={lang}
         />
+        </PageErrorBoundary>
       )}
 
       {activeTab === 'locations' && isAdmin && (
+        <PageErrorBoundary name="机器管理">
                 <SitesTab
                   managedLocations={managedLocations}
                   allAreas={allAreas}
@@ -347,9 +355,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                   isOnline={isOnline}
                   lang={lang}
                 />
+        </PageErrorBoundary>
       )}
 
       {activeTab === 'team' && isAdmin && (
+        <PageErrorBoundary name="司机管理">
         <div className="space-y-6 animate-in fade-in">
           <DriverManagement />
           {/* Payroll section merged into fleet tab */}
@@ -521,9 +531,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
             </div>
           </div>
         </div>
+        </PageErrorBoundary>
       )}
 
       {activeTab === 'settlement' && (
+        <PageErrorBoundary name="结算">
         <SettlementTab
           isAdmin={isAdmin}
           unsyncedCollectionsCount={unsyncedCount}
@@ -549,9 +561,11 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           isOnline={isOnline}
           lang={lang}
         />
+        </PageErrorBoundary>
       )}
 
       {activeTab === 'ai-logs' && isAdmin && (
+        <PageErrorBoundary name="AI日志">
         <AiLogsTab
           filteredAiLogs={filteredAiLogs}
           aiLogSearch={aiLogSearch}
@@ -560,6 +574,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           setAiLogTypeFilter={setAiLogTypeFilter}
           lang={lang}
         />
+        </PageErrorBoundary>
       )}
     </div>
   );

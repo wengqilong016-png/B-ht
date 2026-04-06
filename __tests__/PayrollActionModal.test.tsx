@@ -2,6 +2,7 @@ import React from 'react';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import PayrollActionModal from '../components/dashboard/PayrollActionModal';
+import { ToastProvider } from '../contexts/ToastContext';
 
 const mockPersistEvidencePhotoUrl: jest.Mock = jest.fn();
 const asMockResult = <T,>(value: T) => value as never;
@@ -32,6 +33,7 @@ function renderModal(
   const onClose = jest.fn();
 
   const rendered = render(
+    <ToastProvider>
     <PayrollActionModal
       mode="pay"
       driver={defaultDriver}
@@ -64,7 +66,8 @@ function renderModal(
       onClose={onClose}
       onSubmit={onSubmit}
       {...overrides}
-    />,
+    />
+    </ToastProvider>,
   );
 
   return { ...rendered, onSubmit, onClose };
@@ -73,12 +76,6 @@ function renderModal(
 describe('PayrollActionModal', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    const alertMock = jest.fn();
-    Object.defineProperty(window, 'alert', {
-      writable: true,
-      value: alertMock,
-    });
-    (global as unknown as { alert: typeof alertMock }).alert = alertMock;
 
     (global as unknown as { FileReader: unknown }).FileReader = class {
       public result: string | null = 'data:image/jpeg;base64,ZmFrZQ==';
@@ -143,7 +140,7 @@ describe('PayrollActionModal', () => {
     });
   });
 
-  it('alerts and does not submit when proof upload fails', async () => {
+  it('shows a toast and does not submit when proof upload fails', async () => {
     mockPersistEvidencePhotoUrl.mockRejectedValue(asMockResult(new Error('upload failed')));
     const { container, onSubmit } = renderModal();
 
@@ -156,7 +153,7 @@ describe('PayrollActionModal', () => {
     fireEvent.click(screen.getByRole('button', { name: '确认支付' }));
 
     await waitFor(() => {
-      expect(window.alert).toHaveBeenCalledWith('❌ 工资凭证上传失败，请重试。');
+      expect(screen.getByText('工资凭证上传失败，请重试。')).toBeTruthy();
     });
     expect(onSubmit).not.toHaveBeenCalled();
   });

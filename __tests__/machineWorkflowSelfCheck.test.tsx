@@ -4,6 +4,16 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { Driver, Location, Transaction } from '../types';
 import MachineRegistrationForm from '../components/MachineRegistrationForm';
 import SitesTab from '../components/dashboard/SitesTab';
+import { ToastProvider } from '../contexts/ToastContext';
+import { ConfirmProvider } from '../contexts/ConfirmContext';
+
+function withProviders(ui: React.ReactElement) {
+  return (
+    <ToastProvider>
+      <ConfirmProvider>{ui}</ConfirmProvider>
+    </ToastProvider>
+  );
+}
 
 function makeDriver(overrides: Partial<Driver> = {}): Driver {
   return {
@@ -67,25 +77,23 @@ function makeTransaction(overrides: Partial<Transaction> = {}): Transaction {
 }
 
 describe('machine workflow self-check', () => {
-  const alertSpy = jest.spyOn(window, 'alert').mockImplementation(() => {});
-  const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => true);
-
   beforeEach(() => {
-    alertSpy.mockClear();
-    confirmSpy.mockClear();
+    jest.clearAllMocks();
   });
 
   it('blocks duplicate machine registration and normalizes a valid new machine id before submit', async () => {
     const onSubmit = jest.fn<(location: Location) => Promise<void>>().mockResolvedValue(undefined);
 
     const { rerender } = render(
+      withProviders(
       <MachineRegistrationForm
         onSubmit={onSubmit}
         onCancel={() => {}}
         currentDriver={makeDriver()}
         lang="zh"
         existingMachineIds={['B1']}
-      />,
+      />
+      ),
     );
 
     fireEvent.change(screen.getByPlaceholderText('M-00X'), { target: { value: ' b1 ' } });
@@ -96,17 +104,19 @@ describe('machine workflow self-check', () => {
     fireEvent.change(screen.getByPlaceholderText('39.269510'), { target: { value: '39.26951' } });
     fireEvent.click(screen.getByRole('button', { name: '完成注册' }));
 
-    expect(alertSpy).toHaveBeenCalledWith('机器编号 B1 已存在，请检查后再提交。');
+    await waitFor(() => expect(screen.getByText('机器编号 B1 已存在，请检查后再提交。')).toBeTruthy());
     expect(onSubmit).not.toHaveBeenCalled();
 
     rerender(
+      withProviders(
       <MachineRegistrationForm
         onSubmit={onSubmit}
         onCancel={() => {}}
         currentDriver={makeDriver()}
         lang="zh"
         existingMachineIds={['B1']}
-      />,
+      />
+      ),
     );
 
     fireEvent.change(screen.getByPlaceholderText('M-00X'), { target: { value: ' b2 ' } });
@@ -142,6 +152,7 @@ describe('machine workflow self-check', () => {
     const onDeleteLocations = jest.fn<(ids: string[]) => Promise<void>>().mockResolvedValue(undefined);
 
     const { rerender } = render(
+      withProviders(
       <SitesTab
         managedLocations={[location]}
         allAreas={['Kariakoo']}
@@ -165,13 +176,15 @@ describe('machine workflow self-check', () => {
         ]}
         isOnline={true}
         lang="zh"
-      />,
+      />
+      ),
     );
 
     const blockedDeleteButton = screen.getByTitle(/Machine is still assigned to a driver/);
     expect((blockedDeleteButton as HTMLButtonElement).disabled).toBe(true);
 
     rerender(
+      withProviders(
       <SitesTab
         managedLocations={[makeLocation({ id: 'loc-b1-clean' })]}
         allAreas={['Kariakoo']}
@@ -189,7 +202,8 @@ describe('machine workflow self-check', () => {
         pendingPayoutRequests={[]}
         isOnline={true}
         lang="zh"
-      />,
+      />
+      ),
     );
 
     const enabledDeleteButton = screen.getByTitle('Delete location');
@@ -197,7 +211,8 @@ describe('machine workflow self-check', () => {
 
     fireEvent.click(enabledDeleteButton);
 
-    await waitFor(() => expect(confirmSpy).toHaveBeenCalled());
+    const confirmButton = await screen.findByRole('button', { name: '确认删除' });
+    fireEvent.click(confirmButton);
     await waitFor(() => expect(onDeleteLocations).toHaveBeenCalledWith(['loc-b1-clean']));
   });
 
@@ -207,6 +222,7 @@ describe('machine workflow self-check', () => {
     const onDeleteLocations = jest.fn<(ids: string[]) => Promise<void>>().mockRejectedValue(new Error('row is still referenced'));
 
     render(
+      withProviders(
       <SitesTab
         managedLocations={[location]}
         allAreas={['Kariakoo']}
@@ -224,13 +240,17 @@ describe('machine workflow self-check', () => {
         pendingPayoutRequests={[]}
         isOnline={true}
         lang="zh"
-      />,
+      />
+      ),
     );
 
     fireEvent.click(screen.getByTitle('Delete location'));
 
+    const confirmButton = await screen.findByRole('button', { name: '确认删除' });
+    fireEvent.click(confirmButton);
+
     await waitFor(() =>
-      expect(alertSpy).toHaveBeenCalledWith('删除失败，系统拒绝了本次操作。\nDelete failed: row is still referenced'),
+      expect(screen.getByText(/删除失败，系统拒绝了本次操作/)).toBeTruthy(),
     );
   });
 });

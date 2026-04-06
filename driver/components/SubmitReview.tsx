@@ -6,6 +6,8 @@ import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { extractGpsFromExif, estimateLocationFromContext } from '../../offlineQueue';
 import type { AIReviewData } from '../hooks/useCollectionDraft';
 import { useCollectionSubmission } from '../../hooks/useCollectionSubmission';
+import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 
 interface SubmitReviewProps {
   selectedLocation: Location;
@@ -59,6 +61,8 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   allTransactions, todayStr,
 }) => {
   const t = TRANSLATIONS[lang];
+  const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const parsedCurrentScore = parseInt(currentScore, 10);
   const hasNumericScore = !isNaN(parsedCurrentScore);
   const isScoreBelowLastReading = hasNumericScore && parsedCurrentScore < (selectedLocation?.lastScore ?? 0);
@@ -85,21 +89,17 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       onSubmit(transaction);
       resetSubmissionState();
       if (source === 'server') {
-        alert(lang === 'zh' ? '✅ 已提交到云端' : '✅ Imetumwa kwenye seva');
+        showToast(lang === 'zh' ? '已提交到云端' : 'Imetumwa kwenye seva', 'success');
       } else {
-        alert(
-          lang === 'zh'
-            ? '✅ 已加入待同步队列'
-            : '✅ Imeongezwa kwenye foleni'
-        );
+        showToast(lang === 'zh' ? '已加入待同步队列' : 'Imeongezwa kwenye foleni', 'success');
       }
       onReset();
     } else if (submissionState.status === 'error') {
       submittedRef.current = false;
       resetSubmissionState();
-      alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Imeshindwa, jaribu tena');
+      showToast(lang === 'zh' ? '提交失败，请重试' : 'Imeshindwa, jaribu tena', 'error');
     }
-  }, [submissionState, lang, onSubmit, onReset, resetSubmissionState]);
+  }, [submissionState, lang, onSubmit, onReset, resetSubmissionState, showToast]);
 
   const requestGps = () => {
     if (!navigator.geolocation) return;
@@ -150,38 +150,52 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     // but giving clear feedback here saves the user going through GPS flow first).
     const trimmedScore = currentScore.trim();
     if (!trimmedScore || isNaN(parseInt(trimmedScore, 10))) {
-      alert(
+      showToast(
         lang === 'zh'
-          ? '❌ 请输入有效的机器读数（纯数字）。'
-          : '❌ Please enter a valid numeric machine score.',
+          ? '请输入有效的机器读数（纯数字）。'
+          : 'Please enter a valid numeric machine score.',
+        'error',
       );
       return;
     }
     if (isScoreBelowLastReading) {
-      alert(
+      showToast(
         lang === 'zh'
-          ? `❌ 当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回核对读数或提交重置申请。`
-          : `❌ Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back to verify the reading or submit a reset request.`,
+          ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回核对读数或提交重置申请。`
+          : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back to verify the reading or submit a reset request.`,
+        'error',
       );
       return;
     }
     if (!photoData) {
-      const ok = confirm(lang === 'zh'
-        ? '⚠️ 未附加照片，照片可作为收款凭证。是否仍要提交？'
-        : '⚠️ No photo attached. A photo serves as proof of collection. Continue anyway?');
+      const ok = await confirm({
+        message: lang === 'zh'
+          ? '未附加照片，照片可作为收款凭证。是否仍要提交？'
+          : 'No photo attached. A photo serves as proof of collection. Continue anyway?',
+        confirmLabel: lang === 'zh' ? '继续提交' : 'Submit anyway',
+        cancelLabel: lang === 'zh' ? '返回添加' : 'Go back',
+      });
       if (!ok) return;
     }
-    if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? '⚠️ Coin stock insufficient, continue?' : '⚠️ Coin stock insufficient, continue?')) return;
+    if (calculations.isCoinStockNegative) {
+      const ok = await confirm({
+        message: lang === 'zh' ? '零钱库存不足，是否继续？' : 'Coin stock insufficient, continue?',
+        confirmLabel: lang === 'zh' ? '继续' : 'Continue',
+      });
+      if (!ok) return;
+    }
 
     const alreadyCollectedToday = allTransactions.some(
       tx => tx.locationId === selectedLocation.id && tx.type === 'collection' && tx.timestamp.startsWith(todayStr),
     );
     if (alreadyCollectedToday) {
-      const ok = confirm(
-        lang === 'zh'
-          ? `⚠️ 今天（${todayStr}）已对此机器提交过一次收款记录。是否确认再次提交？`
-          : `⚠️ A collection for this machine was already submitted today (${todayStr}). Are you sure you want to submit again?`,
-      );
+      const ok = await confirm({
+        message: lang === 'zh'
+          ? `今天（${todayStr}）已对此机器提交过一次收款记录。是否确认再次提交？`
+          : `A collection for this machine was already submitted today (${todayStr}). Are you sure you want to submit again?`,
+        confirmLabel: lang === 'zh' ? '确认再次提交' : 'Submit again',
+        destructive: true,
+      });
       if (!ok) return;
     }
 
@@ -196,12 +210,18 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
     const estimated = estimateLocationFromContext(gpsCoords, selectedLocation?.coords || null);
     if (estimated) {
-      const confirmEst = confirm(lang === 'zh' ? '⚠️ 无法获取GPS，将使用网点坐标估算位置。继续提交？' : '⚠️ No GPS available. Will use site coordinates as estimated location. Continue?');
+      const confirmEst = await confirm({
+        message: lang === 'zh' ? '无法获取GPS，将使用网点坐标估算位置。继续提交？' : 'No GPS available. Will use site coordinates as estimated location. Continue?',
+        confirmLabel: lang === 'zh' ? '继续' : 'Continue',
+      });
       if (confirmEst) { processSubmission(estimated, 'estimated'); return; }
       return;
     }
 
-    const confirmNoGps = confirm(lang === 'zh' ? '❌ 无GPS信号。是否仍要保存记录？（将标注为无位置）' : '❌ No GPS signal. Save record without location? (marked as offline)');
+    const confirmNoGps = await confirm({
+      message: lang === 'zh' ? '无GPS信号。是否仍要保存记录？（将标注为无位置）' : 'No GPS signal. Save record without location? (marked as offline)',
+      confirmLabel: lang === 'zh' ? '仍要保存' : 'Save anyway',
+    });
     if (confirmNoGps) { processSubmission({ lat: 0, lng: 0 }, 'none'); }
     else { requestGps(); }
   };
