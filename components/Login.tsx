@@ -48,7 +48,9 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   };
 
   useEffect(() => {
-    checkDbHealth().then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'));
+    checkDbHealth()
+      .then(isOnline => setDbStatus(isOnline ? 'online' : 'offline'))
+      .catch(() => setDbStatus('offline'));
   }, []);
 
   const fetchUserProfile = async (authUserId: string, fallbackEmail?: string) => {

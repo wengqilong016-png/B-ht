@@ -106,7 +106,13 @@ export const signInWithEmailPassword = async (email: string, password: string) =
 };
 
 export const signOutCurrentUser = async () => {
-  await supabase?.auth.signOut();
+  try {
+    await supabase?.auth.signOut();
+  } catch {
+    // Sign-out errors are non-critical: the local session is cleared by the
+    // caller regardless. Silently ignore so callers are not blocked from
+    // updating their own auth state (e.g. clearing the cached user).
+  }
 };
 
 export const updateUserEmail = async (newEmail: string) => {

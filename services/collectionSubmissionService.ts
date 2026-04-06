@@ -145,7 +145,7 @@ export async function submitCollectionV2(
     dataUsageKB:           Number(row['dataUsageKB'] ?? 120),
     aiScore:               row['aiScore'] != null ? Number(row['aiScore']) : undefined,
     isAnomaly:             Boolean(row['isAnomaly']),
-    anomalyFlag:           Boolean(row['isAnomaly']),
+    anomalyFlag:           Boolean(row['anomalyFlag'] ?? row['isAnomaly']),
     isSynced:              true,
     type:                  'collection',
     approvalStatus:        'approved',
