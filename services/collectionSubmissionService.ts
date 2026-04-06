@@ -68,19 +68,13 @@ export async function submitCollectionV2(
     return { success: false, error: 'Supabase not configured' };
   }
 
-  let persistedPhotoUrl: string | null;
-  try {
-    persistedPhotoUrl = await persistEvidencePhotoUrl(input.photoUrl, {
-      category: 'collection',
-      entityId: input.txId,
-      driverId: input.driverId,
-    });
-  } catch (error) {
-    return {
-      success: false,
-      error: error instanceof Error ? error.message : 'Evidence upload failed',
-    };
-  }
+  // persistEvidencePhotoUrl is non-blocking: on upload failure it logs a warning
+  // and returns null instead of throwing, so a Storage outage cannot block submission.
+  const persistedPhotoUrl = await persistEvidencePhotoUrl(input.photoUrl, {
+    category: 'collection',
+    entityId: input.txId,
+    driverId: input.driverId,
+  });
 
   let data: unknown;
   let error: { message: string } | null;
@@ -104,6 +98,7 @@ export async function submitCollectionV2(
       p_expense_type:      input.expenseType,
       p_expense_category:  input.expenseCategory,
       p_reported_status:   input.reportedStatus,
+      p_expense_description: input.expenseDescription ?? null,
     });
     data = result.data;
     error = result.error as { message: string } | null;
@@ -161,6 +156,9 @@ export async function submitCollectionV2(
                              : undefined,
     expenseStatus:         row['expenseStatus'] != null
                              ? (row['expenseStatus'] as Transaction['expenseStatus'])
+                             : undefined,
+    expenseDescription:    row['expenseDescription'] != null
+                             ? String(row['expenseDescription'])
                              : undefined,
   };
 

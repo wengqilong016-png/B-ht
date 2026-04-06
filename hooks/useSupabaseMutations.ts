@@ -48,19 +48,19 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     mutationFn: async () => {
       if (!isOnline || !supabase) return;
 
-      // 1. Flush offline queue (IndexedDB)
-      try {
-        await flushQueue(supabase, {
-          submitCollection: submitCollectionV2,
-          submitResetRequest: createResetRequest,
-          submitPayoutRequest: createPayoutRequest,
-        });
-        // Report queue health for fleet-wide diagnostics (driver devices only).
-        if (currentUser?.role === 'driver' && currentUser.driverId) {
-          reportQueueHealthToServer(supabase, currentUser.driverId, currentUser.name).catch(() => {});
-        }
-      } catch (e) {
-        console.warn('[Sync] OfflineQueue flush error:', e);
+      // 1. Flush offline queue (IndexedDB).
+      // Re-throw on failure so syncMutation.isError becomes true and the
+      // SyncStatusPill can show "Failed · Will Retry" instead of spinning forever.
+      await flushQueue(supabase, {
+        submitCollection: submitCollectionV2,
+        submitResetRequest: createResetRequest,
+        submitPayoutRequest: createPayoutRequest,
+      });
+
+      // Report queue health for fleet-wide diagnostics (driver devices only).
+      // Intentionally fire-and-forget — a diagnostics failure must not fail the sync.
+      if (currentUser?.role === 'driver' && currentUser.driverId) {
+        reportQueueHealthToServer(supabase, currentUser.driverId, currentUser.name).catch(() => {});
       }
 
       // 2. Sync local fallback data (from queryClient cache or localDB)

@@ -64,11 +64,20 @@ export function useSupabaseData(
   const isAuthenticated = !!userRole;
 
   // 1. Health check - High priority
-  const { data: isOnline = false } = useQuery({
+  const { data: isOnline = false, refetch: refetchHealth } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
-    refetchInterval: 45000,
+    refetchInterval: 15_000,
+    refetchOnWindowFocus: true,
   });
+
+  // Re-check connectivity immediately when the browser regains network access.
+  // navigator.onLine / window: online can be faster than the 15-second poll.
+  useEffect(() => {
+    const handleOnline = () => { void refetchHealth(); };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [refetchHealth]);
 
   // 2. Core Data: Locations & Drivers - Critical for first paint
   const { data: locations = [], isLoading: isLoadingLocs } = useQuery({

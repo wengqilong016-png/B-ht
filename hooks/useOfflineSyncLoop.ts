@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { User } from '../types';
 import { supabase } from '../supabaseClient';
+import { getQueueHealthSummary } from '../offlineQueue';
 
 /** Retry interval for background auto-sync while there are pending items. */
 const AUTO_SYNC_INTERVAL_MS = 60_000;
@@ -73,6 +74,32 @@ export function useOfflineSyncLoop({
   // Last successfully uploaded GPS position for movement throttling.
   const lastGpsRef = useRef<{ lat: number; lng: number } | null>(null);
 
+  // IDB queue health — tracks items that failed to flush and are waiting for
+  // their backoff window.  When the React Query cache shows unsyncedCount === 0
+  // (all Supabase-visible records are synced) but IDB still has pending or
+  // retry-waiting items, the auto-sync interval must still fire.
+  const [idbPendingCount, setIdbPendingCount] = useState(0);
+
+  const refreshIdbPending = useCallback(async () => {
+    try {
+      const { pending, retryWaiting } = await getQueueHealthSummary();
+      setIdbPendingCount(pending + retryWaiting);
+    } catch {
+      // IDB unavailable — treat as zero
+    }
+  }, []);
+
+  // Poll IDB queue health every 30 s (cheap local read; no network).
+  useEffect(() => {
+    void refreshIdbPending();
+    const id = setInterval(() => void refreshIdbPending(), 30_000);
+    return () => clearInterval(id);
+  }, [refreshIdbPending]);
+
+  // Combined: there is work to do if React Query cache has unsynced items OR
+  // IDB has items that haven't been flushed yet.
+  const hasPendingWork = unsyncedCount > 0 || idbPendingCount > 0;
+
   // ─── Auto-sync: trigger immediately on offline → online transition ────────
   useEffect(() => {
     const wasOffline = !prevOnlineRef.current;
@@ -80,14 +107,14 @@ export function useOfflineSyncLoop({
 
     // isSyncingRef is intentionally omitted from deps – it is a ref whose
     // .current is always up-to-date and never needs to trigger a re-run.
-    if (isOnline && wasOffline && unsyncedCount > 0 && !isSyncingRef.current) {
+    if (isOnline && wasOffline && hasPendingWork && !isSyncingRef.current) {
       syncOfflineData.mutate();
     }
-  }, [isOnline, unsyncedCount, syncOfflineData.mutate]);
+  }, [isOnline, hasPendingWork, syncOfflineData.mutate]);
 
   // ─── Auto-sync: retry every 60 s while online with pending records ────────
   useEffect(() => {
-    if (!isOnline || unsyncedCount === 0) return;
+    if (!isOnline || !hasPendingWork) return;
 
     // isSyncingRef is intentionally omitted from deps – the interval callback
     // reads ref.current directly, which is always the latest value, so there
@@ -99,7 +126,7 @@ export function useOfflineSyncLoop({
     }, AUTO_SYNC_INTERVAL_MS);
 
     return () => clearInterval(id);
-  }, [isOnline, unsyncedCount, syncOfflineData.mutate]);
+  }, [isOnline, hasPendingWork, syncOfflineData.mutate]);
 
   // ─── Service Worker offline queue flush ──────────────────────────────────
   useEffect(() => {
