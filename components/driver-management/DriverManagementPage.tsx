@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Driver, Location } from '../../types';
+import { Driver, Location, safeRandomUUID } from '../../types';
 import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
 import { useDriverManagement } from './hooks/useDriverManagement';
 import DriverSalaryModal from './DriverSalaryModal';
@@ -125,12 +125,15 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   };
 
   const handleSave = async () => {
-    if (!form.name || !form.username) {
-      alert("请填写姓名和账号 (Name and ID are required)");
+    if (!form.name) {
+      alert("请填写姓名 (Name is required)");
       return;
     }
 
     setIsSaving(true);
+
+    // Auto-generate a driver ID (UUID) if the user left the field empty.
+    const resolvedUsername = form.username.trim() || safeRandomUUID();
 
     const parseNum = (str: string) => {
       const cleanStr = str.replace(/,/g, '').trim();
@@ -143,12 +146,12 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
     const driverData = {
       name: form.name,
-      username: form.username,
+      username: resolvedUsername,
       phone: form.phone,
       dailyFloatingCoins: parseNum(form.dailyFloatingCoins),
       initialDebt: parseNum(form.initialDebt),
       vehicleInfo: { model: form.model, plate: form.plate },
-      baseSalary: parsedBaseSalary === 0 ? 300000 : parsedBaseSalary,
+      baseSalary: parsedBaseSalary,
       commissionRate: (isNaN(parsedCommRate) ? 5 : parsedCommRate) / 100,
       status: form.status
     };
@@ -199,7 +202,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
         const result = await createDriverAccount({
           email,
           password,
-          username: form.username,
+          username: resolvedUsername,
           name: form.name,
         });
 
@@ -207,7 +210,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           if (result.code === 'EMAIL_CONFLICT') {
             alert(`邮箱已被注册 / Email already registered: ${email}`);
           } else if (result.code === 'DRIVER_ID_CONFLICT') {
-            alert(`司机账号已存在 / Driver ID already exists: ${form.username}`);
+            alert(`司机账号已存在 / Driver ID already exists: ${resolvedUsername}`);
           } else {
             alert(`创建司机失败 / Failed to create driver: ${result.message}`);
           }

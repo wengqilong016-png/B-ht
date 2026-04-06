@@ -61,7 +61,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
             <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16} />} onChange={v => onChange({ phone: v })} placeholder="+255 xxx xxx xxx" />
           </div>
           <div>
-            <InputField label="司机ID DRIVER ID" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} placeholder="e.g. DRV-001" />
+            <InputField label="司机ID DRIVER ID (可选 / optional)" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} placeholder="留空则自动生成 / auto-generated if blank" />
           </div>
 
           {/* Email + Password — new driver only */}
