@@ -79,14 +79,14 @@ jobs:
         if: github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/')
         run: cd android && ./gradlew assembleRelease
         env:
-          KEYSTORE_FILE: app/bahati.keystore
+          KEYSTORE_FILE: bahati.keystore
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
 
       - name: Get version
         id: version
-        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+        run: echo "version=$(node -p 'require("./package.json").version')" >> "$GITHUB_OUTPUT"
 
       - name: Rename APK
         run: |

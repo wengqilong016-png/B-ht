@@ -51,7 +51,9 @@ const mockDb = {
   close: jest.fn(),
 };
 
-// Override global indexedDB
+// Override global indexedDB (capture original to restore later)
+const originalIndexedDB = globalThis.indexedDB;
+
 Object.defineProperty(global, 'indexedDB', {
   value: {
     open: jest.fn(() => {
@@ -65,6 +67,7 @@ Object.defineProperty(global, 'indexedDB', {
     }),
   },
   writable: true,
+  configurable: true,
 });
 
 // ── Mock Supabase client ──────────────────────────────────────────────────
@@ -95,6 +98,15 @@ beforeEach(() => {
   jest.clearAllMocks();
   idbStore.clear();
   resetFixtureCounter();
+});
+
+afterAll(() => {
+  // Restore original indexedDB to avoid cross-test coupling
+  Object.defineProperty(global, 'indexedDB', {
+    value: originalIndexedDB,
+    writable: true,
+    configurable: true,
+  });
 });
 
 describe('Offline Sync Flow (Integration)', () => {

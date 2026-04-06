@@ -12,7 +12,7 @@ import type { Location, Driver, Transaction, DailySettlement, User } from '../..
 let counter = 0;
 function uid(prefix = ''): string {
   counter += 1;
-  return `${prefix}test-${counter}-${Date.now()}`;
+  return `${prefix}test-${counter}`;
 }
 
 export function makeLocation(overrides: Partial<Location> = {}): Location {
