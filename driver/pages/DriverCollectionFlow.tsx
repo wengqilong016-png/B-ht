@@ -210,6 +210,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     const requestId = requestIdRef.current;
     calculateCollectionFinancePreview(financeInput).then(result => {
       if (requestId === requestIdRef.current) setFinanceResult(result);
+    }).catch(() => {
+      // Server preview failed — local calc already applied above, no action needed
     });
   }, [financeInput]);
 

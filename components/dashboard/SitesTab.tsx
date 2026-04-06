@@ -153,7 +153,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
       setEditingLoc(null);
     } catch (error) {
       console.error('Failed to save location changes:', error);
-      alert('点位保存失败，未写入系统。\nFailed to save location changes.');
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      alert(`点位保存失败，未写入系统。\nFailed to save location changes: ${message}`);
     } finally {
       setIsSavingLoc(false);
     }
