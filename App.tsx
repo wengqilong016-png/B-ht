@@ -7,7 +7,7 @@ import { useDevicePerformance } from './hooks/useDevicePerformance';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
-import { NotificationProvider } from './notifications/NotificationProvider';
+import { NotificationProvider } from './contexts/NotificationContext';
 import AppRouterShell from './shared/AppRouterShell';
 import UpdatePrompt from './shared/UpdatePrompt';
 import { AuthProvider, DataProvider, MutationProvider } from './contexts';

@@ -8,7 +8,7 @@ import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 
 const Dashboard = lazy(() => import('../components/dashboard/DashboardPage'));
-const CollectionForm = lazy(() => import('../components/CollectionForm'));
+const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
 const TransactionHistory = lazy(() => import('../components/TransactionHistory'));
 const DebtManager = lazy(() => import('../components/DebtManager'));
 const DriverManagement = lazy(() => import('../components/driver-management'));
@@ -41,7 +41,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
       return <DriverManagement />;
     case 'collect':
       return (
-        <CollectionForm
+        <DriverCollectionFlow
           onRegisterMachine={async (location) => {
             const newLocation: Location = { ...location, isSynced: false, assignedDriverId: activeDriverId };
             await updateLocations.mutateAsync([...locations, newLocation]);
