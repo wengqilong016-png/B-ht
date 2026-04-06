@@ -12,6 +12,7 @@ export interface CollectionDraft {
   expenses: string;
   expenseType: 'public' | 'private';
   expenseCategory: Transaction['expenseCategory'];
+  expenseDescription: string;
   coinExchange: string;
   ownerRetention: string;
   isOwnerRetaining: boolean;
@@ -38,6 +39,7 @@ const EMPTY_DRAFT: CollectionDraft = {
   expenses: '',
   expenseType: 'public',
   expenseCategory: 'tip',
+  expenseDescription: '',
   coinExchange: '',
   ownerRetention: '',
   isOwnerRetaining: true,

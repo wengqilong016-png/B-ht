@@ -32,6 +32,8 @@ interface FinanceSummaryProps {
   };
   onUpdateExpenses: (val: string) => void;
   onUpdateExpenseCategory: (val: Transaction['expenseCategory']) => void;
+  onUpdateExpenseDescription: (val: string) => void;
+  expenseDescription: string;
   onUpdateCoinExchange: (val: string) => void;
   onUpdateOwnerRetention: (val: string) => void;
   onUpdateIsOwnerRetaining: (val: boolean) => void;
@@ -48,7 +50,7 @@ interface FinanceSummaryProps {
 const FinanceSummary: React.FC<FinanceSummaryProps> = ({
   selectedLocation, lang, currentScore, expenses, expenseCategory,
   coinExchange, ownerRetention, isOwnerRetaining, tip, startupDebtDeduction, calculations,
-  onUpdateExpenses, onUpdateExpenseCategory,
+  onUpdateExpenses, onUpdateExpenseCategory, onUpdateExpenseDescription, expenseDescription,
   onUpdateCoinExchange, onUpdateOwnerRetention, onUpdateIsOwnerRetaining, onUpdateTip, onUpdateStartupDebtDeduction,
   onNext, onBack, onSwitchMachine, previewSource, nextMachine, pendingCount,
 }) => {
@@ -237,6 +239,16 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             ? '司机预支已移到债务窗口处理。'
             : 'Driver advances now live in the debt window.'}
         </p>
+        {!isTipExpense && (
+          <input
+            type="text"
+            value={expenseDescription}
+            onChange={e => onUpdateExpenseDescription(e.target.value)}
+            maxLength={80}
+            placeholder={lang === 'zh' ? '费用备注（可选）' : 'Expense note (optional)'}
+            className="mt-2 w-full bg-white border border-rose-100 rounded-btn px-3 py-2 text-[10px] font-bold text-rose-700 outline-none placeholder:text-rose-200"
+          />
+        )}
         {isTipExpense && (parseInt(tip) || 0) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
           <p className="mt-2 text-[8px] font-black uppercase text-amber-700">
             ⚠️ {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue – confirm with admin'}

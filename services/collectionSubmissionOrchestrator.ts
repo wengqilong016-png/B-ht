@@ -1,4 +1,5 @@
 import type { Driver, Location, Transaction } from '../types';
+import { CONSTANTS } from '../types';
 import { enqueueTransaction } from '../offlineQueue';
 import { createCollectionTransaction } from '../utils/transactionBuilder';
 import {
@@ -37,6 +38,7 @@ export interface OrchestrateCollectionSubmissionInput {
   expenses: string;
   expenseType: 'public' | 'private';
   expenseCategory: Transaction['expenseCategory'];
+  expenseDescription?: string;
   coinExchange: string;
   tip: string;
   draftTxId: string;
@@ -123,7 +125,7 @@ export function buildCollectionSubmissionInput(
   }
   const userScore = parsedScore;
   const recognizedScore = input.aiReviewData?.score ? parseInt(input.aiReviewData.score, 10) : undefined;
-  const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > 50 : false;
+  const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > CONSTANTS.ANOMALY_SCORE_DIFF_THRESHOLD : false;
   const reportedStatus = normalizeReportedStatus(
     input.aiReviewData?.condition,
     input.selectedLocation?.status,
@@ -153,8 +155,9 @@ export function buildCollectionSubmissionInput(
     aiScore:         recognizedScore ?? null,
     anomalyFlag:     isAnomaly,
     notes,
-    expenseType:     expenseValue > 0 ? input.expenseType : null,
-    expenseCategory: expenseValue > 0 ? input.expenseCategory : null,
+    expenseType:        expenseValue > 0 ? input.expenseType : null,
+    expenseCategory:    expenseValue > 0 ? input.expenseCategory : null,
+    expenseDescription: expenseValue > 0 && input.expenseDescription ? input.expenseDescription : undefined,
     reportedStatus,
   };
 }
@@ -253,6 +256,7 @@ export async function orchestrateCollectionSubmission(
 
     offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
     offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
+    offlineTransaction.expenseDescription = rawInput.expenseDescription;
     offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
     offlineTransaction.paymentStatus = 'pending';
     offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
@@ -309,6 +313,7 @@ export async function orchestrateCollectionSubmission(
 
   offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
   offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
+  offlineTransaction.expenseDescription = rawInput.expenseDescription;
   offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
   offlineTransaction.paymentStatus = 'pending';
   offlineTransaction.aiScore = rawInput.aiScore ?? undefined;

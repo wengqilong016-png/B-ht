@@ -18,6 +18,7 @@ interface SubmitReviewProps {
   expenses: string;
   expenseType: 'public' | 'private';
   expenseCategory: Transaction['expenseCategory'];
+  expenseDescription: string;
   coinExchange: string;
   tip: string;
   startupDebtDeduction: string;
@@ -52,7 +53,7 @@ interface SubmitReviewProps {
 
 const SubmitReview: React.FC<SubmitReviewProps> = ({
   selectedLocation, currentDriver, lang, isOnline, currentScore, photoData,
-  aiReviewData, expenses, expenseType, expenseCategory, coinExchange, tip, startupDebtDeduction, draftTxId,
+  aiReviewData, expenses, expenseType, expenseCategory, expenseDescription, coinExchange, tip, startupDebtDeduction, draftTxId,
   gpsCoords, gpsPermission, isOwnerRetaining, ownerRetention, calculations,
   onSubmit, onBack, onSwitchMachine, onReset, onContinueNext, onUpdateGps, onUpdateGpsPermission, nextMachine, pendingCount,
   allTransactions, todayStr,
@@ -131,6 +132,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       expenses,
       expenseType,
       expenseCategory,
+      expenseDescription,
       coinExchange,
       tip,
       draftTxId,
@@ -264,6 +266,16 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
             <CheckCircle2 size={9} /> {t.photoReady}
           </div>
+        </div>
+      )}
+      {!photoData && draftTxId && (
+        <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200">
+          <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
+          <p className="text-[10px] font-black text-amber-700 leading-tight">
+            {lang === 'zh'
+              ? '⚠️ 照片在刷新后丢失，请返回上一步重新拍照。'
+              : '⚠️ Photo was lost after page refresh. Please go back and retake it.'}
+          </p>
         </div>
       )}
 

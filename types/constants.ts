@@ -19,4 +19,7 @@ export const CONSTANTS = {
   IMAGE_MAX_WIDTH: 800,
   IMAGE_QUALITY: 0.6,
   STAGNANT_DAYS_THRESHOLD: 7,
+  /** Minimum absolute difference between user-entered score and AI-recognised score
+   *  to flag a transaction as anomalous. Increase to reduce false-positives. */
+  ANOMALY_SCORE_DIFF_THRESHOLD: 50,
 } as const;

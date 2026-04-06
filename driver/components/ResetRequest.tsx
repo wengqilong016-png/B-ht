@@ -8,13 +8,14 @@ interface ResetRequestProps {
   location: Location;
   currentDriver: Driver;
   lang: 'zh' | 'sw';
+  isOnline: boolean;
   gpsCoords: { lat: number; lng: number } | null;
   onSubmit: (tx: Transaction) => Promise<void>;
   onCancel: () => void;
 }
 
 const ResetRequest: React.FC<ResetRequestProps> = ({
-  location, currentDriver, lang, gpsCoords, onSubmit, onCancel,
+  location, currentDriver, lang, isOnline, gpsCoords, onSubmit, onCancel,
 }) => {
   const t = TRANSLATIONS[lang];
   const [resetPhotoData, setResetPhotoData] = useState<string | null>(null);
@@ -88,6 +89,17 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
             </div>
           </div>
         </div>
+
+        {!isOnline && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-subcard bg-amber-50 border border-amber-200">
+            <span className="text-amber-500 text-sm flex-shrink-0">📶</span>
+            <p className="text-[10px] font-black text-amber-700 leading-tight">
+              {lang === 'zh'
+                ? '当前离线 — 申请将在联网后自动同步。'
+                : 'Currently offline — request will sync automatically when reconnected.'}
+            </p>
+          </div>
+        )}
 
         <div
           onClick={() => resetFileRef.current?.click()}
