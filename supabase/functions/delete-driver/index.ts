@@ -82,7 +82,19 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── 5. Delete drivers row ────────────────────────────────────────────────
+  // ── 5. Unlink transactions and settlements, then delete drivers row ──────
+  // Transactions and daily_settlements have FK constraints on drivers.id, so
+  // we NULL out the driverId first to preserve historical financial records.
+  await supabaseAdmin
+    .from('transactions')
+    .update({ driverId: null })
+    .eq('driverId', driverId);
+
+  await supabaseAdmin
+    .from('daily_settlements')
+    .update({ driverId: null })
+    .eq('driverId', driverId);
+
   const { error: driverDeleteError } = await supabaseAdmin
     .from('drivers')
     .delete()
