@@ -106,12 +106,28 @@ export const signInWithEmailPassword = async (email: string, password: string) =
 };
 
 export const signOutCurrentUser = async () => {
+  if (!supabase) {
+    return;
+  }
+
   try {
-    await supabase?.auth.signOut();
-  } catch {
-    // Sign-out errors are non-critical: the local session is cleared by the
-    // caller regardless. Silently ignore so callers are not blocked from
-    // updating their own auth state (e.g. clearing the cached user).
+    const { error } = await supabase.auth.signOut();
+    if (!error) {
+      return;
+    }
+
+    console.warn('Supabase global sign-out failed; attempting local session clear.', error);
+  } catch (error) {
+    console.warn('Supabase global sign-out threw; attempting local session clear.', error);
+  }
+
+  try {
+    const { error } = await supabase.auth.signOut({ scope: 'local' });
+    if (error) {
+      console.warn('Supabase local sign-out fallback failed.', error);
+    }
+  } catch (error) {
+    console.warn('Supabase local sign-out fallback threw.', error);
   }
 };
 
