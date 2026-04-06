@@ -24,10 +24,10 @@ export class BasePage {
       state: 'attached',
       timeout: 15_000,
     }).catch(() => {
-      // Fallback: just wait for network idle
+      // Selector not found — proceed to network idle check below
     });
     await this.page.waitForLoadState('networkidle').catch(() => {
-      // Network idle might not apply in offline mode
+      // Network idle may not apply in offline/local mode — proceed anyway
     });
   }
 

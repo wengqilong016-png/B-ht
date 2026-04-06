@@ -91,7 +91,7 @@ jobs:
       - name: Rename APK
         run: |
           BUILD_TYPE="${{ github.event.inputs.build_type || 'release' }}"
-          if [ "$BUILD_TYPE" = "release" ] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
+          if [[ "$BUILD_TYPE" == "release" ]] || [[ "${{ github.ref }}" == refs/tags/* ]]; then
             APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
             DEST="android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk"
           else

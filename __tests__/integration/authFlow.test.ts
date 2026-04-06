@@ -70,13 +70,17 @@ describe('Auth Flow (Integration)', () => {
       expect((result as { data: { session: unknown } }).data.session).toBeNull();
     });
 
-    it('captures auth state change listener', () => {
-      // Trigger import to register listener
-      jest.requireMock('../../supabaseClient');
+    it('exposes onAuthStateChange for listener capture', () => {
+      // Verify the mock module provides the onAuthStateChange method
+      const { supabase } = jest.requireMock('../../supabaseClient') as {
+        supabase: { auth: { onAuthStateChange: (...args: unknown[]) => unknown } };
+      };
 
-      // The listener should be capturable
-      // This validates the onAuthStateChange wiring
-      expect(typeof capturedAuthListener === 'function' || capturedAuthListener === null).toBe(true);
+      expect(typeof supabase.auth.onAuthStateChange).toBe('function');
+
+      // Calling it should capture the listener
+      supabase.auth.onAuthStateChange((_event: string, _session: unknown) => {});
+      expect(capturedAuthListener).not.toBeNull();
     });
   });
 
