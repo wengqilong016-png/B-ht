@@ -34,7 +34,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 }) => {
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, filteredTransactions, isOnline, drivers } = useAppData();
-  const { logAI, submitTransaction, syncOfflineData } = useMutations();
+  const { logAI, submitTransaction, syncOfflineData, updateLocations } = useMutations();
   const queryClient = useQueryClient();
   const transactionQueryKey = ['transactions', `driver:${activeDriverId}`] as const;
   const transactionStorageKey = `${CONSTANTS.STORAGE_TRANSACTIONS_KEY}:driver:${activeDriverId}`;
@@ -296,6 +296,13 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     resetDraft();
   };
 
+  const handleUpdateLocation = async (locationId: string, updates: Partial<Location>) => {
+    const currentLocations = locations;
+    const target = currentLocations.find(l => l.id === locationId);
+    if (!target) return;
+    await updateLocations.mutateAsync([{ ...target, ...updates }]);
+  };
+
   const handleFullReset = () => {
     setStep('selection');
     resetDraft();
@@ -377,6 +384,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         onRequestReset={(locId) => { requestGps(); setResetRequestLocId(locId); }}
         onRequestPayout={(locId) => { requestGps(); setPayoutRequestLocId(locId); }}
         onRegisterMachine={onRegisterMachine}
+        onUpdateLocation={handleUpdateLocation}
       />
     );
   }

@@ -309,6 +309,17 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 {loc.ownerName && (
                   <p className="text-[8px] font-bold text-slate-400 uppercase mt-2 truncate">Owner: {loc.ownerName}</p>
                 )}
+                <div className="flex items-center gap-2 mt-1.5">
+                  <span className={`text-[8px] font-black ${loc.shopOwnerPhone ? 'text-emerald-600' : 'text-slate-300'}`}>
+                    📞 {loc.shopOwnerPhone ? '✓' : '—'}
+                  </span>
+                  <span className={`text-[8px] font-black ${loc.ownerPhotoUrl ? 'text-emerald-600' : 'text-slate-300'}`}>
+                    📷 {loc.ownerPhotoUrl ? '✓' : '—'}
+                  </span>
+                  <span className={`text-[8px] font-black ${loc.coords?.lat ? 'text-emerald-600' : 'text-slate-300'}`}>
+                    📍 {loc.coords?.lat ? '✓' : '—'}
+                  </span>
+                </div>
                 <div className="mt-2 space-y-1">
                   {deleteBlocked && (
                     <p className="text-[8px] font-bold text-rose-500 uppercase truncate">
