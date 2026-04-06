@@ -1,18 +1,8 @@
--- Migration: add p_expense_description to submit_collection_v2
--- Adds an optional free-text expense description that is stored on the
--- transaction row and returned in the RPC response JSON.
--- The column already exists on public.transactions (TEXT, nullable).
-
--- Drop the old function signature so the new one with the extra param can be
--- created cleanly.  The owner_share_retention_logic migration did not include
--- a REVOKE/GRANT block, so we drop both the old and new-param signatures to
--- avoid leaving ghost overloads.
-DROP FUNCTION IF EXISTS public.submit_collection_v2(
-    TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, BOOLEAN, NUMERIC, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT
-);
-DROP FUNCTION IF EXISTS public.submit_collection_v2(
-    TEXT, UUID, TEXT, INTEGER, INTEGER, INTEGER, INTEGER, BOOLEAN, INTEGER, INTEGER, JSONB, TEXT, INTEGER, BOOLEAN, TEXT, TEXT, TEXT, TEXT
-);
+-- Hotfix: submit_collection_v2 referenced non-existent table `user_profiles`
+-- (introduced in 20260406000000_add_expense_description_to_submit_collection.sql).
+-- The correct table is `public.profiles` with PK column `auth_user_id`, and the
+-- linked driver FK column is `driver_id` (not `"driverId"`).
+-- This migration re-creates the function body with the correct auth query.
 
 CREATE OR REPLACE FUNCTION public.submit_collection_v2(
     p_tx_id                  TEXT,
@@ -53,7 +43,9 @@ DECLARE
     v_now                 TIMESTAMPTZ := NOW();
     v_rows_inserted       INTEGER;
 BEGIN
-    -- Authenticate caller
+    -- Authenticate caller using the canonical `profiles` table.
+    -- `profiles.auth_user_id` is the UUID FK to auth.users(id).
+    -- `profiles.driver_id` links the auth account to a row in `drivers`.
     SELECT * INTO v_caller_profile
     FROM public.profiles
     WHERE auth_user_id = auth.uid();
@@ -161,7 +153,6 @@ BEGIN
     END IF;
 
     -- Return the persisted (or previously-persisted) transaction row as JSON.
-    -- ON CONFLICT DO NOTHING means a duplicate txId returns the existing row.
     RETURN (
         SELECT json_build_object(
             'id',                   t.id,
