@@ -13,6 +13,7 @@ import PayrollActionModal from './PayrollActionModal';
 import { useDashboardData } from './hooks/useDashboardData';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
+import { getTodayLocalDate } from '../../utils/dateUtils';
 import { useMutations } from '../../contexts/MutationContext';
 import {
   cancelMonthlyPayroll,
@@ -107,7 +108,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const offlineCount = unsyncedCount;
   const isAdmin = currentUser.role === 'admin';
   const activeDriverId = currentUser.driverId ?? currentUser.id;
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayLocalDate();
   const [pendingPayrollAction, setPendingPayrollAction] = useState<string | null>(null);
   const [payrollModalState, setPayrollModalState] = useState<PayrollModalState | null>(null);
 

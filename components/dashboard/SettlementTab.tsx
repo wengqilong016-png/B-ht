@@ -76,6 +76,14 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
     .filter(settlement => settlement.driverId === activeDriverId && settlement.status === 'pending')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
+  // Block duplicate submissions: if a settlement already exists for today
+  // (pending or confirmed), the driver should not be able to submit another one.
+  const hasSubmittedToday = pendingSettlements.some(
+    (settlement) =>
+      settlement.driverId === activeDriverId &&
+      settlement.date === todayStr,
+  );
+
   const cashAmount = parseInt(actualCash) || 0;
   const coinAmount = parseInt(actualCoins) || 0;
   const hasSettlementInput = actualCash.trim() !== '' || actualCoins.trim() !== '';
@@ -459,6 +467,20 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
           )}
 
           <div className="bg-white p-4 md:p-6 rounded-3xl border border-slate-200 space-y-4">
+            {hasSubmittedToday ? (
+              <div className="text-center py-6">
+                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-4 border border-emerald-100">
+                  <CheckCircle2 size={32} />
+                </div>
+                <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                  {lang === 'zh' ? '今日已提交结算' : 'Settlement Submitted Today'}
+                </h2>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">
+                  {lang === 'zh' ? '等待主管审批，今日不可重复提交。' : 'Awaiting supervisor approval. No duplicate submission allowed today.'}
+                </p>
+              </div>
+            ) : (
+            <>
             <div className="text-center">
             <div className="w-16 h-16 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 mx-auto mb-4 border border-indigo-100">
               <Banknote size={40} />
@@ -552,6 +574,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
             >
               ✓ {t.settlementSubmitCta}
             </button>
+            </>
+            )}
           </div>
         </div>
       )}
