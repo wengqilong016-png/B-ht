@@ -40,6 +40,7 @@ interface SettlementTabProps {
   onReviewAnomalyTransaction: (txId: string, approve: boolean) => Promise<void>;
   onApproveResetRequest: (txId: string, approve: boolean) => Promise<void>;
   onApprovePayoutRequest: (txId: string, approve: boolean) => Promise<void>;
+  isOnline: boolean;
   lang: 'zh' | 'sw';
 }
 
@@ -65,6 +66,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   onReviewAnomalyTransaction,
   onApproveResetRequest,
   onApprovePayoutRequest,
+  isOnline,
   lang,
 }) => {
   const t = TRANSLATIONS[lang];
@@ -89,6 +91,14 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const hasSettlementInput = actualCash.trim() !== '' || actualCoins.trim() !== '';
 
   const runApprovalAction = async (actionKey: string, action: () => Promise<void>) => {
+    if (!isOnline) {
+      alert(
+        lang === 'zh'
+          ? '⚠️ 当前处于离线状态，审批操作需要联网才能进行。'
+          : '⚠️ You are offline. Approval actions require an internet connection.',
+      );
+      return;
+    }
     setPendingActionKey(actionKey);
     try {
       await action();
@@ -282,8 +292,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 <img src={(s as unknown as { transferProofUrl: string }).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -307,8 +317,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -332,8 +342,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-24 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -353,8 +363,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -372,8 +382,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 {loc?.ownerName && <p className="text-[8px] font-bold text-slate-400">{t.ownerLabel}: {loc.ownerName}</p>}
                               </div>
                               <div className="flex gap-2">
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );

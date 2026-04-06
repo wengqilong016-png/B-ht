@@ -82,13 +82,18 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 
     queryClient.setQueryData<Location[]>(['locations'], updatedLocations);
 
-    try {
-      localStorage.setItem(
-        CONSTANTS.STORAGE_LOCATIONS_KEY,
-        JSON.stringify(updatedLocations)
-      );
-    } catch (error) {
-      console.warn('Failed to persist optimistic locations update locally.', error);
+    // Only persist lastScore to localStorage when online — the server is the
+    // source of truth. When offline the transaction may fail on next sync, and
+    // writing an incorrect lastScore here would corrupt the next finance calc.
+    if (isOnline) {
+      try {
+        localStorage.setItem(
+          CONSTANTS.STORAGE_LOCATIONS_KEY,
+          JSON.stringify(updatedLocations)
+        );
+      } catch (error) {
+        console.warn('Failed to persist optimistic locations update locally.', error);
+      }
     }
 
     queryClient.setQueryData<Transaction[]>(transactionQueryKey, (old: Transaction[] = []) => {
@@ -470,6 +475,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       onUpdateGpsPermission={(perm) => updateDraft({ gpsPermission: perm })}
       nextMachine={nextQueuedMachine}
       pendingCount={remainingPendingStops}
+      allTransactions={allTransactions}
+      todayStr={todayStr}
     />
   );
 };

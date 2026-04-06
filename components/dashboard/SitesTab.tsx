@@ -19,6 +19,7 @@ interface SitesTabProps {
   transactions: Transaction[];
   pendingResetRequests: Transaction[];
   pendingPayoutRequests: Transaction[];
+  isOnline: boolean;
   lang: 'zh' | 'sw';
 }
 
@@ -37,6 +38,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
   transactions,
   pendingResetRequests,
   pendingPayoutRequests,
+  isOnline,
   lang,
 }) => {
   const [editingLoc, setEditingLoc] = useState<Location | null>(null);
@@ -158,6 +160,14 @@ const SitesTab: React.FC<SitesTabProps> = ({
   };
 
   const handleDeleteLocation = async (locId: string) => {
+    if (!isOnline) {
+      alert(
+        lang === 'zh'
+          ? '⚠️ 当前处于离线状态，无法删除机器。请联网后再操作。'
+          : '⚠️ You are offline. Cannot delete a machine while offline. Please reconnect and try again.',
+      );
+      return;
+    }
     const diagnostics = deletionDiagnosticsById.get(locId);
     if (!diagnostics) return;
 
