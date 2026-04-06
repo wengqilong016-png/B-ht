@@ -1,92 +1,163 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Outer background - deep crimson -->
-  <rect width="512" height="512" rx="108" fill="#7B1818"/>
-
-  <!-- Gold outer border ring -->
-  <rect x="10" y="10" width="492" height="492" rx="100" fill="none" stroke="#C9A027" stroke-width="6"/>
-  <rect x="18" y="18" width="476" height="476" rx="94" fill="none" stroke="#E2B84A" stroke-width="2" stroke-dasharray="6 4"/>
-
-  <!-- Background inner panel - slightly lighter terracotta -->
-  <rect x="26" y="26" width="460" height="460" rx="86" fill="#8C2020"/>
-
-  <!-- Ornamental corner decorations (African knotwork motif) -->
-  <!-- Top-left corner ornament -->
-  <circle cx="72" cy="72" r="18" fill="none" stroke="#C9A027" stroke-width="3"/>
-  <circle cx="72" cy="72" r="9" fill="#C9A027" opacity="0.6"/>
-  <!-- Top-right corner ornament -->
-  <circle cx="440" cy="72" r="18" fill="none" stroke="#C9A027" stroke-width="3"/>
-  <circle cx="440" cy="72" r="9" fill="#C9A027" opacity="0.6"/>
-  <!-- Bottom-left corner ornament -->
-  <circle cx="72" cy="440" r="18" fill="none" stroke="#C9A027" stroke-width="3"/>
-  <circle cx="72" cy="440" r="9" fill="#C9A027" opacity="0.6"/>
-  <!-- Bottom-right corner ornament -->
-  <circle cx="440" cy="440" r="18" fill="none" stroke="#C9A027" stroke-width="3"/>
-  <circle cx="440" cy="440" r="9" fill="#C9A027" opacity="0.6"/>
-
-  <!-- Side mid-ornaments -->
-  <circle cx="256" cy="46" r="7" fill="#C9A027" opacity="0.7"/>
-  <circle cx="256" cy="466" r="7" fill="#C9A027" opacity="0.7"/>
-  <circle cx="46" cy="256" r="7" fill="#C9A027" opacity="0.7"/>
-  <circle cx="466" cy="256" r="7" fill="#C9A027" opacity="0.7"/>
-
-  <!-- Subtle carved background pattern (horizontal lines) -->
-  <rect x="60" y="104" width="392" height="2" fill="#6A1010" rx="1"/>
-  <rect x="60" y="114" width="392" height="1" fill="#6A1010" rx="1" opacity="0.5"/>
-  <rect x="60" y="394" width="392" height="2" fill="#6A1010" rx="1"/>
-  <rect x="60" y="404" width="392" height="1" fill="#6A1010" rx="1" opacity="0.5"/>
-
-  <!-- "URITHI WA NEEMA" top text -->
-  <text x="256" y="90" text-anchor="middle" font-family="Georgia, serif" font-size="20" font-weight="bold" letter-spacing="4" fill="#E2B84A" opacity="0.9">URITHI WA NEEMA</text>
-
-  <!-- ======= Central "B" Monogram — interlocking loops ======= -->
-  <!-- Left loop of B (teal/turquoise) -->
-  <ellipse cx="218" cy="225" rx="62" ry="78" fill="none" stroke="#1E9B9B" stroke-width="22"/>
-  <ellipse cx="218" cy="225" rx="62" ry="78" fill="none" stroke="#2BB8B8" stroke-width="14"/>
-
-  <!-- Right loop of B (gold) -->
-  <ellipse cx="294" cy="260" rx="62" ry="78" fill="none" stroke="#B8860B" stroke-width="22"/>
-  <ellipse cx="294" cy="260" rx="62" ry="78" fill="none" stroke="#D4A017" stroke-width="14"/>
-
-  <!-- Cover/blend overlap area to create interlock illusion -->
-  <rect x="236" y="162" width="36" height="56" fill="#8C2020"/>
-  <rect x="236" y="274" width="36" height="42" fill="#8C2020"/>
-
-  <!-- Re-draw front strokes for interlock effect -->
-  <!-- Teal loop front segment (top arc) -->
-  <path d="M218 147 A62 78 0 0 1 280 225" fill="none" stroke="#2BB8B8" stroke-width="14"/>
-  <!-- Gold loop back segment (bottom arc) -->
-  <path d="M294 338 A62 78 0 0 1 232 260" fill="none" stroke="#D4A017" stroke-width="14"/>
-
-  <!-- Jewel / flower accent at intersection center -->
-  <circle cx="256" cy="243" r="22" fill="#1A2A3A"/>
-  <!-- Petal definition + 8-way rotation -->
   <defs>
-    <ellipse id="bht-petal" cx="256" cy="225" rx="7" ry="10" fill="#2DBFBF"/>
+    <!-- Carved diamond lattice (African geometric motif) -->
+    <pattern id="knotwork" patternUnits="userSpaceOnUse" width="44" height="44">
+      <path d="M22,3 L41,22 L22,41 L3,22 Z" fill="none" stroke="#6A1010" stroke-width="1.4"/>
+      <path d="M22,12 L30,22 L22,32 L14,22 Z" fill="#6A1010" fill-opacity="0.32"/>
+      <circle cx="22" cy="22" r="2.5" fill="#6A1010" opacity="0.50"/>
+    </pattern>
+    <!-- Reusable jewel petal — cy=233 so tip reaches radius≈27px from rotation center(256,248) -->
+    <ellipse id="jewel-petal" cx="256" cy="233" rx="7" ry="11.5" fill="#25BBBB" opacity="0.95"/>
   </defs>
-  <use href="#bht-petal" transform="rotate(0 256 243)"/>
-  <use href="#bht-petal" transform="rotate(45 256 243)"/>
-  <use href="#bht-petal" transform="rotate(90 256 243)"/>
-  <use href="#bht-petal" transform="rotate(135 256 243)"/>
-  <use href="#bht-petal" transform="rotate(180 256 243)"/>
-  <use href="#bht-petal" transform="rotate(225 256 243)"/>
-  <use href="#bht-petal" transform="rotate(270 256 243)"/>
-  <use href="#bht-petal" transform="rotate(315 256 243)"/>
-  <!-- Center gem -->
-  <circle cx="256" cy="243" r="10" fill="#1E6B8A"/>
-  <circle cx="256" cy="243" r="6" fill="#2DBFBF"/>
-  <circle cx="253" cy="240" r="2.5" fill="white" opacity="0.7"/>
 
-  <!-- ======= Bottom text area ======= -->
-  <!-- Divider line above BAHATI -->
-  <line x1="80" y1="360" x2="432" y2="360" stroke="#C9A027" stroke-width="1.5" opacity="0.6"/>
+  <!-- ===== BACKGROUND ===== -->
+  <rect width="512" height="512" rx="90" fill="#8B1C1C"/>
+  <!-- Diamond carved overlay -->
+  <rect width="512" height="512" rx="90" fill="url(#knotwork)"/>
 
-  <!-- BAHATI large text -->
-  <text x="256" y="405" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="62" font-weight="bold" letter-spacing="6" fill="#D4A017">BAHATI</text>
+  <!-- ===== GOLD FRAME ===== -->
+  <!-- Outer thick ring -->
+  <rect x="6" y="6" width="500" height="500" rx="86" fill="none" stroke="#C4921A" stroke-width="9"/>
+  <!-- Inner thin bright ring -->
+  <rect x="18" y="18" width="476" height="476" rx="76" fill="none" stroke="#E8D060" stroke-width="2.5"/>
+  <!-- Innermost hairline ring -->
+  <rect x="26" y="26" width="460" height="460" rx="70" fill="none" stroke="#C4921A" stroke-width="1.5" opacity="0.5"/>
 
-  <!-- BHT ELECTRONICS small text -->
-  <text x="256" y="432" text-anchor="middle" font-family="Arial, sans-serif" font-size="15" font-weight="bold" letter-spacing="3" fill="#E2B84A" opacity="0.85">BHT ELECTRONICS</text>
+  <!-- ===== CORNER ORNAMENTS ===== -->
+  <circle cx="70" cy="70" r="24" fill="#8B1C1C" stroke="#C4921A" stroke-width="3.5"/>
+  <circle cx="70" cy="70" r="15" fill="none" stroke="#E8D060" stroke-width="1.5"/>
+  <circle cx="70" cy="70" r="7" fill="#C4921A"/>
 
-  <!-- LEGACY OF GOOD FORTUNE -->
-  <text x="256" y="456" text-anchor="middle" font-family="Arial, sans-serif" font-size="11" font-weight="bold" letter-spacing="2.5" fill="#C9A027" opacity="0.7">LEGACY OF GOOD FORTUNE</text>
+  <circle cx="442" cy="70" r="24" fill="#8B1C1C" stroke="#C4921A" stroke-width="3.5"/>
+  <circle cx="442" cy="70" r="15" fill="none" stroke="#E8D060" stroke-width="1.5"/>
+  <circle cx="442" cy="70" r="7" fill="#C4921A"/>
+
+  <circle cx="70" cy="442" r="24" fill="#8B1C1C" stroke="#C4921A" stroke-width="3.5"/>
+  <circle cx="70" cy="442" r="15" fill="none" stroke="#E8D060" stroke-width="1.5"/>
+  <circle cx="70" cy="442" r="7" fill="#C4921A"/>
+
+  <circle cx="442" cy="442" r="24" fill="#8B1C1C" stroke="#C4921A" stroke-width="3.5"/>
+  <circle cx="442" cy="442" r="15" fill="none" stroke="#E8D060" stroke-width="1.5"/>
+  <circle cx="442" cy="442" r="7" fill="#C4921A"/>
+
+  <!-- Mid-edge ornaments -->
+  <circle cx="256" cy="44" r="9" fill="#C4921A"/>
+  <circle cx="256" cy="468" r="9" fill="#C4921A"/>
+  <circle cx="44" cy="256" r="9" fill="#C4921A"/>
+  <circle cx="468" cy="256" r="9" fill="#C4921A"/>
+
+  <!-- ===== TOP LABEL ===== -->
+  <line x1="56" y1="100" x2="186" y2="100" stroke="#C4921A" stroke-width="1" opacity="0.6"/>
+  <line x1="326" y1="100" x2="456" y2="100" stroke="#C4921A" stroke-width="1" opacity="0.6"/>
+  <text x="256" y="95" text-anchor="middle"
+        font-family="Georgia,serif" font-size="16" font-weight="bold"
+        letter-spacing="4" fill="#E8D060">URITHI WA NEEMA</text>
+
+  <!-- =========================================================
+       INTERLOCKING B MONOGRAM
+       Gold B : stem at x=213, bumps open RIGHT (toward x≈325)
+       Teal B : stem at x=299, bumps open LEFT (toward x≈187)  mirrored
+       Interlock: gold over teal at upper crossing;
+                  teal over gold at lower crossing
+       ========================================================= -->
+
+  <!-- ── Layer 1: deep shadow (both Bs) ── -->
+  <!-- Gold B shadow -->
+  <path d="M213,138 L213,360" fill="none" stroke="#3D2000" stroke-width="38" stroke-linecap="round"/>
+  <path d="M213,138 C213,138 315,141 315,198 C315,252 213,252 213,252" fill="none" stroke="#3D2000" stroke-width="38" stroke-linecap="round"/>
+  <path d="M213,252 C213,252 332,255 332,308 C332,360 213,360 213,360" fill="none" stroke="#3D2000" stroke-width="38" stroke-linecap="round"/>
+  <!-- Teal B shadow -->
+  <path d="M299,138 L299,360" fill="none" stroke="#002828" stroke-width="38" stroke-linecap="round"/>
+  <path d="M299,138 C299,138 197,141 197,198 C197,252 299,252 299,252" fill="none" stroke="#002828" stroke-width="38" stroke-linecap="round"/>
+  <path d="M299,252 C299,252 180,255 180,308 C180,360 299,360 299,360" fill="none" stroke="#002828" stroke-width="38" stroke-linecap="round"/>
+
+  <!-- ── Layer 2: main colors ── -->
+  <!-- Gold B main -->
+  <path d="M213,138 L213,360" fill="none" stroke="#CC8200" stroke-width="28" stroke-linecap="round"/>
+  <path d="M213,138 C213,138 315,141 315,198 C315,252 213,252 213,252" fill="none" stroke="#CC8200" stroke-width="28" stroke-linecap="round"/>
+  <path d="M213,252 C213,252 332,255 332,308 C332,360 213,360 213,360" fill="none" stroke="#CC8200" stroke-width="28" stroke-linecap="round"/>
+  <!-- Teal B main (drawn on top) -->
+  <path d="M299,138 L299,360" fill="none" stroke="#178888" stroke-width="28" stroke-linecap="round"/>
+  <path d="M299,138 C299,138 197,141 197,198 C197,252 299,252 299,252" fill="none" stroke="#178888" stroke-width="28" stroke-linecap="round"/>
+  <path d="M299,252 C299,252 180,255 180,308 C180,360 299,360 299,360" fill="none" stroke="#178888" stroke-width="28" stroke-linecap="round"/>
+
+  <!-- ── Layer 3: highlights (convex 3-D gloss) ── -->
+  <!-- Gold highlight -->
+  <path d="M212,142 L212,356" fill="none" stroke="#E8A820" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+  <path d="M212,142 C212,142 306,144 308,196" fill="none" stroke="#E8A820" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+  <path d="M212,255 C212,255 321,258 323,306" fill="none" stroke="#E8A820" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+  <!-- Teal highlight -->
+  <path d="M300,142 L300,356" fill="none" stroke="#40CCCC" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+  <path d="M300,142 C300,142 206,144 204,196" fill="none" stroke="#40CCCC" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+  <path d="M300,255 C300,255 191,258 189,306" fill="none" stroke="#40CCCC" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- ── Layer 4: interlock override — Gold OVER teal at upper crossing ── -->
+  <!-- Erase teal at the top-right section with background colour -->
+  <path d="M299,138 C299,138 255,140 240,153" fill="none" stroke="#8B1C1C" stroke-width="36"/>
+  <!-- Redraw gold's upper bump on top -->
+  <path d="M213,138 C213,138 315,141 315,198" fill="none" stroke="#CC8200" stroke-width="28" stroke-linecap="round"/>
+  <path d="M213,142 C213,142 306,144 308,196" fill="none" stroke="#E8A820" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- ── Layer 5: interlock override — Teal OVER gold at lower crossing ── -->
+  <!-- Erase gold at the bottom-left section with background colour -->
+  <path d="M213,252 C213,252 272,254 296,270" fill="none" stroke="#8B1C1C" stroke-width="36"/>
+  <!-- Redraw teal's lower bump on top -->
+  <path d="M299,252 C299,252 180,255 180,308 C180,360 299,360 299,360" fill="none" stroke="#178888" stroke-width="28" stroke-linecap="round"/>
+  <path d="M300,255 C300,255 191,258 189,306" fill="none" stroke="#40CCCC" stroke-width="11" stroke-linecap="round" opacity="0.55"/>
+
+  <!-- ===== JEWEL ORNAMENT AT CROSSING CENTER ===== -->
+  <!-- Outer bezel ring -->
+  <circle cx="256" cy="248" r="33" fill="#0D1E2A"/>
+  <!-- Gold rim -->
+  <circle cx="256" cy="248" r="29" fill="none" stroke="#C4921A" stroke-width="3"/>
+  <!-- Dark jewel base -->
+  <circle cx="256" cy="248" r="27" fill="#152030"/>
+  <!-- 8 teal petals -->
+  <use href="#jewel-petal" transform="rotate(0 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(45 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(90 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(135 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(180 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(225 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(270 256 248)"/>
+  <use href="#jewel-petal" transform="rotate(315 256 248)"/>
+  <!-- Blue sapphire center gem -->
+  <circle cx="256" cy="248" r="15" fill="#101830"/>
+  <circle cx="256" cy="248" r="11" fill="#1840A0"/>
+  <circle cx="256" cy="248" r="7.5" fill="#3070CC"/>
+  <circle cx="256" cy="248" r="4.5" fill="#60A0E8"/>
+  <!-- Gem sparkle -->
+  <circle cx="252" cy="244" r="3" fill="white" opacity="0.42"/>
+  <circle cx="259" cy="251" r="1.5" fill="white" opacity="0.18"/>
+
+  <!-- ===== BOTTOM DIVIDERS ===== -->
+  <line x1="82" y1="373" x2="430" y2="373" stroke="#C4921A" stroke-width="1.5" opacity="0.75"/>
+  <line x1="102" y1="378" x2="410" y2="378" stroke="#E8D060" stroke-width="0.8" opacity="0.40"/>
+
+  <!-- ===== BAHATI TITLE (shadow + main + gloss) ===== -->
+  <text x="258" y="414" text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="52" font-weight="bold" letter-spacing="7"
+        fill="#3D1800" opacity="0.55">BAHATI</text>
+  <text x="256" y="412" text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="52" font-weight="bold" letter-spacing="7"
+        fill="#CC8200">BAHATI</text>
+  <text x="256" y="412" text-anchor="middle"
+        font-family="Georgia,'Times New Roman',serif"
+        font-size="52" font-weight="bold" letter-spacing="7"
+        fill="#E8C040" opacity="0.40">BAHATI</text>
+
+  <!-- ===== BHT ELECTRONICS ===== -->
+  <text x="256" y="435" text-anchor="middle"
+        font-family="Arial,Helvetica,sans-serif"
+        font-size="13.5" font-weight="bold" letter-spacing="3.5"
+        fill="#E8D060" opacity="0.90">BHT ELECTRONICS</text>
+
+  <!-- ===== LEGACY OF GOOD FORTUNE ===== -->
+  <text x="256" y="455" text-anchor="middle"
+        font-family="Arial,Helvetica,sans-serif"
+        font-size="9.5" font-weight="bold" letter-spacing="2.5"
+        fill="#C4921A" opacity="0.75">LEGACY OF GOOD FORTUNE</text>
 </svg>
