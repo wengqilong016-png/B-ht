@@ -23,7 +23,7 @@ const DEFAULT_FORM: DriverFormState = {
 };
 
 const DriverManagementPage: React.FC<DriverManagementProps> = () => {
-  const { filteredDrivers: drivers, locations, filteredTransactions: transactions, filteredSettlements: dailySettlements } = useAppData();
+  const { filteredDrivers: drivers, locations, filteredTransactions: transactions, filteredSettlements: dailySettlements, isOnline } = useAppData();
   const { updateDrivers, updateLocations, deleteDrivers } = useMutations();
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
@@ -243,7 +243,11 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   };
 
   const handleDeleteDriver = (id: string) => {
-    if (!window.confirm('确认删除此司机账户？此操作不可撤销。\nDelete this driver? This cannot be undone.')) return;
+    if (!isOnline) {
+      alert('网络离线时无法删除司机账号。请联网后重试。\nCannot delete driver while offline. Please reconnect and try again.');
+      return;
+    }
+    if (!window.confirm('确认删除此司机账户？此操作将永久删除登录凭据及所有关联数据，不可撤销。\nDelete this driver? This will permanently remove their login credentials. This cannot be undone.')) return;
     if (onDeleteDrivers) {
       onDeleteDrivers([id]);
     } else {
