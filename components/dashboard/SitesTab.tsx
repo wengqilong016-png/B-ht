@@ -72,6 +72,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
           transactions,
           pendingResetRequests,
           pendingPayoutRequests,
+          isAdminOverride: true,
         }),
       ]),
     );
@@ -190,12 +191,18 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
     const ok = await confirm({
       title: lang === 'zh' ? '确认删除机器点位' : 'Confirm Delete Location',
-      message: `此操作不可撤销。\nDelete this location? This cannot be undone.${warningText}`,
+      message: `此操作不可撤销。${warningText}`,
       confirmLabel: lang === 'zh' ? '确认删除' : 'Delete',
       cancelLabel: lang === 'zh' ? '取消' : 'Cancel',
       destructive: true,
     });
     if (!ok || !onDeleteLocations) return;
+
+    const loc = managedLocations.find((l) => l.id === locId);
+    if (loc?.assignedDriverId) {
+      const unassigned: Location = { ...loc, assignedDriverId: undefined, isSynced: false };
+      await onUpdateLocations(locations.map((l) => (l.id === locId ? unassigned : l)));
+    }
 
     try {
       await onDeleteLocations([locId]);
@@ -264,7 +271,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     <button
                       onClick={() => void handleDeleteLocation(loc.id)}
                       disabled={deleteBlocked}
-                      title={deleteBlocked ? deletionDiagnostics?.blockers.join(' | ') : 'Delete location'}
+                      title={deleteBlocked ? deletionDiagnostics?.blockers.join(' | ') : (lang === 'zh' ? '删除点位' : 'Delete location')}
                       className="p-2 text-slate-300 hover:text-rose-500 bg-slate-50 rounded-xl transition-colors disabled:cursor-not-allowed disabled:text-slate-200 disabled:bg-slate-100"
                     >
                       <Trash2 size={13} />

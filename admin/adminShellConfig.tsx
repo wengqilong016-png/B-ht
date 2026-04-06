@@ -1,5 +1,6 @@
 import React from 'react';
 import {
+  BarChart2,
   CheckSquare,
   CreditCard,
   History,
@@ -19,7 +20,8 @@ export type AdminView =
   | 'team'
   | 'collect'
   | 'debt'
-  | 'history';
+  | 'history'
+  | 'monthly';
 
 export interface AdminNavItem {
   id: AdminView;
@@ -42,6 +44,7 @@ export function buildAdminPrimaryNav(totalApprovalBadge: number): AdminNavItem[]
 export const ADMIN_SECONDARY_NAV: AdminNavItem[] = [
   { id: 'collect', icon: <PlusCircle size={18} />, label: '采集录入', labelEn: 'Collection Entry' },
   { id: 'debt', icon: <CreditCard size={18} />, label: '债务管理', labelEn: 'Debt Management' },
+  { id: 'monthly', icon: <BarChart2 size={18} />, label: '月度报表', labelEn: 'Monthly Report' },
   { id: 'history', icon: <History size={18} />, label: '操作记录', labelEn: 'Activity Log' },
 ];
 
@@ -54,6 +57,7 @@ export const ADMIN_PAGE_TITLES: Record<AdminView, string> = {
   collect: 'Collect',
   debt: 'Finance',
   history: 'History',
+  monthly: '月度报表',
 };
 
 export function mapAdminViewToDashboardTab(v: AdminView): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'tracking' {

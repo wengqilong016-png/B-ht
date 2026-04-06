@@ -180,7 +180,7 @@ describe('machine workflow self-check', () => {
       ),
     );
 
-    const blockedDeleteButton = screen.getByTitle(/Machine is still assigned to a driver/);
+    const blockedDeleteButton = screen.getByTitle(/该机器尚有未付业主分红余额/);
     expect((blockedDeleteButton as HTMLButtonElement).disabled).toBe(true);
 
     rerender(
@@ -206,7 +206,7 @@ describe('machine workflow self-check', () => {
       ),
     );
 
-    const enabledDeleteButton = screen.getByTitle('Delete location');
+    const enabledDeleteButton = screen.getByTitle('删除点位');
     expect((enabledDeleteButton as HTMLButtonElement).disabled).toBe(false);
 
     fireEvent.click(enabledDeleteButton);
@@ -244,7 +244,7 @@ describe('machine workflow self-check', () => {
       ),
     );
 
-    fireEvent.click(screen.getByTitle('Delete location'));
+    fireEvent.click(screen.getByTitle('删除点位'));
 
     const confirmButton = await screen.findByRole('button', { name: '确认删除' });
     fireEvent.click(confirmButton);

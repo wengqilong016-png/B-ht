@@ -61,6 +61,7 @@ const AppAdminShell: React.FC = () => {
       collect: t.collectEntry,
       debt: t.financeManagement,
       history: t.historyLog,
+      monthly: '月度报表',
     };
     return titles[view];
   }, [t, view]);

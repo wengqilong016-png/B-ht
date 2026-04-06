@@ -14,8 +14,10 @@ export function getLocationDeletionDiagnostics(params: {
   transactions: Transaction[];
   pendingResetRequests: Transaction[];
   pendingPayoutRequests: Transaction[];
+  /** Admin users: assigned-driver check becomes a warning, not a hard blocker */
+  isAdminOverride?: boolean;
 }): LocationDeletionDiagnostics {
-  const { location, transactions, pendingResetRequests, pendingPayoutRequests } = params;
+  const { location, transactions, pendingResetRequests, pendingPayoutRequests, isAdminOverride = false } = params;
   const blockers: string[] = [];
   const warnings: string[] = [];
 
@@ -30,39 +32,43 @@ export function getLocationDeletionDiagnostics(params: {
   const locationPendingPayouts = pendingPayoutRequests.filter((tx) => tx.locationId === location.id);
 
   if (location.assignedDriverId) {
-    blockers.push('Machine is still assigned to a driver.');
+    if (isAdminOverride) {
+      warnings.push('该机器仍绑定司机，删除将自动解绑。');
+    } else {
+      blockers.push('该机器仍绑定在司机名下，请先解绑再删除。');
+    }
   }
 
   if ((location.remainingStartupDebt ?? 0) > 0) {
-    blockers.push('Machine still has remaining startup debt.');
+    blockers.push('该机器尚有未清启动债务，无法删除。');
   }
 
   if ((location.dividendBalance ?? 0) > 0) {
-    blockers.push('Machine still has unpaid owner dividend balance.');
+    blockers.push('该机器尚有未付业主分红余额，无法删除。');
   }
 
   if (location.resetLocked) {
-    blockers.push('Machine is currently reset-locked.');
+    blockers.push('该机器当前处于重置锁定状态，无法删除。');
   }
 
   if (locationPendingResets.length > 0) {
-    blockers.push('Machine has pending reset requests.');
+    blockers.push('该机器有待处理的重置申请，无法删除。');
   }
 
   if (locationPendingPayouts.length > 0) {
-    blockers.push('Machine has pending payout requests.');
+    blockers.push('该机器有待处理的提现申请，无法删除。');
   }
 
   if (pendingApprovalTransactions.length > 0) {
-    blockers.push('Machine has transactions still waiting for approval.');
+    blockers.push('该机器有等待审批的交易记录，无法删除。');
   }
 
   if (unsettledCollections.length > 0) {
-    blockers.push('Machine has unsettled collection records.');
+    blockers.push('该机器有未结算的收款记录，无法删除。');
   }
 
   if (locationTransactions.length > 0) {
-    warnings.push('Historical transactions will remain in reports after deletion.');
+    warnings.push('删除后，历史交易记录仍会保留在报表中。');
   }
 
   return { blockers, warnings };
