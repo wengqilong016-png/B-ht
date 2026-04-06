@@ -140,3 +140,127 @@ describe('Domain status constants', () => {
     expect(LocationStatus.BROKEN).toBe('broken');
   });
 });
+
+// ── getLocationField ──────────────────────────────────────────────────────────
+
+import { getLocationField } from '../types';
+import type { Location } from '../types';
+
+function makeMinimalLocation(extra: Record<string, unknown> = {}): Location {
+  return {
+    id: 'loc-1',
+    machineId: 'M001',
+    name: 'Test Site',
+    area: 'Area A',
+    coords: { lat: -6.8, lng: 39.3 },
+    lastScore: 100,
+    status: 'active',
+    assignedDriverId: 'driver-1',
+    commissionRate: 0.3,
+    lastRevenueDate: null,
+    resetLocked: false,
+    ...extra,
+  } as Location;
+}
+
+describe('getLocationField()', () => {
+  it('reads a standard string field', () => {
+    const loc = makeMinimalLocation();
+    expect(getLocationField(loc, 'name')).toBe('Test Site');
+  });
+
+  it('reads a numeric field', () => {
+    const loc = makeMinimalLocation();
+    expect(getLocationField(loc, 'lastScore')).toBe(100);
+  });
+
+  it('reads a boolean field', () => {
+    const loc = makeMinimalLocation({ resetLocked: true });
+    expect(getLocationField(loc, 'resetLocked')).toBe(true);
+  });
+
+  it('returns undefined for a missing field', () => {
+    const loc = makeMinimalLocation();
+    expect(getLocationField(loc, '__nonexistent__')).toBeUndefined();
+  });
+
+  it('reads a nested object field', () => {
+    const loc = makeMinimalLocation();
+    const coords = getLocationField(loc, 'coords');
+    expect(coords).toEqual({ lat: -6.8, lng: 39.3 });
+  });
+});
+
+// ── resizeImage ───────────────────────────────────────────────────────────────
+
+import { resizeImage } from '../types';
+
+describe('resizeImage()', () => {
+  // jsdom does not support canvas; patch context just enough to run the code path.
+  beforeEach(() => {
+    const mockCtx = { drawImage: jest.fn() };
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: jest.fn(() => mockCtx),
+      toDataURL: jest.fn(() => 'data:image/jpeg;base64,MOCK'),
+    };
+    jest.spyOn(document, 'createElement').mockImplementation((tag: string) => {
+      if (tag === 'canvas') return mockCanvas as unknown as HTMLElement;
+      return document.createElement.call(document, tag) as HTMLElement;
+    });
+
+    const MockFileReader = jest.fn().mockImplementation(function (this: Record<string, unknown>) {
+      this.readAsDataURL = jest.fn(function (this: { onload: ((ev: { target: { result: string } }) => void) | null }) {
+        setTimeout(() => this.onload?.({ target: { result: 'data:image/jpeg;base64,REAL' } }), 0);
+      });
+      this.onload = null;
+      this.onerror = null;
+    });
+    Object.defineProperty(global, 'FileReader', { writable: true, configurable: true, value: MockFileReader });
+
+    // Image mock
+    Object.defineProperty(global, 'Image', {
+      writable: true,
+      value: class {
+        width = 400;
+        height = 300;
+        onload: (() => void) | null = null;
+        set src(_: string) {
+          setTimeout(() => this.onload?.(), 0);
+        }
+      },
+    });
+  });
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+  });
+
+  it('resolves with a data URL string', async () => {
+    const file = new File(['fake'], 'photo.jpg', { type: 'image/jpeg' });
+    const result = await resizeImage(file, 800, 0.6);
+    expect(typeof result).toBe('string');
+    expect(result).toMatch(/^data:/);
+  });
+
+  it('uses the default maxWidth of 800', async () => {
+    const file = new File(['fake'], 'photo.jpg', { type: 'image/jpeg' });
+    // Should not throw with default args
+    await expect(resizeImage(file)).resolves.toMatch(/^data:/);
+  });
+
+  it('rejects when canvas context is not available', async () => {
+    const mockCanvas = {
+      width: 0,
+      height: 0,
+      getContext: jest.fn(() => null),
+      toDataURL: jest.fn(),
+    };
+    (document.createElement as jest.Mock).mockImplementation((tag: string) =>
+      tag === 'canvas' ? mockCanvas : document.createElement.call(document, tag),
+    );
+    const file = new File(['fake'], 'photo.jpg', { type: 'image/jpeg' });
+    await expect(resizeImage(file)).rejects.toThrow('Failed to get canvas context');
+  });
+});

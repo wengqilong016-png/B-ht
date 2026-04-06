@@ -208,3 +208,139 @@ describe('orchestrateCollectionSubmission', () => {
     expect(enqueueTransaction).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── buildCollectionSubmissionInput — normalizeReportedStatus branches ─────────
+
+describe('buildCollectionSubmissionInput() — normalizeReportedStatus branches', () => {
+  function makeBaseInput(
+    aiCondition: string | null = null,
+    locationStatus: Location['status'] = 'active',
+  ): OrchestrateCollectionSubmissionInput {
+    return {
+      selectedLocation: { ...makeLocation(), status: locationStatus },
+      currentDriver: makeDriver(),
+      isOnline: true,
+      currentScore: '200',
+      photoData: null,
+      aiReviewData: aiCondition ? { score: '200', condition: aiCondition, notes: '' } : null,
+      expenses: '0',
+      expenseType: 'public',
+      expenseCategory: 'tip',
+      expenseDescription: '',
+      coinExchange: '0',
+      tip: '0',
+      draftTxId: 'TX-test',
+      isOwnerRetaining: false,
+      ownerRetention: '',
+      calculations: {
+        diff: 100, revenue: 50000, commission: 10000, finalRetention: 0,
+        startupDebtDeduction: 0, netPayable: 40000, remainingCoins: 50, isCoinStockNegative: false,
+      },
+      resolvedGps: { lat: -6.8, lng: 39.2 },
+      gpsSourceType: 'live',
+    };
+  }
+
+  it('returns "broken" for AI condition "damaged"', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('damaged'));
+    expect(input.reportedStatus).toBe('broken');
+  });
+
+  it('returns "broken" for AI condition "fault"', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('fault'));
+    expect(input.reportedStatus).toBe('broken');
+  });
+
+  it('returns "maintenance" for AI condition "repair"', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('repair'));
+    expect(input.reportedStatus).toBe('maintenance');
+  });
+
+  it('returns "maintenance" for AI condition "servicing"', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('servicing'));
+    expect(input.reportedStatus).toBe('maintenance');
+  });
+
+  it('returns "active" for AI condition "healthy"', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('healthy'));
+    expect(input.reportedStatus).toBe('active');
+  });
+
+  it('falls back to location.status "maintenance" when AI condition is unrecognised', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput('unknown_condition', 'maintenance'));
+    expect(input.reportedStatus).toBe('maintenance');
+  });
+
+  it('falls back to location.status "broken" when AI condition is unrecognised', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput(null, 'broken'));
+    expect(input.reportedStatus).toBe('broken');
+  });
+
+  it('defaults to "active" when no AI condition and location is active', () => {
+    const input = buildCollectionSubmissionInput(makeBaseInput(null, 'active'));
+    expect(input.reportedStatus).toBe('active');
+  });
+
+  it('throws "Invalid current score" for empty score', () => {
+    expect(() => buildCollectionSubmissionInput(makeBaseInput())).not.toThrow();
+    const bad = { ...makeBaseInput(), currentScore: '' };
+    expect(() => buildCollectionSubmissionInput(bad)).toThrow('Invalid current score');
+  });
+
+  it('throws "Invalid current score" for non-numeric score', () => {
+    const bad = { ...makeBaseInput(), currentScore: 'abc' };
+    expect(() => buildCollectionSubmissionInput(bad)).toThrow('Invalid current score');
+  });
+});
+
+// ── orchestrateCollectionSubmission — IDB enqueue error paths ─────────────────
+
+describe('orchestrateCollectionSubmission() — IDB enqueue failure', () => {
+  it('continues and returns offline result even when enqueueTransaction rejects (online→fallback path)', async () => {
+    const offlineTransaction = makeTransaction({ id: 'tx-idb-fail', isSynced: false });
+    const logger = { warn: jest.fn() };
+    const enqueueTransaction = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('IDB full'));
+
+    const result = await orchestrateCollectionSubmission(
+      makeInput({ isOnline: true }),
+      {
+        submitCollectionV2: jest.fn<() => Promise<{ success: false; error: string }>>().mockResolvedValue(
+          { success: false, error: 'rpc failed' }
+        ),
+        createCollectionTransaction: jest.fn().mockReturnValue(offlineTransaction),
+        enqueueTransaction,
+        logger,
+      } as any,
+    );
+
+    expect(result.source).toBe('offline');
+    expect(result.transaction).toBe(offlineTransaction);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('IDB enqueue failed'),
+      expect.any(Error),
+    );
+  });
+
+  it('continues and returns offline result even when enqueueTransaction rejects (pure offline path)', async () => {
+    const offlineTransaction = makeTransaction({ id: 'tx-idb-fail-offline', isSynced: false });
+    const logger = { warn: jest.fn() };
+    const enqueueTransaction = jest.fn<() => Promise<unknown>>().mockRejectedValue(new Error('IDB quota'));
+
+    const result = await orchestrateCollectionSubmission(
+      makeInput({ isOnline: false }),
+      {
+        submitCollectionV2: jest.fn(),
+        createCollectionTransaction: jest.fn().mockReturnValue(offlineTransaction),
+        enqueueTransaction,
+        logger,
+      } as any,
+    );
+
+    expect(result.source).toBe('offline');
+    expect(result.transaction).toBe(offlineTransaction);
+    expect(logger.warn).toHaveBeenCalledWith(
+      expect.stringContaining('IDB enqueue failed'),
+      expect.any(Error),
+    );
+  });
+});
