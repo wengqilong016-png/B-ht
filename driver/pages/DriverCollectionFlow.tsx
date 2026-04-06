@@ -324,6 +324,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           location={resetLoc}
           currentDriver={currentDriver}
           lang={lang}
+          isOnline={isOnline}
           gpsCoords={draft.gpsCoords}
           onSubmit={async (tx) => {
             await onSubmit(tx);
@@ -344,6 +345,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           location={payoutLoc}
           currentDriver={currentDriver}
           lang={lang}
+          isOnline={isOnline}
           gpsCoords={draft.gpsCoords}
           onSubmit={async (tx) => {
             await onSubmit(tx);
@@ -421,6 +423,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         currentScore={draft.currentScore}
         expenses={draft.expenses}
         expenseCategory={draft.expenseCategory}
+        expenseDescription={draft.expenseDescription}
         coinExchange={draft.coinExchange}
         ownerRetention={draft.ownerRetention}
         isOwnerRetaining={draft.isOwnerRetaining}
@@ -430,6 +433,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         previewSource={financeResult.source}
         onUpdateExpenses={(v) => updateDraft({ expenses: v })}
         onUpdateExpenseCategory={(v) => updateDraft({ expenseCategory: v })}
+        onUpdateExpenseDescription={(v) => updateDraft({ expenseDescription: v })}
         onUpdateCoinExchange={(v) => updateDraft({ coinExchange: v })}
         onUpdateOwnerRetention={(v) => updateDraft({ ownerRetention: v })}
         onUpdateIsOwnerRetaining={(v) => updateDraft({ isOwnerRetaining: v })}
@@ -457,6 +461,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       expenses={draft.expenses}
       expenseType={draft.expenseType}
       expenseCategory={draft.expenseCategory}
+      expenseDescription={draft.expenseDescription}
       coinExchange={draft.coinExchange}
       tip={draft.tip}
       startupDebtDeduction={draft.startupDebtDeduction}

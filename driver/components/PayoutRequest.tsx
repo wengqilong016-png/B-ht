@@ -7,13 +7,14 @@ interface PayoutRequestProps {
   location: Location;
   currentDriver: Driver;
   lang: 'zh' | 'sw';
+  isOnline: boolean;
   gpsCoords: { lat: number; lng: number } | null;
   onSubmit: (tx: Transaction) => Promise<void>;
   onCancel: () => void;
 }
 
 const PayoutRequest: React.FC<PayoutRequestProps> = ({
-  location, currentDriver, lang, gpsCoords, onSubmit, onCancel,
+  location, currentDriver, lang, isOnline, gpsCoords, onSubmit, onCancel,
 }) => {
   const t = TRANSLATIONS[lang];
   const [payoutAmount, setPayoutAmount] = useState<string>('');
@@ -92,6 +93,17 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
             <p className="text-2xl font-black text-emerald-700">TZS {availableDividend.toLocaleString()}</p>
           </div>
         </div>
+
+        {!isOnline && (
+          <div className="flex items-center gap-2 px-3 py-2 rounded-subcard bg-amber-50 border border-amber-200">
+            <span className="text-amber-500 text-sm flex-shrink-0">📶</span>
+            <p className="text-[10px] font-black text-amber-700 leading-tight">
+              {lang === 'zh'
+                ? '当前离线 — 申请将在联网后自动同步。'
+                : 'Currently offline — request will sync automatically when reconnected.'}
+            </p>
+          </div>
+        )}
 
         <div className="bg-slate-50 p-4 rounded-subcard border border-slate-200">
           <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">{t.payoutAmount}</label>

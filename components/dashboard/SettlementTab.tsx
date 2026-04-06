@@ -515,8 +515,9 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCash} (TZS {t.notesUnit})</label>
                 <input
                   type="number"
+                  min={0}
                   value={actualCash}
-                  onChange={e => setActualCash(e.target.value)}
+                  onChange={e => setActualCash(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full text-4xl font-black bg-transparent text-center outline-none text-slate-800 placeholder:text-slate-300"
                   placeholder="0"
                 />
@@ -525,8 +526,9 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCoins} (TZS {t.coinsUnitLabel})</label>
                 <input
                   type="number"
+                  min={0}
                   value={actualCoins}
-                  onChange={e => setActualCoins(e.target.value)}
+                  onChange={e => setActualCoins(e.target.value.replace(/[^0-9]/g, ''))}
                   className="w-full text-4xl font-black bg-transparent text-center outline-none text-slate-800 placeholder:text-slate-300"
                   placeholder="0"
                 />

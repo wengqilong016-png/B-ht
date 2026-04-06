@@ -43,6 +43,7 @@ export interface CollectionSubmissionInput {
   notes: string | null;
   expenseType: 'public' | 'private' | null;
   expenseCategory: Transaction['expenseCategory'] | null;
+  expenseDescription?: string;
   reportedStatus: 'active' | 'maintenance' | 'broken';
 }
 
