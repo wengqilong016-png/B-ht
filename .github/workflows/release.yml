@@ -73,13 +73,16 @@ jobs:
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/bahati.keystore
           KEYSTORE_SIZE=$(wc -c < android/app/bahati.keystore)
           if [ "$KEYSTORE_SIZE" -eq 0 ]; then
-            echo "ERROR: ANDROID_KEYSTORE_BASE64 secret is empty or not set." >&2
-            exit 1
+            echo "WARNING: ANDROID_KEYSTORE_BASE64 secret is not set. Building unsigned APK."
+            rm android/app/bahati.keystore
+          else
+            echo "Keystore decoded: ${KEYSTORE_SIZE} bytes"
+            echo "SIGNING_AVAILABLE=true" >> "$GITHUB_ENV"
           fi
-          echo "Keystore decoded: ${KEYSTORE_SIZE} bytes"
         shell: bash
 
       - name: Convert keystore to Java-compatible format
+        if: env.SIGNING_AVAILABLE == 'true'
         run: |
           openssl pkcs12 \
             -in android/app/bahati.keystore \
@@ -94,6 +97,7 @@ jobs:
             -out android/app/bahati-compat.keystore
           mv android/app/bahati-compat.keystore android/app/bahati.keystore
           echo "Keystore converted successfully."
+          echo "KEYSTORE_FILE=bahati.keystore" >> "$GITHUB_ENV"
         env:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         shell: bash
@@ -101,7 +105,7 @@ jobs:
       - name: Build Release APK
         run: cd android && ./gradlew assembleRelease
         env:
-          KEYSTORE_FILE: bahati.keystore
+          KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
