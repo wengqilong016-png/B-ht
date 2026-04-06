@@ -71,6 +71,31 @@ jobs:
       - name: Decode keystore
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/bahati.keystore
+          KEYSTORE_SIZE=$(wc -c < android/app/bahati.keystore)
+          if [ "$KEYSTORE_SIZE" -eq 0 ]; then
+            echo "ERROR: ANDROID_KEYSTORE_BASE64 secret is empty or not set." >&2
+            exit 1
+          fi
+          echo "Keystore decoded: ${KEYSTORE_SIZE} bytes"
+        shell: bash
+
+      - name: Convert keystore to Java-compatible format
+        run: |
+          openssl pkcs12 \
+            -in android/app/bahati.keystore \
+            -passin "pass:${KEYSTORE_PASSWORD}" \
+            -passout "pass:${KEYSTORE_PASSWORD}" \
+            -out android/app/bahati-compat.keystore \
+            -legacy 2>/dev/null \
+          || openssl pkcs12 \
+            -in android/app/bahati.keystore \
+            -passin "pass:${KEYSTORE_PASSWORD}" \
+            -passout "pass:${KEYSTORE_PASSWORD}" \
+            -out android/app/bahati-compat.keystore
+          mv android/app/bahati-compat.keystore android/app/bahati.keystore
+          echo "Keystore converted successfully."
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         shell: bash
 
       - name: Build Release APK
