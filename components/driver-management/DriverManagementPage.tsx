@@ -13,6 +13,7 @@ import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useAuth } from '../../contexts/AuthContext';
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface DriverManagementProps {}
@@ -29,6 +30,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { updateDrivers, updateLocations, deleteDrivers } = useMutations();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
+  const { lang } = useAuth();
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave).then(() => {});
@@ -357,6 +359,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           onToggleSort={toggleSort}
           onEdit={openEdit}
           onDelete={handleDeleteDriver}
+          lang={lang}
         />
       )}
 

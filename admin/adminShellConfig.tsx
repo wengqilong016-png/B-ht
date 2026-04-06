@@ -49,14 +49,14 @@ export const ADMIN_SECONDARY_NAV: AdminNavItem[] = [
 ];
 
 export const ADMIN_PAGE_TITLES: Record<AdminView, string> = {
-  dashboard: 'Action Center',
-  settlement: 'Settlement',
-  map: 'Map & Routes',
-  sites: 'Site Management',
-  team: 'Team',
-  collect: 'Collect',
-  debt: 'Finance',
-  history: 'History',
+  dashboard: '工作台',
+  settlement: '审批中心',
+  map: '地图与轨迹',
+  sites: '网点管理',
+  team: '车队与薪资',
+  collect: '采集录入',
+  debt: '债务管理',
+  history: '操作记录',
   monthly: '月度报表',
 };
 

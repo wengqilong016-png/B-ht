@@ -326,4 +326,8 @@ export const sw: Record<string, string> = {
   switchMachine: 'Switch Machine',
   forceRetryDeadLetter: 'Force Retry',
   forceRetryDeadLetterHint: 'Reset stuck items and retry now',
+  byDriver: 'By Driver',
+  todayRevenueByDriver: "Today's revenue by driver",
+  ownerDivision: 'Owner Div.',
+  netCash: 'Net Cash',
 };

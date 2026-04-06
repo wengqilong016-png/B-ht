@@ -3,11 +3,12 @@
  * ──────────────────────────────────────────────────────────────────────────────
  * Supabase Realtime hook that subscribes to INSERT/UPDATE/DELETE changes on
  * `transactions`, `drivers`, and `daily_settlements` tables via broadcast
- * channels backed by database triggers, invalidating the corresponding React
- * Query caches so the UI refreshes immediately.
+ * channels backed by database triggers, invalidating the corresponding
+ * React Query caches so the UI refreshes immediately.
  *
  * Uses dedicated private channels (`db:transactions`, `db:drivers`,
- * `db:daily_settlements`) instead of `postgres_changes` for better scalability.
+ * `db:daily_settlements`, `db:locations`) instead of `postgres_changes` for
+ * better scalability.
  * Database triggers call `realtime.broadcast_changes()` to publish events.
  *
  * The existing polling inside useSupabaseData is kept as a fallback for
@@ -15,7 +16,7 @@
  *
  * Pass `userRole` to restrict subscriptions by role: drivers only need the
  * `db:transactions` channel (their own collection changes), while admins
- * subscribe to all three channels.
+ * subscribe to all four channels.
  */
 
 import { useEffect, useState } from 'react';
@@ -33,6 +34,7 @@ const ADMIN_CHANNELS = [
   { topic: 'db:transactions',      table: 'transactions'      },
   { topic: 'db:drivers',           table: 'drivers'           },
   { topic: 'db:daily_settlements', table: 'daily_settlements' },
+  { topic: 'db:locations',         table: 'locations'         },
 ] as const;
 
 /** Reduced channel set for driver accounts — only their own transaction changes. */

@@ -326,4 +326,8 @@ export const zh: Record<string, string> = {
   switchMachine: '切换机器',
   forceRetryDeadLetter: '强制重试',
   forceRetryDeadLetterHint: '重置卡住的记录并立即重试',
+  byDriver: '按司机',
+  todayRevenueByDriver: '按司机查看今日营收明细',
+  ownerDivision: '分成',
+  netCash: '净额',
 };

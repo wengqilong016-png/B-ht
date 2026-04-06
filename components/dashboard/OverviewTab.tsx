@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowRight, Store } from 'lucide-react';
+import { ArrowRight, Store, BrainCircuit, ChevronDown } from 'lucide-react';
 import { Transaction, Driver, Location, DailySettlement, MonthlyPayroll, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import SmartInsights from '../SmartInsights';
@@ -46,6 +46,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   onOpenTab,
 }) => {
   const [revDrilldown, setRevDrilldown] = React.useState<'none' | 'drivers' | string>('none');
+  const [aiInsightsExpanded, setAiInsightsExpanded] = React.useState(false);
   const t = TRANSLATIONS[lang];
   const todayActionItems = React.useMemo(() => {
     const pendingApprovals =
@@ -214,8 +215,23 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               </div>
             )}
           </div>
-          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
-            <SmartInsights transactions={transactions} locations={locations} drivers={drivers} lang={lang} />
+          <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setAiInsightsExpanded(p => !p)}
+              className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <BrainCircuit size={14} className="text-indigo-500" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-slate-600">AI 智能分析</span>
+              </div>
+              <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${aiInsightsExpanded ? 'rotate-180' : ''}`} />
+            </button>
+            {aiInsightsExpanded && (
+              <div className="px-4 pb-4 border-t border-slate-100">
+                <SmartInsights transactions={transactions} locations={locations} drivers={drivers} lang={lang} onNavigate={onOpenTab} />
+              </div>
+            )}
           </div>
         </>
       ) : revDrilldown === 'drivers' ? (
@@ -223,8 +239,8 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className="flex items-center gap-3 mb-1">
             <button onClick={() => setRevDrilldown('none')} className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
             <div>
-              <h3 className="text-sm font-black text-slate-900 uppercase">{t.revenue} — {lang === 'zh' ? '按司机查看' : 'By Driver'}</h3>
-              <p className="text-[10px] text-slate-400 font-bold">{lang === 'zh' ? '按司机查看今日营收明细' : "Today's revenue by driver"}</p>
+              <h3 className="text-sm font-black text-slate-900 uppercase">{t.revenue} — {t.byDriver}</h3>
+              <p className="text-[10px] text-slate-400 font-bold">{t.todayRevenueByDriver}</p>
             </div>
           </div>
           {todayDriverStats.map(({ driver, driverTxs, driverRev, driverCommission, driverNet }) => (
@@ -234,25 +250,25 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                   <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
                   <div>
                     <p className="text-sm font-black text-slate-900">{driver.name}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone} • {driverTxs.length} collections</p>
+                    <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone} • {driverTxs.length} {t.collectionsShort}</p>
                   </div>
                 </div>
                 <div className="text-right">
                   <p className="text-xs font-black text-indigo-600">TZS {driverRev.toLocaleString()}</p>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">Total Revenue</p>
+                  <p className="text-[9px] font-bold text-slate-400 uppercase">{t.totalRevenue}</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-1.5 mb-2">
                 <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
-                  <p className="text-[7px] font-black text-slate-400 uppercase">Revenue</p>
+                  <p className="text-[7px] font-black text-slate-400 uppercase">{t.revenue}</p>
                   <p className="text-[10px] font-black text-slate-800">TZS {driverRev.toLocaleString()}</p>
                 </div>
                 <div className="bg-amber-50 p-2 rounded-xl border border-amber-100 text-center">
-                  <p className="text-[7px] font-black text-amber-400 uppercase">Owner Div.</p>
+                  <p className="text-[7px] font-black text-amber-400 uppercase">{t.ownerDivision}</p>
                   <p className="text-[10px] font-black text-amber-700">TZS {driverCommission.toLocaleString()}</p>
                 </div>
                 <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-100 text-center">
-                  <p className="text-[7px] font-black text-indigo-400 uppercase">Net Cash</p>
+                  <p className="text-[7px] font-black text-indigo-400 uppercase">{t.netCash}</p>
                   <p className="text-[10px] font-black text-indigo-700">TZS {driverNet.toLocaleString()}</p>
                 </div>
               </div>

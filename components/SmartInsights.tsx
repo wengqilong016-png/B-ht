@@ -7,9 +7,10 @@ interface SmartInsightsProps {
   locations: Location[];
   drivers: Driver[];
   lang: 'zh' | 'sw';
+  onNavigate?: (tab: 'settlement' | 'locations' | 'team' | 'tracking') => void;
 }
 
-const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, lang }) => {
+const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, lang, onNavigate }) => {
   const t = TRANSLATIONS[lang];
   const [showAll, setShowAll] = useState(false);
   // 核心 AI 算法：计算每台机器的“健康度”和“异动指标”
@@ -153,7 +154,12 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
         ) : (
            <div className="grid grid-cols-1 gap-3">
              {visibleInsights.map((insight, idx) => (
-               <div key={insight.loc.id} className={`rounded-[24px] border bg-white p-4 shadow-sm transition-all hover:shadow-md ${insight.riskLevel === 'high' ? 'border-rose-200' : 'border-amber-200'}`}>
+               <button
+                 key={insight.loc.id}
+                 type="button"
+                 onClick={() => onNavigate?.('locations')}
+                 className={`rounded-[24px] border bg-white p-4 shadow-sm transition-all text-left w-full ${onNavigate ? 'cursor-pointer hover:shadow-md hover:border-indigo-300' : 'cursor-default'} ${insight.riskLevel === 'high' ? 'border-rose-200' : 'border-amber-200'}`}
+               >
                  <div className="flex justify-between items-start mb-4">
                     <div>
                       <h4 className="text-sm font-black text-slate-900">{insight.loc.name}</h4>
@@ -186,7 +192,10 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
                     <span className="text-slate-400 uppercase">{t.sevenDayRevenue}</span>
                     <span className="text-slate-700 flex items-center gap-1"><DollarSign size={10}/> {insight.totalRevenue.toLocaleString()} TZS</span>
                  </div>
-               </div>
+                  {onNavigate && (
+                    <div className="mt-3 text-right text-[9px] font-black text-indigo-500 uppercase tracking-widest">→ 查看点位</div>
+                  )}
+               </button>
              ))}
            </div>
         )}
