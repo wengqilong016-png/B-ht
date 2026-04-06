@@ -4,7 +4,8 @@ import { enqueueTransaction, flushQueue, reportQueueHealthToServer, resetRetryBa
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
 import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRoleScope';
 import { stripClientFields } from '../utils/stripClientFields';
-import { upsertDrivers, deleteDrivers as repoDeleteDrivers, updateDriverCoins } from '../repositories/driverRepository';
+import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
+import { deleteDriverAccount } from '../services/driverManagementService';
 import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
 import {
   approveExpenseRequest as repoApproveExpenseRequest,
@@ -163,9 +164,19 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       return { previousDrivers };
     },
     mutationFn: async (ids: string[]) => {
-      if (isOnline) {
-        await repoDeleteDrivers(ids);
+      if (!isOnline) throw new Error('Cannot delete driver while offline');
+      // Call Edge Function for each id so auth.users + profiles are fully removed.
+      const errors: string[] = [];
+      for (const id of ids) {
+        const result = await deleteDriverAccount(id);
+        if (result.success === false) {
+          errors.push(`${id}: ${result.message}`);
+        }
       }
+      if (errors.length > 0) throw new Error(errors.join('; '));
+      // Keep localDB in sync.
+      const cached = await localDB.get<Driver[]>(CONSTANTS.STORAGE_DRIVERS_KEY) ?? [];
+      await localDB.set(CONSTANTS.STORAGE_DRIVERS_KEY, cached.filter(d => !ids.includes(d.id)));
     },
     onError: (_error, _variables, context) => {
       if (context?.previousDrivers !== undefined) {

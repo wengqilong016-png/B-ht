@@ -11,6 +11,10 @@ export type CreateDriverResult =
   | { success: true; driverId: string }
   | { success: false; code: string; message: string };
 
+export type DeleteDriverResult =
+  | { success: true; driverId: string }
+  | { success: false; code: string; message: string };
+
 /**
  * Invoke the `create-driver` Edge Function to create a Supabase Auth user,
  * a `public.drivers` row, and a `public.profiles` row in a single call.
@@ -31,6 +35,26 @@ export async function createDriverAccount(params: {
       display_name: params.name,
       username: params.username,
     },
+  });
+
+  if (error || !data?.success) {
+    const message = data?.error ?? error?.message ?? 'Unknown error';
+    const code = data?.code ?? 'UNKNOWN';
+    return { success: false, code, message };
+  }
+
+  return { success: true, driverId: data.driver_id as string };
+}
+
+/**
+ * Invoke the `delete-driver` Edge Function to fully remove a driver:
+ * deletes the Supabase Auth user (cascading to profiles) + the drivers row.
+ */
+export async function deleteDriverAccount(driverId: string): Promise<DeleteDriverResult> {
+  if (!supabase) return { success: false, code: 'CLIENT_UNAVAILABLE', message: 'Supabase client unavailable' };
+
+  const { data, error } = await supabase.functions.invoke('delete-driver', {
+    body: { driver_id: driverId },
   });
 
   if (error || !data?.success) {
