@@ -204,29 +204,23 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
     <div className="space-y-4 animate-in slide-in-from-right-4">
       {isAdmin ? (
         <div className="space-y-3">
-          {/* Unified approval task-flow header */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-black text-slate-900 uppercase">{t.approvalCenter}</h3>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+          {/* Slim status line — nav badge already shows the count */}
+          {approvalTasks.length > 0 && (
+            <div className="flex items-center gap-2 px-1">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
+                {approvalTasks.length > 9 ? '9+' : approvalTasks.length}
+              </span>
+              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
                 {[
                   pendingSettlements.length > 0 && `${lang === 'zh' ? '结算' : 'Settlement'} ${pendingSettlements.length}`,
                   anomalyTransactions.length > 0 && `${lang === 'zh' ? '异常' : 'Anomaly'} ${anomalyTransactions.length}`,
                   pendingResetRequests.length > 0 && `${lang === 'zh' ? '重置' : 'Reset'} ${pendingResetRequests.length}`,
                   pendingExpenses.length > 0 && `${lang === 'zh' ? '费用' : 'Expense'} ${pendingExpenses.length}`,
                   pendingPayoutRequests.length > 0 && `${lang === 'zh' ? '提现' : 'Payout'} ${pendingPayoutRequests.length}`,
-                ].filter(Boolean).join(' • ') || (lang === 'zh' ? '暂无待处理任务' : 'No pending tasks')}
+                ].filter(Boolean).join(' • ')}
               </p>
             </div>
-            <div className="flex items-center gap-2">
-              {approvalTasks.length > 0 && (
-                <span className="w-7 h-7 rounded-full bg-amber-500 text-white text-xs font-black flex items-center justify-center">
-                  {approvalTasks.length > 9 ? '9+' : approvalTasks.length}
-                </span>
-              )}
-              <div className="p-2.5 bg-indigo-50 text-indigo-600 rounded-xl"><Calculator size={20} /></div>
-            </div>
-          </div>
+          )}
 
           {/* Unified task list */}
           {approvalTasks.length === 0 ? (

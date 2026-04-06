@@ -380,6 +380,15 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         const nextDayStartingCoins = reviewedSettlement.actualCoins || 0;
         await updateDriverCoins(reviewedSettlement.driverId, nextDayStartingCoins);
       }
+      return reviewedSettlement;
+    },
+    onSuccess: (reviewedSettlement) => {
+      if (reviewedSettlement) {
+        queryClient.setQueryData(settlementQueryKey, (old: DailySettlement[] = []) =>
+          old.map(s => s.id === reviewedSettlement.id ? { ...reviewedSettlement, isSynced: true } : s)
+        );
+        persistQuerySnapshot<DailySettlement>(settlementQueryKey, settlementStorageKey);
+      }
     },
     onError: (_error, _variables, context) => {
       if (context?.previousSettlements !== undefined) {
