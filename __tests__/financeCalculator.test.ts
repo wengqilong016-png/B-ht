@@ -309,4 +309,63 @@ describe('calculateCollectionFinancePreview', () => {
       p_owner_retention: null,
     }));
   });
+
+  it('parses comma-formatted ownerRetention string (e.g. "1,500")', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { diff: 100, revenue: 20000, commission: 3000, finalRetention: 1500, netPayable: 15500 },
+      error: null,
+    });
+
+    await calculateCollectionFinancePreview(
+      makeInput({ isOwnerRetaining: true, ownerRetention: '1,500' }),
+    );
+
+    expect(mockRpc).toHaveBeenCalledWith('calculate_finance_v2', expect.objectContaining({
+      p_owner_retention: 1500,
+    }));
+  });
+
+  it('parses non-finite ownerRetention as 0', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { diff: 100, revenue: 20000, commission: 3000, finalRetention: 0, netPayable: 17000 },
+      error: null,
+    });
+
+    await calculateCollectionFinancePreview(
+      makeInput({ isOwnerRetaining: true, ownerRetention: 'abc' }),
+    );
+
+    expect(mockRpc).toHaveBeenCalledWith('calculate_finance_v2', expect.objectContaining({
+      p_owner_retention: 0,
+    }));
+  });
+
+  it('clamps startup_debt_deduction_request to 0 when negative string', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { diff: 100, revenue: 20000, commission: 3000, finalRetention: 3000, netPayable: 17000 },
+      error: null,
+    });
+
+    await calculateCollectionFinancePreview(
+      makeInput({ startupDebtDeduction: '-500' }),
+    );
+
+    expect(mockRpc).toHaveBeenCalledWith('calculate_finance_v2', expect.objectContaining({
+      p_startup_debt_deduction_request: 0,
+    }));
+  });
+
+  it('isCoinStockNegative is true when server netPayable < coinExchange - initialFloat', async () => {
+    mockRpc.mockResolvedValueOnce({
+      data: { diff: 10, revenue: 2000, commission: 300, finalRetention: 300, netPayable: 1700 },
+      error: null,
+    });
+
+    const result = await calculateCollectionFinancePreview(
+      makeInput({ coinExchange: '5000', initialFloat: 0 }),
+    );
+
+    expect(result.remainingCoins).toBe(1700 - 5000); // negative
+    expect(result.isCoinStockNegative).toBe(true);
+  });
 });
