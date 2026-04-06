@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useEffect, useDeferredValue } from 'react';
 import { Layers, Coins, ScanLine, AlertTriangle, WifiOff, DatabaseBackup } from 'lucide-react';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';
+import { getTodayLocalDate } from '../../utils/dateUtils';
 import { getPendingTransactions } from '../../offlineQueue';
 import MachineFilterBar from './MachineFilterBar';
 import MachineCard, { type MachineCardMeta } from './MachineCard';
@@ -53,7 +54,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
   const assignedLocations = isShowingAllLocations ? locations : driverSpecificLocations;
   const availableAreas = useMemo(() => Array.from(new Set(assignedLocations.map(l => l.area).filter(Boolean))).sort(), [assignedLocations]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayLocalDate();
   const todayDriverTransactions = useMemo(
     () => allTransactions.filter(t => t.driverId === currentDriver.id && t.timestamp.startsWith(todayStr) && (t.type === undefined || t.type === 'collection')),
     [allTransactions, currentDriver.id, todayStr]

@@ -9,6 +9,7 @@ import SyncStatusPill from '../shared/SyncStatusPill';
 import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
+import { getTodayLocalDate } from '../utils/dateUtils';
 import { useMutations } from '../contexts/MutationContext';
 import { DRIVER_NAV_ITEMS, type DriverView } from './driverShellConfig';
 import DriverShellViewRenderer from './renderDriverShellView';
@@ -32,7 +33,7 @@ const AppDriverShell: React.FC = () => {
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = getTodayLocalDate();
   const assignedMachineCount = filteredLocations.filter((location) => location.assignedDriverId === activeDriverId).length || filteredLocations.length;
   const todayCollectionCount = filteredTransactions.filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection')).length;
   const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;

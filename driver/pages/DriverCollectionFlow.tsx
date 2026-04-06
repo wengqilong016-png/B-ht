@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { Location, Transaction, CONSTANTS } from '../../types';
+import { getTodayLocalDate } from '../../utils/dateUtils';
 import {
   calculateCollectionFinanceLocal,
   calculateCollectionFinancePreview,
@@ -138,7 +139,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     () => locations.find(l => l.id === draft.selectedLocId),
     [draft.selectedLocId, locations]
   );
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getTodayLocalDate(), []);
   const assignedLocations = useMemo(() => {
     const mine = locations.filter((location) => location.assignedDriverId === currentDriver.id);
     return mine.length > 0 ? mine : locations;
@@ -252,16 +253,35 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   );
   const handleResumeDraft = (locId: string) => {
     if (draft.selectedLocId !== locId) {
+      if (hasDraftInProgress) {
+        const ok = window.confirm(
+          lang === 'zh'
+            ? '⚠️ 当前有未提交的收款草稿，切换机器将丢失已填数据。确定切换？'
+            : '⚠️ You have an unsaved collection draft. Switching machines will discard it. Continue?',
+        );
+        if (!ok) return;
+      }
       handleSelectMachine(locId);
       return;
     }
     setStep('capture');
   };
   const handleContinueToNextMachine = (locId: string) => {
+    // "Continue to next" is called after a successful submission — draft is already
+    // cleared at this point, so no confirmation needed.
     handleSelectMachine(locId);
   };
   const handleSwitchMachine = () => {
+    if (hasDraftInProgress) {
+      const ok = window.confirm(
+        lang === 'zh'
+          ? '⚠️ 当前有未提交的收款草稿，切换将丢失已填数据。确定切换？'
+          : '⚠️ You have an unsaved draft. Switching will discard it. Continue?',
+      );
+      if (!ok) return;
+    }
     setStep('selection');
+    resetDraft();
   };
 
   const handleBackToSelection = () => {

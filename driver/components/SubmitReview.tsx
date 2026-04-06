@@ -62,6 +62,15 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   const [gpsResolving, setGpsResolving] = useState(false);
   const { state: submissionState, submit: submitCollection, reset: resetSubmissionState } = useCollectionSubmission();
 
+  // Idempotency lock — prevents a second submission while the success/error
+  // useEffect is pending (e.g. user taps Submit again while alert() is open).
+  const submittedRef = React.useRef(false);
+
+  // Reset the idempotency lock whenever the draftTxId changes (new collection).
+  React.useEffect(() => {
+    submittedRef.current = false;
+  }, [draftTxId]);
+
   // Derived boolean used to disable the submit button and spinner gating
   const isProcessing = gpsResolving || submissionState.status === 'submitting';
 
@@ -82,6 +91,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       }
       onReset();
     } else if (submissionState.status === 'error') {
+      submittedRef.current = false;
       resetSubmissionState();
       alert(lang === 'zh' ? '❌ 提交失败，请重试' : '❌ Imeshindwa, jaribu tena');
     }
@@ -106,6 +116,8 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
     resolvedGps: { lat: number; lng: number },
     gpsSourceType: 'live' | 'exif' | 'estimated' | 'none' = 'live',
   ) => {
+    if (submittedRef.current) return;
+    submittedRef.current = true;
     await submitCollection({
       selectedLocation,
       currentDriver,
@@ -128,7 +140,18 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   };
 
   const handleSubmit = async () => {
-    if (!selectedLocation || isProcessing) return;
+    if (!selectedLocation || isProcessing || submittedRef.current) return;
+    // Validate score is numeric before proceeding (orchestrator also validates,
+    // but giving clear feedback here saves the user going through GPS flow first).
+    const trimmedScore = currentScore.trim();
+    if (!trimmedScore || isNaN(parseInt(trimmedScore, 10))) {
+      alert(
+        lang === 'zh'
+          ? '❌ 请输入有效的机器读数（纯数字）。'
+          : '❌ Please enter a valid numeric machine score.',
+      );
+      return;
+    }
     if (isScoreBelowLastReading) {
       alert(
         lang === 'zh'
