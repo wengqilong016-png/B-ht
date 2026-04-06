@@ -1,14 +1,15 @@
 /**
- * NotificationProvider.tsx
+ * NotificationContext.tsx
  * ──────────────────────────────────────────────────────────────────────────────
  * Global notification context + floating bell icon for admin users.
+ *
+ * Moved from notifications/NotificationProvider.tsx; notification types
+ * inlined from shared/types/notifications.ts.
  *
  * Responsibilities:
  *   - Persist notifications to localStorage (offline viewable).
  *   - Expose addNotification() / markAllRead() / clearAll() via context.
  *   - Render a floating bell icon (bottom-right) with an unread badge count.
- *   - Support types: driver_online/offline, anomaly_detected, pending_approval,
- *     settlement_changed, machine_stale, machine_high_risk, driver_idle.
  */
 
 import React, {
@@ -21,7 +22,31 @@ import React, {
 } from 'react';
 import { Bell, X, CheckCheck, Trash2, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import { CONSTANTS, safeRandomUUID } from '../types';
-import type { NotificationItem, NotificationEventType } from '../shared/types/notifications';
+
+// ─── Types (inlined from shared/types/notifications.ts) ───────────────────────
+
+export type NotificationEventType =
+  | 'driver_online'
+  | 'driver_offline'
+  | 'driver_idle'
+  | 'machine_stale'
+  | 'machine_high_risk'
+  | 'pending_approval'
+  | 'anomaly_detected';
+
+export interface NotificationItem {
+  id: string;
+  type: NotificationEventType;
+  title: string;
+  message: string;
+  level: 'info' | 'warning' | 'critical';
+  entityType?: string;
+  entityId?: string;
+  isRead: boolean;
+  createdAt: string;
+  readAt?: string | null;
+  metadata?: Record<string, unknown>;
+}
 
 // ─── Context ──────────────────────────────────────────────────────────────────
 
@@ -248,5 +273,3 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
     </NotificationContext.Provider>
   );
 }
-
-export type { NotificationEventType };
