@@ -258,4 +258,22 @@ describe('submitCollectionV2', () => {
     expect(result.transaction.expenseCategory).toBeUndefined();
     expect(result.transaction.expenseStatus).toBeUndefined();
   });
+
+  it('passes expenseDescription to the RPC when expenses > 0', async () => {
+    mockRpc.mockResolvedValue({ data: serverRow, error: null });
+
+    await submitCollectionV2({ ...baseInput, expenses: 500, expenseDescription: 'diesel' });
+
+    const [, params] = mockRpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(params['p_expense_description']).toBe('diesel');
+  });
+
+  it('passes null expenseDescription to the RPC when expenses is 0', async () => {
+    mockRpc.mockResolvedValue({ data: { ...serverRow, expenses: 0 }, error: null });
+
+    await submitCollectionV2({ ...baseInput, expenses: 0, expenseDescription: undefined });
+
+    const [, params] = mockRpc.mock.calls[0] as [string, Record<string, unknown>];
+    expect(params['p_expense_description']).toBeNull();
+  });
 });

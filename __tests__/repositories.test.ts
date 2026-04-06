@@ -221,6 +221,28 @@ describe('transactionRepository', () => {
       currentChainValue = { data: null, error: new Error('tx error') };
       await expect(fetchTransactions({ isDriver: false })).rejects.toThrow('tx error');
     });
+
+    it('applies driverIdFilter when provided', async () => {
+      currentChainValue = { data: [], error: null };
+      await fetchTransactions({ isDriver: true, driverIdFilter: 'drv-123' });
+      const chain = mockFrom.mock.results.at(-1)?.value as QueryChain | undefined;
+      expect(chain?.eq).toHaveBeenCalledWith('driverId', 'drv-123');
+    });
+
+    it('applies limit when provided', async () => {
+      currentChainValue = { data: [], error: null };
+      await fetchTransactions({ isDriver: false, limit: 50 });
+      const chain = mockFrom.mock.results.at(-1)?.value as QueryChain | undefined;
+      expect(chain?.limit).toHaveBeenCalledWith(50);
+    });
+
+    it('calls abortSignal when signal is provided', async () => {
+      currentChainValue = { data: [], error: null };
+      const signal = new AbortController().signal;
+      await fetchTransactions({ isDriver: false, signal });
+      const chain = mockFrom.mock.results.at(-1)?.value as QueryChain | undefined;
+      expect(chain?.abortSignal).toHaveBeenCalledWith(signal);
+    });
   });
 
   describe('upsertTransaction()', () => {

@@ -98,4 +98,15 @@ describe('translateToChinese()', () => {
     expect(body.text).toBe('World');
     expect(body.target).toBe('zh');
   });
+
+  it('returns original text when HTTP response is not ok (e.g. 500)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({}),
+    } as unknown as Response);
+
+    const result = await translateToChinese('Hello');
+    expect(result).toBe('Hello');
+  });
 });

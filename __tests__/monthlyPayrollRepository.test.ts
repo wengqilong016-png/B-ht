@@ -141,4 +141,44 @@ describe('monthlyPayrollRepository', () => {
 
     await expect(cancelMonthlyPayroll('pay-1')).rejects.toThrow('payroll failed');
   });
+
+  it('throws when fetchMonthlyPayrolls query returns an error', async () => {
+    mockOrderCreatedAt.mockReturnValueOnce(
+      makeQuery({ data: null, error: new Error('db fetch failed') }),
+    );
+    await expect(fetchMonthlyPayrolls()).rejects.toThrow('db fetch failed');
+  });
+
+  it('throws when createMonthlyPayroll RPC returns an error', async () => {
+    mockRpc.mockResolvedValue(asMockResult({ data: null, error: new Error('create failed') }));
+    await expect(
+      createMonthlyPayroll({
+        driverId: 'drv-err',
+        month: '2026-04',
+        baseSalary: 0,
+        commission: 0,
+        privateLoanDeduction: 0,
+        shortageDeduction: 0,
+        netPayable: 0,
+        collectionCount: 0,
+        totalRevenue: 0,
+      }),
+    ).rejects.toThrow('create failed');
+  });
+
+  it('throws when markMonthlyPayrollPaid RPC returns an error', async () => {
+    mockRpc.mockResolvedValue(asMockResult({ data: null, error: new Error('mark paid failed') }));
+    await expect(
+      markMonthlyPayrollPaid({ payrollId: 'pay-err', paymentMethod: 'cash' }),
+    ).rejects.toThrow('mark paid failed');
+  });
+
+  it('omits p_note when no note provided to cancelMonthlyPayroll', async () => {
+    mockRpc.mockResolvedValue(asMockResult({ data: { id: 'pay-2', status: 'cancelled' }, error: null }));
+    await cancelMonthlyPayroll('pay-2');
+    expect(mockRpc).toHaveBeenCalledWith('cancel_monthly_payroll_v1', {
+      p_payroll_id: 'pay-2',
+      p_note: null,
+    });
+  });
 });
