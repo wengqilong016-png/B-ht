@@ -1,6 +1,7 @@
-import React from 'react';
-import { ChevronRight, Lock, RefreshCw, Wallet } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import { ChevronRight, Lock, RefreshCw, Wallet, UserPen, Camera, X, Save, Loader2 } from 'lucide-react';
 import { Location, CONSTANTS } from '../../types';
+import { compressAndResizeImage } from '../../utils/imageUtils';
 
 export interface MachineCardMeta {
   loc: Location;
@@ -19,14 +20,51 @@ interface MachineCardProps {
   onSelect: (locId: string) => void;
   onRequestReset: (locId: string) => void;
   onRequestPayout: (locId: string) => void;
+  onUpdateLocation?: (locationId: string, updates: Partial<Location>) => Promise<void>;
 }
 
 const MachineCard: React.FC<MachineCardProps> = ({
-  item, lang, t, onSelect, onRequestReset, onRequestPayout,
+  item, lang, t, onSelect, onRequestReset, onRequestPayout, onUpdateLocation,
 }) => {
   const { loc, distanceMeters, daysSinceActive, isLocked, isUrgent, isPending } = item;
   const isNear9999 = (loc.lastScore ?? 0) >= 9000;
   const hasDividendBalance = (loc.dividendBalance ?? 0) > 0;
+
+  const [showSiteInfoForm, setShowSiteInfoForm] = useState(false);
+  const [sitePhone, setSitePhone] = useState(loc.shopOwnerPhone ?? '');
+  const [siteOwnerName, setSiteOwnerName] = useState(loc.ownerName ?? '');
+  const [sitePhotoPreview, setSitePhotoPreview] = useState<string | null>(null);
+  const [isSavingSiteInfo, setIsSavingSiteInfo] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const handlePhotoCapture = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const blob = await compressAndResizeImage(file);
+      const reader = new FileReader();
+      reader.readAsDataURL(blob);
+      reader.onloadend = () => setSitePhotoPreview(reader.result as string);
+    } catch (err) {
+      console.error('Photo compression failed', err);
+    }
+  };
+
+  const handleSaveSiteInfo = async () => {
+    if (!onUpdateLocation) return;
+    setIsSavingSiteInfo(true);
+    try {
+      const updates: Partial<Location> = {};
+      if (sitePhone.trim()) updates.shopOwnerPhone = sitePhone.trim();
+      if (siteOwnerName.trim()) updates.ownerName = siteOwnerName.trim();
+      if (sitePhotoPreview) updates.ownerPhotoUrl = sitePhotoPreview;
+      await onUpdateLocation(loc.id, updates);
+      setShowSiteInfoForm(false);
+      setSitePhotoPreview(null);
+    } finally {
+      setIsSavingSiteInfo(false);
+    }
+  };
   const statusTone =
     isLocked
       ? 'bg-rose-100 text-rose-700'
@@ -145,6 +183,80 @@ const MachineCard: React.FC<MachineCardProps> = ({
             className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
           >
             <Wallet size={11} /> {lang === 'zh' ? '提现' : 'Payout'}
+          </button>
+          {onUpdateLocation && (
+            <button
+              onClick={(e) => { e.stopPropagation(); setShowSiteInfoForm(v => !v); }}
+              className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
+            >
+              <UserPen size={11} /> {lang === 'zh' ? '补充信息' : 'Site Info'}
+            </button>
+          )}
+        </div>
+      )}
+
+      {showSiteInfoForm && onUpdateLocation && (
+        <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2.5">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-black uppercase text-slate-500">
+              {lang === 'zh' ? '补充店主信息' : 'Update Site Info'}
+            </p>
+            <button onClick={() => setShowSiteInfoForm(false)} className="text-slate-400 hover:text-slate-600">
+              <X size={14} />
+            </button>
+          </div>
+
+          <input
+            type="text"
+            value={siteOwnerName}
+            onChange={e => setSiteOwnerName(e.target.value)}
+            placeholder={lang === 'zh' ? '店主姓名' : 'Owner name'}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-800 placeholder-slate-300 outline-none focus:border-indigo-400"
+          />
+
+          <input
+            type="tel"
+            value={sitePhone}
+            onChange={e => setSitePhone(e.target.value)}
+            placeholder={lang === 'zh' ? '店主电话' : 'Owner phone'}
+            className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-800 placeholder-slate-300 outline-none focus:border-indigo-400"
+          />
+
+          <div>
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/*"
+              capture="environment"
+              className="hidden"
+              onChange={handlePhotoCapture}
+            />
+            <button
+              type="button"
+              onClick={() => photoInputRef.current?.click()}
+              className={`w-full rounded-xl border-2 border-dashed py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase transition-colors ${sitePhotoPreview ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-400 hover:border-indigo-300 hover:text-indigo-500'}`}
+            >
+              {sitePhotoPreview ? (
+                <>
+                  <img src={sitePhotoPreview} alt="" className="h-8 w-8 rounded-lg object-cover" />
+                  {lang === 'zh' ? '重新拍照' : 'Retake Photo'}
+                </>
+              ) : (
+                <>
+                  <Camera size={13} />
+                  {lang === 'zh' ? '拍摄店主照片' : 'Capture Owner Photo'}
+                </>
+              )}
+            </button>
+          </div>
+
+          <button
+            onClick={handleSaveSiteInfo}
+            disabled={isSavingSiteInfo}
+            className="w-full rounded-xl bg-indigo-600 py-2.5 text-[11px] font-black uppercase text-white flex items-center justify-center gap-1.5 hover:bg-indigo-700 disabled:opacity-60 transition-colors"
+          >
+            {isSavingSiteInfo ? <Loader2 size={13} className="animate-spin" /> : <Save size={13} />}
+            {lang === 'zh' ? '保存' : 'Save'}
           </button>
         </div>
       )}
