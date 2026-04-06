@@ -131,7 +131,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
           {isNear9999 && (
             <button
               onClick={(e) => { e.stopPropagation(); onRequestReset(loc.id); }}
-              className="flex-1 px-3 py-2 text-[10px] font-black uppercase text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 border-r border-slate-100"
+              className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 border-r border-slate-100"
             >
               <RefreshCw size={11} /> {lang === 'zh' ? '重置' : 'Reset'}
             </button>
@@ -142,7 +142,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
               if (hasDividendBalance) onRequestPayout(loc.id);
             }}
             disabled={!hasDividendBalance}
-            className="flex-1 px-3 py-2 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
           >
             <Wallet size={11} /> {lang === 'zh' ? '提现' : 'Payout'}
           </button>
