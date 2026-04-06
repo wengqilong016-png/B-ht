@@ -71,13 +71,31 @@ export async function persistEvidencePhotoUrl(
   const blob = new Blob([bytes], { type: mimeType });
   const bucket = storage.from(EVIDENCE_BUCKET);
 
-  const { error } = await bucket.upload(objectPath, blob, {
-    contentType: mimeType,
-    upsert: true,
-  });
+  let uploadError: { message: string } | null = null;
+  try {
+    const { error } = await (bucket.upload as (
+      path: string,
+      body: Blob,
+      options?: Record<string, unknown>,
+    ) => Promise<{ error: { message: string } | null }>)(objectPath, blob, {
+      contentType: mimeType,
+      upsert: true,
+      // AbortSignal.timeout is widely supported (Chrome 103+, Firefox 100+, Safari 17+)
+      signal: AbortSignal.timeout(15_000),
+    });
+    uploadError = error;
+  } catch (e) {
+    uploadError = { message: e instanceof Error ? e.message : String(e) };
+  }
 
-  if (error) {
-    throw new Error(`Evidence upload failed: ${error.message}`);
+  if (uploadError) {
+    // Non-blocking: log and fall back to no photo URL so the collection
+    // submission is not blocked by a Storage outage or RLS misconfiguration.
+    console.warn(
+      `[evidenceStorage] Upload failed for ${objectPath} — proceeding without photo URL.`,
+      uploadError.message,
+    );
+    return null;
   }
 
   return bucket.getPublicUrl(objectPath).data.publicUrl;

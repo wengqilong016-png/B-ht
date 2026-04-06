@@ -166,12 +166,17 @@ describe('persistEvidencePhotoUrl() — successful upload', () => {
 // ══ upload error ════════════════════════════════════════════════════════════════
 
 describe('persistEvidencePhotoUrl() — upload error', () => {
-  it('throws when the bucket upload returns an error', async () => {
+  it('returns null (non-blocking) when the bucket upload returns an error', async () => {
     mockUpload.mockResolvedValue({ error: { message: 'Storage quota exceeded' } });
 
-    await expect(
-      persistEvidencePhotoUrl(JPEG_DATA_URL, { category: 'collection', entityId: 'e-1' }),
-    ).rejects.toThrow('Evidence upload failed: Storage quota exceeded');
+    const result = await persistEvidencePhotoUrl(JPEG_DATA_URL, {
+      category: 'collection',
+      entityId: 'e-1',
+    });
+
+    // Upload failures are non-blocking: the function logs a warning and
+    // returns null so a Storage outage cannot freeze the sync pipeline.
+    expect(result).toBeNull();
   });
 });
 
