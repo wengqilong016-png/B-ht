@@ -6,7 +6,7 @@ import {
   SETTLEMENT_LIMIT_DRIVER,
   getSettlementQueryScope,
   getTransactionQueryScope,
-} from '../hooks/supabaseRoleScope';
+} from '../services/supabaseRoleScope';
 
 describe('supabaseRoleScope', () => {
   it('uses admin transaction scope by default', () => {

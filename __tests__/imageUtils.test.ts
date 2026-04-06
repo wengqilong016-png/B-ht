@@ -13,7 +13,7 @@ import {
   getOptimalEvidenceWidth,
   clearCanvasMemory,
   getMinimumAICallInterval,
-} from '../driver/utils/imageOptimization';
+} from '../utils/imageOptimization';
 
 // ── getOptimizedImageUrl ──────────────────────────────────────────────────────
 

@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 
-const Dashboard = lazy(() => import('../components/Dashboard'));
+const Dashboard = lazy(() => import('../components/dashboard/DashboardPage'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
 const TransactionHistory = lazy(() => import('../components/TransactionHistory'));
 const DebtManager = lazy(() => import('../components/DebtManager'));

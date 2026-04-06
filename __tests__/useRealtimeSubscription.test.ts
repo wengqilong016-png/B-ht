@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { QueryClient } from '@tanstack/react-query';
-import { createRealtimeInvalidator } from '../hooks/realtimeInvalidation';
+import { createRealtimeInvalidator } from '../services/realtimeInvalidation';
 
 describe('createRealtimeInvalidator', () => {
   beforeEach(() => {

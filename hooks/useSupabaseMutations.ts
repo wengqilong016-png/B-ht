@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Location, Driver, Transaction, DailySettlement, AILog, User, CONSTANTS } from '../types';
 import { enqueueTransaction, flushQueue, reportQueueHealthToServer, resetRetryBackoff } from '../offlineQueue';
 import { submitCollectionV2 } from '../services/collectionSubmissionService';
-import { getTransactionQueryScope, getSettlementQueryScope } from './supabaseRoleScope';
+import { getTransactionQueryScope, getSettlementQueryScope } from '../services/supabaseRoleScope';
 import { stripClientFields } from '../utils/stripClientFields';
 import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
 import { deleteDriverAccount } from '../services/driverManagementService';

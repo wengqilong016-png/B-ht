@@ -21,7 +21,7 @@
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../supabaseClient';
-import { createRealtimeInvalidator } from './realtimeInvalidation';
+import { createRealtimeInvalidator } from '../services/realtimeInvalidation';
 
 export type RealtimeStatus = 'connected' | 'disconnected' | 'reconnecting';
 

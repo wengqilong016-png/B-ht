@@ -1,15 +1,5 @@
 import { GoogleGenAI } from '@google/genai';
-
-const readEnv = (...names: string[]) => {
-  for (const name of names) {
-    const value = process.env[name];
-    if (value && value.trim()) {
-      return value.trim();
-    }
-  }
-
-  return '';
-};
+import { readEnv } from './_lib/readEnv';
 
 const stripJsonFence = (value: string) =>
   value
