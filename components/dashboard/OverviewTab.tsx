@@ -127,71 +127,71 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   const queuedActions = actionableItems.slice(1);
 
   return (
-    <div className="space-y-5 animate-in fade-in">
+    <div className="space-y-3 animate-in fade-in">
       {revDrilldown === 'none' ? (
         <>
-          <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr] gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr] gap-2">
             <button
               onClick={() => setRevDrilldown('drivers')}
-              className="col-span-2 lg:col-span-1 rounded-[28px] border border-slate-200 bg-white px-5 py-4 text-left shadow-sm transition-all hover:border-indigo-200 hover:bg-indigo-50/40 group"
+              className="col-span-2 lg:col-span-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:border-indigo-200 hover:bg-indigo-50/40 group"
             >
               <p className="text-[9px] font-black uppercase text-slate-400 group-hover:text-indigo-600 transition-colors">{t.revenue} ↗</p>
-              <p className="mt-1 text-2xl font-black text-slate-900">TZS {bossStats.todayRev.toLocaleString()}</p>
+              <p className="mt-0.5 text-xl font-black text-slate-900">TZS {bossStats.todayRev.toLocaleString()}</p>
             </button>
-            <div className="rounded-[28px] border border-rose-100 bg-rose-50 px-5 py-4">
+            <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
               <p className="text-[9px] font-black uppercase text-rose-400">{t.attentionSites}</p>
-              <p className="mt-1 text-2xl font-black text-rose-700">{bossStats.stagnantMachines.length}</p>
+              <p className="mt-0.5 text-xl font-black text-rose-700">{bossStats.stagnantMachines.length}</p>
             </div>
-            <div className="rounded-[28px] border border-amber-100 bg-amber-50 px-5 py-4">
+            <div className="rounded-2xl border border-amber-100 bg-amber-50 px-4 py-3">
               <p className="text-[9px] font-black uppercase text-amber-500">{t.highRiskAssets}</p>
-              <p className="mt-1 text-2xl font-black text-amber-700">{bossStats.riskyDrivers.length}</p>
+              <p className="mt-0.5 text-xl font-black text-amber-700">{bossStats.riskyDrivers.length}</p>
             </div>
           </div>
-          <div className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm">
-            <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
+            <div className="mb-2 flex items-center justify-between gap-3">
               <div>
                 <p className="text-[9px] font-black uppercase tracking-[0.25em] text-slate-400">{t.actionCenter}</p>
-                <h3 className="mt-1 text-sm font-black uppercase text-slate-900">{t.todayActionCenter}</h3>
+                <h3 className="mt-0.5 text-sm font-black uppercase text-slate-900">{t.todayActionCenter}</h3>
               </div>
               <p className="text-[9px] font-bold uppercase tracking-wide text-slate-300">{t.reviewNow}</p>
             </div>
             {primaryAction ? (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <button
                   type="button"
                   onClick={() => onOpenTab?.(primaryAction.action)}
-                  className="flex w-full items-start justify-between gap-4 rounded-[28px] border border-slate-200 bg-slate-950 px-4 py-4 text-left text-white transition-colors hover:bg-slate-900"
+                  className="flex w-full items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-950 px-4 py-3 text-left text-white transition-colors hover:bg-slate-900"
                 >
                   <div className="min-w-0">
                     <p className="text-[9px] font-black uppercase tracking-[0.22em] text-white/55">{t.reviewNow}</p>
-                    <h4 className="mt-1 text-sm font-black uppercase">{primaryAction.title}</h4>
-                    <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">{primaryAction.subtitle}</p>
-                    <p className="mt-2 max-w-xl text-[11px] font-bold leading-relaxed text-white/80">{primaryAction.detail}</p>
+                    <h4 className="mt-0.5 text-sm font-black uppercase">{primaryAction.title}</h4>
+                    <p className="mt-1 text-[10px] font-bold uppercase tracking-[0.18em] text-white/55">{primaryAction.subtitle}</p>
+                    <p className="mt-1 max-w-xl text-[11px] font-bold leading-relaxed text-white/80">{primaryAction.detail}</p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <span className="rounded-full bg-white px-3 py-1.5 text-[10px] font-black uppercase text-slate-900">
+                    <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase text-slate-900">
                       {primaryAction.count}
                     </span>
                     <ArrowRight size={15} className="text-white/50" />
                   </div>
                 </button>
                 {queuedActions.length > 0 && (
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     <p className="px-1 text-[9px] font-black uppercase tracking-[0.22em] text-slate-400">{t.nextActionQueue}</p>
-                    <div className="grid gap-2 md:grid-cols-2">
+                    <div className="grid gap-1.5 md:grid-cols-2">
                       {queuedActions.map((item) => (
                         <button
                           key={item.key}
                           type="button"
                           onClick={() => onOpenTab?.(item.action)}
-                          className="flex items-center justify-between gap-3 rounded-[24px] border border-slate-100 bg-slate-50 px-4 py-3 text-left transition-colors hover:border-slate-200 hover:bg-white"
+                          className="flex items-center justify-between gap-3 rounded-xl border border-slate-100 bg-slate-50 px-3 py-2.5 text-left transition-colors hover:border-slate-200 hover:bg-white"
                         >
                           <div className="min-w-0">
                             <p className="truncate text-[10px] font-black uppercase tracking-wide text-slate-900">{item.title}</p>
-                            <p className="mt-1 truncate text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400">{item.subtitle}</p>
+                            <p className="mt-0.5 truncate text-[8px] font-bold uppercase tracking-[0.18em] text-slate-400">{item.subtitle}</p>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
-                            <span className={`rounded-full border px-3 py-1.5 text-[10px] font-black uppercase ${item.tone}`}>
+                            <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase ${item.tone}`}>
                               {item.count}
                             </span>
                             <ArrowRight size={14} className="text-slate-300" />
@@ -203,10 +203,10 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                 )}
               </div>
             ) : (
-              <div className="rounded-[24px] border border-emerald-100 bg-emerald-50 px-4 py-4">
+              <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3">
                 <p className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-600">{t.allQueuesClear}</p>
-                <p className="mt-2 text-sm font-black text-emerald-800">{t.noUrgentWork}</p>
-                <p className="mt-2 text-[11px] font-bold leading-relaxed text-emerald-700/80">
+                <p className="mt-1 text-sm font-black text-emerald-800">{t.noUrgentWork}</p>
+                <p className="mt-1 text-[11px] font-bold leading-relaxed text-emerald-700/80">
                   {lang === 'zh'
                     ? '审批、网点风险、工资和同步队列目前都没有堆积，可以转去看营收和轨迹。'
                     : 'Approvals, site risks, payroll, and sync queues are currently clear. Move on to revenue and tracking review.'}
@@ -214,24 +214,24 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               </div>
             )}
           </div>
-          <div className="rounded-[32px] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white p-3 shadow-sm">
             <SmartInsights transactions={transactions} locations={locations} drivers={drivers} lang={lang} />
           </div>
         </>
       ) : revDrilldown === 'drivers' ? (
-        <div className="space-y-4 animate-in fade-in">
-          <div className="flex items-center gap-3 mb-2">
-            <button onClick={() => setRevDrilldown('none')} className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
+        <div className="space-y-3 animate-in fade-in">
+          <div className="flex items-center gap-3 mb-1">
+            <button onClick={() => setRevDrilldown('none')} className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase">{t.revenue} — {lang === 'zh' ? '按司机查看' : 'By Driver'}</h3>
               <p className="text-[10px] text-slate-400 font-bold">{lang === 'zh' ? '按司机查看今日营收明细' : "Today's revenue by driver"}</p>
             </div>
           </div>
           {todayDriverStats.map(({ driver, driverTxs, driverRev, driverCommission, driverNet }) => (
-            <div key={driver.id} className="bg-white border border-slate-200 rounded-[28px] p-5">
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
+            <div key={driver.id} className="bg-white border border-slate-200 rounded-2xl p-4">
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-slate-900 text-white flex items-center justify-center font-black text-sm">{driver.name.charAt(0)}</div>
                   <div>
                     <p className="text-sm font-black text-slate-900">{driver.name}</p>
                     <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.phone} • {driverTxs.length} collections</p>
@@ -242,31 +242,31 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
                   <p className="text-[9px] font-bold text-slate-400 uppercase">Total Revenue</p>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 mb-3">
-                <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-100 text-center">
+              <div className="grid grid-cols-3 gap-1.5 mb-2">
+                <div className="bg-slate-50 p-2 rounded-xl border border-slate-100 text-center">
                   <p className="text-[7px] font-black text-slate-400 uppercase">Revenue</p>
                   <p className="text-[10px] font-black text-slate-800">TZS {driverRev.toLocaleString()}</p>
                 </div>
-                <div className="bg-amber-50 p-2.5 rounded-xl border border-amber-100 text-center">
+                <div className="bg-amber-50 p-2 rounded-xl border border-amber-100 text-center">
                   <p className="text-[7px] font-black text-amber-400 uppercase">Owner Div.</p>
                   <p className="text-[10px] font-black text-amber-700">TZS {driverCommission.toLocaleString()}</p>
                 </div>
-                <div className="bg-indigo-50 p-2.5 rounded-xl border border-indigo-100 text-center">
+                <div className="bg-indigo-50 p-2 rounded-xl border border-indigo-100 text-center">
                   <p className="text-[7px] font-black text-indigo-400 uppercase">Net Cash</p>
                   <p className="text-[10px] font-black text-indigo-700">TZS {driverNet.toLocaleString()}</p>
                 </div>
               </div>
               {driverTxs.length > 0 && (
-                <div className="space-y-2 border-t border-slate-50 pt-3">
+                <div className="space-y-1.5 border-t border-slate-50 pt-2">
                   {driverTxs.map(tx => {
                     const loc = locationMap.get(tx.locationId);
                     return (
                       <div key={tx.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
                         <div className="flex items-center gap-2">
                           {loc?.machinePhotoUrl ? (
-                            <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 100, 100)} alt="machine" className="w-7 h-7 rounded-lg object-cover border border-slate-200" />
+                            <img src={getOptimizedImageUrl(loc.machinePhotoUrl, 100, 100)} alt="machine" className="w-6 h-6 rounded-lg object-cover border border-slate-200" />
                           ) : (
-                            <div className="w-7 h-7 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={12} /></div>
+                            <div className="w-6 h-6 rounded-lg bg-slate-200 flex items-center justify-center text-slate-400"><Store size={11} /></div>
                           )}
                           <div>
                             <p className="text-[10px] font-black text-slate-900">{tx.locationName}</p>

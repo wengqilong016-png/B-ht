@@ -56,8 +56,8 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
   const [trackingLocForm, setTrackingLocForm] = useState({ commissionRate: '', status: 'active' as Location['status'] });
 
   return (
-    <div className="space-y-6 animate-in fade-in">
-      <div className="bg-white p-5 rounded-[28px] border border-slate-200 space-y-4 shadow-sm">
+    <div className="space-y-3 animate-in fade-in">
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
           <div>
             <h2 className="text-lg font-black text-slate-900 uppercase tracking-tight">{t.trackingTitle}</h2>
@@ -78,21 +78,21 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
         </div>
 
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
-          <div className="bg-emerald-50 border border-emerald-200 rounded-[20px] p-3">
+          <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5">
             <p className="text-[9px] font-black text-emerald-500 uppercase">{t.liveNow}</p>
-            <p className="text-2xl font-black text-emerald-700 mt-1">{trackingOverview.liveDrivers}</p>
+            <p className="text-xl font-black text-emerald-700 mt-0.5">{trackingOverview.liveDrivers}</p>
           </div>
-          <div className="bg-amber-50 border border-amber-200 rounded-[20px] p-3">
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-2.5">
             <p className="text-[9px] font-black text-amber-500 uppercase">{t.staleGps}</p>
-            <p className="text-2xl font-black text-amber-700 mt-1">{trackingOverview.staleDrivers}</p>
+            <p className="text-xl font-black text-amber-700 mt-0.5">{trackingOverview.staleDrivers}</p>
           </div>
-          <div className="bg-indigo-50 border border-indigo-200 rounded-[20px] p-3">
+          <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-2.5">
             <p className="text-[9px] font-black text-indigo-500 uppercase">{t.todaysCollections}</p>
-            <p className="text-2xl font-black text-indigo-700 mt-1">{trackingOverview.todayCollections}</p>
+            <p className="text-xl font-black text-indigo-700 mt-0.5">{trackingOverview.todayCollections}</p>
           </div>
-          <div className="bg-rose-50 border border-rose-200 rounded-[20px] p-3">
+          <div className="bg-rose-50 border border-rose-200 rounded-xl p-2.5">
             <p className="text-[9px] font-black text-rose-500 uppercase">{t.attentionSites}</p>
-            <p className="text-2xl font-black text-rose-700 mt-1">{trackingOverview.attentionSites}</p>
+            <p className="text-xl font-black text-rose-700 mt-0.5">{trackingOverview.attentionSites}</p>
           </div>
         </div>
 
@@ -119,10 +119,10 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-2">
         {trackingDriverCards.length === 0 && (
-          <div className="py-12 text-center bg-white rounded-[32px] border border-dashed border-slate-200">
-            <Search size={28} className="mx-auto text-slate-300 mb-3" />
+          <div className="py-8 text-center bg-white rounded-2xl border border-dashed border-slate-200">
+            <Search size={24} className="mx-auto text-slate-300 mb-3" />
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
               {t.noDriversFound}
             </p>
@@ -131,13 +131,13 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
         {trackingDriverCards.map(({ driver, driverLocs, driverTxsToday, todayRevenue, attentionLocations, hasStaleGps, lastActiveMinutes }) => {
           const isExpanded = expandedDriverTracking === driver.id;
           return (
-            <div key={driver.id} className="bg-white border border-slate-200 rounded-[26px] overflow-hidden shadow-sm">
+            <div key={driver.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               <button
-                className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors"
+                className="w-full flex items-center justify-between p-4 hover:bg-slate-50 transition-colors"
                 onClick={() => { setExpandedDriverTracking(isExpanded ? null : driver.id); setTrackingEditLocId(null); }}
               >
-                <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-md ${driver.status === 'active' ? 'bg-indigo-600' : 'bg-slate-400'}`}>
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-md ${driver.status === 'active' ? 'bg-indigo-600' : 'bg-slate-400'}`}>
                     {driver.name.charAt(0)}
                   </div>
                   <div className="text-left">
@@ -197,7 +197,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     driverLocs.map(loc => {
                       const isEditingThis = trackingEditLocId === loc.id;
                       return (
-                        <div key={loc.id} className="bg-slate-50 rounded-[24px] p-4 border border-slate-100">
+                        <div key={loc.id} className="bg-slate-50 rounded-xl p-3 border border-slate-100">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center gap-2">
                               <div className={`w-2 h-2 rounded-full ${loc.status === 'active' ? 'bg-emerald-500' : loc.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-500'}`}></div>
@@ -303,7 +303,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
       </div>
 
       <details className="group">
-        <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-4 rounded-[28px] border border-slate-200 shadow-sm select-none">
+        <summary className="cursor-pointer list-none flex items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-sm select-none">
           <div className="flex items-center gap-3">
             <MapPin size={18} className="text-indigo-500" />
             <span className="text-sm font-black text-slate-900 uppercase">{t.liveMapTitle}</span>

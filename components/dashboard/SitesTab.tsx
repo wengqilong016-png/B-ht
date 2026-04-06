@@ -216,8 +216,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
   return (
     <>
-      <div className="space-y-6 animate-in fade-in">
-        <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white p-4 rounded-[28px] border border-slate-200 shadow-sm">
+      <div className="space-y-3 animate-in fade-in">
+        <div className="flex flex-col md:flex-row gap-3 items-center justify-between bg-white p-3 rounded-2xl border border-slate-200 shadow-sm">
           <div className="relative flex-1 w-full md:w-64">
             <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
             <input type="text" placeholder="Search machines..." value={siteSearch} onChange={e => setSiteSearch(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2.5 pl-11 pr-4 text-xs font-bold" />
@@ -227,13 +227,13 @@ const SitesTab: React.FC<SitesTabProps> = ({
             {allAreas.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {managedLocations.map(loc => {
             const sitePhotoUrl = loc.machinePhotoUrl || loc.ownerPhotoUrl;
             const deletionDiagnostics = deletionDiagnosticsById.get(loc.id);
             const deleteBlocked = (deletionDiagnostics?.blockers.length ?? 0) > 0;
             return (
-            <div key={loc.id} className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
+            <div key={loc.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden hover:shadow-md transition-shadow">
               <div className="h-36 bg-slate-100 relative overflow-hidden">
                 {sitePhotoUrl ? (
                   <img src={getOptimizedImageUrl(sitePhotoUrl, 400, 400)} alt={loc.name} className="w-full h-full object-cover" loading="lazy" />

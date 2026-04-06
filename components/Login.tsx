@@ -112,43 +112,43 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
       </div>
 
       <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
-        <div className="mb-8 relative">
-           <div className="relative w-28 h-28 bg-silicone-gradient rounded-[35px] border border-white/80 flex items-center justify-center shadow-silicone">
-              <span className="text-6xl drop-shadow-lg">🦁</span>
-              <div className="absolute -top-3 -right-3 bg-amber-500 text-white p-2.5 rounded-2xl border-4 border-white shadow-silicone">
-                 <Crown size={20} fill="currentColor" />
+        <div className="mb-5 relative">
+           <div className="relative w-20 h-20 bg-silicone-gradient rounded-[28px] border border-white/80 flex items-center justify-center shadow-silicone">
+              <span className="text-5xl drop-shadow-lg">🦁</span>
+              <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-2 rounded-xl border-4 border-white shadow-silicone">
+                 <Crown size={16} fill="currentColor" />
               </div>
            </div>
         </div>
 
-        <div className="text-center mb-6 space-y-2">
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight uppercase">BAHATI <span className="text-indigo-600">JACKPOTS</span></h1>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
+        <div className="text-center mb-4 space-y-1">
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">BAHATI <span className="text-indigo-600">JACKPOTS</span></h1>
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
         </div>
 
-        <div className="bg-[#f5f7fa] p-10 rounded-[40px] shadow-silicone border border-white/60 w-full space-y-8">
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div className="space-y-3">
+        <div className="bg-[#f5f7fa] p-7 rounded-[32px] shadow-silicone border border-white/60 w-full space-y-5">
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-2">
               <label htmlFor="email-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <User size={12} className="text-indigo-500" /> {t.username}
               </label>
-              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="email@example.com" required />
+              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="email@example.com" required />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-2">
               <label htmlFor="password-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <Lock size={12} className="text-indigo-500" /> {t.password}
               </label>
-              <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-4 px-5 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="••••••••" required />
+              <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="••••••••" required />
             </div>
 
             {error && (
-              <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col gap-2 shadow-silicone-sm">
-                 <div className="flex items-start gap-3">
-                   <AlertCircle size={16} className="text-rose-500 flex-shrink-0 mt-0.5" />
+              <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl flex flex-col gap-1.5 shadow-silicone-sm">
+                 <div className="flex items-start gap-2.5">
+                   <AlertCircle size={15} className="text-rose-500 flex-shrink-0 mt-0.5" />
                    <span className="text-rose-600 text-xs font-bold leading-relaxed">{error}</span>
                  </div>
                  {error.includes('SQL') && (
-                   <p className="text-slate-400 text-[10px] pl-7 leading-relaxed">
+                   <p className="text-slate-400 text-[10px] pl-6 leading-relaxed">
                      {lang === 'zh'
                        ? '请前往 Supabase Dashboard → SQL Editor，重新运行设置脚本'
                        : 'Go to Supabase Dashboard → SQL Editor and re-run the setup script.'}
@@ -157,7 +157,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               </div>
             )}
 
-            <button type="submit" disabled={isLoading} className="w-full bg-silicone-gradient text-indigo-600 font-black py-4 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all">
+            <button type="submit" disabled={isLoading} className="w-full bg-silicone-gradient text-indigo-600 font-black py-3 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all">
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={20} className="animate-spin text-indigo-600" />
