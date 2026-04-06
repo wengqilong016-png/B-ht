@@ -19,16 +19,6 @@
       ]
     }
   ],
-  "redirects": [
-    {
-      "source": "/:path*",
-      "has": [
-        { "type": "host", "value": "www.bahatiwin.space" }
-      ],
-      "destination": "https://bahatiwin.space/:path*",
-      "permanent": true
-    }
-  ],
   "rewrites": [
     {
       "source": "/((?!assets/)(?!.*\\.[^/]+$).*)",
