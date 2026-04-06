@@ -46,6 +46,8 @@ interface SubmitReviewProps {
   onUpdateGpsPermission: (perm: 'prompt' | 'granted' | 'denied') => void;
   nextMachine?: Location | null;
   pendingCount?: number;
+  allTransactions: Transaction[];
+  todayStr: string;
 }
 
 const SubmitReview: React.FC<SubmitReviewProps> = ({
@@ -53,6 +55,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   aiReviewData, expenses, expenseType, expenseCategory, coinExchange, tip, startupDebtDeduction, draftTxId,
   gpsCoords, gpsPermission, isOwnerRetaining, ownerRetention, calculations,
   onSubmit, onBack, onSwitchMachine, onReset, onContinueNext, onUpdateGps, onUpdateGpsPermission, nextMachine, pendingCount,
+  allTransactions, todayStr,
 }) => {
   const t = TRANSLATIONS[lang];
   const parsedCurrentScore = parseInt(currentScore, 10);
@@ -167,6 +170,18 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       if (!ok) return;
     }
     if (calculations.isCoinStockNegative && !confirm(lang === 'zh' ? '⚠️ Coin stock insufficient, continue?' : '⚠️ Coin stock insufficient, continue?')) return;
+
+    const alreadyCollectedToday = allTransactions.some(
+      tx => tx.locationId === selectedLocation.id && tx.type === 'collection' && tx.timestamp.startsWith(todayStr),
+    );
+    if (alreadyCollectedToday) {
+      const ok = confirm(
+        lang === 'zh'
+          ? `⚠️ 今天（${todayStr}）已对此机器提交过一次收款记录。是否确认再次提交？`
+          : `⚠️ A collection for this machine was already submitted today (${todayStr}). Are you sure you want to submit again?`,
+      );
+      if (!ok) return;
+    }
 
     if (gpsCoords) { processSubmission(gpsCoords, 'live'); return; }
 

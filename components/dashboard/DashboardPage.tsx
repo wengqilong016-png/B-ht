@@ -64,6 +64,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     filteredSettlements: dailySettlements,
     aiLogs,
     unsyncedCount,
+    isOnline,
   } = useAppData();
   const {
     updateDrivers,
@@ -343,6 +344,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                   transactions={transactions}
                   pendingResetRequests={pendingResetRequests}
                   pendingPayoutRequests={pendingPayoutRequests}
+                  isOnline={isOnline}
                   lang={lang}
                 />
       )}
@@ -544,6 +546,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           onReviewAnomalyTransaction={onReviewAnomalyTransaction}
           onApproveResetRequest={onApproveResetRequest}
           onApprovePayoutRequest={onApprovePayoutRequest}
+          isOnline={isOnline}
           lang={lang}
         />
       )}

@@ -163,6 +163,7 @@ describe('machine workflow self-check', () => {
         pendingPayoutRequests={[
           makeTransaction({ id: 'pay-1', type: 'payout_request', approvalStatus: 'pending' }),
         ]}
+        isOnline={true}
         lang="zh"
       />,
     );
@@ -186,6 +187,7 @@ describe('machine workflow self-check', () => {
         transactions={[makeTransaction({ id: 'tx-history', locationId: 'loc-b1-clean' })]}
         pendingResetRequests={[]}
         pendingPayoutRequests={[]}
+        isOnline={true}
         lang="zh"
       />,
     );
@@ -220,6 +222,7 @@ describe('machine workflow self-check', () => {
         transactions={[]}
         pendingResetRequests={[]}
         pendingPayoutRequests={[]}
+        isOnline={true}
         lang="zh"
       />,
     );
