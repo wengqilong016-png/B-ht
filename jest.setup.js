@@ -85,3 +85,26 @@ jest.mock('@supabase/supabase-js', () => ({
     })),
   })),
 }));
+
+// Mock @capacitor/geolocation
+jest.mock('@capacitor/geolocation', () => ({
+  Geolocation: {
+    getCurrentPosition: jest.fn().mockResolvedValue({
+      coords: { latitude: -6.7924, longitude: 39.2083, accuracy: 10 },
+      timestamp: Date.now(),
+    }),
+    watchPosition: jest.fn().mockReturnValue('watch-id-1'),
+    clearWatch: jest.fn().mockResolvedValue(undefined),
+    checkPermissions: jest.fn().mockResolvedValue({ location: 'granted' }),
+    requestPermissions: jest.fn().mockResolvedValue({ location: 'granted' }),
+  },
+}));
+
+// Mock @sentry/react
+jest.mock('@sentry/react', () => ({
+  init: jest.fn(),
+  withScope: jest.fn((cb) => cb({ setExtra: jest.fn() })),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  ErrorBoundary: ({ children }) => children,
+}));

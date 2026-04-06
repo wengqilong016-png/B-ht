@@ -23,10 +23,17 @@ export default {
     '!driver-app/**',
     '!supabase/**',
     '!android/**',
+    '!e2e/**',
+    '!playwright.config.ts',
   ],
   testMatch: [
     '**/__tests__/**/*.[jt]s?(x)',
     '**/*.(spec|test).[jt]s?(x)'
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/e2e/',
+    '__tests__/helpers/',
   ],
   coverageThreshold: {
     global: {
