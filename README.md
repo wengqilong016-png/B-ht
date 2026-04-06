@@ -132,12 +132,13 @@ Copy `.env.example` to `.env.local` and fill in the values:
 |----------|----------|---------|
 | `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase `anon` public key |
-| `VITE_GEMINI_API_KEY` | Recommended | AI meter-reading scan (`api/scan-meter`) |
-| `VITE_GOOGLE_TRANSLATE_API_KEY` | Recommended | Translation proxy (`api/translate`) |
-| `VITE_STATUS_API_BASE` | Optional | Upstream status API base URL |
-| `VITE_INTERNAL_API_KEY` | Optional | Internal API key for the status proxy |
+| `GEMINI_API_KEY` | Recommended | Server-side Gemini key used by Vercel API routes such as `api/scan-meter` |
+| `GOOGLE_TRANSLATE_API_KEY` | Recommended | Server-side Google Translate key used by `api/translate` |
+| `STATUS_API_BASE` | Optional | Server-side status proxy base URL (currently unused) |
+| `INTERNAL_API_KEY` | Optional | Server-side internal key for the status proxy (currently unused) |
 | `VITE_DISABLE_AUTH` | Optional | Set `true` to bypass Supabase Auth (local/offline dev only) |
 
+> Only `VITE_*` variables are exposed to the browser bundle. Do **not** store secrets such as API keys in `VITE_*` variables.
 ---
 
 ## Run locally
