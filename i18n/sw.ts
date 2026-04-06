@@ -324,4 +324,6 @@ export const sw: Record<string, string> = {
   resumeCurrentTask: 'Resume Current Task',
   resumeEntry: 'Resume',
   switchMachine: 'Switch Machine',
+  forceRetryDeadLetter: 'Force Retry',
+  forceRetryDeadLetterHint: 'Reset stuck items and retry now',
 };

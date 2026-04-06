@@ -458,7 +458,8 @@ export function classifyError(msg: string): 'transient' | 'permanent' {
   const lower = msg.toLowerCase();
   const permanentSignals = [
     'forbidden',
-    'authentication required',
+    // 'authentication required' is intentionally excluded: an expired JWT is
+    // a transient condition — the user can re-login and the item should retry.
     'not found',
     'invalid',
     'permission denied',
@@ -548,6 +549,49 @@ export async function getDeadLetterItems(): Promise<Transaction[]> {
     });
   } catch {
     return [];
+  }
+}
+
+/**
+ * Reset all dead-letter items back to a retryable state.
+ *
+ * Clears `retryCount` to 0 and removes `nextRetryAt` so every entry is
+ * eligible on the next `flushQueue` pass.  Use this after the underlying
+ * issue has been resolved (e.g. re-login after an expired JWT).
+ *
+ * Returns the number of items that were reset.
+ */
+export async function resetDeadLetterItems(): Promise<number> {
+  try {
+    const deadItems = await getDeadLetterItems();
+    if (deadItems.length === 0) return 0;
+
+    const db = await openDB();
+    let count = 0;
+
+    for (const tx of deadItems) {
+      await new Promise<void>((resolve, reject) => {
+        const t = db.transaction(STORE_TX, 'readwrite');
+        const store = t.objectStore(STORE_TX);
+        const req = store.get(tx.id);
+        req.onsuccess = () => {
+          const entry = req.result as (Transaction & Partial<QueueMeta>) | undefined;
+          if (!entry) { resolve(); return; }
+          entry.retryCount = 0;
+          entry.nextRetryAt = undefined;
+          entry.lastError = undefined;
+          entry.lastErrorCategory = undefined;
+          const put = store.put(entry);
+          put.onsuccess = () => { count++; resolve(); };
+          put.onerror = () => reject(put.error);
+        };
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    return count;
+  } catch {
+    return 0;
   }
 }
 

@@ -188,9 +188,9 @@ describe('offlineQueue — pure functions', () => {
       const { classifyError } = await import('../offlineQueue');
       expect(classifyError('403 forbidden')).toBe('permanent');
     });
-    it('classifies "authentication required" as permanent', async () => {
+    it('classifies "authentication required" as transient (re-login can recover the session)', async () => {
       const { classifyError } = await import('../offlineQueue');
-      expect(classifyError('Authentication Required')).toBe('permanent');
+      expect(classifyError('Authentication Required')).toBe('transient');
     });
     it('classifies "invalid input" as permanent', async () => {
       const { classifyError } = await import('../offlineQueue');

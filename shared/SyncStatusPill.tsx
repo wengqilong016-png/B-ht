@@ -49,6 +49,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
     state,
     lastSyncedAt,
     trigger,
+    forceRetry,
   } = syncStatus;
   const isZh = lang === 'zh';
   const [isOpen, setIsOpen] = useState(false);
@@ -236,6 +237,21 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
                 className="w-full rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-slate-800"
               >
                 {isZh ? '立即重试' : 'Retry Now'}
+              </button>
+            )}
+
+            {state === 'dead_letter' && isOnline && (
+              <button
+                type="button"
+                onClick={(event) => {
+                  event.stopPropagation();
+                  forceRetry();
+                  setIsOpen(false);
+                }}
+                className="w-full rounded-xl bg-rose-600 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-rose-500"
+                title={isZh ? '重置卡住的记录并立即重试' : 'Reset stuck items and retry now'}
+              >
+                {isZh ? '强制重试' : 'Force Retry'}
               </button>
             )}
           </div>

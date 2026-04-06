@@ -143,4 +143,106 @@ describe('useSyncStatus()', () => {
     expect(result.current.deadLetterCount).toBe(1);
     expect(result.current.state).toBe('dead_letter');
   });
+
+  it('writes lastSyncedAt to localStorage when isSuccess transitions to true', async () => {
+    const { rerender } = renderHook(
+      ({ mut }: { mut: SyncMutationHandle }) =>
+        useSyncStatus({ syncMutation: mut, isOnline: true, unsyncedCount: 0, userId: 'u8' }),
+      { initialProps: { mut: makeMutation({ isSuccess: false }) } },
+    );
+
+    const before = Date.now();
+    rerender({ mut: makeMutation({ isSuccess: true }) });
+    await act(async () => {});
+    const after = Date.now();
+
+    const raw = localStorage.getItem('bahati:lastSyncedAt:u8');
+    expect(raw).not.toBeNull();
+    const { ts } = JSON.parse(raw!) as { ts: number };
+    expect(ts).toBeGreaterThanOrEqual(before);
+    expect(ts).toBeLessThanOrEqual(after);
+  });
+
+  it('does NOT write to localStorage when isSuccess=true but userId is undefined', async () => {
+    const { rerender } = renderHook(
+      ({ mut }: { mut: SyncMutationHandle }) =>
+        useSyncStatus({ syncMutation: mut, isOnline: true, unsyncedCount: 0 }),
+      { initialProps: { mut: makeMutation({ isSuccess: false }) } },
+    );
+
+    rerender({ mut: makeMutation({ isSuccess: true }) });
+    await act(async () => {});
+
+    // No key should be written without a userId
+    const keys = Object.keys(localStorage).filter(k => k.startsWith('bahati:lastSyncedAt'));
+    expect(keys).toHaveLength(0);
+  });
+
+  it('falls back to zero counts when getQueueHealthSummary rejects', async () => {
+    (getQueueHealthSummary as jest.Mock).mockRejectedValue(new Error('IDB error'));
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 1, userId: 'u9' })
+    );
+
+    await act(async () => {});
+
+    expect(result.current.pendingCount).toBe(0);
+    expect(result.current.retryWaitingCount).toBe(0);
+    expect(result.current.deadLetterCount).toBe(0);
+  });
+
+  it('reloads lastSyncedAt from localStorage when userId changes', async () => {
+    const ts1 = Date.now() - 5000;
+    const ts2 = Date.now() - 1000;
+    localStorage.setItem('bahati:lastSyncedAt:u10', JSON.stringify({ ts: ts1 }));
+    localStorage.setItem('bahati:lastSyncedAt:u11', JSON.stringify({ ts: ts2 }));
+
+    const { result, rerender } = renderHook(
+      ({ uid }: { uid: string }) =>
+        useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 0, userId: uid }),
+      { initialProps: { uid: 'u10' } },
+    );
+
+    expect(result.current.lastSyncedAt?.getTime()).toBeCloseTo(ts1, -2);
+
+    rerender({ uid: 'u11' });
+    await act(async () => {});
+
+    expect(result.current.lastSyncedAt?.getTime()).toBeCloseTo(ts2, -2);
+  });
+
+  it('readLastSyncedAt returns null when localStorage contains corrupt JSON', () => {
+    localStorage.setItem('bahati:lastSyncedAt:u12', 'NOT_JSON{{{');
+    const { result } = renderHook(() =>
+      useSyncStatus({ syncMutation: makeMutation(), isOnline: true, unsyncedCount: 0, userId: 'u12' })
+    );
+    expect(result.current.lastSyncedAt).toBeNull();
+  });
+
+  it('state is offline when isOnline=false regardless of pending items', async () => {
+    (getQueueHealthSummary as jest.Mock).mockResolvedValue({
+      pending: 5, retryWaiting: 2, deadLetter: 1,
+    });
+
+    const { result } = renderHook(() =>
+      useSyncStatus({ syncMutation: makeMutation(), isOnline: false, unsyncedCount: 5, userId: 'u13' })
+    );
+
+    await act(async () => {});
+    expect(result.current.state).toBe('offline');
+  });
+
+  it('state is failed when mutation.isError=true and online with no queue items', async () => {
+    const { result } = renderHook(() =>
+      useSyncStatus({
+        syncMutation: makeMutation({ isError: true }),
+        isOnline: true,
+        unsyncedCount: 0,
+        userId: 'u14',
+      })
+    );
+    await act(async () => {});
+    expect(result.current.state).toBe('failed');
+  });
 });

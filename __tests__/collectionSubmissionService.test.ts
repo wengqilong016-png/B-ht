@@ -12,13 +12,29 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 // We need to intercept the supabase.rpc() call inside the service.
 // Because the service imports `supabase` from '../../supabaseClient', we
 // mock that module and control what the `rpc` mock returns.
+//
+// The service chains `.abortSignal(...)` on the rpc result (a Supabase
+// PromiseLike builder), so the mock must return an object that has
+// `.abortSignal()` returning itself and is thenable (has `.then()`).
 
 const mockRpc = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockUpload = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockGetPublicUrl = jest.fn<(path: string) => { data: { publicUrl: string } }>();
+
+/** Wraps the mockRpc result in a chainable builder that mimics the Supabase RPC builder */
+function makeRpcBuilder(inner: Promise<unknown>) {
+  const builder = {
+    abortSignal(_sig: unknown) { return builder; },
+    then: inner.then.bind(inner),
+    catch: inner.catch.bind(inner),
+    finally: inner.finally.bind(inner),
+  };
+  return builder;
+}
+
 jest.mock('../supabaseClient', () => ({
   supabase: {
-    rpc: (...args: unknown[]) => mockRpc(...args),
+    rpc: (...args: unknown[]) => makeRpcBuilder(mockRpc(...args) as Promise<unknown>),
     storage: {
       from: () => ({
         upload: (...args: unknown[]) => mockUpload(...args),

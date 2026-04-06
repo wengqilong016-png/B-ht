@@ -79,6 +79,8 @@ export async function submitCollectionV2(
   let data: unknown;
   let error: { message: string } | null;
   try {
+    // Apply a 30-second hard timeout so a hung server response does not keep
+    // the SyncStatusPill spinning in "Syncing…" state indefinitely.
     const result = await supabase.rpc('submit_collection_v2', {
       p_tx_id:             input.txId,
       p_location_id:       input.locationId,
@@ -99,7 +101,7 @@ export async function submitCollectionV2(
       p_expense_category:  input.expenseCategory,
       p_reported_status:   input.reportedStatus,
       p_expense_description: input.expenseDescription ?? null,
-    });
+    }).abortSignal(AbortSignal.timeout(30_000));
     data = result.data;
     error = result.error as { message: string } | null;
   } catch (e) {

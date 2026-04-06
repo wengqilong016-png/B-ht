@@ -48,6 +48,13 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     mutationFn: async () => {
       if (!isOnline || !supabase) return;
 
+      // Proactively refresh the Supabase session so a stale JWT does not cause
+      // every queued item to fail with "Authentication required" (which was
+      // previously classified as permanent and dead-lettered items immediately).
+      // getSession() triggers a silent token refresh when the access token is
+      // near expiry, without requiring a full re-login.
+      await supabase.auth.getSession().catch(() => {});
+
       // 1. Flush offline queue (IndexedDB).
       // Re-throw on failure so syncMutation.isError becomes true and the
       // SyncStatusPill can show "Failed · Will Retry" instead of spinning forever.

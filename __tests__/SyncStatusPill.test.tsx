@@ -16,6 +16,7 @@ function makeSyncStatus(overrides: Partial<SyncStatus> = {}): SyncStatus {
     state: 'synced',
     lastSyncedAt: null,
     trigger: jest.fn(),
+    forceRetry: jest.fn<() => Promise<void>>().mockResolvedValue(undefined),
     ...overrides,
   };
 }

@@ -324,4 +324,6 @@ export const zh: Record<string, string> = {
   resumeCurrentTask: '继续当前任务',
   resumeEntry: '继续录入',
   switchMachine: '切换机器',
+  forceRetryDeadLetter: '强制重试',
+  forceRetryDeadLetterHint: '重置卡住的记录并立即重试',
 };

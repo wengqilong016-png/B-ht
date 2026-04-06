@@ -101,12 +101,16 @@ afterEach(() => {
 // ── classifyError ─────────────────────────────────────────────────────────────
 
 describe('classifyError', () => {
-  it('classifies auth and permission errors as permanent', async () => {
+  it('classifies permission and unauthorized errors as permanent', async () => {
     const { classifyError } = await import('../offlineQueue');
     expect(classifyError('Forbidden: driver may not submit on behalf of another driver')).toBe('permanent');
-    expect(classifyError('Authentication required')).toBe('permanent');
     expect(classifyError('permission denied')).toBe('permanent');
     expect(classifyError('Unauthorized')).toBe('permanent');
+  });
+
+  it('classifies "authentication required" as transient (re-login can recover the session)', async () => {
+    const { classifyError } = await import('../offlineQueue');
+    expect(classifyError('Authentication required')).toBe('transient');
   });
 
   it('classifies not-found and validation errors as permanent', async () => {

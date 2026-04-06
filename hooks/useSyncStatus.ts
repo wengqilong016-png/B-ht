@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { getQueueHealthSummary } from '../offlineQueue';
+import { getQueueHealthSummary, resetDeadLetterItems } from '../offlineQueue';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -24,6 +24,12 @@ export interface SyncStatus {
   /** Date of the most recent successful full sync, or null if never synced */
   lastSyncedAt: Date | null;
   trigger: () => void;
+  /**
+   * Reset all dead-letter items and immediately trigger a sync.
+   * Use when the underlying issue has been resolved (e.g. re-login after
+   * an expired session). Only relevant when state === 'dead_letter'.
+   */
+  forceRetry: () => Promise<void>;
 }
 
 // ─── localStorage helpers ─────────────────────────────────────────────────────
@@ -157,6 +163,12 @@ export function useSyncStatus({
     ? 'queued'
     : 'synced';
 
+  const forceRetry = useCallback(async () => {
+    await resetDeadLetterItems();
+    await refreshQueueHealth();
+    syncMutation.mutate();
+  }, [refreshQueueHealth, syncMutation]);
+
   return {
     isOnline,
     isSyncing: syncMutation.isPending,
@@ -168,5 +180,6 @@ export function useSyncStatus({
     state,
     lastSyncedAt,
     trigger: syncMutation.mutate,
+    forceRetry,
   };
 }
