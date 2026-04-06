@@ -326,15 +326,20 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 )}
               </div>
 
-              {/* Footer: delete button (only if not blocked) */}
+              {/* Footer: delete button */}
               <div className="px-4 pb-4">
                 {deleteBlocked ? (
-                  <div className="w-full bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-center">
-                    <p className="text-[9px] font-bold text-rose-500">{lang === 'zh' ? '⚠️ 无法删除：' : '⚠️ Blocked: '}{deletionDiagnostics?.blockers[0]}</p>
-                  </div>
+                  <button
+                    disabled
+                    title={deletionDiagnostics?.blockers.join(' | ')}
+                    className="w-full bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-center cursor-not-allowed opacity-80"
+                  >
+                    <p className="text-[9px] font-bold text-rose-400">{lang === 'zh' ? '⚠️ 无法删除：' : '⚠️ Blocked: '}{deletionDiagnostics?.blockers[0]}</p>
+                  </button>
                 ) : (
                   <button
                     onClick={() => void handleDeleteLocation(loc.id)}
+                    title={lang === 'zh' ? '删除点位' : 'Delete location'}
                     className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-rose-100 bg-rose-50 text-rose-400 hover:bg-rose-100 hover:text-rose-600 text-xs font-bold transition-colors"
                   >
                     <Trash2 size={13} />

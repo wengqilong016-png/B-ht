@@ -17,6 +17,7 @@ import {
 } from './adminShellConfig';
 import { calculateAdminApprovalBadge } from './adminShellViewState';
 import AdminShellViewRenderer from './renderAdminShellView';
+import AdminAIAssistant from './components/AdminAIAssistant';
 
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 
@@ -241,6 +242,9 @@ const AppAdminShell: React.FC = () => {
           }}
         />
       )}
+
+      {/* Admin AI Assistant — floating panel */}
+      <AdminAIAssistant lang={lang} />
     </div>
   );
 };
