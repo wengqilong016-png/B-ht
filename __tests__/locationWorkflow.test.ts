@@ -73,7 +73,7 @@ describe('locationWorkflow', () => {
     expect(diagnostics.blockers).toEqual(
       expect.arrayContaining([
         '该机器仍绑定在司机名下，请先解绑再删除。',
-        '该机器尚有未清启动债务，无法删除。',
+        '该机器尚有未清启动债务 TZS 5,000，无法删除。',
         '该机器尚有未付业主分红余额，无法删除。',
         '该机器当前处于重置锁定状态，无法删除。',
         '该机器有待处理的重置申请，无法删除。',

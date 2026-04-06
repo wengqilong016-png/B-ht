@@ -266,6 +266,19 @@ const SitesTab: React.FC<SitesTabProps> = ({
                         {driverMap.get(loc.assignedDriverId)?.name || loc.assignedDriverId}
                       </p>
                     )}
+                    {loc.remainingStartupDebt > 0 && (
+                      <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+                        <span className="text-[8px] font-black uppercase text-amber-600 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full">
+                          {lang === 'zh' ? '启动债务' : 'Startup Debt'}
+                        </span>
+                        <span className="text-[8px] font-bold text-amber-700">
+                          TZS {loc.remainingStartupDebt.toLocaleString()}
+                        </span>
+                        <span className="text-[8px] text-slate-400">
+                          / {loc.initialStartupDebt.toLocaleString()} ({Math.round((1 - loc.remainingStartupDebt / (loc.initialStartupDebt || 1)) * 100)}% {lang === 'zh' ? '已还' : 'repaid'})
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center gap-1">
                     <button
@@ -425,11 +438,11 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 <p className="text-[9px] font-black text-amber-600 uppercase">启动押金 Startup Capital</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始金额 Initial</label>
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始启动债务 Initial</label>
                     <input type="number" value={locEditForm.initialStartupDebt} onChange={e => setLocEditForm(f => ({ ...f, initialStartupDebt: e.target.value }))} className="w-full bg-white border border-amber-100 rounded-xl px-3 py-2.5 text-xs font-bold outline-none" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">剩余欠款 Remaining</label>
+                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">剩余启动债务 Remaining</label>
                     <input type="number" value={locEditForm.remainingStartupDebt} onChange={e => setLocEditForm(f => ({ ...f, remainingStartupDebt: e.target.value }))} className="w-full bg-white border border-amber-100 rounded-xl px-3 py-2.5 text-xs font-bold outline-none" />
                   </div>
                 </div>

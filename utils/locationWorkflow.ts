@@ -40,7 +40,7 @@ export function getLocationDeletionDiagnostics(params: {
   }
 
   if ((location.remainingStartupDebt ?? 0) > 0) {
-    blockers.push('该机器尚有未清启动债务，无法删除。');
+    blockers.push(`该机器尚有未清启动债务 TZS ${(location.remainingStartupDebt ?? 0).toLocaleString()}，无法删除。`);
   }
 
   if ((location.dividendBalance ?? 0) > 0) {
