@@ -34,11 +34,11 @@ BEGIN
       FOR UPDATE
       TO authenticated
       USING (
-        public.is_driver()
+        public.get_my_role() = 'driver'
         AND "driverId" = public.get_my_driver_id()
       )
       WITH CHECK (
-        public.is_driver()
+        public.get_my_role() = 'driver'
         AND "driverId" = public.get_my_driver_id()
       );
   END IF;

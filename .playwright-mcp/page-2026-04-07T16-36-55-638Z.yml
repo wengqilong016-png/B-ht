@@ -1,0 +1,37 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button "中文" [ref=e6] [cursor=pointer]:
+        - img [ref=e7]
+        - text: 中文
+      - button "EN" [ref=e11] [cursor=pointer]:
+        - img [ref=e12]
+        - text: EN
+    - generic [ref=e16]: Connecting...
+  - generic [ref=e17]:
+    - generic [ref=e19]:
+      - generic [ref=e20]: 🦁
+      - img [ref=e22]
+    - generic [ref=e24]:
+      - heading "BAHATI JACKPOTS" [level=1] [ref=e25]
+      - paragraph [ref=e26]: Field Operations System
+    - generic [ref=e28]:
+      - generic [ref=e29]:
+        - generic [ref=e30]:
+          - img [ref=e31]
+          - text: 邮箱
+        - textbox "邮箱" [ref=e34]:
+          - /placeholder: email@example.com
+      - generic [ref=e35]:
+        - generic [ref=e36]:
+          - img [ref=e37]
+          - text: 密码 Password
+        - textbox "密码 Password" [ref=e40]:
+          - /placeholder: ••••••••
+      - button "立即登录 Login Now" [ref=e41] [cursor=pointer]:
+        - generic [ref=e42]:
+          - text: 立即登录 Login Now
+          - img [ref=e43]
+      - generic [ref=e45]:
+        - paragraph [ref=e46]: ● Checking...
+        - paragraph [ref=e47]: v1.0.2
