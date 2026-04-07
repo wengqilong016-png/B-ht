@@ -8,6 +8,7 @@ interface ImportMetaEnv {
   readonly VITE_GOOGLE_MAPS_API_KEY?: string
   readonly VITE_OPENAI_API_KEY?: string
   readonly VITE_DISABLE_AUTH?: string
+  readonly VITE_VERCEL_ANALYTICS_ENABLED?: string
 }
 
 interface ImportMeta {

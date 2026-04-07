@@ -30,13 +30,14 @@ export const supabase: SupabaseClient | null =
 export const checkDbHealth = async (): Promise<boolean> => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return false;
   try {
-    // Ping the Supabase REST API root with a short timeout.
-    // 2xx–4xx means the server is reachable; 5xx means server-side failure.
-    const res = await fetch(`${SUPABASE_URL}/rest/v1/`, {
+    // Use the auth health endpoint instead of the REST root so the browser
+    // doesn't log a 401 on every connectivity poll.
+    const res = await fetch(`${SUPABASE_URL}/auth/v1/health`, {
       headers: { apikey: SUPABASE_ANON_KEY },
       signal: AbortSignal.timeout(5000),
+      cache: 'no-store',
     });
-    return res.status >= 200 && res.status < 500;
+    return res.ok;
   } catch {
     return false;
   }

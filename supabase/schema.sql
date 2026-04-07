@@ -559,7 +559,7 @@ CREATE OR REPLACE FUNCTION public.apply_location_change_request(
     note       TEXT DEFAULT NULL
 )
 RETURNS VOID LANGUAGE plpgsql SECURITY DEFINER
-SET search_path = public, auth
+SET search_path = public, pg_temp
 AS $$
 DECLARE
     _req   RECORD;

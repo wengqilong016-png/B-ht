@@ -137,6 +137,7 @@ Copy `.env.example` to `.env.local` and fill in the values:
 | `STATUS_API_BASE` | Optional | Server-side status proxy base URL (currently unused) |
 | `INTERNAL_API_KEY` | Optional | Server-side internal key for the status proxy (currently unused) |
 | `VITE_DISABLE_AUTH` | Optional | Set `true` to bypass Supabase Auth (local/offline dev only) |
+| `VITE_VERCEL_ANALYTICS_ENABLED` | Optional | Set `true` only when Vercel Web Analytics is enabled for this project |
 
 > Only `VITE_*` variables are exposed to the browser bundle. Do **not** store secrets such as API keys in `VITE_*` variables.
 ---
