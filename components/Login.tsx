@@ -103,10 +103,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
     <div className="min-h-screen bg-[#f5f7fa] flex flex-col items-center justify-center p-6 relative overflow-hidden">
       <div className="absolute top-0 left-0 right-0 p-6 pt-12 flex justify-between items-start z-30">
          <div className="flex gap-4">
-            <button onClick={() => onSetLang('zh')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'zh' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> 中文</button>
-            <button onClick={() => onSetLang('sw')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'sw' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> EN</button>
+            <button onClick={() => onSetLang('zh')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-caption font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'zh' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> 中文</button>
+            <button onClick={() => onSetLang('sw')} disabled={isLoading} className={`px-4 py-2 rounded-xl text-caption font-black uppercase flex items-center gap-1.5 transition-all shadow-silicone border border-white/60 ${lang === 'sw' ? 'bg-indigo-600 text-white shadow-silicone-pressed' : 'bg-white text-slate-400'} ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}><Languages size={12}/> EN</button>
          </div>
-         <div className={`px-4 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 ${dbStatus === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
+         <div className={`px-4 py-2 rounded-xl text-caption font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 ${dbStatus === 'online' ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}>
             {dbStatus === 'checking' ? 'Connecting...' : dbStatus === 'online' ? 'Cloud Ready' : 'Local Mode'}
          </div>
       </div>
@@ -123,19 +123,19 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
         <div className="text-center mb-4 space-y-1">
           <h1 className="text-2xl font-black text-slate-800 tracking-tight uppercase">BAHATI <span className="text-indigo-600">JACKPOTS</span></h1>
-          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
+          <p className="text-caption font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
         </div>
 
         <div className="bg-[#f5f7fa] p-7 rounded-[32px] shadow-silicone border border-white/60 w-full space-y-5">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <label htmlFor="email-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+              <label htmlFor="email-input" className="text-caption font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <User size={12} className="text-indigo-500" /> {t.username}
               </label>
               <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="email@example.com" required />
             </div>
             <div className="space-y-2">
-              <label htmlFor="password-input" className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
+              <label htmlFor="password-input" className="text-caption font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <Lock size={12} className="text-indigo-500" /> {t.password}
               </label>
               <input id="password-input" type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-black text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="••••••••" required />
@@ -169,10 +169,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
             </button>
 
             <div className="text-center">
-              <p className={`text-[8px] font-bold uppercase tracking-widest ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'offline' ? 'text-rose-400' : 'text-slate-300'}`}>
+              <p className={`text-caption font-bold uppercase tracking-widest ${dbStatus === 'online' ? 'text-emerald-400' : dbStatus === 'offline' ? 'text-rose-400' : 'text-slate-300'}`}>
                 {dbStatus === 'online' ? '● Connected' : dbStatus === 'offline' ? '● Offline' : '● Checking...'}
               </p>
-              <p className="mt-1 text-[8px] font-bold text-slate-600 tracking-widest">
+              <p className="mt-1 text-caption font-bold text-slate-600 tracking-widest">
                 v{typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—'}
               </p>
             </div>

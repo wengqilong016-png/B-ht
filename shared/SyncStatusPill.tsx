@@ -184,7 +184,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
         onClick={() => setIsOpen(current => !current)}
         className={[
           'flex items-center gap-1.5 px-3 py-1.5 rounded-subcard',
-          'text-[9px] font-black uppercase transition-all',
+          'text-caption font-black uppercase transition-all',
           borderClass,
           colorMap[variant][state],
           fullWidth ? 'w-full justify-between' : '',
@@ -205,7 +205,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
         >
           <div className="space-y-3">
             <div>
-              <p className="text-[10px] font-black uppercase text-slate-900">{label}</p>
+              <p className="text-caption font-black uppercase text-slate-900">{label}</p>
               <p className="mt-1 text-[10px] font-medium leading-relaxed text-slate-500">{hint}</p>
             </div>
 
@@ -213,7 +213,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
               <div className="grid grid-cols-3 gap-2">
                 {queueBreakdown.map(item => (
                   <div key={item.key} className="rounded-xl bg-slate-50 px-2 py-2 text-center">
-                    <p className="text-[8px] font-black uppercase text-slate-400">{item.label}</p>
+                    <p className="text-caption font-black uppercase text-slate-400">{item.label}</p>
                     <p className="mt-1 text-[11px] font-black text-slate-900">{item.value}</p>
                   </div>
                 ))}
@@ -234,7 +234,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
                   forceRetry();
                   setIsOpen(false);
                 }}
-                className="w-full rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-slate-800"
+                className="w-full rounded-xl bg-slate-900 px-3 py-2 text-caption font-black uppercase text-white transition hover:bg-slate-800"
               >
                 {isZh ? '立即重试' : 'Retry Now'}
               </button>
@@ -248,7 +248,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
                   forceRetry();
                   setIsOpen(false);
                 }}
-                className="w-full rounded-xl bg-rose-600 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-rose-500"
+                className="w-full rounded-xl bg-rose-600 px-3 py-2 text-caption font-black uppercase text-white transition hover:bg-rose-500"
                 title={isZh ? '重置卡住的记录并立即重试' : 'Reset stuck items and retry now'}
               >
                 {isZh ? '强制重试' : 'Force Retry'}

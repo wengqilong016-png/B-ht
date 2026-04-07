@@ -224,15 +224,15 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
 
               <div className="w-full bg-slate-50 rounded-2xl p-6 border border-slate-100 space-y-3">
                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">ID</span>
+                    <span className="text-caption font-black text-slate-400 uppercase">ID</span>
                     <span className="text-base font-black text-indigo-600">{lastRegisteredMachine.machineId}</span>
                  </div>
                  <div className="flex justify-between items-center border-b border-slate-200 pb-2">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Shop</span>
+                    <span className="text-caption font-black text-slate-400 uppercase">Shop</span>
                     <span className="text-sm font-bold text-slate-700">{lastRegisteredMachine.name}</span>
                  </div>
                  <div className="flex justify-between items-center">
-                    <span className="text-[10px] font-black text-slate-400 uppercase">Area</span>
+                    <span className="text-caption font-black text-slate-400 uppercase">Area</span>
                     <span className="text-xs font-bold text-slate-500">{lastRegisteredMachine.area}</span>
                  </div>
               </div>
@@ -264,14 +264,14 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
              <h2 className="text-xl font-black text-slate-900 uppercase">
                {lang === 'zh' ? '新机入网注册' : 'Sajili Mashine Mpya'}
              </h2>
-             <p className="text-[9px] text-slate-400 font-bold uppercase mt-1 tracking-widest">Site Onboarding</p>
+             <p className="text-caption text-slate-400 font-bold uppercase mt-1 tracking-widest">Site Onboarding</p>
            </div>
            <div className="w-10"></div>
         </div>
 
         {/* Photo Upload */}
         <div className="space-y-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">{lang === 'zh' ? '现场存证 (机器 + 老板合影) *' : 'Picha ya Eneo *'}</label>
+          <label className="text-caption font-black text-slate-400 uppercase tracking-widest ml-1">{lang === 'zh' ? '现场存证 (机器 + 老板合影) *' : 'Picha ya Eneo *'}</label>
           <div 
             onClick={() => fileInputRef.current?.click()}
             className={`relative h-48 rounded-[30px] border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all active:scale-98 ${machinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-indigo-300'}`}
@@ -287,7 +287,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
              ) : (
                <div className="text-center space-y-2">
                  <ImagePlus size={32} className="text-slate-300 mx-auto" />
-                 <p className="text-[10px] font-black text-slate-400 uppercase">{lang === 'zh' ? '点击拍照' : 'Piga Picha'}</p>
+                 <p className="text-caption font-black text-slate-400 uppercase">{lang === 'zh' ? '点击拍照' : 'Piga Picha'}</p>
                </div>
              )}
           </div>
@@ -296,18 +296,18 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         {/* Machine ID & Score */}
         <div className="grid grid-cols-2 gap-4">
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '机器编号 *' : 'ID ya Mashine *'}</label>
+             <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '机器编号 *' : 'ID ya Mashine *'}</label>
              <input type="text" value={machineId} onChange={e => setMachineId(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 uppercase outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="M-00X" />
            </div>
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '初始读数' : 'Namba ya Mwanzo'}</label>
+             <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '初始读数' : 'Namba ya Mwanzo'}</label>
              <input type="number" value={initialScore} onChange={e => setInitialScore(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="0" />
            </div>
         </div>
 
         {/* Shop Name */}
         <div className="space-y-1">
-          <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店铺/点位名称 *' : 'Jina la Duka *'}</label>
+          <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店铺/点位名称 *' : 'Jina la Duka *'}</label>
           <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 flex items-center gap-3 focus-within:border-indigo-500 focus-within:ring-4 focus-within:ring-indigo-50 transition-all">
              <Building2 size={16} className="text-slate-400" />
              <input type="text" value={shopName} onChange={e => setShopName(e.target.value)} className="w-full bg-transparent font-black text-slate-900 outline-none placeholder:text-slate-300" placeholder="Shop Name" />
@@ -317,11 +317,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         {/* Owner & Commission */}
         <div className="grid grid-cols-2 gap-4">
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店主姓名 *' : 'Jina la Tajiri *'}</label>
+             <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '店主姓名 *' : 'Jina la Tajiri *'}</label>
              <input type="text" value={ownerName} onChange={e => setOwnerName(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="Owner Name" />
            </div>
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '分红比例 (%) *' : 'Komisheni % *'}</label>
+             <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '分红比例 (%) *' : 'Komisheni % *'}</label>
              <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex items-center gap-2 focus-within:border-indigo-400 transition-all">
                 <Percent size={14} className="text-indigo-400" />
                 <input type="number" value={commissionRate} onChange={e => setCommissionRate(e.target.value)} className="w-full bg-transparent font-black text-indigo-600 outline-none placeholder:text-indigo-300" placeholder="15" />
@@ -332,7 +332,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         {/* Area & GPS */}
         <div className="grid grid-cols-2 gap-4 items-end">
            <div className="space-y-1">
-             <label className="text-[9px] font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '区域 Area *' : 'Eneo *'}</label>
+             <label className="text-caption font-black text-slate-400 uppercase ml-1">{lang === 'zh' ? '区域 Area *' : 'Eneo *'}</label>
              <input type="text" value={area} onChange={e => setArea(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-2xl p-4 font-black text-slate-900 outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 transition-all placeholder:text-slate-300" placeholder="Kariakoo" />
            </div>
            <button 
@@ -341,28 +341,28 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
              className={`h-[58px] rounded-2xl border flex items-center justify-center gap-2 transition-all active:scale-95 shadow-md ${gps ? 'bg-emerald-50 border-emerald-200 text-emerald-600' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
            >
               {isGpsLoading ? <Loader2 size={18} className="animate-spin" /> : (gps ? <CheckCircle2 size={18} /> : <MapPinned size={18} />)}
-              <span className="text-[10px] font-black uppercase">{gps ? 'GPS OK' : 'Get GPS'}</span>
+              <span className="text-caption font-black uppercase">{gps ? 'GPS OK' : 'Get GPS'}</span>
            </button>
         </div>
         <div className="bg-slate-50 p-4 rounded-[28px] border border-slate-200 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="text-[9px] font-black text-slate-500 uppercase">
+              <p className="text-caption font-black text-slate-500 uppercase">
                 {lang === 'zh' ? '手动输入 GPS 坐标' : 'Manual GPS Coordinates'}
               </p>
-              <p className="text-[8px] font-bold text-slate-400 uppercase">
+              <p className="text-caption font-bold text-slate-400 uppercase">
                 {lang === 'zh' ? '可直接粘贴已有定位数据' : 'Paste existing coordinates directly'}
               </p>
             </div>
             {gps && (
-              <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-600 text-[8px] font-black uppercase">
+              <span className="px-2 py-1 rounded-lg bg-emerald-100 text-emerald-600 text-caption font-black uppercase">
                 {gps.lat.toFixed(6)}, {gps.lng.toFixed(6)}
               </span>
             )}
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
-              <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Latitude</label>
+              <label className="text-caption font-black text-slate-400 uppercase ml-1">Latitude</label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -374,7 +374,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
               />
             </div>
             <div className="space-y-1">
-              <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Longitude</label>
+              <label className="text-caption font-black text-slate-400 uppercase ml-1">Longitude</label>
               <input
                 type="number"
                 inputMode="decimal"
@@ -389,7 +389,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
           <button
             type="button"
             onClick={applyManualGps}
-            className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-[10px] font-black uppercase hover:bg-slate-100 transition-all active:scale-95"
+            className="w-full py-3 bg-white border border-slate-200 text-slate-700 rounded-2xl text-caption font-black uppercase hover:bg-slate-100 transition-all active:scale-95"
           >
             {lang === 'zh' ? '使用手动坐标' : 'Use Manual Coordinates'}
           </button>
@@ -397,7 +397,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
 
         {/* Debt / Deposit */}
         <div className="bg-amber-50 p-5 rounded-[28px] border border-amber-100 focus-within:border-amber-300 transition-all">
-           <label className="text-[9px] font-black text-amber-600 uppercase mb-2 flex items-center gap-1"><Coins size={12} /> {lang === 'zh' ? '初始铺货币 / 押金回收' : 'Mtaji wa Sarafu / Deni'}</label>
+           <label className="text-caption font-black text-amber-600 uppercase mb-2 flex items-center gap-1"><Coins size={12} /> {lang === 'zh' ? '初始铺货币 / 押金回收' : 'Mtaji wa Sarafu / Deni'}</label>
            <div className="flex items-center gap-2">
               <span className="text-xs font-black text-amber-400">TZS</span>
               <input type="number" value={startupDebt} onChange={e => setStartupDebt(e.target.value)} className="w-full bg-transparent font-black text-lg text-amber-900 outline-none placeholder:text-amber-300/50" placeholder="0" />
