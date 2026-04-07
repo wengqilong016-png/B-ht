@@ -370,7 +370,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 </div>
 
                 {/* Stats row */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <div className="bg-slate-50 p-2.5 rounded-xl text-center">
                     <p className="text-caption font-black text-slate-400 uppercase mb-0.5">{lang === 'zh' ? '分数' : 'Score'}</p>
                     <p className="text-sm font-black text-slate-800">{loc.lastScore.toLocaleString()}</p>
@@ -382,6 +382,10 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   <div className={`p-2.5 rounded-xl text-center ${loc.remainingStartupDebt > 0 ? 'bg-amber-50' : 'bg-emerald-50'}`}>
                     <p className={`text-caption font-black uppercase mb-0.5 ${loc.remainingStartupDebt > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{lang === 'zh' ? '启动债' : 'Debt'}</p>
                     <p className={`text-sm font-black ${loc.remainingStartupDebt > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{loc.remainingStartupDebt > 0 ? `${debtPct}%` : '✓'}</p>
+                  </div>
+                  <div className={`p-2.5 rounded-xl text-center ${(loc.dividendBalance ?? 0) > 0 ? 'bg-teal-50' : 'bg-slate-50'}`}>
+                    <p className={`text-caption font-black uppercase mb-0.5 ${(loc.dividendBalance ?? 0) > 0 ? 'text-teal-400' : 'text-slate-400'}`}>{lang === 'zh' ? '留存' : 'Retain'}</p>
+                    <p className={`text-sm font-black ${(loc.dividendBalance ?? 0) > 0 ? 'text-teal-700' : 'text-slate-400'}`}>{(loc.dividendBalance ?? 0) > 0 ? `${(loc.dividendBalance ?? 0).toLocaleString()}` : '0'}</p>
                   </div>
                 </div>
 
