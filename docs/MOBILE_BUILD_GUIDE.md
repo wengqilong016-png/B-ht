@@ -74,16 +74,26 @@ cd android
 ./gradlew assembleDebug
 ```
 
+> **仅用于开发联调 / USB 安装 / ADB 调试。** 不要把 `app-debug.apk` 发给最终用户。
+
 #### 5. 构建 Release APK
 ```bash
 cd android
 ./gradlew assembleRelease
 ```
 
+> **给最终用户安装的应当是 Release APK。** 只要 APK 已正确签名，用户通常只需要允许“安装未知应用”，不应该要求开启 USB 调试。
+
 ### APK 位置
 
 - **Debug APK**: `android/app/build/outputs/apk/debug/app-debug.apk`
 - **Release APK**: `android/app/build/outputs/apk/release/app-release.apk`
+
+### GitHub Actions 产物说明
+
+- `main` 分支和 tag 构建应产出 **release APK**
+- 手动选择 `debug` 时才产出 **debug APK**
+- 面向用户分发时，优先使用 `bahati-v*-release.apk`
 
 ## 🍎 构建 iOS 应用
 

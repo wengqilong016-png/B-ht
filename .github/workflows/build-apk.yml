@@ -26,10 +26,24 @@ env:
 
 jobs:
   build-apk:
-    name: Build APK (${{ github.event.inputs.build_type || 'release' }})
+    name: Build APK
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve build type
+        id: resolve_build_type
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            BUILD_TYPE="${{ github.event.inputs.build_type }}"
+          elif [[ "${{ github.ref }}" == refs/tags/* || "${{ github.ref }}" == "refs/heads/main" ]]; then
+            BUILD_TYPE="release"
+          else
+            BUILD_TYPE="debug"
+          fi
+
+          echo "build_type=${BUILD_TYPE}" >> "$GITHUB_OUTPUT"
+          echo "Resolved build type: ${BUILD_TYPE}"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -68,7 +82,7 @@ jobs:
         run: npx cap sync android
 
       - name: Decode keystore
-        if: github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/') || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+        if: steps.resolve_build_type.outputs.build_type == 'release'
         run: |
           echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/bahati.keystore
           KEYSTORE_SIZE=$(wc -c < android/app/bahati.keystore)
@@ -107,11 +121,11 @@ jobs:
         shell: bash
 
       - name: Build Debug APK
-        if: github.event.inputs.build_type == 'debug' || (github.event_name == 'push' && !startsWith(github.ref, 'refs/tags/') && github.event.inputs.build_type != 'release')
+        if: steps.resolve_build_type.outputs.build_type == 'debug'
         run: cd android && ./gradlew assembleDebug
 
       - name: Build Release APK
-        if: github.event.inputs.build_type == 'release' || startsWith(github.ref, 'refs/tags/')
+        if: steps.resolve_build_type.outputs.build_type == 'release'
         run: cd android && ./gradlew assembleRelease
         env:
           KEYSTORE_FILE: ${{ env.KEYSTORE_FILE }}
@@ -148,9 +162,8 @@ jobs:
 
       - name: Rename APK
         run: |
-          BUILD_TYPE="${{ github.event.inputs.build_type }}"
-          IS_TAG="${{ startsWith(github.ref, 'refs/tags/') }}"
-          if [[ "$BUILD_TYPE" == "release" ]] || [[ "$IS_TAG" == "true" ]]; then
+          BUILD_TYPE="${{ steps.resolve_build_type.outputs.build_type }}"
+          if [[ "$BUILD_TYPE" == "release" ]]; then
             APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
             DEST="android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk"
           else
@@ -164,7 +177,7 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: bahati-apk-${{ github.event.inputs.build_type || 'debug' }}
+          name: bahati-apk-${{ steps.resolve_build_type.outputs.build_type }}
           path: android/app/build/outputs/apk/bahati-*.apk
           retention-days: 30
           if-no-files-found: warn
