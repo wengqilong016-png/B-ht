@@ -316,4 +316,13 @@ export const sw: Record<string, string> = {
   resumeCurrentTask: 'Resume Current Task',
   resumeEntry: 'Resume',
   switchMachine: 'Switch Machine',
+  photoUploaded: 'Uploaded',
+  locationLocated: 'Located',
+  deleteThisLocation: 'Delete Location',
+  cannotDelete: 'Cannot delete',
+  confirmDeleteLocation: 'Confirm Delete Location',
+  deleteIrreversible: 'This action cannot be undone.',
+  deleteWarnings: 'Warnings:',
+  confirmDeleteBtn: 'Confirm Delete',
+  cancelBtn: 'Cancel',
 };

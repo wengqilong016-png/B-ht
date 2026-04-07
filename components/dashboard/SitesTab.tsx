@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon, Phone, MapPin, Upload } from 'lucide-react';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
@@ -61,6 +61,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
   const [isSavingLoc, setIsSavingLoc] = useState(false);
   const [pendingDeleteLocId, setPendingDeleteLocId] = useState<string | null>(null);
   const [isDeletingLoc, setIsDeletingLoc] = useState(false);
+  const deleteModalRef = useRef<HTMLDivElement>(null);
+  const t = TRANSLATIONS[lang];
   const deletionDiagnosticsById = useMemo(() => {
     return new Map(
       managedLocations.map((loc) => [
@@ -74,6 +76,22 @@ const SitesTab: React.FC<SitesTabProps> = ({
       ]),
     );
   }, [managedLocations, pendingPayoutRequests, pendingResetRequests, transactions]);
+
+  // Delete modal: focus management + Escape to cancel
+  const handleDeleteModalKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape' && !isDeletingLoc) {
+      setPendingDeleteLocId(null);
+    }
+  }, [isDeletingLoc]);
+
+  useEffect(() => {
+    if (pendingDeleteLocId) {
+      document.addEventListener('keydown', handleDeleteModalKeyDown);
+      // Focus the modal container for keyboard accessibility
+      deleteModalRef.current?.focus();
+      return () => document.removeEventListener('keydown', handleDeleteModalKeyDown);
+    }
+  }, [pendingDeleteLocId, handleDeleteModalKeyDown]);
 
   const handleEditLocation = (loc: Location) => {
     setEditingLoc(loc);
@@ -188,6 +206,9 @@ const SitesTab: React.FC<SitesTabProps> = ({
     setIsDeletingLoc(true);
     try {
       await onDeleteLocations([pendingDeleteLocId]);
+      // Close any open modal referencing the deleted location
+      if (editingLoc?.id === pendingDeleteLocId) setEditingLoc(null);
+      if (viewingPhotoLoc?.id === pendingDeleteLocId) setViewingPhotoLoc(null);
     } catch (error) {
       console.error('Failed to delete location:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
@@ -288,12 +309,12 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   )}
                   {loc.machinePhotoUrl && (
                     <span className="inline-flex items-center gap-1 text-[8px] font-bold text-emerald-600">
-                      <Upload size={10} /> {lang === 'zh' ? '已上传' : 'Uploaded'}
+                      <Upload size={10} /> {t.photoUploaded}
                     </span>
                   )}
                   {loc.coords && (
                     <span className="inline-flex items-center gap-1 text-[8px] font-bold text-rose-500">
-                      <MapPin size={10} /> {lang === 'zh' ? '已定位' : 'Located'}
+                      <MapPin size={10} /> {t.locationLocated}
                     </span>
                   )}
                 </div>
@@ -305,7 +326,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 <div className="mt-2 space-y-1">
                   {deleteBlocked ? (
                     <p className="text-[8px] font-bold text-amber-600 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2 truncate">
-                      ⚠ {lang === 'zh' ? '无法删除' : 'Cannot delete'}: {deletionDiagnostics?.blockers[0]}
+                      ⚠ {t.cannotDelete}: {deletionDiagnostics?.blockers[0]}
                     </p>
                   ) : onDeleteLocations && (
                     <button
@@ -313,7 +334,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                       className="w-full flex items-center justify-center gap-2 text-[10px] font-black text-rose-500 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2.5 hover:bg-rose-100 transition-colors uppercase"
                     >
                       <Trash2 size={12} />
-                      {lang === 'zh' ? '删除此点位' : 'Delete Location'}
+                      {t.deleteThisLocation}
                     </button>
                   )}
                   {loc.createdAt && (
@@ -496,14 +517,21 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
       {/* Delete Confirmation Modal */}
       {pendingDeleteLocId && (
-        <div className="fixed inset-0 z-[90] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in">
+        <div
+          className="fixed inset-0 z-[90] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-modal-title"
+          ref={deleteModalRef}
+          tabIndex={-1}
+        >
           <div className="bg-white w-full max-w-sm rounded-[24px] shadow-2xl">
             <div className="p-6 space-y-2">
-              <h3 className="text-base font-black text-slate-900">
-                {lang === 'zh' ? '确认删除机器点位' : 'Confirm Delete Location'}
+              <h3 id="delete-modal-title" className="text-base font-black text-slate-900">
+                {t.confirmDeleteLocation}
               </h3>
               <p className="text-sm text-slate-500">
-                {lang === 'zh' ? '此操作不可撤销。' : 'This action cannot be undone.'}
+                {t.deleteIrreversible}
               </p>
               {(() => {
                 const diag = deletionDiagnosticsById.get(pendingDeleteLocId);
@@ -511,7 +539,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   return (
                     <div className="mt-2 p-3 bg-amber-50 border border-amber-100 rounded-xl">
                       <p className="text-[10px] font-bold text-amber-700">
-                        {lang === 'zh' ? '删除提醒：' : 'Warnings:'}
+                        {t.deleteWarnings}
                       </p>
                       <ul className="mt-1 space-y-0.5">
                         {diag.warnings.map((w, i) => (
@@ -532,7 +560,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
               >
                 <span className="inline-flex items-center justify-center gap-2">
                   {isDeletingLoc ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                  {lang === 'zh' ? '确认删除' : 'Confirm Delete'}
+                  {t.confirmDeleteBtn}
                 </span>
               </button>
               <button
@@ -540,7 +568,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 disabled={isDeletingLoc}
                 className="w-full py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl text-sm font-black uppercase text-center disabled:opacity-50"
               >
-                {lang === 'zh' ? '取消' : 'Cancel'}
+                {t.cancelBtn}
               </button>
             </div>
           </div>

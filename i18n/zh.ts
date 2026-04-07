@@ -316,4 +316,13 @@ export const zh: Record<string, string> = {
   resumeCurrentTask: '继续当前任务',
   resumeEntry: '继续录入',
   switchMachine: '切换机器',
+  photoUploaded: '已上传',
+  locationLocated: '已定位',
+  deleteThisLocation: '删除此点位',
+  cannotDelete: '无法删除',
+  confirmDeleteLocation: '确认删除机器点位',
+  deleteIrreversible: '此操作不可撤销。',
+  deleteWarnings: '删除提醒：',
+  confirmDeleteBtn: '确认删除',
+  cancelBtn: '取消',
 };
