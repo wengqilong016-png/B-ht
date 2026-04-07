@@ -29,20 +29,20 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
         <div className="flex bg-slate-100 p-1 rounded-2xl">
           <button
             onClick={() => setViewMode('grid')}
-            className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+            className={`px-3 py-2 rounded-xl text-caption font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
           >
             <LayoutGrid size={12} /> Cards
           </button>
           <button
             onClick={() => setViewMode('analytics')}
-            className={`px-3 py-2 rounded-xl text-[9px] font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
+            className={`px-3 py-2 rounded-xl text-caption font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-400'}`}
           >
             <BarChart3 size={12} /> Analytics
           </button>
         </div>
         <button
           onClick={onAddNew}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-2xl text-[9px] font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all whitespace-nowrap hover:bg-indigo-700"
+          className="px-4 py-2 bg-indigo-600 text-white rounded-2xl text-caption font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all whitespace-nowrap hover:bg-indigo-700"
         >
           <Plus size={13} /> Add New Driver
         </button>

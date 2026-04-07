@@ -85,7 +85,7 @@ const ResetRequest: React.FC<ResetRequestProps> = ({
             <div className="p-2 bg-rose-500 rounded-btn text-white flex-shrink-0"><RefreshCw size={16} /></div>
             <div>
               <p className="text-xs font-black text-rose-800 uppercase">{t.resetRequestDesc}</p>
-              <p className="text-[9px] font-bold text-rose-400 mt-0.5">
+              <p className="text-caption font-bold text-rose-400 mt-0.5">
                 {lang === 'zh' ? `当前分数: ${location?.lastScore}` : `Current score: ${location?.lastScore}`}
               </p>
             </div>
