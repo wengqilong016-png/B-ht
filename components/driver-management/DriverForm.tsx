@@ -67,7 +67,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
           {/* Email + Password — new driver only */}
           {!editingId && (
             <div className="p-5 bg-amber-50/50 rounded-[28px] border border-amber-100 space-y-4">
-              <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
+              <p className="text-caption font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
               <div>
                 <InputField label="邮箱 EMAIL *" value={form.email} icon={<ShieldCheck size={16} />} onChange={v => onChange({ email: v })} />
                 {form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && (
@@ -76,7 +76,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
                 <p className="text-[10px] font-bold text-amber-500 mt-1 ml-1">此邮箱用于司机登录系统 / This email is used for driver login</p>
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
+                <label className="text-caption font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
                 <input
                   type="password"
                   value={form.password}
@@ -96,7 +96,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
           {editingId && (
             <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">
               <div>
-                <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
+                <p className="text-caption font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
                 <p className="text-xs font-bold text-slate-700 mt-0.5">
                   {form.status === 'active' ? '在职 Active' : '停职 Inactive'}
                 </p>
@@ -115,39 +115,39 @@ const DriverForm: React.FC<DriverFormProps> = ({
           )}
 
           <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <p className="text-caption font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Truck size={14} /> Vehicle & Asset
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Vehicle Model</label>
+                <label className="text-caption font-black text-slate-400 uppercase ml-1">Vehicle Model</label>
                 <input type="text" value={form.model} onChange={e => onChange({ model: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold" placeholder="Bajaj / TVS" />
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">License Plate</label>
+                <label className="text-caption font-black text-slate-400 uppercase ml-1">License Plate</label>
                 <input type="text" value={form.plate} onChange={e => onChange({ plate: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold uppercase" placeholder="T 000 XXX" />
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Daily Coin Float</label>
+              <label className="text-caption font-black text-slate-400 uppercase ml-1">Daily Coin Float</label>
               <input type="number" value={form.dailyFloatingCoins} onChange={e => onChange({ dailyFloatingCoins: e.target.value })} className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-xs font-bold" />
             </div>
           </div>
 
           <div className="p-5 bg-indigo-50/50 rounded-[28px] border border-indigo-100 space-y-4">
-            <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
+            <p className="text-caption font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
               <Receipt size={14} /> 薪资与提成方案
             </p>
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">Monthly Base Salary (TZS)</label>
+                <label className="text-caption font-black text-indigo-400 uppercase ml-1">Monthly Base Salary (TZS)</label>
                 <div className="relative">
                   <Banknote size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300" />
                   <input type="number" value={form.baseSalary} onChange={e => onChange({ baseSalary: e.target.value })} className="w-full bg-white border border-indigo-100 rounded-xl pl-9 pr-4 py-3 text-sm font-black text-indigo-600 outline-none" placeholder="300000" />
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">提成比例 (%)</label>
+                <label className="text-caption font-black text-indigo-400 uppercase ml-1">提成比例 (%)</label>
                 <div className="relative">
                   <Percent size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-indigo-300" />
                   <input type="number" value={form.commissionRate} onChange={e => onChange({ commissionRate: e.target.value })} className="w-full bg-white border border-indigo-100 rounded-xl pl-9 pr-4 py-3 text-sm font-black text-indigo-600 outline-none" placeholder="5" />
@@ -155,12 +155,12 @@ const DriverForm: React.FC<DriverFormProps> = ({
               </div>
             </div>
             <div className="space-y-1">
-              <label className="text-[8px] font-black text-indigo-400 uppercase ml-1">初始欠款 Initial Debt</label>
+              <label className="text-caption font-black text-indigo-400 uppercase ml-1">初始欠款 Initial Debt</label>
               <input type="number" value={form.initialDebt} onChange={e => onChange({ initialDebt: e.target.value })} className="w-full bg-white border border-indigo-100 rounded-xl px-4 py-2.5 text-xs font-bold" />
             </div>
             {editingId && (
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-rose-400 uppercase ml-1">当前欠款 Current Debt (可修改)</label>
+                <label className="text-caption font-black text-rose-400 uppercase ml-1">当前欠款 Current Debt (可修改)</label>
                 <div className="relative">
                   <Coins size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-rose-300" />
                   <input type="number" value={form.remainingDebt} onChange={e => onChange({ remainingDebt: e.target.value })} className="w-full bg-white border border-rose-100 rounded-xl pl-9 pr-4 py-3 text-sm font-black text-rose-600 outline-none" placeholder="0" />
@@ -172,7 +172,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
           {/* Location assignment */}
           {editingId && locations.length > 0 && onLocationToggle && (
             <div className="p-5 bg-emerald-50/50 rounded-[28px] border border-emerald-100 space-y-3">
-              <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
+              <p className="text-caption font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
                 <MapPin size={14} /> 分配机器点位 Assign Locations
               </p>
               <div className="space-y-1.5 max-h-40 overflow-y-auto">
@@ -193,14 +193,14 @@ const DriverForm: React.FC<DriverFormProps> = ({
                         loc.status === 'active' ? 'bg-emerald-500' :
                         loc.status === 'maintenance' ? 'bg-amber-500' : 'bg-rose-400'
                       }`} />
-                      <span className="text-[10px] font-black uppercase truncate flex-1">{loc.name}</span>
-                      <span className="text-[8px] font-bold text-slate-400 flex-shrink-0">{loc.area}</span>
-                      {isAssigned && <span className="text-[8px] font-black text-emerald-600 flex-shrink-0">✓</span>}
+                      <span className="text-caption font-black uppercase truncate flex-1">{loc.name}</span>
+                      <span className="text-caption font-bold text-slate-400 flex-shrink-0">{loc.area}</span>
+                      {isAssigned && <span className="text-caption font-black text-emerald-600 flex-shrink-0">✓</span>}
                     </button>
                   );
                 })}
               </div>
-              <p className="text-[8px] font-bold text-emerald-500">
+              <p className="text-caption font-bold text-emerald-500">
                 {assignedLocationIds.length} location(s) assigned to this driver
               </p>
             </div>
