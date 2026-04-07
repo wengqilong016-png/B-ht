@@ -496,8 +496,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
       {/* Delete Confirmation Modal */}
       {pendingDeleteLocId && (
-        <div className="fixed inset-0 z-[90] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-sm rounded-[24px] shadow-2xl overflow-hidden animate-in zoom-in-95">
+        <div className="fixed inset-0 z-[90] bg-slate-900/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-sm rounded-[24px] shadow-2xl">
             <div className="p-6 space-y-2">
               <h3 className="text-base font-black text-slate-900">
                 {lang === 'zh' ? '确认删除机器点位' : 'Confirm Delete Location'}
@@ -524,21 +524,23 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 return null;
               })()}
             </div>
-            <div className="p-4 border-t border-slate-100 flex gap-3">
-              <button
-                onClick={() => setPendingDeleteLocId(null)}
-                disabled={isDeletingLoc}
-                className="flex-1 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl text-xs font-black uppercase hover:bg-slate-50 transition-colors disabled:opacity-50"
-              >
-                {lang === 'zh' ? '取消' : 'Cancel'}
-              </button>
+            <div className="p-4 border-t border-slate-100 space-y-3">
               <button
                 onClick={() => void handleConfirmDelete()}
                 disabled={isDeletingLoc}
-                className="flex-1 py-3 bg-rose-500 text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-rose-100 flex items-center justify-center gap-2 hover:bg-rose-600 active:scale-95 transition-all disabled:opacity-50"
+                className="w-full py-3 bg-rose-500 text-white rounded-2xl text-sm font-black uppercase text-center disabled:opacity-50"
               >
-                {isDeletingLoc ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
-                {lang === 'zh' ? '确认删除' : 'Confirm Delete'}
+                <span className="inline-flex items-center justify-center gap-2">
+                  {isDeletingLoc ? <Loader2 size={14} className="animate-spin" /> : <Trash2 size={14} />}
+                  {lang === 'zh' ? '确认删除' : 'Confirm Delete'}
+                </span>
+              </button>
+              <button
+                onClick={() => setPendingDeleteLocId(null)}
+                disabled={isDeletingLoc}
+                className="w-full py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl text-sm font-black uppercase text-center disabled:opacity-50"
+              >
+                {lang === 'zh' ? '取消' : 'Cancel'}
               </button>
             </div>
           </div>
