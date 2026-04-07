@@ -186,6 +186,9 @@ const AppAdminShell: React.FC = () => {
               <button onClick={handleLogout} className="p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </div>
           </div>
+          <div className="px-3 pb-3 sm:hidden">
+            <SyncStatusPill syncStatus={syncStatus} lang={lang} variant="light" fullWidth />
+          </div>
           <div className="md:hidden grid grid-cols-5 gap-1 border-t border-slate-200 px-2 py-2">
             {adminNavItems.map((item) => (
               (() => {
