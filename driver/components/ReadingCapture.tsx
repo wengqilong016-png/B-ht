@@ -94,12 +94,12 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
       {/* Score input */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3">
         <div className="mb-3 flex items-center justify-between gap-2">
-          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t.currentReading}</label>
+          <label className="text-caption font-black text-slate-400 uppercase tracking-widest">{t.currentReading}</label>
           <div className="flex items-center gap-1.5">
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
               {t.diff} {diff}
             </span>
-            <span className="rounded-full bg-indigo-50 px-2 py-1 text-[8px] font-black uppercase text-indigo-600">
+            <span className="rounded-full bg-indigo-50 px-2 py-1 text-caption font-black uppercase text-indigo-600">
               TZS {revenue.toLocaleString()}
             </span>
           </div>
@@ -119,7 +119,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
             className={`flex-1 py-3 rounded-2xl border flex items-center justify-center gap-2 transition-all active:scale-95 ${photoData ? 'bg-emerald-50 border-emerald-200 text-emerald-700' : 'bg-slate-900 border-slate-900 text-white'}`}
           >
             {photoData ? <CheckCircle2 size={16} /> : <Camera size={16} />}
-            <span className="text-[10px] font-black uppercase tracking-widest">
+            <span className="text-caption font-black uppercase tracking-widest">
               {photoData ? (lang === 'zh' ? '重拍凭证' : 'Retake proof') : (lang === 'zh' ? '拍照凭证' : 'Capture proof')}
             </span>
           </button>
@@ -137,7 +137,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         {photoData && (
           <div className="mt-3 h-16 w-full rounded-2xl overflow-hidden border border-slate-200 relative">
             <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt={t.paymentProof} />
-            <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
+            <div className="absolute top-2 right-2 bg-emerald-500 text-white text-caption font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
               <CheckCircle2 size={9} /> {t.photoReady}
             </div>
           </div>
@@ -147,19 +147,19 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
         {currentScore && (
           <div className={`mt-3 p-3 rounded-2xl text-white flex justify-between items-center ${revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
             <div>
-              <p className="text-[9px] font-black uppercase opacity-60">{t.diff} {diff}</p>
-              <p className="text-[9px] font-black uppercase opacity-60">{diff} × 200 TZS</p>
+              <p className="text-caption font-black uppercase opacity-60">{t.diff} {diff}</p>
+              <p className="text-caption font-black uppercase opacity-60">{diff} × 200 TZS</p>
             </div>
             <div className="text-right">
               <p className="text-xl font-black">TZS {revenue.toLocaleString()}</p>
-              <p className="text-[8px] opacity-60 uppercase">{t.revenue}</p>
+              <p className="text-caption opacity-60 uppercase">{t.revenue}</p>
             </div>
           </div>
         )}
 
         {isScoreBelowLastReading && (
           <div className="mt-3 p-3 rounded-2xl border border-rose-200 bg-rose-50">
-            <p className="text-[9px] font-black uppercase text-rose-600">
+            <p className="text-caption font-black uppercase text-rose-600">
               {lang === 'zh'
                 ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请先确认是否应提交重置申请。`
                 : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Confirm whether this should be a reset request instead.`}
@@ -208,7 +208,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
               }
             </div>
             <div className="flex-1 min-w-0">
-              <p className={`text-[9px] font-black uppercase ${textCls}`}>{label}</p>
+              <p className={`text-caption font-black uppercase ${textCls}`}>{label}</p>
             </div>
             {!isGranted && (
               <button onClick={requestGps} className="p-1.5 bg-white rounded-xl border border-slate-200 text-indigo-600 flex-shrink-0">
@@ -223,7 +223,7 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
           {photoData ? <CheckCircle2 size={13} /> : <WifiOff size={13} />}
         </div>
         <div className="min-w-0 flex-1">
-          <p className={`text-[9px] font-black uppercase ${photoData ? 'text-emerald-700' : 'text-slate-500'}`}>
+          <p className={`text-caption font-black uppercase ${photoData ? 'text-emerald-700' : 'text-slate-500'}`}>
             {photoData ? t.photoReady : t.noPhotoYet}
           </p>
         </div>
@@ -231,15 +231,15 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
       </div>
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.lastScore}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.lastScore}</p>
           <p className="mt-1 text-sm font-black text-slate-900">{(selectedLocation?.lastScore ?? 0).toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.diff}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.diff}</p>
           <p className="mt-1 text-sm font-black text-slate-900">{diff.toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.revenue}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.revenue}</p>
           <p className="mt-1 text-sm font-black text-slate-900">TZS {revenue.toLocaleString()}</p>
         </div>
       </div>

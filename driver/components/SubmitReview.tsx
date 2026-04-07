@@ -241,23 +241,23 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
       <div className="bg-slate-900 rounded-2xl px-4 py-3 text-white flex justify-between items-center">
         <div>
-          <p className="text-[10px] font-black uppercase opacity-60">{t.net}</p>
-          <p className="text-[8px] font-bold opacity-40 uppercase mt-0.5">{t.cashToHandIn}</p>
+          <p className="text-caption font-black uppercase opacity-60">{t.net}</p>
+          <p className="text-caption font-bold opacity-40 uppercase mt-0.5">{t.cashToHandIn}</p>
         </div>
         <p className="text-4xl font-black">TZS {calculations.netPayable.toLocaleString()}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.score}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.score}</p>
           <p className="mt-1 text-sm font-black text-slate-900">{currentScore || '0'}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.exchange}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.exchange}</p>
           <p className="mt-1 text-sm font-black text-slate-900">TZS {(parseInt(coinExchange) || 0).toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.coinStock}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.coinStock}</p>
           <p className="mt-1 text-sm font-black text-slate-900">{calculations.remainingCoins.toLocaleString()}</p>
         </div>
       </div>
@@ -274,7 +274,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           { label: t.coinStock, value: `${calculations.remainingCoins.toLocaleString()} ${t.coinUnit}`, color: calculations.isCoinStockNegative ? 'text-rose-600 font-black' : 'text-slate-500' },
         ].map((row) => (
           <div key={row.label} className="flex justify-between items-center px-4 py-2.5">
-            <span className="text-[10px] font-black text-slate-400 uppercase">{row.label}</span>
+            <span className="text-caption font-black text-slate-400 uppercase">{row.label}</span>
             <span className={`text-[11px] font-black ${row.color}`}>{row.value}</span>
           </div>
         ))}
@@ -283,7 +283,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       {photoData && (
         <div className="h-20 rounded-2xl overflow-hidden border border-slate-200 relative">
           <img src={photoData} className="w-full h-full object-cover grayscale brightness-110 contrast-125" alt={t.paymentProof} />
-          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-[8px] font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
+          <div className="absolute top-2 right-2 bg-emerald-500 text-white text-caption font-black uppercase px-2 py-0.5 rounded-tag flex items-center gap-1">
             <CheckCircle2 size={9} /> {t.photoReady}
           </div>
         </div>
@@ -291,7 +291,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       {!photoData && draftTxId && (
         <div className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-amber-50 border border-amber-200">
           <AlertTriangle size={14} className="text-amber-500 flex-shrink-0" />
-          <p className="text-[10px] font-black text-amber-700 leading-tight">
+          <p className="text-caption font-black text-amber-700 leading-tight">
             {lang === 'zh'
               ? '⚠️ 照片在刷新后丢失，请返回上一步重新拍照。'
               : '⚠️ Photo was lost after page refresh. Please go back and retake it.'}
@@ -312,7 +312,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           <Satellite size={13} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className={`text-[9px] font-black uppercase ${
+          <p className={`text-caption font-black uppercase ${
             gpsPermission === 'denied' ? 'text-rose-600' :
             gpsCoords ? 'text-emerald-700' :
             'text-slate-500'
@@ -334,7 +334,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       {calculations.isCoinStockNegative && (
         <div className="flex items-center gap-3 px-3 py-2.5 bg-rose-50 border border-rose-200 rounded-2xl">
           <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
-          <p className="text-[9px] font-black text-rose-700 uppercase">
+          <p className="text-caption font-black text-rose-700 uppercase">
             {lang === 'zh' ? '⚠ 硬币库存不足，请确认后提交' : '⚠ Coin stock insufficient — confirm before submit'}
           </p>
         </div>
@@ -343,7 +343,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
       {isScoreBelowLastReading && (
         <div className="flex items-center gap-3 px-4 py-3 bg-rose-50 border border-rose-200 rounded-subcard">
           <AlertTriangle size={14} className="text-rose-500 flex-shrink-0" />
-          <p className="text-[9px] font-black text-rose-700 uppercase">
+          <p className="text-caption font-black text-rose-700 uppercase">
             {lang === 'zh'
               ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，不能按普通收款提交。`
               : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}); normal collection submit is blocked.`}

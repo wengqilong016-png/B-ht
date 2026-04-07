@@ -120,11 +120,11 @@ const MachineCard: React.FC<MachineCardProps> = ({
                 </p>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${statusTone}`}>
+                <span className={`rounded-full px-2 py-1 text-caption font-black uppercase ${statusTone}`}>
                   {statusLabel}
                 </span>
                 {!isLocked && (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-[8px] font-black uppercase text-white">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-slate-900 px-2.5 py-1 text-caption font-black uppercase text-white">
                     {lang === 'zh' ? '收款' : 'Collect'}
                     <ChevronRight size={11} className="text-white/80" />
                   </span>
@@ -133,29 +133,29 @@ const MachineCard: React.FC<MachineCardProps> = ({
             </div>
 
             <div className="mt-2 flex flex-wrap gap-1.5">
-              <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${isPending ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
+              <span className={`rounded-full px-2 py-1 text-caption font-black uppercase ${isPending ? 'bg-indigo-50 text-indigo-600' : 'bg-emerald-50 text-emerald-600'}`}>
                   {isPending ? t.pendingToday : t.visitedToday}
               </span>
-              <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase ${isNear9999 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
+              <span className={`rounded-full px-2 py-1 text-caption font-black uppercase ${isNear9999 ? 'bg-rose-50 text-rose-600' : 'bg-slate-100 text-slate-500'}`}>
                 9999 {isNear9999 ? t.nearThreshold : t.normalThreshold}
               </span>
-              <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+              <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
                 {(loc.commissionRate * 100).toFixed(0)}%
               </span>
-              <span className="rounded-full bg-amber-50 px-2 py-1 text-[8px] font-black uppercase text-amber-700">
+              <span className="rounded-full bg-amber-50 px-2 py-1 text-caption font-black uppercase text-amber-700">
                 {t.dividendShort} {(loc.dividendBalance || 0).toLocaleString()}
               </span>
               {distanceMeters !== null ? (
-                <span className="rounded-full bg-emerald-50 px-2 py-1 text-[8px] font-black uppercase text-emerald-700">
+                <span className="rounded-full bg-emerald-50 px-2 py-1 text-caption font-black uppercase text-emerald-700">
                   {Math.round(distanceMeters)}m
                 </span>
               ) : (
-                <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+                <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
                   {t.distanceWaiting}
                 </span>
               )}
               {isUrgent && daysSinceActive !== null && daysSinceActive >= CONSTANTS.STAGNANT_DAYS_THRESHOLD && (
-                <span className="rounded-full bg-amber-50 px-2 py-1 text-[8px] font-black uppercase text-amber-700">
+                <span className="rounded-full bg-amber-50 px-2 py-1 text-caption font-black uppercase text-amber-700">
                   {t.staleMachine} {daysSinceActive}d
                 </span>
               )}
@@ -169,7 +169,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
           {isNear9999 && (
             <button
               onClick={(e) => { e.stopPropagation(); onRequestReset(loc.id); }}
-              className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 border-r border-slate-100"
+              className="flex-1 px-3 py-2 min-h-11 text-caption font-black uppercase text-rose-600 hover:bg-rose-50 transition-colors flex items-center justify-center gap-1.5 border-r border-slate-100"
             >
               <RefreshCw size={11} /> {lang === 'zh' ? '重置' : 'Reset'}
             </button>
@@ -180,14 +180,14 @@ const MachineCard: React.FC<MachineCardProps> = ({
               if (hasDividendBalance) onRequestPayout(loc.id);
             }}
             disabled={!hasDividendBalance}
-            className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
+            className="flex-1 px-3 py-2 min-h-11 text-caption font-black uppercase text-emerald-600 hover:bg-emerald-50 transition-colors flex items-center justify-center gap-1.5 disabled:text-slate-300 disabled:hover:bg-transparent disabled:cursor-not-allowed"
           >
             <Wallet size={11} /> {lang === 'zh' ? '提现' : 'Payout'}
           </button>
           {onUpdateLocation && (
             <button
               onClick={(e) => { e.stopPropagation(); setShowSiteInfoForm(v => !v); }}
-              className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
+              className="flex-1 px-3 py-2 min-h-11 text-caption font-black uppercase text-indigo-600 hover:bg-indigo-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
             >
               <UserPen size={11} /> {lang === 'zh' ? '补充信息' : 'Site Info'}
             </button>
@@ -198,7 +198,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
       {showSiteInfoForm && onUpdateLocation && (
         <div className="border-t border-slate-100 bg-slate-50 px-4 py-3 space-y-2.5">
           <div className="flex items-center justify-between mb-1">
-            <p className="text-[10px] font-black uppercase text-slate-500">
+            <p className="text-caption font-black uppercase text-slate-500">
               {lang === 'zh' ? '补充店主信息' : 'Update Site Info'}
             </p>
             <button onClick={() => setShowSiteInfoForm(false)} className="text-slate-400 hover:text-slate-600">
@@ -234,7 +234,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
             <button
               type="button"
               onClick={() => photoInputRef.current?.click()}
-              className={`w-full rounded-xl border-2 border-dashed py-3 flex items-center justify-center gap-2 text-[10px] font-black uppercase transition-colors ${sitePhotoPreview ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-400 hover:border-indigo-300 hover:text-indigo-500'}`}
+              className={`w-full rounded-xl border-2 border-dashed py-3 flex items-center justify-center gap-2 text-caption font-black uppercase transition-colors ${sitePhotoPreview ? 'border-emerald-400 bg-emerald-50 text-emerald-700' : 'border-slate-200 bg-white text-slate-400 hover:border-indigo-300 hover:text-indigo-500'}`}
             >
               {sitePhotoPreview ? (
                 <>

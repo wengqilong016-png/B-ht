@@ -63,7 +63,7 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
               <p className="text-[10px] font-bold text-slate-400 mt-0.5">{driver.phone}</p>
             )}
           </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[9px] font-black uppercase flex-shrink-0 ${
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-caption font-black uppercase flex-shrink-0 ${
             isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-500 border border-rose-100'
           }`}>
             {isActive
@@ -75,14 +75,14 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         </div>
         <div className="border-t border-slate-50 px-5 py-3 flex items-center gap-2 text-slate-400">
           <Clock size={12} />
-          <span className="text-[9px] font-bold uppercase">{t.lastActive}: {lastActiveDisplay}</span>
+          <span className="text-caption font-bold uppercase">{t.lastActive}: {lastActiveDisplay}</span>
         </div>
       </div>
 
       {/* Debt & salary row */}
       <div className="grid grid-cols-2 gap-4">
         <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-4">
-          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+          <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
             <Banknote size={11} /> {t.baseSalary}
           </p>
           <p className="text-base font-black text-slate-900">
@@ -90,7 +90,7 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
           </p>
         </div>
         <div className="bg-indigo-50 rounded-[24px] border border-indigo-100 shadow-sm p-4">
-          <p className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
+          <p className="text-caption font-black text-indigo-400 uppercase tracking-widest mb-2 flex items-center gap-1">
             <Percent size={11} /> {t.commissionRate}
           </p>
           <p className="text-base font-black text-indigo-700">
@@ -102,11 +102,11 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
       {/* Debt status */}
       {driver.initialDebt > 0 && (
         <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+          <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
             <AlertCircle size={12} /> {t.debtStatus}
           </p>
           <div className="flex justify-between items-center mb-2">
-            <span className="text-[9px] font-bold text-slate-500 uppercase">{t.remainingDebt}</span>
+            <span className="text-caption font-bold text-slate-500 uppercase">{t.remainingDebt}</span>
             <span className="text-sm font-black text-rose-600">TZS {(driver.remainingDebt ?? 0).toLocaleString()}</span>
           </div>
           <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden mb-2">
@@ -115,7 +115,7 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
               style={{ width: `${debtPct}%` }}
             />
           </div>
-          <div className="flex justify-between text-[8px] font-bold text-slate-400 uppercase">
+          <div className="flex justify-between text-caption font-bold text-slate-400 uppercase">
             <span>{t.progress}: {debtPct}%</span>
             <span>{t.initialDebt}: TZS {(driver.initialDebt ?? 0).toLocaleString()}</span>
           </div>
@@ -124,18 +124,18 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
 
       {/* Revenue summary */}
       <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+        <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <TrendingUp size={12} /> {t.totalRevenue}
         </p>
         <p className="text-xl font-black text-slate-900">TZS {totalRevenue.toLocaleString()}</p>
-        <p className="text-[9px] font-bold text-slate-400 uppercase mt-1">
+        <p className="text-caption font-bold text-slate-400 uppercase mt-1">
           {recentTx.length} {t.recentCollections}
         </p>
       </div>
 
       {/* Vehicle info */}
       <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-5">
-        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+        <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <Truck size={12} /> {t.vehicleInfo}
         </p>
         {driver.vehicleInfo?.model || driver.vehicleInfo?.plate ? (

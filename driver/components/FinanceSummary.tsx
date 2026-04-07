@@ -84,11 +84,11 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       {/* Revenue summary */}
       <div className={`px-3 py-2.5 rounded-2xl text-white flex justify-between items-center ${calculations.revenue > 50000 ? 'bg-indigo-600' : 'bg-slate-800'}`}>
         <div>
-          <p className="text-[9px] font-black uppercase opacity-60">{t.formula}</p>
-          <p className="text-[9px] font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
+          <p className="text-caption font-black uppercase opacity-60">{t.formula}</p>
+          <p className="text-caption font-bold opacity-50">({currentScore} − {selectedLocation?.lastScore}) × 200</p>
           {previewSource && (
               <span
-              className={`inline-block mt-1 px-1.5 py-0.5 rounded text-[7px] font-black uppercase tracking-wide ${previewSource === 'server' ? 'bg-white/20 text-white' : 'bg-white/10 text-white/50'}`}
+              className={`inline-block mt-1 px-1.5 py-0.5 rounded text-caption font-black uppercase tracking-wide ${previewSource === 'server' ? 'bg-white/20 text-white' : 'bg-white/10 text-white/50'}`}
               title={previewSource === 'server' ? 'Preview calculated by server' : 'Preview calculated locally'}
             >
               {previewSource === 'server' ? '⬡ server' : '◎ local'}
@@ -99,25 +99,25 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
           {calculations.revenue > 50000 && (
             <div className="flex items-center gap-1 justify-end mb-1">
               <Trophy size={10} className="text-yellow-300" />
-              <span className="text-[8px] font-black text-yellow-300 uppercase">High Value</span>
+              <span className="text-caption font-black text-yellow-300 uppercase">High Value</span>
             </div>
           )}
           <p className="text-2xl font-black">TZS {calculations.revenue.toLocaleString()}</p>
-          <p className="text-[8px] opacity-60 uppercase">{t.revenue}</p>
+          <p className="text-caption opacity-60 uppercase">{t.revenue}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-3 gap-2">
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.retention}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.retention}</p>
           <p className="mt-1 text-sm font-black text-slate-900">TZS {calculations.finalRetention.toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.expenses}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.expenses}</p>
           <p className="mt-1 text-sm font-black text-slate-900">TZS {(parseInt(displayedExpenseValue) || 0).toLocaleString()}</p>
         </div>
         <div className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5">
-          <p className="text-[8px] font-black uppercase tracking-wide text-slate-400">{t.net}</p>
+          <p className="text-caption font-black uppercase tracking-wide text-slate-400">{t.net}</p>
           <p className="mt-1 text-sm font-black text-slate-900">TZS {calculations.netPayable.toLocaleString()}</p>
         </div>
       </div>
@@ -125,14 +125,14 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       <div className="rounded-2xl border border-slate-200 bg-white p-3">
         <div className="mb-3 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            <p className="text-caption font-black uppercase tracking-widest text-slate-400">
               {lang === 'zh' ? '金额录入' : 'Cash Inputs'}
             </p>
-            <p className="mt-1 text-[8px] font-bold uppercase tracking-wide text-slate-300">
+            <p className="mt-1 text-caption font-bold uppercase tracking-wide text-slate-300">
               {lang === 'zh' ? '分红、公账支出、换币、商家欠款' : 'Retention, company expenses, exchange, merchant debt'}
             </p>
           </div>
-          <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+          <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
             {previewSource === 'server' ? 'server' : 'local'}
           </span>
         </div>
@@ -140,7 +140,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       {/* Owner Retention */}
       <div className={`p-3 rounded-2xl border transition-all ${isOwnerRetaining ? 'bg-amber-50 border-amber-200' : 'bg-emerald-50 border-emerald-200'}`}>
         <div className="flex justify-between items-center mb-3">
-          <label className={`text-[10px] font-black uppercase flex items-center gap-2 ${isOwnerRetaining ? 'text-amber-600' : 'text-emerald-600'}`}>
+          <label className={`text-caption font-black uppercase flex items-center gap-2 ${isOwnerRetaining ? 'text-amber-600' : 'text-emerald-600'}`}>
             <HandCoins size={13} /> {isOwnerRetaining ? t.retention : (lang === 'zh' ? '支付商家分红' : 'Pay Owner Share')}
           </label>
           <button
@@ -163,7 +163,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
               placeholder={String(calculations.commission)}
             />
           </div>
-          <p className={`text-[8px] font-black uppercase ${isOwnerRetaining ? 'text-amber-500' : 'text-emerald-500'}`}>
+          <p className={`text-caption font-black uppercase ${isOwnerRetaining ? 'text-amber-500' : 'text-emerald-500'}`}>
             {isOwnerRetaining
               ? (lang === 'zh'
                   ? `默认按系统计算 TZS ${calculations.commission.toLocaleString()}，可直接修改`
@@ -174,13 +174,13 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
           </p>
           <div className={`grid grid-cols-2 gap-2 rounded-2xl border px-3 py-2 ${isOwnerRetaining ? 'border-amber-200 bg-white/70' : 'border-emerald-200 bg-white/70'}`}>
             <div>
-              <p className="text-[8px] font-black uppercase text-slate-400">{lang === 'zh' ? '当前分红余额' : 'Current Balance'}</p>
+              <p className="text-caption font-black uppercase text-slate-400">{lang === 'zh' ? '当前分红余额' : 'Current Balance'}</p>
               <p className="mt-1 text-[11px] font-black text-slate-900">
                 TZS {currentDividendBalance.toLocaleString(undefined, { maximumFractionDigits: 2 })}
               </p>
             </div>
             <div>
-              <p className="text-[8px] font-black uppercase text-slate-400">
+              <p className="text-caption font-black uppercase text-slate-400">
                 {isOwnerRetaining ? (lang === 'zh' ? '留存后余额' : 'Projected Balance') : (lang === 'zh' ? '本次支付' : 'Paid This Run')}
               </p>
               <p className={`mt-1 text-[11px] font-black ${isOwnerRetaining ? 'text-amber-700' : 'text-emerald-700'}`}>
@@ -195,11 +195,11 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       {/* Expenses */}
       <div className="bg-rose-50 p-3 rounded-2xl border border-rose-100">
         <div className="flex items-center justify-between mb-3">
-          <label className="text-[10px] font-black text-rose-500 uppercase flex items-center gap-2">
+          <label className="text-caption font-black text-rose-500 uppercase flex items-center gap-2">
             <Banknote size={13} /> {lang === 'zh' ? '公账支出' : 'Company Expense'}
           </label>
           {(parseInt(displayedExpenseValue) || 0) > 0 && (
-            <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded-tag text-[8px] font-black uppercase">{t.pendingApproval}</span>
+            <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded-tag text-caption font-black uppercase">{t.pendingApproval}</span>
           )}
         </div>
 
@@ -207,7 +207,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
           <select
             value={expenseCategory}
             onChange={e => onUpdateExpenseCategory(e.target.value as any)}
-            className="bg-white border border-rose-100 rounded-btn px-2 py-2 text-[10px] font-black text-rose-600 outline-none uppercase w-28 flex-shrink-0"
+            className="bg-white border border-rose-100 rounded-btn px-2 py-2 text-caption font-black text-rose-600 outline-none uppercase w-28 flex-shrink-0"
           >
             <option value="tip">{lang === 'zh' ? '小费支出' : 'Tip / Gratuity'}</option>
             <option value="fuel">{t.fuelLabel}</option>
@@ -234,7 +234,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             />
           </div>
         </div>
-        <p className="mt-2 text-[8px] font-black uppercase text-rose-400">
+        <p className="mt-2 text-caption font-black uppercase text-rose-400">
           {lang === 'zh'
             ? '司机预支已移到债务窗口处理。'
             : 'Driver advances now live in the debt window.'}
@@ -250,7 +250,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
           />
         )}
         {isTipExpense && (parseInt(tip) || 0) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
-          <p className="mt-2 text-[8px] font-black uppercase text-amber-700">
+          <p className="mt-2 text-caption font-black uppercase text-amber-700">
             ⚠️ {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue – confirm with admin'}
           </p>
         )}
@@ -258,7 +258,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
 
       {/* Coin Exchange */}
       <div className="bg-emerald-50 p-3 rounded-2xl border border-emerald-100">
-        <label className="text-[10px] font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
+        <label className="text-caption font-black text-emerald-600 uppercase block mb-2 tracking-widest">{t.exchange}</label>
         <div className="flex items-center gap-3">
           <div className="p-2 bg-emerald-500 rounded-btn text-white flex-shrink-0"><Coins size={16} /></div>
           <input
@@ -273,10 +273,10 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
 
       <div className="bg-indigo-50 p-3 rounded-2xl border border-indigo-100">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-[10px] font-black text-indigo-600 uppercase flex items-center gap-2 tracking-widest">
+          <label className="text-caption font-black text-indigo-600 uppercase flex items-center gap-2 tracking-widest">
             <ShieldAlert size={13} /> {lang === 'zh' ? '商家欠款手动扣减' : 'Manual Merchant Debt Deduction'}
           </label>
-          <span className="text-[8px] font-black text-indigo-400 uppercase">
+          <span className="text-caption font-black text-indigo-400 uppercase">
             {lang === 'zh'
               ? `剩余 ${selectedLocation.remainingStartupDebt.toLocaleString()}`
               : `Balance ${selectedLocation.remainingStartupDebt.toLocaleString()}`}
@@ -294,7 +294,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
             />
           </div>
         </div>
-        <p className="text-[8px] font-black text-indigo-400 uppercase mt-2">
+        <p className="text-caption font-black text-indigo-400 uppercase mt-2">
           {lang === 'zh'
             ? '手动填写，本次只会按可扣上限和剩余商家欠款计入。'
             : 'Manual entry. This run is capped by available cash and remaining merchant debt.'}
@@ -306,7 +306,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       {/* Navigation */}
       {isScoreBelowLastReading && (
         <div className="p-3 rounded-subcard border border-rose-200 bg-rose-50">
-          <p className="text-[9px] font-black uppercase text-rose-600">
+          <p className="text-caption font-black uppercase text-rose-600">
             {lang === 'zh'
               ? `当前读数低于上次记录 (${selectedLocation.lastScore.toLocaleString()})，请返回重新核对读数或改走重置申请。`
               : `Current reading is below the last recorded score (${selectedLocation.lastScore.toLocaleString()}). Go back and confirm the reading or use the reset request flow.`}
@@ -315,7 +315,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
       )}
       {calculations.startupDebtDeduction > 0 && (
         <div className="p-3 rounded-subcard border border-indigo-200 bg-indigo-50">
-          <p className="text-[9px] font-black uppercase text-indigo-700">
+          <p className="text-caption font-black uppercase text-indigo-700">
             {lang === 'zh'
               ? `本次将代商家回收欠款 TZS ${calculations.startupDebtDeduction.toLocaleString()}。`
               : `This collection will recover TZS ${calculations.startupDebtDeduction.toLocaleString()} of merchant debt.`}

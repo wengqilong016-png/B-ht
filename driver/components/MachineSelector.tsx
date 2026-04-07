@@ -154,17 +154,17 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         <div className="flex items-center gap-3 px-3 py-2.5 bg-amber-50 border border-amber-200 rounded-2xl">
           <WifiOff size={16} className="text-amber-500 flex-shrink-0" />
           <div className="min-w-0">
-            <p className="text-[10px] font-black text-amber-700 uppercase">
+            <p className="text-caption font-black text-amber-700 uppercase">
               {lang === 'zh' ? '离线模式 — 数据已本地保存' : 'Offline Mode — Data saved locally'}
             </p>
-            <p className="text-[8px] font-bold text-amber-600">
+            <p className="text-caption font-bold text-amber-600">
               {lang === 'zh' ? '恢复网络后自动同步到云端' : 'Auto-syncs when connection returns'}
             </p>
           </div>
           {offlineQueueCount > 0 && (
             <div className="flex items-center gap-1 px-2 py-1 bg-amber-200 rounded-tag flex-shrink-0">
               <DatabaseBackup size={10} className="text-amber-700" />
-              <span className="text-[8px] font-black text-amber-700">{offlineQueueCount}</span>
+              <span className="text-caption font-black text-amber-700">{offlineQueueCount}</span>
             </div>
           )}
         </div>
@@ -175,7 +175,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         <div className="flex items-center gap-3 px-3 py-2.5 bg-indigo-50 border border-indigo-200 rounded-2xl">
           <DatabaseBackup size={16} className="text-indigo-500 flex-shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-black text-indigo-700 uppercase">
+            <p className="text-caption font-black text-indigo-700 uppercase">
               {lang === 'zh' ? `${offlineQueueCount} 条离线记录正在同步...` : `Syncing ${offlineQueueCount} offline records...`}
             </p>
           </div>
@@ -188,7 +188,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
             <ScanLine className="text-indigo-600" size={18} />
             {t.selectMachine}
           </h2>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+          <p className="text-caption font-black text-slate-400 uppercase tracking-widest mt-1">
             {todayDriverTransactions.length} {t.todaysCollections}
           </p>
         </div>
@@ -205,18 +205,18 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
           className="flex w-full items-center justify-between gap-3 rounded-[24px] border border-indigo-200 bg-indigo-50 px-4 py-3 text-left shadow-[0_10px_24px_rgba(79,70,229,0.08)] transition-colors hover:bg-indigo-100"
         >
           <div className="min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-indigo-500">
+            <p className="text-caption font-black uppercase tracking-[0.22em] text-indigo-500">
               {t.resumeCurrentTask}
             </p>
             <p className="mt-1 truncate text-[11px] font-black uppercase text-slate-900">
               {currentDraftLocation.machineId}{' '}
               <span className="normal-case text-slate-500">{currentDraftLocation.name}</span>
             </p>
-            <p className="mt-1 truncate text-[8px] font-bold uppercase tracking-wide text-slate-400">
+            <p className="mt-1 truncate text-caption font-bold uppercase tracking-wide text-slate-400">
               {currentDraftLocation.area || '—'} · {t.score} {(currentDraftLocation.lastScore ?? 0).toLocaleString()}
             </p>
           </div>
-          <div className="flex shrink-0 items-center gap-2 rounded-2xl bg-white px-3 py-2 text-[9px] font-black uppercase tracking-wide text-indigo-600">
+          <div className="flex shrink-0 items-center gap-2 rounded-2xl bg-white px-3 py-2 text-caption font-black uppercase tracking-wide text-indigo-600">
             <ScanLine size={13} />
             {t.resumeEntry}
           </div>
@@ -243,7 +243,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         {isShowingAllLocations && (
           <div className="px-3 py-2.5 bg-amber-50 border border-amber-100 rounded-2xl flex items-center gap-2">
             <AlertTriangle size={13} className="text-amber-500 flex-shrink-0" />
-            <p className="text-[9px] font-black text-amber-700 uppercase tracking-widest">
+            <p className="text-caption font-black text-amber-700 uppercase tracking-widest">
               {lang === 'zh' ? 'Showing all machines (none assigned)' : 'Showing all machines (none assigned)'}
             </p>
           </div>

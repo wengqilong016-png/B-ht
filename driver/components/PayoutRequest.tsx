@@ -73,7 +73,7 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
           </button>
           <div className="text-center">
             <h2 className="text-base font-black text-slate-900">{t.payoutRequest}</h2>
-            <p className="text-[10px] font-black text-emerald-500 uppercase mt-1">{location?.name} • {location?.ownerName || '---'}</p>
+            <p className="text-caption font-black text-emerald-500 uppercase mt-1">{location?.name} • {location?.ownerName || '---'}</p>
           </div>
           <div className="w-10" />
         </div>
@@ -83,13 +83,13 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
             <div className="p-2 bg-emerald-500 rounded-btn text-white flex-shrink-0"><Wallet size={16} /></div>
             <div>
               <p className="text-xs font-black text-emerald-800 uppercase">{t.payoutRequestDesc}</p>
-              <p className="text-[9px] font-bold text-emerald-400 mt-0.5">
+              <p className="text-caption font-bold text-emerald-400 mt-0.5">
                 {lang === 'zh' ? `店主: ${location?.ownerName || 'N/A'}` : `Owner: ${location?.ownerName || 'N/A'}`}
               </p>
             </div>
           </div>
           <div className="bg-white p-3 rounded-btn border border-emerald-100 text-center">
-            <p className="text-[8px] font-black text-emerald-400 uppercase mb-0.5">
+            <p className="text-caption font-black text-emerald-400 uppercase mb-0.5">
               {lang === 'zh' ? '可提现余额' : 'Available Balance'}
             </p>
             <p className="text-2xl font-black text-emerald-700">TZS {availableDividend.toLocaleString()}</p>
@@ -99,7 +99,7 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
         {!isOnline && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-subcard bg-amber-50 border border-amber-200">
             <span className="text-amber-500 text-sm flex-shrink-0">📶</span>
-            <p className="text-[10px] font-black text-amber-700 leading-tight">
+            <p className="text-caption font-black text-amber-700 leading-tight">
               {lang === 'zh'
                 ? '当前离线 — 申请将在联网后自动同步。'
                 : 'Currently offline — request will sync automatically when reconnected.'}
@@ -108,7 +108,7 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
         )}
 
         <div className="bg-slate-50 p-4 rounded-subcard border border-slate-200">
-          <label className="text-[10px] font-black text-slate-400 uppercase block mb-2">{t.payoutAmount}</label>
+          <label className="text-caption font-black text-slate-400 uppercase block mb-2">{t.payoutAmount}</label>
           <div className="flex items-baseline gap-2">
             <span className="text-base font-black text-slate-300">TZS</span>
             <input
@@ -120,7 +120,7 @@ const PayoutRequest: React.FC<PayoutRequestProps> = ({
             />
           </div>
           {exceedsBalance && (
-            <p className="text-[9px] font-black text-rose-500 mt-2">
+            <p className="text-caption font-black text-rose-500 mt-2">
               {lang === 'zh' ? `⚠ 超过可用余额 (TZS ${availableDividend.toLocaleString()})` : `⚠ Exceeds available balance (TZS ${availableDividend.toLocaleString()})`}
             </p>
           )}
