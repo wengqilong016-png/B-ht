@@ -5,7 +5,7 @@ import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { useToast } from '../../contexts/ToastContext';
 
 const taskCard = 'bg-white rounded-2xl border p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]';
-const pill = 'inline-flex items-center rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-wide';
+const pill = 'inline-flex items-center rounded-full px-2 py-1 text-caption font-black uppercase tracking-wide';
 
 interface PayrollEntry {
   driver: Driver;
@@ -261,10 +261,10 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
           {/* Slim status line — nav badge already shows the count */}
           {approvalTasks.length > 0 && (
             <div className="flex items-center gap-2 px-1">
-              <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-[9px] font-black flex items-center justify-center flex-shrink-0">
+              <span className="w-5 h-5 rounded-full bg-amber-500 text-white text-caption font-black flex items-center justify-center flex-shrink-0">
                 {approvalTasks.length > 9 ? '9+' : approvalTasks.length}
               </span>
-              <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest truncate">
+              <p className="text-caption font-bold text-slate-400 uppercase tracking-widest truncate">
                 {[
                   pendingSettlements.length > 0 && `${lang === 'zh' ? '结算' : 'Settlement'} ${pendingSettlements.length}`,
                   anomalyTransactions.length > 0 && `${lang === 'zh' ? '异常' : 'Anomaly'} ${anomalyTransactions.length}`,
@@ -304,12 +304,12 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span className={`${pill} ${cfg.pillClass}`}>{typeLabel}</span>
-                          <span className="text-[10px] font-black text-slate-900 truncate">{task.driverName}</span>
+                          <span className="text-caption font-black text-slate-900 truncate">{task.driverName}</span>
                         </div>
-                        <p className="text-[9px] font-bold text-slate-400 truncate mt-0.5">{task.locationName} · {new Date(task.timestamp).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-GB')}</p>
+                        <p className="text-caption font-bold text-slate-400 truncate mt-0.5">{task.locationName} · {new Date(task.timestamp).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-GB')}</p>
                       </div>
                       <div className="flex-shrink-0 flex items-center gap-2">
-                        <span className="text-[10px] font-black text-slate-700">
+                        <span className="text-caption font-black text-slate-700">
                           {task.type === 'reset' ? task.amount.toLocaleString() : `TZS ${task.amount.toLocaleString()}`}
                         </span>
                         {isExpanded ? <ChevronUp size={14} className="text-slate-400" /> : <ChevronDown size={14} className="text-slate-400" />}
@@ -325,17 +325,17 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                             <>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="bg-slate-50 p-3 rounded-xl">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
                                   <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-xl">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase">{t.actualSubmittedLabel}</p>
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.actualSubmittedLabel}</p>
                                   <p className="text-xs font-black text-indigo-600">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
                                 </div>
                               </div>
                               {s.shortage !== 0 && (
                                 <div className={`p-3 rounded-xl flex items-center justify-between ${s.shortage < 0 ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`}>
-                                  <span className="text-[9px] font-black uppercase">{s.shortage < 0 ? t.shortage : t.surplus}</span>
+                                  <span className="text-caption font-black uppercase">{s.shortage < 0 ? t.shortage : t.surplus}</span>
                                   <span className="text-xs font-black">TZS {Math.abs(s.shortage).toLocaleString()}</span>
                                 </div>
                               )}
@@ -343,8 +343,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 <img src={(s as unknown as { transferProofUrl: string }).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-[10px] font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-[10px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -360,7 +360,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                             <>
                               <div className="flex items-center justify-between">
                                 <div>
-                                  <p className="text-[9px] font-bold text-slate-500">{categoryLabel}</p>
+                                  <p className="text-caption font-bold text-slate-500">{categoryLabel}</p>
                                   <p className="text-xs font-black text-slate-900">TZS {tx.expenses.toLocaleString()}</p>
                                 </div>
                                 <div className={`${pill} ${tx.expenseType === 'private' ? 'bg-indigo-50 text-indigo-600' : 'bg-rose-50 text-rose-600'}`}>
@@ -368,8 +368,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                 </div>
                               </div>
                               <div className="flex gap-2">
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -383,11 +383,11 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                             <>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="bg-slate-50 p-2 rounded-xl">
-                                  <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'zh' ? '司机输入' : 'Driver Input'}</p>
+                                  <p className="text-caption font-black text-slate-400 uppercase">{lang === 'zh' ? '司机输入' : 'Driver Input'}</p>
                                   <p className="text-xs font-black text-slate-900">{tx.currentScore}</p>
                                 </div>
                                 <div className="bg-amber-50 p-2 rounded-xl">
-                                  <p className="text-[8px] font-black text-amber-400 uppercase">{lang === 'zh' ? 'AI 识别' : 'AI Detected'}</p>
+                                  <p className="text-caption font-black text-amber-400 uppercase">{lang === 'zh' ? 'AI 识别' : 'AI Detected'}</p>
                                   <p className="text-xs font-black text-amber-700">
                                     {scan?.status === 'loading' && <Loader2 size={12} className="inline animate-spin" />}
                                     {scan?.status === 'matched' && <span className="text-emerald-600">✓ {scan.detectedScore}</span>}
@@ -400,7 +400,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                               </div>
                               {/* AI scan status badge */}
                               {scan && scan.status !== 'loading' && (
-                                <div className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-[10px] font-black ${
+                                <div className={`flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-caption font-black ${
                                   scan.status === 'matched' ? 'bg-emerald-50 text-emerald-700' :
                                   scan.status === 'mismatch' ? 'bg-rose-50 text-rose-700' :
                                   'bg-slate-50 text-slate-500'
@@ -418,8 +418,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                                   : <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-24 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -431,16 +431,16 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                           return (
                             <>
                               <div className="bg-slate-50 p-3 rounded-xl">
-                                <p className="text-[8px] font-black text-slate-400 uppercase">{lang === 'zh' ? '重置前当前分数' : 'Current Score (Before Reset)'}</p>
+                                <p className="text-caption font-black text-slate-400 uppercase">{lang === 'zh' ? '重置前当前分数' : 'Current Score (Before Reset)'}</p>
                                 <p className="text-lg font-black text-purple-700">{tx.currentScore}</p>
-                                {loc?.machineId && <p className="text-[8px] font-bold text-slate-400 mt-0.5">{loc.machineId}</p>}
+                                {loc?.machineId && <p className="text-caption font-bold text-slate-400 mt-0.5">{loc.machineId}</p>}
                               </div>
                               {tx.photoUrl && (
                                 <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                               )}
                               <div className="flex gap-2">
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -452,14 +452,14 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                           return (
                             <>
                               <div className="bg-emerald-50 p-3 rounded-xl text-center">
-                                <p className="text-[8px] font-black text-emerald-400 uppercase">{t.payoutAmount}</p>
+                                <p className="text-caption font-black text-emerald-400 uppercase">{t.payoutAmount}</p>
                                 <p className="text-2xl font-black text-emerald-700">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
-                                <p className="text-[8px] font-bold text-slate-400 mt-1">{t.availableBalance}: TZS {(loc?.dividendBalance || 0).toLocaleString()}</p>
-                                {loc?.ownerName && <p className="text-[8px] font-bold text-slate-400">{t.ownerLabel}: {loc.ownerName}</p>}
+                                <p className="text-caption font-bold text-slate-400 mt-1">{t.availableBalance}: TZS {(loc?.dividendBalance || 0).toLocaleString()}</p>
+                                {loc?.ownerName && <p className="text-caption font-bold text-slate-400">{t.ownerLabel}: {loc.ownerName}</p>}
                               </div>
                               <div className="flex gap-2">
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-[9px] font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                                <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                               </div>
                             </>
                           );
@@ -477,7 +477,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
         <div className="space-y-4 animate-in zoom-in-95">
           {unsyncedCollectionsCount > 0 && (
             <div className="rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-amber-800">
-              <p className="text-[10px] font-black uppercase tracking-[0.18em]">
+              <p className="text-caption font-black uppercase tracking-[0.18em]">
                 {lang === 'zh' ? '待同步提醒' : 'Sync Reminder'}
               </p>
               <p className="mt-1 text-[11px] font-bold leading-relaxed">
@@ -514,7 +514,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                           <p className="text-[11px] font-black text-slate-900 uppercase">
                             {new Date(settlement.timestamp).toLocaleDateString(lang === 'zh' ? 'zh-CN' : 'en-GB')}
                           </p>
-                          <p className="text-[9px] font-bold text-slate-400 uppercase">
+                          <p className="text-caption font-bold text-slate-400 uppercase">
                             {new Date(settlement.timestamp).toLocaleTimeString(lang === 'zh' ? 'zh-CN' : 'en-GB', {
                               hour: '2-digit',
                               minute: '2-digit',
@@ -527,20 +527,20 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       </div>
                       <div className="mt-3 grid grid-cols-3 gap-2">
                         <div className="rounded-xl bg-slate-50 p-2">
-                          <p className="text-[8px] font-black uppercase text-slate-400">{t.expectedTotalLabel}</p>
-                          <p className="text-[10px] font-black text-slate-900">TZS {settlement.expectedTotal.toLocaleString()}</p>
+                          <p className="text-caption font-black uppercase text-slate-400">{t.expectedTotalLabel}</p>
+                          <p className="text-caption font-black text-slate-900">TZS {settlement.expectedTotal.toLocaleString()}</p>
                         </div>
                         <div className="rounded-xl bg-indigo-50 p-2">
-                          <p className="text-[8px] font-black uppercase text-indigo-400">
+                          <p className="text-caption font-black uppercase text-indigo-400">
                             {lang === 'zh' ? '已提交' : 'Submitted'}
                           </p>
-                          <p className="text-[10px] font-black text-indigo-700">TZS {submittedTotal.toLocaleString()}</p>
+                          <p className="text-caption font-black text-indigo-700">TZS {submittedTotal.toLocaleString()}</p>
                         </div>
                         <div className={`rounded-xl p-2 ${variance === 0 ? 'bg-emerald-50' : 'bg-rose-50'}`}>
-                          <p className={`text-[8px] font-black uppercase ${variance === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          <p className={`text-caption font-black uppercase ${variance === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
                             {t.varianceLabel}
                           </p>
-                          <p className={`text-[10px] font-black ${variance === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                          <p className={`text-caption font-black ${variance === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
                             TZS {Math.abs(variance).toLocaleString()}
                           </p>
                         </div>
@@ -577,18 +577,18 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                <p className="text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">{t.revenue}</p>
+                <p className="text-caption font-black text-slate-400 uppercase mb-1 tracking-widest">{t.revenue}</p>
                 <p className="text-xl font-black text-slate-800">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0).toLocaleString()}</p>
               </div>
               <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
-                <p className="text-[10px] font-black text-indigo-400 uppercase mb-1 tracking-widest">{t.cashInHand}</p>
+                <p className="text-caption font-black text-indigo-400 uppercase mb-1 tracking-widest">{t.cashInHand}</p>
                 <p className="text-xl font-black text-indigo-600">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0).toLocaleString()}</p>
               </div>
             </div>
 
             <div className="space-y-3">
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCash} (TZS {t.notesUnit})</label>
+                <label className="text-caption font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCash} (TZS {t.notesUnit})</label>
                 <input
                   type="number"
                   min={0}
@@ -599,7 +599,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 />
               </div>
               <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-                <label className="text-[10px] font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCoins} (TZS {t.coinsUnitLabel})</label>
+                <label className="text-caption font-black text-slate-500 uppercase block mb-3 tracking-widest text-center">{t.inputCoins} (TZS {t.coinsUnitLabel})</label>
                 <input
                   type="number"
                   min={0}
@@ -614,7 +614,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
             {hasSettlementInput && (
               <div className={`p-4 rounded-2xl flex justify-between items-center animate-in slide-in-from-top-4 border ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
                 <div>
-                  <p className={`text-[10px] font-black uppercase ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-400' : 'text-rose-400'}`}>{t.varianceLabel}</p>
+                  <p className={`text-caption font-black uppercase ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-400' : 'text-rose-400'}`}>{t.varianceLabel}</p>
                   <p className={`text-2xl font-black ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {(cashAmount + coinAmount - todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0)).toLocaleString()}</p>
                 </div>
                 <div className={`p-3 rounded-2xl bg-white ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-500' : 'text-rose-500'}`}>

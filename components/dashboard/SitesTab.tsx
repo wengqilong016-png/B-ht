@@ -245,16 +245,16 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 ) : (
                   <div className="w-full h-full flex flex-col items-center justify-center gap-2">
                     <Store size={36} className="text-slate-300" />
-                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-300">No Photo</span>
+                    <span className="text-caption font-black uppercase tracking-widest text-slate-300">No Photo</span>
                   </div>
                 )}
                 {/* Status badge */}
-                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-[9px] font-black uppercase backdrop-blur-sm ${loc.status === 'active' ? 'bg-emerald-500/90 text-white' : loc.status === 'maintenance' ? 'bg-amber-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
+                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-lg text-caption font-black uppercase backdrop-blur-sm ${loc.status === 'active' ? 'bg-emerald-500/90 text-white' : loc.status === 'maintenance' ? 'bg-amber-500/90 text-white' : 'bg-rose-500/90 text-white'}`}>
                   {loc.status === 'active' ? (lang === 'zh' ? '运营中' : 'Active') : loc.status === 'maintenance' ? (lang === 'zh' ? '维护中' : 'Maint.') : (lang === 'zh' ? '停用' : 'Inactive')}
                 </div>
                 {/* View photo button */}
                 {sitePhotoUrl && (
-                  <button type="button" onClick={() => setViewingPhotoLoc(loc)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-xl bg-slate-950/70 px-2.5 py-1.5 text-[8px] font-black uppercase text-white backdrop-blur-sm">
+                  <button type="button" onClick={() => setViewingPhotoLoc(loc)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-xl bg-slate-950/70 px-2.5 py-1.5 text-caption font-black uppercase text-white backdrop-blur-sm">
                     <ImageIcon size={10} />
                     {lang === 'zh' ? '查看' : 'View'}
                   </button>
@@ -268,9 +268,9 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   <div className="min-w-0 flex-1">
                     <p className="text-base font-black text-slate-900 uppercase tracking-wide leading-tight">{loc.machineId || '—'}</p>
                     <p className="text-xs text-slate-500 mt-0.5 truncate">{loc.name}</p>
-                    {loc.area && <p className="text-[9px] font-bold text-slate-400 uppercase mt-0.5">{loc.area}</p>}
+                    {loc.area && <p className="text-caption font-bold text-slate-400 uppercase mt-0.5">{loc.area}</p>}
                     {loc.assignedDriverId && (
-                      <p className="text-[9px] font-bold text-indigo-500 mt-1">
+                      <p className="text-caption font-bold text-indigo-500 mt-1">
                         👤 {driverMap.get(loc.assignedDriverId)?.name || loc.assignedDriverId}
                       </p>
                     )}
@@ -284,15 +284,15 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 {/* Stats row */}
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-slate-50 p-2.5 rounded-xl text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">{lang === 'zh' ? '分数' : 'Score'}</p>
+                    <p className="text-caption font-black text-slate-400 uppercase mb-0.5">{lang === 'zh' ? '分数' : 'Score'}</p>
                     <p className="text-sm font-black text-slate-800">{loc.lastScore.toLocaleString()}</p>
                   </div>
                   <div className="bg-indigo-50 p-2.5 rounded-xl text-center">
-                    <p className="text-[8px] font-black text-indigo-400 uppercase mb-0.5">{lang === 'zh' ? '佣金' : 'Comm.'}</p>
+                    <p className="text-caption font-black text-indigo-400 uppercase mb-0.5">{lang === 'zh' ? '佣金' : 'Comm.'}</p>
                     <p className="text-sm font-black text-indigo-700">{(loc.commissionRate * 100).toFixed(0)}%</p>
                   </div>
                   <div className={`p-2.5 rounded-xl text-center ${loc.remainingStartupDebt > 0 ? 'bg-amber-50' : 'bg-emerald-50'}`}>
-                    <p className={`text-[8px] font-black uppercase mb-0.5 ${loc.remainingStartupDebt > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{lang === 'zh' ? '启动债' : 'Debt'}</p>
+                    <p className={`text-caption font-black uppercase mb-0.5 ${loc.remainingStartupDebt > 0 ? 'text-amber-400' : 'text-emerald-400'}`}>{lang === 'zh' ? '启动债' : 'Debt'}</p>
                     <p className={`text-sm font-black ${loc.remainingStartupDebt > 0 ? 'text-amber-700' : 'text-emerald-700'}`}>{loc.remainingStartupDebt > 0 ? `${debtPct}%` : '✓'}</p>
                   </div>
                 </div>
@@ -301,13 +301,13 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 {loc.remainingStartupDebt > 0 && (
                   <div className="bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
                     <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-[9px] font-black text-amber-700 uppercase">{lang === 'zh' ? '启动债务余额' : 'Startup Debt Remaining'}</span>
-                      <span className="text-[9px] font-bold text-amber-600">{debtPct}% {lang === 'zh' ? '已还' : 'repaid'}</span>
+                      <span className="text-caption font-black text-amber-700 uppercase">{lang === 'zh' ? '启动债务余额' : 'Startup Debt Remaining'}</span>
+                      <span className="text-caption font-bold text-amber-600">{debtPct}% {lang === 'zh' ? '已还' : 'repaid'}</span>
                     </div>
                     <div className="w-full bg-amber-200 rounded-full h-1.5 mb-1">
                       <div className="bg-amber-500 h-1.5 rounded-full transition-all" style={{ width: `${debtPct}%` }} />
                     </div>
-                    <p className="text-[9px] text-amber-700 font-bold">
+                    <p className="text-caption text-amber-700 font-bold">
                       TZS {loc.remainingStartupDebt.toLocaleString()} / {loc.initialStartupDebt.toLocaleString()}
                     </p>
                   </div>
@@ -315,9 +315,9 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
                 {/* Info pills */}
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full ${loc.shopOwnerPhone ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📞 {loc.shopOwnerPhone || (lang === 'zh' ? '无' : 'None')}</span>
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full ${loc.ownerPhotoUrl ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📷 {loc.ownerPhotoUrl ? (lang === 'zh' ? '已上传' : 'Photo') : (lang === 'zh' ? '无' : 'None')}</span>
-                  <span className={`inline-flex items-center gap-1 text-[9px] font-bold px-2 py-0.5 rounded-full ${loc.coords?.lat ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📍 {loc.coords?.lat ? (lang === 'zh' ? '已定位' : 'GPS') : (lang === 'zh' ? '无' : 'None')}</span>
+                  <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.shopOwnerPhone ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📞 {loc.shopOwnerPhone || (lang === 'zh' ? '无' : 'None')}</span>
+                  <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.ownerPhotoUrl ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📷 {loc.ownerPhotoUrl ? (lang === 'zh' ? '已上传' : 'Photo') : (lang === 'zh' ? '无' : 'None')}</span>
+                  <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.coords?.lat ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📍 {loc.coords?.lat ? (lang === 'zh' ? '已定位' : 'GPS') : (lang === 'zh' ? '无' : 'None')}</span>
                 </div>
 
                 {/* Owner name */}
@@ -334,7 +334,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     title={deletionDiagnostics?.blockers.join(' | ')}
                     className="w-full bg-rose-50 border border-rose-100 rounded-xl px-3 py-2 text-center cursor-not-allowed opacity-80"
                   >
-                    <p className="text-[9px] font-bold text-rose-400">{lang === 'zh' ? '⚠️ 无法删除：' : '⚠️ Blocked: '}{deletionDiagnostics?.blockers[0]}</p>
+                    <p className="text-caption font-bold text-rose-400">{lang === 'zh' ? '⚠️ 无法删除：' : '⚠️ Blocked: '}{deletionDiagnostics?.blockers[0]}</p>
                   </button>
                 ) : (
                   <button
@@ -362,7 +362,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 <div className="p-2 bg-indigo-600 rounded-xl text-white"><Store size={18} /></div>
                 <div>
                   <h3 className="text-base font-black text-slate-900 uppercase">Edit Location</h3>
-                  <p className="text-[9px] font-bold text-slate-400 uppercase">{editingLoc.machineId}</p>
+                  <p className="text-caption font-bold text-slate-400 uppercase">{editingLoc.machineId}</p>
                 </div>
               </div>
               <button onClick={() => setEditingLoc(null)} className="p-2 bg-white rounded-full text-slate-400 shadow-sm hover:text-rose-500 transition-colors"><X size={18} /></button>
@@ -371,32 +371,32 @@ const SitesTab: React.FC<SitesTabProps> = ({
             <div className="p-6 space-y-4 max-h-[65vh] overflow-y-auto">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">点位名称 Name</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">点位名称 Name</label>
                   <input value={locEditForm.name} onChange={e => setLocEditForm(f => ({ ...f, name: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">区域 Area</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">区域 Area</label>
                   <input value={locEditForm.area} onChange={e => setLocEditForm(f => ({ ...f, area: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">机器编号 Machine ID</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">机器编号 Machine ID</label>
                   <input value={locEditForm.machineId} onChange={e => setLocEditForm(f => ({ ...f, machineId: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">上次读数 Last Score</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">上次读数 Last Score</label>
                   <input type="number" value={locEditForm.lastScore} onChange={e => setLocEditForm(f => ({ ...f, lastScore: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
               </div>
               <div className="p-4 bg-sky-50 rounded-2xl border border-sky-100 space-y-3">
                 <div>
-                  <p className="text-[9px] font-black text-sky-600 uppercase">GPS Coordinates</p>
-                  <p className="text-[8px] font-bold text-slate-400 uppercase">管理端可手动粘贴定位数据 / Paste coordinates manually</p>
+                  <p className="text-caption font-black text-sky-600 uppercase">GPS Coordinates</p>
+                  <p className="text-caption font-bold text-slate-400 uppercase">管理端可手动粘贴定位数据 / Paste coordinates manually</p>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Latitude</label>
+                    <label className="text-caption font-black text-slate-400 uppercase ml-1">Latitude</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -408,7 +408,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">Longitude</label>
+                    <label className="text-caption font-black text-slate-400 uppercase ml-1">Longitude</label>
                     <input
                       type="number"
                       inputMode="decimal"
@@ -423,11 +423,11 @@ const SitesTab: React.FC<SitesTabProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">分红比例 Commission (%)</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">分红比例 Commission (%)</label>
                   <input type="number" value={locEditForm.commissionRate} onChange={e => setLocEditForm(f => ({ ...f, commissionRate: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">状态 Status</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">状态 Status</label>
                   <select value={locEditForm.status} onChange={e => setLocEditForm(f => ({ ...f, status: e.target.value as Location['status'] }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black outline-none focus:border-indigo-400">
                     <option value="active">Active 正常</option>
                     <option value="maintenance">Maintenance 维护</option>
@@ -436,7 +436,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="text-[8px] font-black text-slate-400 uppercase ml-1">分配司机 Assigned Driver</label>
+                <label className="text-caption font-black text-slate-400 uppercase ml-1">分配司机 Assigned Driver</label>
                 <select value={locEditForm.assignedDriverId} onChange={e => setLocEditForm(f => ({ ...f, assignedDriverId: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-black outline-none focus:border-indigo-400">
                   <option value="">-- 未分配 Unassigned --</option>
                   {drivers.map(d => (
@@ -446,23 +446,23 @@ const SitesTab: React.FC<SitesTabProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">店主 Owner Name</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">店主 Owner Name</label>
                   <input value={locEditForm.ownerName} onChange={e => setLocEditForm(f => ({ ...f, ownerName: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[8px] font-black text-slate-400 uppercase ml-1">店主电话 Owner Phone</label>
+                  <label className="text-caption font-black text-slate-400 uppercase ml-1">店主电话 Owner Phone</label>
                   <input value={locEditForm.shopOwnerPhone} onChange={e => setLocEditForm(f => ({ ...f, shopOwnerPhone: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-indigo-400" />
                 </div>
               </div>
               <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 space-y-3">
-                <p className="text-[9px] font-black text-amber-600 uppercase">启动押金 Startup Capital</p>
+                <p className="text-caption font-black text-amber-600 uppercase">启动押金 Startup Capital</p>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">初始启动债务 Initial</label>
+                    <label className="text-caption font-black text-slate-400 uppercase ml-1">初始启动债务 Initial</label>
                     <input type="number" value={locEditForm.initialStartupDebt} onChange={e => setLocEditForm(f => ({ ...f, initialStartupDebt: e.target.value }))} className="w-full bg-white border border-amber-100 rounded-xl px-3 py-2.5 text-xs font-bold outline-none" />
                   </div>
                   <div className="space-y-1">
-                    <label className="text-[8px] font-black text-slate-400 uppercase ml-1">剩余启动债务 Remaining</label>
+                    <label className="text-caption font-black text-slate-400 uppercase ml-1">剩余启动债务 Remaining</label>
                     <input type="number" value={locEditForm.remainingStartupDebt} onChange={e => setLocEditForm(f => ({ ...f, remainingStartupDebt: e.target.value }))} className="w-full bg-white border border-amber-100 rounded-xl px-3 py-2.5 text-xs font-bold outline-none" />
                   </div>
                 </div>
@@ -496,7 +496,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-black text-slate-900 uppercase">{viewingPhotoLoc.name}</h3>
-                <p className="text-[9px] font-bold text-slate-400 uppercase">{viewingPhotoLoc.machineId}</p>
+                <p className="text-caption font-bold text-slate-400 uppercase">{viewingPhotoLoc.machineId}</p>
               </div>
               <button onClick={() => setViewingPhotoLoc(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">
                 <X size={18} />

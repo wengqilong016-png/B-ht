@@ -381,7 +381,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                         {monthlyBreakdown.length} {t.payrollMonths}
                       </p>
                     </div>
-                    <span className="rounded-full bg-slate-100 px-2 py-1 text-[8px] font-black uppercase text-slate-500">
+                    <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
                       {t.baseShort} {driver.baseSalary?.toLocaleString() || 0}
                     </span>
                   </div>
@@ -412,15 +412,15 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                         <div key={i} className="bg-slate-50 p-3 rounded-2xl border border-slate-100">
                           <div className="flex justify-between items-start mb-2 gap-2">
                             <div>
-                              <span className="text-[10px] font-black text-slate-400 uppercase">{m.month}</span>
-                              <p className="text-[9px] font-bold uppercase tracking-wide text-slate-400">
+                              <span className="text-caption font-black text-slate-400 uppercase">{m.month}</span>
+                              <p className="text-caption font-bold uppercase tracking-wide text-slate-400">
                                 {t.revenueShort} {summary.totalRevenue.toLocaleString()} · {summary.collectionCount} {t.collectionsShort}
                               </p>
                             </div>
                             <div className="flex flex-col items-end gap-1">
                               <span className="text-xs font-black text-indigo-600">TZS {summary.netPayable.toLocaleString()}</span>
                               {record && (
-                                <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${
+                                <span className={`px-2 py-0.5 rounded text-caption font-black uppercase ${
                                   record.status === 'paid'
                                     ? 'bg-emerald-100 text-emerald-700'
                                     : record.status === 'cancelled'
@@ -432,7 +432,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                               )}
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-1 text-[8px] text-slate-400 mb-3">
+                          <div className="grid grid-cols-2 gap-1 text-caption text-slate-400 mb-3">
                             <span>{t.baseShort}: {summary.baseSalary.toLocaleString()}</span>
                             <span>{t.commissionLabel}: {summary.commission.toLocaleString()}</span>
                             <span>{t.loansShort}: {summary.loans.toLocaleString()}</span>
@@ -440,7 +440,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                           </div>
                           {record?.paidAt && (
                             <div className="mb-2 space-y-2">
-                              <p className="text-[8px] font-bold text-emerald-600">
+                              <p className="text-caption font-bold text-emerald-600">
                                 {t.paidAtLabel} {new Date(record.paidAt).toLocaleString()} · {record.paymentMethod || 'other'}
                               </p>
                               {record.paymentProofUrl && (
@@ -453,13 +453,13 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                             </div>
                           )}
                           <div className="flex gap-2 flex-wrap">
-                            <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-[9px] font-black uppercase">PDF</button>
+                            <button onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-caption font-black uppercase">PDF</button>
                             <button
                               onClick={() => {
                                 const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nBase: TZS ${summary.baseSalary.toLocaleString()}\nComm: TZS ${summary.commission.toLocaleString()}\nLoans: TZS ${summary.loans.toLocaleString()}\nShortage: TZS ${summary.shortage.toLocaleString()}\nNet: TZS ${summary.netPayable.toLocaleString()}`;
                                 window.open(`https://wa.me/${driver.phone?.replace(/\+/g, '')}?text=${encodeURIComponent(msg)}`);
                               }}
-                              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-[9px] font-black uppercase"
+                              className="flex-1 py-2 bg-emerald-500 text-white rounded-lg text-caption font-black uppercase"
                             >
                               WhatsApp
                             </button>
@@ -477,7 +477,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                                   summary,
                                   record: record || null,
                                 })}
-                                className="w-full py-2 bg-indigo-600 text-white rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                                className="w-full py-2 bg-indigo-600 text-white rounded-lg text-caption font-black uppercase disabled:opacity-50"
                               >
                                 {record?.status === 'cancelled' ? t.reopenPayroll : t.generatePayroll}
                               </button>
@@ -497,7 +497,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                                     summary,
                                     record,
                                   })}
-                                  className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                                  className="flex-1 py-2 bg-amber-500 text-white rounded-lg text-caption font-black uppercase disabled:opacity-50"
                                 >
                                   {t.markPaid}
                                 </button>
@@ -514,7 +514,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                                     summary,
                                     record,
                                   })}
-                                  className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-[9px] font-black uppercase disabled:opacity-50"
+                                  className="flex-1 py-2 bg-slate-200 text-slate-700 rounded-lg text-caption font-black uppercase disabled:opacity-50"
                                 >
                                   {t.cancelPayroll}
                                 </button>
@@ -524,7 +524,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                         </div>
                       );
                     })}
-                    {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-[10px] text-slate-300 font-black uppercase py-4">{t.noPayrollData}</p>}
+                    {monthlyBreakdown.length === 0 && <p className="col-span-2 text-center text-caption text-slate-300 font-black uppercase py-4">{t.noPayrollData}</p>}
                   </div>
                 </div>
               ))}

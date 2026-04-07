@@ -111,7 +111,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
           <div className="flex min-w-0 items-start gap-3">
             <div className="mt-0.5">{syncMeta.icon}</div>
             <div className="min-w-0">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em]">
+              <p className="text-caption font-black uppercase tracking-[0.2em]">
                 {lang === 'zh' ? '同步状态' : 'Sync Status'}
               </p>
               <p className="mt-1 text-xs font-black">{syncMeta.title}</p>
@@ -120,7 +120,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
           {syncStatus.isOnline && !syncStatus.isSyncing && (
             <button
               onClick={syncStatus.trigger}
-              className="rounded-xl bg-slate-900 px-3 py-2 text-[10px] font-black uppercase text-white transition hover:bg-slate-800"
+              className="rounded-xl bg-slate-900 px-3 py-2 text-caption font-black uppercase text-white transition hover:bg-slate-800"
             >
               {lang === 'zh' ? '立即重试' : 'Retry Now'}
             </button>
@@ -133,11 +133,11 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
           <div className="flex items-center gap-2">
             <button 
               onClick={() => setShowUnsyncedOnly(!showUnsyncedOnly)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase transition-all flex items-center gap-2 border ${showUnsyncedOnly ? 'bg-amber-50 border-amber-200 text-amber-600 shadow-md shadow-amber-100' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
+              className={`px-4 py-2 rounded-xl text-caption font-black uppercase transition-all flex items-center gap-2 border ${showUnsyncedOnly ? 'bg-amber-50 border-amber-200 text-amber-600 shadow-md shadow-amber-100' : 'bg-white border-slate-200 text-slate-400 hover:bg-slate-50'}`}
             >
               <WifiOff size={14} />
               <span className="hidden sm:inline">{t.unsyncedLabel}</span>
-              <span className={`px-1.5 py-0.5 rounded-md text-[9px] min-w-[20px] text-center ${showUnsyncedOnly ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>{unsyncedCount}</span>
+              <span className={`px-1.5 py-0.5 rounded-md text-caption min-w-[20px] text-center ${showUnsyncedOnly ? 'bg-amber-200 text-amber-800' : 'bg-slate-100 text-slate-500'}`}>{unsyncedCount}</span>
             </button>
           </div>
 
@@ -146,7 +146,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
             <select 
               value={selectedLocation} 
               onChange={(e) => setSelectedLocation(e.target.value)} 
-              className="bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-black text-slate-700 outline-none uppercase appearance-none min-w-[150px] shadow-sm focus:ring-2 focus:ring-indigo-500/20 transition-all"
+              className="bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-4 py-2.5 text-caption font-black text-slate-700 outline-none uppercase appearance-none min-w-[150px] shadow-sm focus:ring-2 focus:ring-indigo-500/20 transition-all"
             >
               <option value="all">{lang === 'zh' ? '所有点位汇总' : 'All Sites'}</option>
               {locationNames.map(loc => <option key={loc} value={loc}>{loc}</option>)}
@@ -165,7 +165,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                   </div>
                   <div>
                     <h4 className="font-black text-slate-900 text-sm tracking-tight">{tx.locationName}</h4>
-                    <div className="flex items-center gap-3 text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                    <div className="flex items-center gap-3 text-caption font-black text-slate-400 uppercase tracking-widest mt-1">
                       <div className="flex items-center gap-1"><Clock size={10} /> {new Date(tx.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
                       <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
                       <div className="flex items-center gap-1 text-indigo-500"><Globe size={10} /> {tx.dataUsageKB} KB</div>
@@ -189,12 +189,12 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Calculator size={16} className="text-indigo-600" />
-                          <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest">收益清算明细</h4>
+                          <h4 className="text-caption font-black text-slate-900 uppercase tracking-widest">收益清算明细</h4>
                         </div>
                         {tx.aiScore && (
                            <div className="flex items-center gap-2 bg-indigo-50 px-3 py-1.5 rounded-lg border border-indigo-100 animate-in zoom-in-95">
                               <Sparkles size={12} className="text-indigo-600" />
-                              <span className="text-[9px] font-black text-indigo-700 uppercase">AI 审计已确认</span>
+                              <span className="text-caption font-black text-indigo-700 uppercase">AI 审计已确认</span>
                            </div>
                         )}
                       </div>
@@ -202,17 +202,17 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                       {tx.aiScore && (
                         <div className="p-4 bg-white border-2 border-indigo-100 rounded-2xl space-y-3 shadow-lg shadow-indigo-50">
                            <div className="flex justify-between items-center border-b border-indigo-50 pb-2">
-                              <span className="text-[10px] font-black text-slate-400 uppercase">AI 识别读数</span>
+                              <span className="text-caption font-black text-slate-400 uppercase">AI 识别读数</span>
                               <span className="text-base font-black text-indigo-600">{tx.aiScore}</span>
                            </div>
                            <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black text-slate-400 uppercase">数据吻合度</span>
-                              <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase ${tx.isAnomaly ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                              <span className="text-caption font-black text-slate-400 uppercase">数据吻合度</span>
+                              <span className={`px-2 py-0.5 rounded text-caption font-black uppercase ${tx.isAnomaly ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'}`}>
                                  {tx.isAnomaly ? '⚠ 存在读数差异' : '✅ 读数完全吻合'}
                               </span>
                            </div>
                            <div className="p-3 bg-slate-50 rounded-xl relative group">
-                              <p className="text-[9px] font-bold text-slate-600 leading-relaxed italic">“ {tx.notes || '现场情况正常，建议入库。'} ”</p>
+                              <p className="text-caption font-bold text-slate-600 leading-relaxed italic">“ {tx.notes || '现场情况正常，建议入库。'} ”</p>
                               {tx.notes && (
                                 <button 
                                   onClick={async (e) => {
@@ -227,7 +227,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                                       btn.innerHTML = '翻译失败';
                                     }
                                   }}
-                                  className="absolute top-2 right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-[8px] font-black"
+                                  className="absolute top-2 right-2 p-1.5 bg-indigo-100 text-indigo-600 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 text-caption font-black"
                                 >
                                   <Globe size={10} /> 翻译
                                 </button>
@@ -257,26 +257,26 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                             return (
                               <div className={`p-3 rounded-xl border flex flex-col justify-between transition-colors ${isFar ? 'bg-rose-50 border-rose-200' : isMedium ? 'bg-amber-50 border-amber-200' : 'bg-white border-slate-200'}`}>
                                 <div className="flex justify-between items-start">
-                                   <p className="text-[8px] font-black text-slate-400 uppercase">地理偏移量</p>
+                                   <p className="text-caption font-black text-slate-400 uppercase">地理偏移量</p>
                                    {isFar && <ShieldAlert size={12} className="text-rose-500 animate-pulse" />}
                                 </div>
                                 <div className="flex items-baseline gap-1 mt-1">
                                    <p className={`text-xs font-black ${isFar ? 'text-rose-600' : isMedium ? 'text-amber-600' : 'text-indigo-600'}`}>
                                       {dist !== null ? `${Math.round(dist)} 米` : '无坐标数据'}
                                    </p>
-                                   <p className="text-[7px] font-bold text-slate-400 uppercase">Offset</p>
+                                   <p className="text-caption font-bold text-slate-400 uppercase">Offset</p>
                                 </div>
                                 {isFar && (
-                                   <p className="text-[7px] font-bold text-rose-400 uppercase mt-1 leading-tight">⚠ 疑似远程填报 (Remote Check-in)</p>
+                                   <p className="text-caption font-bold text-rose-400 uppercase mt-1 leading-tight">⚠ 疑似远程填报 (Remote Check-in)</p>
                                 )}
                               </div>
                             );
                          })()}
                          <div className="bg-white p-3 rounded-xl border border-slate-200 flex flex-col justify-between">
-                           <p className="text-[8px] font-black text-slate-400 uppercase">审计状态</p>
+                           <p className="text-caption font-black text-slate-400 uppercase">审计状态</p>
                            <div className="flex items-center gap-2 mt-1">
                               <Target size={12} className="text-emerald-500" />
-                              <p className="text-[10px] font-black text-emerald-600 uppercase">Verified</p>
+                              <p className="text-caption font-black text-emerald-600 uppercase">Verified</p>
                            </div>
                          </div>
                       </div>
@@ -287,13 +287,13 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                          <div className="relative h-48 rounded-2xl overflow-hidden border-2 border-white shadow-lg">
                            <img src={tx.photoUrl} alt="Audit" className="w-full h-full object-cover" />
                            <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-4">
-                              <span className="text-[10px] font-black text-white uppercase tracking-widest">审计现场留存</span>
+                              <span className="text-caption font-black text-white uppercase tracking-widest">审计现场留存</span>
                            </div>
                          </div>
                        ) : (
                          <div className="h-48 rounded-2xl bg-slate-200 flex flex-col items-center justify-center text-slate-400">
                            <AlertTriangle size={32} />
-                           <p className="text-[10px] font-black uppercase mt-2">未上传现场照片</p>
+                           <p className="text-caption font-black uppercase mt-2">未上传现场照片</p>
                          </div>
                        )}
                     </div>

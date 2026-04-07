@@ -114,7 +114,7 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
       >
         {isOpen ? <X size={18} /> : <Bot size={20} />}
         {!isOpen && alertCount > 0 && (
-          <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full text-[9px] font-black flex items-center justify-center border-2 border-white">
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white rounded-full text-caption font-black flex items-center justify-center border-2 border-white">
             {alertCount > 9 ? '9+' : alertCount}
           </span>
         )}
@@ -135,7 +135,7 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
                   </div>
                   <div>
                     <p className="text-sm font-black text-white">AI 运营助手</p>
-                    <p className="text-[9px] text-indigo-200 font-bold">Bahati Intelligence · {snapshot.today}</p>
+                    <p className="text-caption text-indigo-200 font-bold">Bahati Intelligence · {snapshot.today}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1.5">
@@ -163,17 +163,17 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
               <div className="flex-1 overflow-y-auto p-4 space-y-2.5 bg-slate-50">
                 <div className="grid grid-cols-3 gap-2">
                   <div className="bg-white rounded-xl p-2.5 border border-slate-200 text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">今日收款</p>
+                    <p className="text-caption font-black text-slate-400 uppercase mb-0.5">今日收款</p>
                     <p className="text-lg font-black text-slate-800 leading-none">{snapshot.todayCollections}</p>
                   </div>
                   <div className="bg-white rounded-xl p-2.5 border border-slate-200 text-center">
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">今日营业额</p>
+                    <p className="text-caption font-black text-slate-400 uppercase mb-0.5">今日营业额</p>
                     <p className="text-sm font-black text-indigo-600 leading-none truncate">
                       {snapshot.todayRevenue >= 1000000 ? `${(snapshot.todayRevenue / 1000000).toFixed(1)}M` : `${(snapshot.todayRevenue / 1000).toFixed(0)}K`}
                     </p>
                   </div>
                   <div className={`rounded-xl p-2.5 border text-center ${snapshot.pendingSettlements > 0 ? 'bg-rose-50 border-rose-200' : 'bg-white border-slate-200'}`}>
-                    <p className="text-[8px] font-black text-slate-400 uppercase mb-0.5">待审批</p>
+                    <p className="text-caption font-black text-slate-400 uppercase mb-0.5">待审批</p>
                     <p className={`text-lg font-black leading-none ${snapshot.pendingSettlements > 0 ? 'text-rose-600' : 'text-slate-800'}`}>{snapshot.pendingSettlements}</p>
                   </div>
                 </div>
@@ -195,7 +195,7 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
                 )}
 
                 <div className="pt-1">
-                  <p className="text-[9px] font-black text-slate-400 uppercase mb-2 flex items-center gap-1"><Sparkles size={10} /> 快捷提问</p>
+                  <p className="text-caption font-black text-slate-400 uppercase mb-2 flex items-center gap-1"><Sparkles size={10} /> 快捷提问</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {QUICK_PROMPTS.map(q => (
                       <button key={q} onClick={() => handleQuickPrompt(q)}
