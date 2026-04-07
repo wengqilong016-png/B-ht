@@ -112,7 +112,7 @@ const DriverAIAssistPanel: React.FC<Props> = (props) => {
           : <BotMessageSquare size={18} />
         }
         {warnCount > 0 && (
-          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-[9px] font-black text-white">
+          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-500 text-caption font-black text-white">
             {warnCount}
           </span>
         )}
@@ -139,7 +139,7 @@ const DriverAIAssistPanel: React.FC<Props> = (props) => {
                 <p className="text-[11px] font-semibold leading-tight text-slate-700">{check.message}</p>
               </div>
             ))}
-            <div className="flex items-center gap-1.5 pt-1 text-[9px] font-bold uppercase text-slate-400">
+            <div className="flex items-center gap-1.5 pt-1 text-caption font-bold uppercase text-slate-400">
               <Clock size={9} />
               <span>{props.lang === 'zh' ? '实时检测 · 本地运算' : 'Ukaguzi wa wakati halisi'}</span>
             </div>

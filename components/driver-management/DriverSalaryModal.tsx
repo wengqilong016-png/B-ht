@@ -39,11 +39,11 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
       <div className="p-6 space-y-6">
         <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 flex justify-between items-center">
           <div>
-            <p className="text-[9px] font-black text-indigo-400 uppercase mb-1">{t.monthlyRevenueStats}</p>
+            <p className="text-caption font-black text-indigo-400 uppercase mb-1">{t.monthlyRevenueStats}</p>
             <p className="text-xl font-black text-slate-900">TZS {salaryData.revenue.toLocaleString()}</p>
           </div>
           <div className="text-right">
-            <p className="text-[9px] font-black text-indigo-400 uppercase mb-1">{t.collectionsVisits}</p>
+            <p className="text-caption font-black text-indigo-400 uppercase mb-1">{t.collectionsVisits}</p>
             <p className="text-base font-black text-slate-700">{salaryData.txCount}</p>
           </div>
         </div>
@@ -74,7 +74,7 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
 
         <div className="bg-slate-50 p-3 rounded-xl flex items-center gap-2">
           <AlertCircle size={14} className="text-slate-400" />
-          <p className="text-[9px] font-bold text-slate-400 leading-tight">{t.payrollNote}</p>
+          <p className="text-caption font-bold text-slate-400 leading-tight">{t.payrollNote}</p>
         </div>
 
         <button onClick={onClose} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">{t.confirmAndClose}</button>

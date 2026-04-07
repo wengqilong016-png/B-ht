@@ -129,7 +129,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lan
               />
             )}
          </div>
-         <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-[9px] font-black uppercase text-slate-300">
+         <div className="rounded-2xl border border-white/10 bg-white/5 px-3 py-2 text-caption font-black uppercase text-slate-300">
            {activeDrivers.length} {t.liveNow} · {mappedLocations.length} {t.mappedSites}
          </div>
       </div>
@@ -169,7 +169,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lan
                 <Popup>
                   <div className="p-2 min-w-[160px]">
                     <p className="text-xs font-black text-slate-900">{driver.name}</p>
-                    <p className="text-[9px] font-bold text-slate-400 uppercase">{driver.vehicleInfo.plate}</p>
+                    <p className="text-caption font-bold text-slate-400 uppercase">{driver.vehicleInfo.plate}</p>
                     <div className="mt-2 text-[10px] space-y-1">
                       <div className="flex justify-between"><span>{lang === 'zh' ? '上次活跃:' : 'Last active:'}</span><b>{getTimeAgo(driver.lastActive)}</b></div>
                     </div>
@@ -183,7 +183,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lan
                 <Popup>
                   <div className="p-1">
                     <p className="text-xs font-black text-slate-900">{loc.name}</p>
-                    <p className="text-[9px] text-slate-400 uppercase font-bold">{loc.machineId}</p>
+                    <p className="text-caption text-slate-400 uppercase font-bold">{loc.machineId}</p>
                   </div>
                 </Popup>
               </Marker>

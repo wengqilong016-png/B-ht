@@ -124,7 +124,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
             </div>
             <div>
               <p className="text-sm font-black text-slate-800">{currentUser.name}</p>
-              <p className="text-[9px] font-bold text-slate-400 uppercase">{currentUser.username} • {t.accountSettings}</p>
+              <p className="text-caption font-bold text-slate-400 uppercase">{currentUser.username} • {t.accountSettings}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 bg-white/50 shadow-silicone-sm rounded-xl text-slate-400 hover:text-indigo-600 transition-all border border-white/80">

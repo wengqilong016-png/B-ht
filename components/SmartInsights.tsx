@@ -111,7 +111,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
               <button
                 type="button"
                 onClick={() => setShowAll(current => !current)}
-                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-[9px] font-black uppercase text-white"
+                className="rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-caption font-black uppercase text-white"
               >
                 {showAll ? t.showLessInsights : t.showAllInsights}
               </button>
@@ -120,14 +120,14 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
 
           <div className="grid grid-cols-2 gap-3">
             <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
-              <p className="text-[9px] font-black uppercase text-indigo-200">{t.highRiskAssets}</p>
+              <p className="text-caption font-black uppercase text-indigo-200">{t.highRiskAssets}</p>
               <div className="mt-1 flex items-baseline gap-2">
                 <p className="text-3xl font-black">{totalRiskCount}</p>
                 <span className="text-[10px] font-bold text-rose-300">{t.affectedMachines}</span>
               </div>
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3">
-              <p className="text-[9px] font-black uppercase text-emerald-200">{t.systemHealth}</p>
+              <p className="text-caption font-black uppercase text-emerald-200">{t.systemHealth}</p>
               <div className="mt-1 flex items-baseline gap-2">
                 <p className="text-3xl font-black">{Math.max(0, 100 - totalRiskCount * 5)}</p>
                 <span className="text-[10px] font-bold text-emerald-300">/ 100</span>
@@ -193,7 +193,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
                     <span className="text-slate-700 flex items-center gap-1"><DollarSign size={10}/> {insight.totalRevenue.toLocaleString()} TZS</span>
                  </div>
                   {onNavigate && (
-                    <div className="mt-3 text-right text-[9px] font-black text-indigo-500 uppercase tracking-widest">→ 查看点位</div>
+                    <div className="mt-3 text-right text-caption font-black text-indigo-500 uppercase tracking-widest">→ 查看点位</div>
                   )}
                </button>
              ))}
