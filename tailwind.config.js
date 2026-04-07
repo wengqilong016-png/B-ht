@@ -34,6 +34,14 @@ export default {
         'btn': '14px',
         'tag': '10px',
       },
+      width: {
+        'sidebar': '240px',
+      },
+      fontSize: {
+        // Design system floor tokens
+        'caption': ['10px', { lineHeight: '14px', fontWeight: '800' }],
+        'body-sm': ['12px', { lineHeight: '16px' }],
+      },
     },
   },
   plugins: [],
