@@ -21,7 +21,11 @@ import { supabase } from '../supabaseClient';
 import { shouldApplySettlementDriverCoinUpdate } from '../utils/settlementRules';
 import { localDB } from '../services/localDB';
 
-export function useSupabaseMutations(isOnline: boolean, currentUser?: User | null) {
+export function useSupabaseMutations(
+  isOnline: boolean,
+  currentUser?: User | null,
+  onMutationError?: (error: unknown) => void,
+) {
   const queryClient = useQueryClient();
 
   // Compute role-aware query keys so optimistic updates land on the same cache
@@ -102,10 +106,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         await upsertDrivers(updatedDrivers.map(d => stripClientFields(d as unknown as Record<string, unknown>) as Partial<Driver>));
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousDrivers !== undefined) {
         queryClient.setQueryData(['drivers'], context.previousDrivers);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['drivers'] });
@@ -124,10 +129,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         await upsertLocations(updatedLocations.map(l => stripClientFields(l as unknown as Record<string, unknown>) as Partial<Location>));
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousLocations !== undefined) {
         queryClient.setQueryData(['locations'], context.previousLocations);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['locations'] });
@@ -146,10 +152,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         await repoDeleteLocations(ids);
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousLocations !== undefined) {
         queryClient.setQueryData(['locations'], context.previousLocations);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['locations'] });
@@ -178,10 +185,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       const cached = await localDB.get<Driver[]>(CONSTANTS.STORAGE_DRIVERS_KEY) ?? [];
       await localDB.set(CONSTANTS.STORAGE_DRIVERS_KEY, cached.filter(d => !ids.includes(d.id)));
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousDrivers !== undefined) {
         queryClient.setQueryData(['drivers'], context.previousDrivers);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['drivers'] });
@@ -200,20 +208,17 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
     },
     mutationFn: async ({ txId, updates }: { txId: string; updates: Partial<Transaction> }) => {
       if (isOnline) {
-        const txs = queryClient.getQueryData<Transaction[]>(transactionQueryKey) || [];
-        const tx = txs.find(t => t.id === txId);
-        if (tx) {
-          await upsertTransaction(
-            stripClientFields({ ...tx, ...updates } as unknown as Record<string, unknown>) as Partial<Transaction>
-          );
-        }
+        await upsertTransaction(
+          stripClientFields({ id: txId, ...updates } as unknown as Record<string, unknown>) as Partial<Transaction>
+        );
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
         persistQuerySnapshot<Transaction>(transactionQueryKey, transactionStorageKey);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['transactions'] });
@@ -265,7 +270,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
 
       await enqueueTransaction(tx);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
         persistQuerySnapshot<Transaction>(transactionQueryKey, transactionStorageKey);
@@ -273,6 +278,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (context?.previousLocations !== undefined) {
         queryClient.setQueryData(['locations'], context.previousLocations);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -298,11 +304,12 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (!isOnline) throw new Error('Settlement submission requires online mode');
       await repoCreateSettlement(settlement);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousSettlements !== undefined) {
         queryClient.setQueryData(settlementQueryKey, context.previousSettlements);
         persistQuerySnapshot<DailySettlement>(settlementQueryKey, settlementStorageKey);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -394,7 +401,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         localDB.set(CONSTANTS.STORAGE_DRIVERS_KEY, queryClient.getQueryData<Driver[]>(['drivers']) ?? []).catch(() => {});
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousSettlements !== undefined) {
         queryClient.setQueryData(settlementQueryKey, context.previousSettlements);
         persistQuerySnapshot<DailySettlement>(settlementQueryKey, settlementStorageKey);
@@ -406,6 +413,7 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (context?.previousDrivers !== undefined) {
         queryClient.setQueryData(['drivers'], context.previousDrivers);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -452,13 +460,14 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (!isOnline) throw new Error('Reset approval requires online mode');
       await repoApproveResetRequest(txId, approve);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
       }
       if (context?.previousLocations !== undefined) {
         queryClient.setQueryData(['locations'], context.previousLocations);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -487,10 +496,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (!isOnline) throw new Error('Expense approval requires online mode');
       await repoApproveExpenseRequest(txId, approve);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -523,10 +533,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (!isOnline) throw new Error('Anomaly review requires online mode');
       await repoReviewAnomalyTransaction(txId, approve);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -570,13 +581,14 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
       if (!isOnline) throw new Error('Payout approval requires online mode');
       await repoApprovePayoutRequest(txId, approve);
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousTransactions !== undefined) {
         queryClient.setQueryData(transactionQueryKey, context.previousTransactions);
       }
       if (context?.previousLocations !== undefined) {
         queryClient.setQueryData(['locations'], context.previousLocations);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) {
@@ -598,10 +610,11 @@ export function useSupabaseMutations(isOnline: boolean, currentUser?: User | nul
         await insertAiLog(log);
       }
     },
-    onError: (_error, _variables, context) => {
+    onError: (error, _variables, context) => {
       if (context?.previousAiLogs !== undefined) {
         queryClient.setQueryData(['aiLogs'], context.previousAiLogs);
       }
+      onMutationError?.(error);
     },
     onSettled: () => {
       if (isOnline) queryClient.invalidateQueries({ queryKey: ['aiLogs'] });

@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   User, Truck, Banknote, Percent, Clock,
-  CheckCircle, XCircle, TrendingUp, AlertCircle
+  CheckCircle, XCircle, TrendingUp, AlertCircle, MapPin
 } from 'lucide-react';
 import { TRANSLATIONS } from '../../types';
 import { useAuth } from '../../contexts/AuthContext';
@@ -15,6 +15,7 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
   const { drivers, locations, filteredTransactions: transactions } = useAppData();
   const driver = drivers.find(d => d.id === activeDriverId);
   const t = TRANSLATIONS[lang];
+  const assignedMachines = locations.filter(l => l.assignedDriverId === activeDriverId);
 
   if (!driver) {
     return (
@@ -131,6 +132,35 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         <p className="text-caption font-bold text-slate-400 uppercase mt-1">
           {recentTx.length} {t.recentCollections}
         </p>
+      </div>
+
+      {/* Assigned machines */}
+      <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
+        <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
+          <MapPin size={12} /> {t.assignedMachines} ({assignedMachines.length})
+        </p>
+        {assignedMachines.length > 0 ? (
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {assignedMachines.map(loc => (
+              <div key={loc.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-subcard border border-slate-100">
+                <div className="w-8 h-8 rounded-btn bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                  <MapPin size={14} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-black text-slate-800 truncate">{loc.name || loc.machineId}</p>
+                  <p className="text-caption font-bold text-slate-400 truncate">{loc.area || '—'}</p>
+                </div>
+                <span className={`text-caption font-black uppercase px-2 py-0.5 rounded-tag ${
+                  loc.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                }`}>
+                  {loc.status === 'active' ? '✓' : '—'}
+                </span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-xs font-bold text-slate-400">{t.noAssignedMachines}</p>
+        )}
       </div>
 
       {/* Vehicle info */}

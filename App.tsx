@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
 
 import { useSupabaseData } from './hooks/useSupabaseData';
@@ -13,11 +13,12 @@ import AppRouterShell from './shared/AppRouterShell';
 import UpdatePrompt from './shared/UpdatePrompt';
 import AppUpdateModal from './components/AppUpdateModal';
 import { AuthProvider, DataProvider, MutationProvider } from './contexts';
-import { ToastProvider } from './contexts/ToastContext';
+import { ToastProvider, useToast } from './contexts/ToastContext';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import Login from './components/Login';
 import ForcePasswordChange from './components/ForcePasswordChange';
 import type { User } from './types';
+import { TRANSLATIONS } from './types';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {
@@ -71,6 +72,19 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   // Start realtime subscriptions only now that a session exists.
   useRealtimeSubscription(userRole ?? undefined);
 
+  const { showToast } = useToast();
+  const t = TRANSLATIONS[lang];
+  const handleMutationError = useCallback(
+    (error: unknown) => {
+      const msg = error instanceof Error ? error.message : String(error);
+      showToast(
+        lang === 'zh' ? `操作失败：${msg}` : `Operation failed: ${msg}`,
+        'error',
+      );
+    },
+    [showToast, lang],
+  );
+
   const activeDriverId = currentUser.driverId ?? currentUser.id;
 
   const {
@@ -102,7 +116,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
     approveResetRequest,
     approvePayoutRequest,
     logAI,
-  } = useSupabaseMutations(isOnline, currentUser);
+  } = useSupabaseMutations(isOnline, currentUser, handleMutationError);
 
   const unsyncedCount = useMemo(
     () =>

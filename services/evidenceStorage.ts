@@ -71,28 +71,39 @@ export async function persistEvidencePhotoUrl(
   const blob = new Blob([bytes], { type: mimeType });
   const bucket = storage.from(EVIDENCE_BUCKET);
 
+  const MAX_RETRIES = 2;
   let uploadError: { message: string } | null = null;
-  try {
-    const { error } = await (bucket.upload as (
-      path: string,
-      body: Blob,
-      options?: Record<string, unknown>,
-    ) => Promise<{ error: { message: string } | null }>)(objectPath, blob, {
-      contentType: mimeType,
-      upsert: true,
-      // AbortSignal.timeout is widely supported (Chrome 103+, Firefox 100+, Safari 17+)
-      signal: AbortSignal.timeout(15_000),
-    });
-    uploadError = error;
-  } catch (e) {
-    uploadError = { message: e instanceof Error ? e.message : String(e) };
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    uploadError = null;
+    try {
+      const { error } = await (bucket.upload as (
+        path: string,
+        body: Blob,
+        options?: Record<string, unknown>,
+      ) => Promise<{ error: { message: string } | null }>)(objectPath, blob, {
+        contentType: mimeType,
+        upsert: true,
+        signal: AbortSignal.timeout(15_000),
+      });
+      uploadError = error;
+    } catch (e) {
+      uploadError = { message: e instanceof Error ? e.message : String(e) };
+    }
+
+    if (!uploadError) break;
+
+    if (attempt < MAX_RETRIES) {
+      // Exponential back-off: 1s, 2s
+      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+    }
   }
 
   if (uploadError) {
     // Non-blocking: log and fall back to no photo URL so the collection
     // submission is not blocked by a Storage outage or RLS misconfiguration.
     console.warn(
-      `[evidenceStorage] Upload failed for ${objectPath} — proceeding without photo URL.`,
+      `[evidenceStorage] Upload failed for ${objectPath} after ${MAX_RETRIES + 1} attempts — proceeding without photo URL.`,
       uploadError.message,
     );
     return null;
