@@ -82,4 +82,4 @@ jobs:
           fi
 
       - name: Push migrations to production
-        run: supabase db push
+        run: supabase db push --include-all
