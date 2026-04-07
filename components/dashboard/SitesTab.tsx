@@ -356,7 +356,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
       {/* Location Edit Modal */}
       {editingLoc && (
         <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95">
+          <div className="bg-white w-full max-w-lg rounded-card shadow-2xl overflow-hidden animate-in zoom-in-95">
             <div className="flex items-center justify-between p-6 border-b border-slate-100 bg-slate-50">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-indigo-600 rounded-xl text-white"><Store size={18} /></div>
@@ -492,7 +492,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
 
       {viewingPhotoLoc && (
         <div className="fixed inset-0 z-[85] bg-slate-900/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setViewingPhotoLoc(null)}>
-          <div className="bg-white w-full max-w-2xl rounded-[32px] shadow-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
+          <div className="bg-white w-full max-w-2xl rounded-card shadow-2xl overflow-hidden" onClick={(event) => event.stopPropagation()}>
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-black text-slate-900 uppercase">{viewingPhotoLoc.name}</h3>
@@ -506,7 +506,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
               <img
                 src={getOptimizedImageUrl(viewingPhotoLoc.machinePhotoUrl || viewingPhotoLoc.ownerPhotoUrl || '', 1200, 1200)}
                 alt={viewingPhotoLoc.name}
-                className="w-full max-h-[70vh] object-contain rounded-[24px] border border-slate-200 bg-white"
+                className="w-full max-h-[70vh] object-contain rounded-card border border-slate-200 bg-white"
               />
             </div>
           </div>

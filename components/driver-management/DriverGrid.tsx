@@ -25,7 +25,7 @@ const DriverGrid: React.FC<DriverGridProps> = ({
       {paginatedDrivers.map(driver => {
         const revProgress = Math.min(100, (driver.stats.totalRevenue / revenueMax) * 100);
         return (
-          <div key={driver.id} className="bg-white rounded-[28px] border border-slate-200 shadow-sm hover:shadow-lg transition-all overflow-hidden">
+          <div key={driver.id} className="bg-white rounded-card border border-slate-200 shadow-sm hover:shadow-lg transition-all overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div className="flex items-center gap-3">
                 <div className="w-11 h-11 rounded-[14px] bg-slate-800 text-white flex items-center justify-center font-black text-base shadow-md">

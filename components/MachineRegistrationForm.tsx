@@ -344,7 +344,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
               <span className="text-caption font-black uppercase">{gps ? 'GPS OK' : 'Get GPS'}</span>
            </button>
         </div>
-        <div className="bg-slate-50 p-4 rounded-[28px] border border-slate-200 space-y-3">
+        <div className="bg-slate-50 p-4 rounded-card border border-slate-200 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-caption font-black text-slate-500 uppercase">
@@ -396,7 +396,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         </div>
 
         {/* Debt / Deposit */}
-        <div className="bg-amber-50 p-5 rounded-[28px] border border-amber-100 focus-within:border-amber-300 transition-all">
+        <div className="bg-amber-50 p-5 rounded-card border border-amber-100 focus-within:border-amber-300 transition-all">
            <label className="text-caption font-black text-amber-600 uppercase mb-2 flex items-center gap-1"><Coins size={12} /> {lang === 'zh' ? '初始铺货币 / 押金回收' : 'Mtaji wa Sarafu / Deni'}</label>
            <div className="flex items-center gap-2">
               <span className="text-xs font-black text-amber-400">TZS</span>
@@ -408,7 +408,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         <button 
           onClick={handleSubmit} 
           disabled={isSubmitting}
-          className="w-full py-5 bg-indigo-600 text-white rounded-[24px] font-black uppercase text-sm shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
+          className="w-full py-5 bg-indigo-600 text-white rounded-card font-black uppercase text-sm shadow-xl shadow-indigo-200 hover:bg-indigo-700 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />} 
           {isSubmitting ? (lang === 'zh' ? '正在注册...' : 'Inasajili...') : (lang === 'zh' ? '完成注册' : 'Hifadhi Sasa')}

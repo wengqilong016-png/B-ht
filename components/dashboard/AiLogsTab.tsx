@@ -26,7 +26,7 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
   return (
     <div className="space-y-4 animate-in fade-in">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3 rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm">
+      <div className="flex flex-wrap items-center gap-3 rounded-card border border-slate-200 bg-white p-4 shadow-sm">
         {/* Search */}
         <div className="flex items-center gap-2 bg-slate-100 rounded-xl px-3 py-2 flex-1 min-w-[160px]">
           <Search size={14} className="text-slate-400 shrink-0" />
@@ -71,7 +71,7 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
 
       <div className={aiLogViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 gap-4' : 'space-y-4'}>
         {filteredAiLogs.map(log => (
-          <button key={log.id} className="bg-white p-3 rounded-[24px] border border-slate-200 cursor-pointer hover:shadow-md transition-shadow text-left w-full" onClick={() => setViewingLog(log)}>
+          <button key={log.id} className="bg-white p-3 rounded-card border border-slate-200 cursor-pointer hover:shadow-md transition-shadow text-left w-full" onClick={() => setViewingLog(log)}>
             {log.imageUrl && <img src={log.imageUrl} className="w-full aspect-square object-cover rounded-2xl mb-2" alt="Log" />}
             <p className="text-caption font-black text-slate-900 truncate">{log.driverName}</p>
             <p className="text-caption font-bold text-slate-400 uppercase">{new Date(log.timestamp).toLocaleDateString()}</p>
@@ -82,7 +82,7 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
       {/* Log detail modal */}
       {viewingLog && (
         <div className="fixed inset-0 z-[80] bg-slate-900/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in" onClick={() => setViewingLog(null)}>
-          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
+          <div className="bg-white w-full max-w-lg rounded-card shadow-2xl overflow-hidden animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
             <div className="p-6 border-b border-slate-100">
               <p className="text-sm font-black text-slate-900">{viewingLog.driverName}</p>
               <p className="text-caption font-bold text-slate-400 uppercase">{new Date(viewingLog.timestamp).toLocaleString()}</p>

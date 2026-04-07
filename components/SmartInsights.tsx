@@ -94,7 +94,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
 
   return (
     <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-      <div className="rounded-[28px] bg-gradient-to-br from-slate-950 to-indigo-900 p-5 text-white shadow-xl relative overflow-hidden">
+      <div className="rounded-card bg-gradient-to-br from-slate-950 to-indigo-900 p-5 text-white shadow-xl relative overflow-hidden">
         <div className="absolute right-4 top-4 opacity-10"><BrainCircuit size={72} /></div>
         <div className="relative z-10 flex flex-col gap-4">
           <div className="flex items-center justify-between gap-3">
@@ -146,7 +146,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
         </div>
         
         {insights.length === 0 ? (
-           <div className="rounded-[24px] border border-emerald-100 bg-emerald-50 p-6 text-center">
+           <div className="rounded-card border border-emerald-100 bg-emerald-50 p-6 text-center">
               <Zap size={32} className="mx-auto mb-3 text-emerald-400" />
               <p className="text-sm font-black text-emerald-700">{t.businessHealthy}</p>
               <p className="mt-1 text-[10px] text-emerald-600">{t.aiNoIssuesSub}</p>
@@ -158,7 +158,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
                  key={insight.loc.id}
                  type="button"
                  onClick={() => onNavigate?.('locations')}
-                 className={`rounded-[24px] border bg-white p-4 shadow-sm transition-all text-left w-full ${onNavigate ? 'cursor-pointer hover:shadow-md hover:border-indigo-300' : 'cursor-default'} ${insight.riskLevel === 'high' ? 'border-rose-200' : 'border-amber-200'}`}
+                 className={`rounded-card border bg-white p-4 shadow-sm transition-all text-left w-full ${onNavigate ? 'cursor-pointer hover:shadow-md hover:border-indigo-300' : 'cursor-default'} ${insight.riskLevel === 'high' ? 'border-rose-200' : 'border-amber-200'}`}
                >
                  <div className="flex justify-between items-start mb-4">
                     <div>

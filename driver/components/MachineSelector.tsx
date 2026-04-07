@@ -202,7 +202,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
         <button
           type="button"
           onClick={() => (onResumeDraft ?? onSelectMachine)(currentDraftLocation.id)}
-          className="flex w-full items-center justify-between gap-3 rounded-[24px] border border-indigo-200 bg-indigo-50 px-4 py-3 text-left shadow-[0_10px_24px_rgba(79,70,229,0.08)] transition-colors hover:bg-indigo-100"
+          className="flex w-full items-center justify-between gap-3 rounded-card border border-indigo-200 bg-indigo-50 px-4 py-3 text-left shadow-[0_10px_24px_rgba(79,70,229,0.08)] transition-colors hover:bg-indigo-100"
         >
           <div className="min-w-0">
             <p className="text-caption font-black uppercase tracking-[0.22em] text-indigo-500">

@@ -77,11 +77,11 @@ const RouteAuditMap: React.FC<RouteAuditMapProps> = ({ driver, locations, transa
       </div>
 
       {gpsAuditData.length === 0 ? (
-        <div className="rounded-[24px] border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
+        <div className="rounded-card border border-dashed border-slate-200 bg-slate-50 p-8 text-center text-slate-500">
           <p className="text-sm font-black">{lang === 'zh' ? '当天没有可用 GPS 轨迹' : 'No GPS trail available for this day'}</p>
         </div>
       ) : (
-      <div className="w-full h-[420px] rounded-[28px] overflow-hidden border-2 border-slate-100 relative shadow-inner">
+      <div className="w-full h-[420px] rounded-card overflow-hidden border-2 border-slate-100 relative shadow-inner">
         <MapContainer center={center} zoom={14} style={{ height: '100%', width: '100%' }} zoomControl={false}>
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'

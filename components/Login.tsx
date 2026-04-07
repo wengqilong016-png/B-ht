@@ -113,7 +113,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
       <div className="w-full max-w-sm relative z-10 flex flex-col items-center">
         <div className="mb-5 relative">
-           <div className="relative w-20 h-20 bg-silicone-gradient rounded-[28px] border border-white/80 flex items-center justify-center shadow-silicone">
+           <div className="relative w-20 h-20 bg-silicone-gradient rounded-card border border-white/80 flex items-center justify-center shadow-silicone">
               <span className="text-5xl drop-shadow-lg">🦁</span>
               <div className="absolute -top-2 -right-2 bg-amber-500 text-white p-2 rounded-xl border-4 border-white shadow-silicone">
                  <Crown size={16} fill="currentColor" />
@@ -126,7 +126,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
           <p className="text-caption font-bold text-slate-400 uppercase tracking-[0.3em]">Field Operations System</p>
         </div>
 
-        <div className="bg-[#f5f7fa] p-7 rounded-[32px] shadow-silicone border border-white/60 w-full space-y-5">
+        <div className="bg-[#f5f7fa] p-7 rounded-card shadow-silicone border border-white/60 w-full space-y-5">
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
               <label htmlFor="email-input" className="text-caption font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">

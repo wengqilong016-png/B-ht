@@ -26,7 +26,7 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
   const t = TRANSLATIONS[lang];
   return (
   <div className="fixed inset-0 z-[70] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
-    <div className="bg-white w-full max-w-sm rounded-[32px] overflow-hidden shadow-2xl relative">
+    <div className="bg-white w-full max-w-sm rounded-card overflow-hidden shadow-2xl relative">
       <div className="bg-slate-900 p-6 text-white relative">
         <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20"><X size={18} /></button>
         <div className="flex items-center gap-3 mb-2">

@@ -115,7 +115,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-200/60 backdrop-blur-md" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#f5f7fa] rounded-[28px] shadow-silicone overflow-hidden flex flex-col max-h-[90vh] border border-white/50">
+      <div className="relative w-full max-w-md bg-[#f5f7fa] rounded-card shadow-silicone overflow-hidden flex flex-col max-h-[90vh] border border-white/50">
         {/* Header */}
         <div className="flex items-center justify-between p-5 border-b border-slate-200 flex-shrink-0">
           <div className="flex items-center gap-3">

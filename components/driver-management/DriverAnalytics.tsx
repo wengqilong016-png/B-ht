@@ -35,26 +35,26 @@ const DriverAnalytics: React.FC<DriverAnalyticsProps> = ({
   return (
     <div className="space-y-6 animate-in slide-in-from-right-2">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-slate-900 text-white p-6 rounded-[28px] relative overflow-hidden">
+        <div className="bg-slate-900 text-white p-6 rounded-card relative overflow-hidden">
           <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-1">{t.totalRevenueAllTime}</p>
           <p className="text-2xl font-black text-white">TZS {fleetStats.totalRev.toLocaleString()}</p>
           <div className="absolute right-4 top-4 p-3 bg-white/10 rounded-full"><TrendingUp size={20} /></div>
         </div>
-        <div className="bg-white p-6 rounded-[28px] border border-slate-200 relative overflow-hidden">
+        <div className="bg-white p-6 rounded-card border border-slate-200 relative overflow-hidden">
           <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-1">{t.avgCollectionEfficiency}</p>
           <p className="text-2xl font-black text-indigo-600">{fleetStats.avgCollection.toFixed(1)}%</p>
           <div className="mt-2 w-full bg-slate-100 h-1.5 rounded-full overflow-hidden">
             <div className="bg-indigo-500 h-full rounded-full" style={{ width: `${fleetStats.avgCollection}%` }}></div>
           </div>
         </div>
-        <div className="bg-white p-6 rounded-[28px] border border-slate-200 relative overflow-hidden">
+        <div className="bg-white p-6 rounded-card border border-slate-200 relative overflow-hidden">
           <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-1">{t.totalDebtRisk}</p>
           <p className="text-2xl font-black text-rose-600">TZS {fleetStats.totalDebt.toLocaleString()}</p>
           <div className="absolute right-4 top-4 p-3 bg-rose-50 text-rose-500 rounded-full"><AlertCircle size={20} /></div>
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-slate-200 overflow-hidden shadow-sm">
+      <div className="bg-white rounded-card border border-slate-200 overflow-hidden shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">

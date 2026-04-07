@@ -107,7 +107,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       {showSyncBanner && (
-        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-[28px] border p-4 shadow-sm ${syncMeta.className}`}>
+        <div className={`flex flex-wrap items-center justify-between gap-3 rounded-card border p-4 shadow-sm ${syncMeta.className}`}>
           <div className="flex min-w-0 items-start gap-3">
             <div className="mt-0.5">{syncMeta.icon}</div>
             <div className="min-w-0">
@@ -128,7 +128,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
         </div>
       )}
 
-      <div className="flex flex-col gap-4 bg-white p-5 rounded-[32px] border border-slate-200 shadow-sm">
+      <div className="flex flex-col gap-4 bg-white p-5 rounded-card border border-slate-200 shadow-sm">
         <div className="flex flex-wrap justify-between items-center gap-3">
           <div className="flex items-center gap-2">
             <button 
@@ -184,7 +184,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
               </div>
               {expandedId === tx.id && (
                 <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-300">
-                  <div className="bg-slate-50 p-6 rounded-[24px] border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-slate-50 p-6 rounded-card border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">

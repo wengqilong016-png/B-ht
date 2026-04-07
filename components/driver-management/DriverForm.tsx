@@ -66,7 +66,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
           {/* Email + Password — new driver only */}
           {!editingId && (
-            <div className="p-5 bg-amber-50/50 rounded-[28px] border border-amber-100 space-y-4">
+            <div className="p-5 bg-amber-50/50 rounded-card border border-amber-100 space-y-4">
               <p className="text-caption font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
               <div>
                 <InputField label="邮箱 EMAIL *" value={form.email} icon={<ShieldCheck size={16} />} onChange={v => onChange({ email: v })} />
@@ -114,7 +114,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
             </div>
           )}
 
-          <div className="p-5 bg-slate-50 rounded-[28px] border border-slate-200 space-y-4">
+          <div className="p-5 bg-slate-50 rounded-card border border-slate-200 space-y-4">
             <p className="text-caption font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
               <Truck size={14} /> Vehicle & Asset
             </p>
@@ -134,7 +134,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
             </div>
           </div>
 
-          <div className="p-5 bg-indigo-50/50 rounded-[28px] border border-indigo-100 space-y-4">
+          <div className="p-5 bg-indigo-50/50 rounded-card border border-indigo-100 space-y-4">
             <p className="text-caption font-black text-indigo-400 uppercase tracking-widest flex items-center gap-2">
               <Receipt size={14} /> 薪资与提成方案
             </p>
@@ -171,7 +171,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
           {/* Location assignment */}
           {editingId && locations.length > 0 && onLocationToggle && (
-            <div className="p-5 bg-emerald-50/50 rounded-[28px] border border-emerald-100 space-y-3">
+            <div className="p-5 bg-emerald-50/50 rounded-card border border-emerald-100 space-y-3">
               <p className="text-caption font-black text-emerald-600 uppercase tracking-widest flex items-center gap-2">
                 <MapPin size={14} /> 分配机器点位 Assign Locations
               </p>

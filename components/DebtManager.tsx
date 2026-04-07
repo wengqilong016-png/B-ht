@@ -129,7 +129,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
       
       {/* 顶部财务汇总看板 (Compact Summary) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <div className="bg-slate-900 rounded-[24px] p-5 text-white">
+        <div className="bg-slate-900 rounded-card p-5 text-white">
            <div className="flex items-center gap-2 mb-2">
               <PieChart size={14} className="text-indigo-400"/>
               <span className="text-caption font-black uppercase tracking-widest text-indigo-300">Total Outstanding</span>
@@ -143,7 +143,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
            </div>
         </div>
 
-        <div className="bg-white rounded-[24px] p-5 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-card p-5 border border-slate-200 shadow-sm">
            <div className="flex items-center gap-2 mb-2">
              <div className="p-1.5 bg-amber-50 rounded-lg text-amber-500"><Building2 size={14} /></div>
              <span className="text-caption font-black text-slate-400 uppercase">Site Startup Capital</span>
@@ -152,7 +152,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
            <p className="text-caption font-bold text-slate-400 uppercase mt-1">{totals.activePointsCount} sites pending recovery</p>
         </div>
 
-        <div className="bg-white rounded-[24px] p-5 border border-slate-200 shadow-sm">
+        <div className="bg-white rounded-card p-5 border border-slate-200 shadow-sm">
            <div className="flex items-center gap-2 mb-2">
              <div className="p-1.5 bg-indigo-50 rounded-lg text-indigo-500"><User size={14} /></div>
              <span className="text-caption font-black text-slate-400 uppercase">Personal Loans</span>
@@ -163,7 +163,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
       </div>
 
       {currentUser.role !== 'admin' && (
-        <div className="rounded-[24px] border border-indigo-100 bg-indigo-50 px-4 py-4">
+        <div className="rounded-card border border-indigo-100 bg-indigo-50 px-4 py-4">
           <div className="flex items-start gap-3">
             <div className="rounded-xl bg-indigo-500 p-2 text-white flex-shrink-0">
               <CreditCard size={16} />
@@ -205,7 +205,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
             return (
               <div 
                 key={loc.id} 
-                className={`rounded-[28px] border p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden ${isFullyPaid ? 'bg-emerald-50/40 border-emerald-200' : 'bg-white border-slate-200'} ${isPulsing ? 'ring-2 ring-emerald-400/30' : ''}`}
+                className={`rounded-card border p-5 shadow-sm hover:shadow-md transition-all relative overflow-hidden ${isFullyPaid ? 'bg-emerald-50/40 border-emerald-200' : 'bg-white border-slate-200'} ${isPulsing ? 'ring-2 ring-emerald-400/30' : ''}`}
               >
                 {isFullyPaid && (
                    <div className="absolute top-3 right-3">
@@ -298,7 +298,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
               </div>
             );
           }) : (
-            <div className="col-span-full py-12 text-center bg-white rounded-[28px] border border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
+            <div className="col-span-full py-12 text-center bg-white rounded-card border border-dashed border-slate-200 flex flex-col items-center justify-center gap-3">
                <Building2 size={32} className="text-slate-200" />
                <div>
                  <p className="text-sm font-black text-slate-400 uppercase">No sites pending recovery</p>
@@ -328,7 +328,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
             const isPulsing = successPulse === driver.id;
 
             return (
-              <div key={driver.id} className={`rounded-[24px] border p-5 shadow-sm hover:shadow-md transition-all ${isDebtFree ? 'bg-white/50 border-slate-100' : 'bg-white border-slate-200'} ${isPulsing ? 'ring-2 ring-emerald-400/30' : ''}`}>
+              <div key={driver.id} className={`rounded-card border p-5 shadow-sm hover:shadow-md transition-all ${isDebtFree ? 'bg-white/50 border-slate-100' : 'bg-white border-slate-200'} ${isPulsing ? 'ring-2 ring-emerald-400/30' : ''}`}>
                 <div className="flex items-center gap-3 mb-4">
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white font-black text-base ${isDebtFree ? 'bg-slate-300' : 'bg-slate-900'}`}>
                     {driver.name.charAt(0)}

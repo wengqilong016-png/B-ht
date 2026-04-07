@@ -104,7 +104,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lan
           <span>{t.gpsUnavailableBanner}</span>
         </div>
       )}
-      <div className="bg-slate-900 rounded-[28px] p-4 flex flex-wrap items-center justify-between gap-4 border border-white/10 shadow-xl">
+      <div className="bg-slate-900 rounded-card p-4 flex flex-wrap items-center justify-between gap-4 border border-white/10 shadow-xl">
          <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 px-3 border-r border-white/10">
                <ShieldCheck size={18} className="text-indigo-400" />
@@ -149,7 +149,7 @@ const LiveMap: React.FC<LiveMapProps> = ({ drivers, locations, transactions, lan
           </MapErrorBoundary>
         </div>
       ) : (
-        <div className="w-full h-[520px] rounded-[32px] overflow-hidden border-2 border-white shadow-xl relative">
+        <div className="w-full h-[520px] rounded-card overflow-hidden border-2 border-white shadow-xl relative">
           <MapContainer center={dynamicCenter} zoom={13} style={{ height: '100%', width: '100%' }} zoomControl={false}>
             <TileLayer
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
