@@ -259,8 +259,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
     const ok = await confirm({
       title: lang === 'zh' ? '强制清除删除阻塞' : 'Force Clear Blockers',
       message: lang === 'zh'
-        ? `将对机器「${loc.name}」执行以下操作：\n• 启动债务清零\n• 解除重置锁定\n\n注意：分红余额不会被清零，需通过结算流程处理。\n此操作不可撤销，请确认。`
-        : `This will clear startup debt and reset lock for "${loc.name}".\nNote: Dividend balance must be settled through payout flow.\nThis cannot be undone.`,
+        ? `将对机器「${loc.name}」执行以下操作：\n• 启动债务清零\n• 分红余额清零\n• 解除重置锁定\n\n此操作不可撤销，请确认。`
+        : `This will clear startup debt, dividend balance and reset lock for "${loc.name}".\nThis cannot be undone.`,
       confirmLabel: lang === 'zh' ? '确认清除' : 'Clear',
       cancelLabel: lang === 'zh' ? '取消' : 'Cancel',
       destructive: true,
@@ -271,6 +271,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
       const cleared: Location = {
         ...loc,
         remainingStartupDebt: 0,
+        dividendBalance: 0,
         resetLocked: false,
         isSynced: false,
       };
