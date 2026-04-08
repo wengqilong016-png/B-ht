@@ -4,6 +4,30 @@ This document covers operational security steps that **cannot** be automated by 
 
 ---
 
+## Immediate Incident Checklist: `BAHATI_DATA_BACKUP.json`
+
+Use this checklist when the committed backup file or any similar operational dump has been exposed through Git history.
+
+### What was exposed in this incident
+
+- Real operational data for about 107 locations.
+- Owner / machine photos embedded as base64 blobs.
+- Plain-text `password` fields inside the exported dataset.
+- Phone numbers and business metadata.
+
+During the April 8, 2026 local cleanup, the file was removed from all reachable local Git refs and the local object database was pruned. That only fixes the **local clone**. You must still complete the remote-side actions below.
+
+### Required follow-up after local cleanup
+
+1. Force-push the rewritten history to `origin/main` and any rewritten remote branches.
+2. Tell every collaborator to delete old clones, re-clone, and avoid re-pushing pre-rewrite branches.
+3. If the repository was public or shared broadly, open a GitHub support ticket asking for cached object / PR diff purge for the removed blob.
+4. Rotate every user password that appeared in the backup export.
+5. Revoke stale access for former collaborators, devices, CI tokens, and dashboard users who no longer need production visibility.
+6. Verify `VITE_DISABLE_AUTH` is `false` in all deployed environments.
+
+---
+
 ## 0. Database changes
 
 All database changes should be applied via `supabase/schema.sql` (fresh deployment) or versioned migration files in `supabase/migrations/` (incremental update). Do not run ad hoc destructive SQL scripts against any environment that contains real data.
@@ -19,7 +43,7 @@ This file contains all tables, functions, triggers and RLS policies and is idemp
 **Existing environment (incremental update):**
 Apply only the migration files you have not yet applied from `supabase/migrations/`. Do not re-run already-applied files.
 
-## 1. Credential Rotation (Supabase URL / Anon Key)
+## 1. Credential Rotation and Account Reset
 
 ### When is this required?
 
@@ -27,19 +51,22 @@ Apply only the migration files you have not yet applied from `supabase/migration
 - A former team member who should no longer have access has seen the credentials.
 - You suspect the key has been leaked.
 - Seeded bootstrap passwords or account lists were exposed to people who should not retain access.
+- An operational export (such as `BAHATI_DATA_BACKUP.json`) exposed real user passwords or account metadata.
 
 ### Steps
 
-1. Log in to supabase.com and open your project.
+1. Log in to Supabase and open the production project.
 2. Go to **Settings → API**.
-3. Click **Regenerate** next to the `anon` public key (and/or the `service_role` key if it was exposed).
-4. Update every deployment that uses the old key:
-   - **Vercel**: Settings → Environment Variables → update `VITE_SUPABASE_ANON_KEY` and redeploy.
-   - **Firebase Hosting**: update the secret in your CI secrets and redeploy.
-   - **GitHub Actions secrets**: Settings → Secrets and variables → Actions → update `VITE_SUPABASE_ANON_KEY` and `VITE_SUPABASE_URL`.
+3. Regenerate the `anon` key if it was exposed outside the intended browser bundle.
+4. Regenerate the `service_role` key immediately if it was ever committed, pasted into chat, stored in a tracked file, or shared outside the core operators.
+5. Rotate every application password that appeared in the leaked backup dataset.
+6. In **Authentication → Users**, force password resets or manually set new passwords for all affected users.
+7. Revoke old sessions for affected users so old devices must sign in again.
+8. Update every deployment that uses the old key:
+   - **Vercel**: update `VITE_SUPABASE_ANON_KEY`, plus any server-side AI / internal API secrets that were also rotated.
+   - **GitHub Actions**: update `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, `SUPABASE_ACCESS_TOKEN`, `SUPABASE_DB_PASSWORD`, `VERCEL_TOKEN`, and any rotated AI / internal API secrets.
    - **Local `.env.local`**: update all developer machines.
-5. If bootstrap SQL seeded shared default passwords, rotate those passwords too in Supabase Auth.
-6. Verify the old key no longer works by making a test API call with it.
+9. Verify the old keys and old user passwords no longer work.
 
 > ℹ️ The Supabase `anon` key is designed to be safe in client-side code when Row-Level Security (RLS) is enabled on all tables. However, if the key has been publicly exposed and RLS was not enabled at the time, treat it as compromised.
 
@@ -87,6 +114,18 @@ git filter-repo --path BAHATI_DATA_BACKUP.json --invert-paths
 git push --force
 ```
 
+### Local verification commands
+
+After rewriting history and pruning old refs, all of the following should return no results:
+
+```bash
+git log --all --stat -- BAHATI_DATA_BACKUP.json
+git rev-list --objects --all | grep 'BAHATI_DATA_BACKUP.json'
+git for-each-ref --format='%(refname)' refs/original/
+```
+
+If any command still prints the filename, old refs or objects are still keeping the blob alive.
+
 ---
 
 ## 3. Setting Environment Variables in Vercel
@@ -99,10 +138,12 @@ git push --force
 |---|---|---|
 | `VITE_SUPABASE_URL` | Yes | Supabase project URL |
 | `VITE_SUPABASE_ANON_KEY` | Yes | Supabase anonymous/public key |
+| `OPENAI_API_KEY` | Optional | Server-side OpenAI key used by `api/admin-ai` and `api/scan-meter` |
 | `GEMINI_API_KEY` | Yes, if AI scan is enabled | Server-side Gemini API key |
 | `GOOGLE_TRANSLATE_API_KEY` | Optional | Server-side Google Translate API key |
 | `STATUS_API_BASE` | Optional | Server-side base URL for the status API |
 | `INTERNAL_API_KEY` | Optional | Server-side API key for the internal status API |
+| `VITE_DISABLE_AUTH` | Must be `false` outside local / test | Prevents auth-free driver mode from being enabled in deployed environments |
 
 4. Click **Save** and then **Redeploy** to apply the new variables.
 
@@ -110,24 +151,27 @@ git push --force
 
 ---
 
-## 4. Setting Environment Variables in Firebase / GitHub Actions
+## 4. GitHub Actions and CI Secret Rotation
 
-### Firebase Hosting (via GitHub Actions)
-
-All `VITE_*` variables are injected at build time through the GitHub Actions workflow (`.github/workflows/deploy.yml`). Store them as **GitHub repository secrets**:
+This repository currently uses GitHub Actions for build / deploy automation. Store secrets in **Repository Settings → Secrets and variables → Actions** and rotate them after any security incident involving source history, dashboards, or compromised developer devices.
 
 1. Open the repository → **Settings → Secrets and variables → Actions**.
-2. Add the following secrets:
+2. Review and rotate the following secrets as applicable:
    - `VITE_SUPABASE_URL`
    - `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_ACCESS_TOKEN`
+   - `SUPABASE_DB_PASSWORD`
+   - `SUPABASE_PROJECT_ID`
+   - `VERCEL_TOKEN`
+   - `VERCEL_ORG_ID`
+   - `VERCEL_PROJECT_ID`
+   - `OPENAI_API_KEY`
    - `GEMINI_API_KEY`
    - `GOOGLE_TRANSLATE_API_KEY` (if used)
    - `STATUS_API_BASE` (if used)
    - `INTERNAL_API_KEY` (if used)
-   - `FIREBASE_SERVICE_ACCOUNT`
-   - `FIREBASE_PROJECT_ID`
-
-3. The workflow reads these secrets automatically via `${{ secrets.VAR_NAME }}`.
+3. Re-run production deploy workflows only after the new secrets are saved.
+4. Remove any obsolete secrets that are no longer referenced by workflows.
 
 ### Local development
 
@@ -156,3 +200,17 @@ git grep -E '[a-zA-Z0-9]{40,}' -- 'supabaseClient.ts' 'get_credentials.cjs'
 ```
 
 If any secrets appear in tracked files, rotate them immediately (see Section 1) and consider using a tool like truffleHog or gitleaks for a full scan.
+
+---
+
+## 6. Access Containment
+
+After a leak, do not stop at key rotation. Reduce who can still reach production data.
+
+1. Audit GitHub repository collaborators and remove anyone who no longer needs access.
+2. Review Vercel project members and environment-variable access.
+3. Review Supabase organization / project members and remove stale accounts.
+4. Revoke old Supabase personal access tokens (`sbp_...`) used by CI after replacing them.
+5. Ensure production and preview deployments do not set `VITE_DISABLE_AUTH=true`.
+6. Ask collaborators to delete pre-cleanup local clones, zip exports, chat attachments, and downloaded backups.
+7. Treat any machine or admin account listed in the leaked backup as compromised until its password has been reset.
