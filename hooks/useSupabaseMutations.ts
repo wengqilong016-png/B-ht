@@ -9,7 +9,7 @@ import {
   reviewAnomalyTransaction as repoReviewAnomalyTransaction,
 } from '../repositories/approvalRepository';
 import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
-import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
+import { upsertLocationsWithSignal, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
 import { createPayoutRequest, createResetRequest } from '../repositories/requestRepository';
 import { createSettlement as repoCreateSettlement, reviewSettlement as repoReviewSettlement } from '../repositories/settlementRepository';
 import { upsertTransaction } from '../repositories/transactionRepository';
@@ -137,7 +137,22 @@ export function useSupabaseMutations(
       if (!isOnline) {
         throw new Error('当前处于离线状态，无法注册或修改机器。请连接网络后重试。/ Offline — cannot register or update machines. Please reconnect and try again.');
       }
-      await upsertLocations(updatedLocations.map(l => stripClientFields(l as unknown as Record<string, unknown>) as Partial<Location>));
+      const controller = new AbortController();
+      const timeoutMs = 20000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        await upsertLocationsWithSignal(
+          updatedLocations.map(l => stripClientFields(l as unknown as Record<string, unknown>) as Partial<Location>),
+          controller.signal,
+        );
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new Error('注册请求超时（20 秒）。请检查网络后重试。/ Registration timed out (20s). Please check your network and try again.');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timer);
+      }
     },
     onError: (error, _variables, context) => {
       if (context?.previousLocations !== undefined) {

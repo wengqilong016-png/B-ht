@@ -36,6 +36,14 @@ export async function upsertLocations(locations: Partial<Location>[]): Promise<v
   if (error) throw error;
 }
 
+export async function upsertLocationsWithSignal(locations: Partial<Location>[], signal?: AbortSignal): Promise<void> {
+  if (!supabase) throw new Error('Supabase client unavailable');
+  const query = supabase.from('locations').upsert(locations.map(toDbLocation));
+  if (signal) query.abortSignal(signal);
+  const { error } = await query;
+  if (error) throw error;
+}
+
 export async function deleteLocations(ids: string[]): Promise<void> {
   if (!supabase) throw new Error('Supabase client unavailable');
   const { error } = await supabase.from('locations').delete().in('id', ids);
