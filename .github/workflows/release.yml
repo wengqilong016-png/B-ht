@@ -68,13 +68,33 @@ jobs:
       - name: Sync Capacitor
         run: npx cap sync android
 
+      - name: Validate release signing secrets
+        run: |
+          missing=0
+          for name in ANDROID_KEYSTORE_BASE64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Missing required GitHub secret: ${name}"
+              missing=1
+            fi
+          done
+          if [ "$missing" -ne 0 ]; then
+            exit 1
+          fi
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
+
       - name: Decode keystore
         run: |
-          echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > android/app/bahati.keystore
+          printf '%s' "${ANDROID_KEYSTORE_BASE64}" | base64 -d > android/app/bahati.keystore
           KEYSTORE_SIZE=$(wc -c < android/app/bahati.keystore)
           if [ "$KEYSTORE_SIZE" -eq 0 ]; then
-            echo "WARNING: ANDROID_KEYSTORE_BASE64 secret is not set. Building unsigned APK."
-            rm android/app/bahati.keystore
+            echo "::error::Decoded keystore is empty."
+            rm -f android/app/bahati.keystore
+            exit 1
           else
             echo "Keystore decoded: ${KEYSTORE_SIZE} bytes"
             if keytool -list \
@@ -101,6 +121,7 @@ jobs:
             echo "KEYSTORE_FILE=bahati.keystore" >> "$GITHUB_ENV"
           fi
         env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         shell: bash
 
@@ -111,6 +132,23 @@ jobs:
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Verify release APK signature
+        run: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          if [ ! -f "$APK_PATH" ]; then
+            echo "::error::Release APK not found: $APK_PATH"
+            exit 1
+          fi
+
+          APKSIGNER_PATH=$(find "${ANDROID_HOME}/build-tools" -name apksigner | sort | tail -n 1)
+          if [ -z "$APKSIGNER_PATH" ]; then
+            echo "::error::apksigner not found under ${ANDROID_HOME}/build-tools"
+            exit 1
+          fi
+
+          "$APKSIGNER_PATH" verify --print-certs "$APK_PATH"
+        shell: bash
 
       - name: Get version
         id: version
@@ -160,3 +198,4 @@ jobs:
           name: bahati-release-apk
           path: android/app/build/outputs/apk/bahati-*.apk
           retention-days: 90
+          if-no-files-found: error

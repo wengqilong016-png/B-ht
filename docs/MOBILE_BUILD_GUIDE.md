@@ -324,6 +324,7 @@ google-services.json not found
 - `main` 分支：默认产出 release APK
 - `v*` tag：默认产出 release APK
 - 手动触发：可选 `debug` / `release`
+- 当选择 `release` 时，CI 现在会强制校验四个 GitHub Secrets 是否齐全；缺任何一个都会直接失败，不再回退成未签名 APK。
 
 ### `release.yml`
 
@@ -331,14 +332,74 @@ GitHub Release 发布后会：
 
 1. 重新跑测试
 2. 构建 release APK
-3. 上传 `bahati-*.apk`
-4. 更新 [public/version.json](/root/b-ht/public/version.json)
+3. 用 `apksigner verify --print-certs` 校验 release APK 签名
+4. 上传 `bahati-*.apk`
+5. 更新 [public/version.json](/root/b-ht/public/version.json)
 
 稳定下载名为：
 
 ```text
 bahati-latest-release.apk
 ```
+
+## GitHub Actions Release 签名配置
+
+当你要通过 CI 产出**可分发的 release APK**时，仓库必须先配置下面四个 GitHub Secrets：
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+### 1. 生成 base64 keystore 内容
+
+```bash
+base64 < bahati-release.keystore | tr -d '\n'
+```
+
+把输出完整复制到 `ANDROID_KEYSTORE_BASE64`。
+
+### 2. 在 GitHub 仓库里配置 Secrets
+
+路径：
+
+```text
+Repository -> Settings -> Secrets and variables -> Actions
+```
+
+逐个添加：
+
+- `ANDROID_KEYSTORE_BASE64`: keystore 文件的 base64 内容
+- `ANDROID_KEYSTORE_PASSWORD`: keystore store password
+- `ANDROID_KEY_ALIAS`: key alias
+- `ANDROID_KEY_PASSWORD`: key password
+
+### 3. 触发 release 构建
+
+有两种入口：
+
+1. 手动进入 **Actions -> Build Android APK -> Run workflow**，选择 `release`
+2. 推送 `main` 或发布 `v*` tag / GitHub Release，让 CI 自动走 release APK 流程
+
+### 4. CI 成功的判定标准
+
+只有同时满足以下条件，才算 release APK 可交付：
+
+1. `Build Release APK` 步骤成功
+2. `Verify release APK signature` 步骤成功
+3. 产物路径为 `android/app/build/outputs/apk/release/app-release.apk`
+4. 上传产物里存在 `bahati-v*-release.apk` 或 `bahati-latest-release.apk`
+
+## 手动签名校验
+
+本地 release 构建完成后，推荐再做一次显式校验：
+
+```bash
+APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -n 1)
+"$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk
+```
+
+如果输出正常且命令退出码为 `0`，说明 APK 签名可读且校验通过。
 
 ## iOS 构建
 
@@ -379,6 +440,13 @@ echo "$KEY_ALIAS"
 keytool -list -keystore "$KEYSTORE_FILE" -storetype PKCS12
 ```
 
+最后直接验证 APK 签名：
+
+```bash
+APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -n 1)
+"$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk
+```
+
 ### 2. 本地和 CI 构建结果不一致
 
 优先核对这三项：
@@ -412,3 +480,4 @@ cd android
 3. Release APK 已正确签名。
 4. 如需推送，`android/app/google-services.json` 已就位。
 5. 最终交付物是 `release` APK，而不是 `debug` APK。
+6. CI 的 `Verify release APK signature` 或本地 `apksigner verify --print-certs` 已通过。

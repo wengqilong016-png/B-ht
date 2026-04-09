@@ -185,6 +185,52 @@ See [docs/SECURITY_OPERATIONS.md](docs/SECURITY_OPERATIONS.md) for:
 - Removing sensitive files from Git history
 - Setting environment variables in CI/CD
 
+## Android Release APK Signing
+
+Use this checklist when you want GitHub Actions to produce a distributable signed release APK.
+
+### Required GitHub Secrets
+
+Add these secrets under **Repository -> Settings -> Secrets and variables -> Actions**:
+
+| Secret | Description |
+|---|---|
+| `ANDROID_KEYSTORE_BASE64` | Base64-encoded contents of the release keystore file |
+| `ANDROID_KEYSTORE_PASSWORD` | Keystore store password |
+| `ANDROID_KEY_ALIAS` | Alias of the signing key inside the keystore |
+| `ANDROID_KEY_PASSWORD` | Password of the signing key |
+
+Generate the base64 payload from your local keystore:
+
+```bash
+base64 < bahati-release.keystore | tr -d '\n'
+```
+
+### CI Trigger Paths
+
+- **Manual:** GitHub Actions -> `Build Android APK` -> `Run workflow` -> choose `release`
+- **Automatic:** push to `main`, push a `v*` tag, or publish a GitHub Release
+
+### Success Criteria
+
+A release APK build is valid only when all of the following are true:
+
+1. The release workflow receives all four signing secrets.
+2. `./gradlew assembleRelease` succeeds.
+3. `Verify release APK signature` succeeds with `apksigner verify --print-certs`.
+4. The uploaded artifact is a release APK, not a debug APK.
+
+### Manual Verification
+
+After downloading or building the release artifact, verify the signature locally:
+
+```bash
+APKSIGNER=$(find "$ANDROID_HOME/build-tools" -name apksigner | sort | tail -n 1)
+"$APKSIGNER" verify --print-certs android/app/build/outputs/apk/release/app-release.apk
+```
+
+> `google-services.json` is not required for APK signing itself. It is only required when you want Android push notifications to work.
+
 ---
 
 ## Deployment Checklist — Stages 1 through 11A
