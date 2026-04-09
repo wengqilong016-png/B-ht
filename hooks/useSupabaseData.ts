@@ -1,14 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
-import { checkDbHealth } from '../supabaseClient';
-import { localDB } from '../services/localDB';
-import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
-import { getSettlementQueryScope, getTransactionQueryScope, SupabaseDataUserRole } from '../services/supabaseRoleScope';
-import { fetchLocations } from '../repositories/locationRepository';
-import { fetchDrivers } from '../repositories/driverRepository';
-import { fetchTransactions } from '../repositories/transactionRepository';
-import { fetchSettlements } from '../repositories/settlementRepository';
+
 import { fetchAiLogs } from '../repositories/aiLogRepository';
+import { fetchDrivers } from '../repositories/driverRepository';
+import { fetchLocations } from '../repositories/locationRepository';
+import { fetchSettlements } from '../repositories/settlementRepository';
+import { fetchTransactions } from '../repositories/transactionRepository';
+import { localDB } from '../services/localDB';
+import { getSettlementQueryScope, getTransactionQueryScope, SupabaseDataUserRole } from '../services/supabaseRoleScope';
+import { checkDbHealth } from '../supabaseClient';
+import { CONSTANTS, Location, Driver, Transaction, DailySettlement, AILog } from '../types';
 
 // Helper to sanitize drivers
 const sanitizeDrivers = (driverList: Driver[]): Driver[] => {

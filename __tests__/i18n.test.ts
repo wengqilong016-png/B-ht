@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeAll } from '@jest/globals';
+
 import { TRANSLATIONS } from '../i18n';
 
 describe('i18n — TRANSLATIONS object', () => {

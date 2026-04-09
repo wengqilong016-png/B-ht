@@ -1,10 +1,12 @@
-import React, { useMemo, useState, useEffect, useDeferredValue } from 'react';
 import { Layers, Coins, ScanLine, AlertTriangle, WifiOff, DatabaseBackup } from 'lucide-react';
+import React, { useMemo, useState, useEffect, useDeferredValue } from 'react';
+
+import { getPendingTransactions } from '../../offlineQueue';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
-import { getPendingTransactions } from '../../offlineQueue';
-import MachineFilterBar from './MachineFilterBar';
+
 import MachineCard, { type MachineCardMeta } from './MachineCard';
+import MachineFilterBar from './MachineFilterBar';
 
 const NEARBY_DISTANCE_METERS = 1500;
 // Large penalty distance assigned when GPS is unavailable, so GPS-less machines sort later.

@@ -5,12 +5,14 @@
  * Covers localStorage-backed user caching helpers and lang defaulting.
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
+
 import {
   writeCachedUser,
   readCachedUser,
   clearCachedUser,
   defaultLangForRole,
 } from '../hooks/useAuthPersistence';
+
 import type { User } from '../types';
 
 const CACHED_USER_KEY = 'bht-cached-user';

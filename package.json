@@ -18,6 +18,7 @@
     "test:integration": "jest --no-coverage --testPathPattern='__tests__/integration/' --passWithNoTests",
     "test:selfcheck:machine": "jest --no-coverage machineWorkflowSelfCheck",
     "test:coverage": "jest --coverage --passWithNoTests",
+    "test:coverage:ci": "jest --coverage",
     "test:watch": "jest --watch --passWithNoTests",
     "test:e2e": "npx playwright test",
     "test:e2e:ui": "npx playwright test --ui",
@@ -27,7 +28,10 @@
     "cap:open:android": "npx cap open android",
     "cap:open:ios": "npx cap open ios",
     "cap:build:android": "npm run build && npx cap sync android && cd android && ./gradlew assembleDebug",
-    "cap:build:android:release": "npm run build && npx cap sync android && cd android && ./gradlew assembleRelease"
+    "cap:build:android:release": "npm run build && npx cap sync android && cd android && ./gradlew assembleRelease",
+    "lint": "eslint . --ext .ts,.tsx",
+    "lint:fix": "npm run lint -- --fix",
+    "security:audit": "npm audit --audit-level=high"
   },
   "dependencies": {
     "@capacitor/geolocation": "^8.2.0",
@@ -57,6 +61,7 @@
     "@capacitor/cli": "^8.3.0",
     "@capacitor/core": "^8.3.0",
     "@capacitor/ios": "^8.3.0",
+    "@eslint/js": "^9.39.4",
     "@playwright/test": "^1.59.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -68,6 +73,10 @@
     "@vitejs/plugin-react": "^6.0.1",
     "autoprefixer": "^10.4.27",
     "babel-jest": "^30.3.0",
+    "eslint": "^9.39.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "globals": "^17.4.0",
     "jest": "^30.3.0",
     "jest-environment-jsdom": "^30.3.0",
     "postcss": "^8.5.9",
@@ -75,6 +84,7 @@
     "tailwindcss": "^3.4.19",
     "ts-jest": "^29.4.9",
     "typescript": "^6.0.2",
+    "typescript-eslint": "^8.58.1",
     "vite": "^8.0.7"
   }
 }

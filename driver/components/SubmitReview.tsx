@@ -1,13 +1,18 @@
-import React, { useState, useEffect } from 'react';
 import { Send, Loader2, CheckCircle2, ArrowRight, AlertTriangle, Satellite, RotateCcw } from 'lucide-react';
-import WizardStepBar from './WizardStepBar';
-import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
-import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
-import { extractGpsFromExif, estimateLocationFromContext } from '../../offlineQueue';
-import type { AIReviewData } from '../hooks/useCollectionDraft';
-import { useCollectionSubmission } from '../../hooks/useCollectionSubmission';
-import { useToast } from '../../contexts/ToastContext';
+import React, { useState, useEffect } from 'react';
+
 import { useConfirm } from '../../contexts/ConfirmContext';
+import { useToast } from '../../contexts/ToastContext';
+import { useCollectionSubmission } from '../../hooks/useCollectionSubmission';
+import { extractGpsFromExif, estimateLocationFromContext } from '../../offlineQueue';
+import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
+
+import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
+import WizardStepBar from './WizardStepBar';
+
+
+import type { AIReviewData } from '../hooks/useCollectionDraft';
+
 
 interface SubmitReviewProps {
   selectedLocation: Location;

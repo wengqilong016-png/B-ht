@@ -1,6 +1,7 @@
 /** Pure functions for writing to the `ai_logs` table. */
 
 import { supabase } from '../supabaseClient';
+
 import type { AILog } from '../types/models';
 
 export async function insertAiLog(log: AILog): Promise<void> {

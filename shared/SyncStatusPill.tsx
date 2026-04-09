@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   CloudOff, AlertTriangle, ShieldCheck, Loader2, RefreshCw, ChevronDown, XCircle,
 } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+
 import { SyncStatus } from '../hooks/useSyncStatus';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

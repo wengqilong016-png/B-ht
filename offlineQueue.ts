@@ -12,11 +12,15 @@
  *   - Retry-aware: exponential backoff with dead-letter visibility
  */
 
-import { Transaction, safeRandomUUID } from './types';
-import { SupabaseClient } from '@supabase/supabase-js';
-import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
 import * as Sentry from '@sentry/react';
+import { SupabaseClient } from '@supabase/supabase-js';
+
 import { appendCollectionSubmissionAudit } from './services/collectionSubmissionAudit';
+import { Transaction, safeRandomUUID } from './types';
+
+import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
+
+
 
 const DB_NAME    = 'bahati_offline_db';
 const DB_VERSION = 2;
@@ -238,8 +242,8 @@ export async function markSynced(id: string, authoritativeData?: Partial<Transac
   const update = { ...authoritativeData, isSynced: true };
   try {
     const db    = await openDB();
-    const tx_db = db.transaction(STORE_TX, 'readwrite');
-    const store = tx_db.objectStore(STORE_TX);
+    const txDb = db.transaction(STORE_TX, 'readwrite');
+    const store = txDb.objectStore(STORE_TX);
     const item  = await new Promise<Transaction | undefined>((res, rej) => {
       const r = store.get(id);
       r.onsuccess = () => res(r.result);

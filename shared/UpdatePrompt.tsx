@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
 import { RefreshCw, X } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+
 import { TRANSLATIONS } from '../types';
 
 interface UpdatePromptProps {

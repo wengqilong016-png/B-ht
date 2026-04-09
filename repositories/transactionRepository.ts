@@ -1,6 +1,7 @@
 /** Pure functions for reading and writing the `transactions` table. */
 
 import { supabase } from '../supabaseClient';
+
 import type { Transaction } from '../types/models';
 
 const DRIVER_TX_FIELDS = [

@@ -1,13 +1,15 @@
-import type { Driver, Location, Transaction } from '../types';
-import { CONSTANTS } from '../types';
 import { enqueueTransaction } from '../offlineQueue';
+import { CONSTANTS } from '../types';
 import { createCollectionTransaction } from '../utils/transactionBuilder';
+
+import { appendCollectionSubmissionAudit } from './collectionSubmissionAudit';
 import {
   submitCollectionV2,
   type CollectionSubmissionInput,
   type CollectionSubmissionResult,
 } from './collectionSubmissionService';
-import { appendCollectionSubmissionAudit } from './collectionSubmissionAudit';
+
+import type { Driver, Location, Transaction } from '../types';
 
 export type SubmissionGpsSource = 'live' | 'exif' | 'estimated' | 'none';
 

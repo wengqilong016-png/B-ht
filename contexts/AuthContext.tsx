@@ -1,4 +1,5 @@
 import React, { createContext, useContext } from 'react';
+
 import type { User } from '../types';
 
 interface AuthContextValue {

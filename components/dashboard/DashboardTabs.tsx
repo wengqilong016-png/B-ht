@@ -1,4 +1,5 @@
 import React from 'react';
+
 import { TRANSLATIONS } from '../../types';
 
 type TabKey = 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'ai-logs' | 'tracking';

@@ -1,9 +1,11 @@
 import { describe, expect, it } from '@jest/globals';
-import type { Location, Transaction } from '../types/models';
+
 import {
   getLocationDeletionDiagnostics,
   normalizeMachineId,
 } from '../utils/locationWorkflow';
+
+import type { Location, Transaction } from '../types/models';
 
 function makeLocation(overrides: Partial<Location> = {}): Location {
   return {

@@ -1,5 +1,6 @@
-import React from 'react';
 import { ArrowRight, Store, BrainCircuit, ChevronDown } from 'lucide-react';
+import React from 'react';
+
 import { Transaction, Driver, Location, DailySettlement, MonthlyPayroll, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import SmartInsights from '../SmartInsights';

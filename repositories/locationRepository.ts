@@ -1,6 +1,7 @@
 /** Pure functions for reading and writing the `locations` table. */
 
 import { supabase } from '../supabaseClient';
+
 import type { Location } from '../types/models';
 
 const LOCATION_FIELDS = [

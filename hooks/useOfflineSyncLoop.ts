@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { User } from '../types';
-import { supabase } from '../supabaseClient';
+
 import { getQueueHealthSummary, pruneOldSynced } from '../offlineQueue';
+import { supabase } from '../supabaseClient';
+import { User } from '../types';
 
 /** Retry interval for background auto-sync while there are pending items. */
 const AUTO_SYNC_INTERVAL_MS = 60_000;

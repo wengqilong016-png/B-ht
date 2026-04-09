@@ -1,5 +1,6 @@
-import React from 'react';
 import { ArrowRight } from 'lucide-react';
+import React from 'react';
+
 import { Location, TRANSLATIONS } from '../../types';
 
 interface CollectionWorkbenchHeaderProps {

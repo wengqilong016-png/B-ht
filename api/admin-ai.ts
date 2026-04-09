@@ -1,5 +1,6 @@
-import type OpenAI from 'openai';
 import { createAIClient } from './_lib/aiClient.js';
+
+import type OpenAI from 'openai';
 
 export interface AdminAIMessage {
   role: 'user' | 'assistant';

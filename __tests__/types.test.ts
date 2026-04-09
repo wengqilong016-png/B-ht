@@ -4,11 +4,12 @@
  */
 
 import { describe, it, expect } from '@jest/globals';
+
 import {
   safeRandomUUID, isLikelyEmail, getDistance, CONSTANTS,
   ApprovalStatus, ExpenseStatus, PaymentStatus, SettlementStatus,
   TransactionType, LocationStatus,
-} from '../types';
+ getLocationField , resizeImage } from '../types';
 
 // ── safeRandomUUID ─────────────────────────────────────────────────────────────
 
@@ -143,7 +144,6 @@ describe('Domain status constants', () => {
 
 // ── getLocationField ──────────────────────────────────────────────────────────
 
-import { getLocationField } from '../types';
 import type { Location } from '../types';
 
 function makeMinimalLocation(extra: Record<string, unknown> = {}): Location {
@@ -195,7 +195,6 @@ describe('getLocationField()', () => {
 
 // ── resizeImage ───────────────────────────────────────────────────────────────
 
-import { resizeImage } from '../types';
 
 describe('resizeImage()', () => {
   // jsdom does not support canvas; patch context just enough to run the code path.

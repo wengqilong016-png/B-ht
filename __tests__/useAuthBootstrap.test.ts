@@ -13,7 +13,6 @@
  */
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
 import { renderHook, act, waitFor } from '@testing-library/react';
-import type { User } from '../types';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +52,8 @@ jest.mock('../services/authService', () => ({
 
 // Static imports — loaded after jest.mock hoisting resolves the mocks above.
 import { authReducer, useAuthBootstrap } from '../hooks/useAuthBootstrap';
+
+import type { User } from '../types';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 

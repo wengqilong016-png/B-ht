@@ -4,6 +4,7 @@
  * Tests for utils/stripClientFields.ts
  */
 import { describe, it, expect } from '@jest/globals';
+
 import { stripClientFields } from '../utils/stripClientFields';
 
 describe('stripClientFields()', () => {

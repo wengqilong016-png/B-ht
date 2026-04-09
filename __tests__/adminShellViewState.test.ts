@@ -4,10 +4,12 @@
  * Tests for admin/adminShellViewState.ts
  */
 import { describe, it, expect } from '@jest/globals';
+
 import {
   calculateAdminApprovalBadge,
   isDashboardBackedAdminView,
 } from '../admin/adminShellViewState';
+
 import type { Transaction, DailySettlement } from '../types';
 
 // ── helpers ──────────────────────────────────────────────────────────────────

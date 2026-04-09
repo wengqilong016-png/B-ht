@@ -4,7 +4,9 @@
  * Tests for driver/driverShellViewState.ts
  */
 import { describe, it, expect } from '@jest/globals';
+
 import { resolveCurrentDriver } from '../driver/driverShellViewState';
+
 import type { Driver } from '../types';
 
 function makeDriver(id: string, name: string): Driver {

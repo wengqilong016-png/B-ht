@@ -1,8 +1,10 @@
 import { useState, useCallback, useMemo } from 'react';
-import type { Location, Driver, Transaction, DailySettlement } from '../types';
+
 import { getTodayLocalDate } from '../utils/dateUtils';
-import type { AdminAIMessage, SystemSnapshot } from '../api/admin-ai';
 import { getLocationDeletionDiagnostics } from '../utils/locationWorkflow';
+
+import type { AdminAIMessage, SystemSnapshot } from '../api/admin-ai';
+import type { Location, Driver, Transaction, DailySettlement } from '../types';
 
 export type { AdminAIMessage };
 

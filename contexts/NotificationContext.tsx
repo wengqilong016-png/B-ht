@@ -12,6 +12,7 @@
  *   - Render a floating bell icon (bottom-right) with an unread badge count.
  */
 
+import { Bell, X, CheckCheck, Trash2, AlertTriangle, Info, AlertCircle } from 'lucide-react';
 import React, {
   createContext,
   useCallback,
@@ -20,7 +21,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { Bell, X, CheckCheck, Trash2, AlertTriangle, Info, AlertCircle } from 'lucide-react';
+
 import { CONSTANTS, safeRandomUUID } from '../types';
 
 // ─── Types (inlined from shared/types/notifications.ts) ───────────────────────

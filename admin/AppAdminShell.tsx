@@ -1,11 +1,13 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
 import {
   LogOut, Globe,
   Crown, Settings,
 } from 'lucide-react';
-import { TRANSLATIONS } from '../types';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+
+import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../contexts/DataContext';
+import { useMutations } from '../contexts/MutationContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
-import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import {
   AppShell,
   ShellSidebar,
@@ -15,17 +17,17 @@ import {
   type SidebarNavItem,
   type MobileNavItem,
 } from '../shared/layout';
-import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/DataContext';
-import { useMutations } from '../contexts/MutationContext';
+import ShellLoadingFallback from '../shared/ShellLoadingFallback';
+import { TRANSLATIONS } from '../types';
+
 import {
   ADMIN_SECONDARY_NAV,
   buildAdminPrimaryNav,
   type AdminView,
 } from './adminShellConfig';
 import { calculateAdminApprovalBadge } from './adminShellViewState';
-import AdminShellViewRenderer from './renderAdminShellView';
 import AdminAIAssistant from './components/AdminAIAssistant';
+import AdminShellViewRenderer from './renderAdminShellView';
 
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 

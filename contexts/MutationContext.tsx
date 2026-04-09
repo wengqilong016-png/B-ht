@@ -1,7 +1,8 @@
 import React, { createContext, useContext } from 'react';
-import type { UseMutationResult } from '@tanstack/react-query';
-import type { Location, Driver, Transaction, DailySettlement, AILog } from '../types';
+
 import type { SyncMutationHandle } from '../hooks/useSyncStatus';
+import type { Location, Driver, Transaction, DailySettlement, AILog } from '../types';
+import type { UseMutationResult } from '@tanstack/react-query';
 
 interface MutationContextValue {
   syncOfflineData: SyncMutationHandle;

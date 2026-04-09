@@ -13,13 +13,11 @@ const mockFetch = jest.fn<typeof fetch>();
 
 beforeEach(() => {
   jest.clearAllMocks();
-  // @ts-ignore
-  global.fetch = mockFetch;
+  globalThis.fetch = mockFetch;
 });
 
 afterEach(() => {
-  // @ts-ignore
-  delete global.fetch;
+  Reflect.deleteProperty(globalThis, 'fetch');
 });
 
 import { translateToChinese } from '../services/translateService';

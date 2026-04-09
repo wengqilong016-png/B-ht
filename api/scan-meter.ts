@@ -1,5 +1,6 @@
-import { createAIClient, getVisionModel } from './_lib/aiClient.js';
 import { SCAN_METER_ERROR_CODES } from '../types/scanMeter';
+
+import { createAIClient, getVisionModel } from './_lib/aiClient.js';
 
 const stripJsonFence = (value: string) =>
   value

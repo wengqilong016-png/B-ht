@@ -1,7 +1,10 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import { act, renderHook } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { act, renderHook } from '@testing-library/react';
 import React, { PropsWithChildren } from 'react';
+
+import { useSupabaseMutations } from '../hooks/useSupabaseMutations';
+
 import type { DailySettlement, Driver, Transaction, User } from '../types';
 
 const mockEnqueueTransaction = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -85,7 +88,6 @@ jest.mock('../services/localDB', () => ({
   },
 }));
 
-import { useSupabaseMutations } from '../hooks/useSupabaseMutations';
 
 function makeWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: PropsWithChildren) {

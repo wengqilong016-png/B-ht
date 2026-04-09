@@ -1,28 +1,30 @@
-import React, { useMemo, useState, useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Receipt } from 'lucide-react';
-import { Driver, Location, DailySettlement, MonthlyPayroll, Transaction, TRANSLATIONS } from '../../types';
-import DriverManagement from '../driver-management';
-import DashboardTabs from './DashboardTabs';
-import OverviewTab from './OverviewTab';
-import TrackingTab from './TrackingTab';
-import SitesTab from './SitesTab';
-import SettlementTab from './SettlementTab';
-import AiLogsTab from './AiLogsTab';
-import PayrollActionModal from './PayrollActionModal';
-import { useDashboardData } from './hooks/useDashboardData';
+import React, { useMemo, useState, useEffect } from 'react';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
-import { getTodayLocalDate } from '../../utils/dateUtils';
 import { useMutations } from '../../contexts/MutationContext';
+import { useToast } from '../../contexts/ToastContext';
 import {
   cancelMonthlyPayroll,
   createMonthlyPayroll,
   fetchMonthlyPayrolls,
   markMonthlyPayrollPaid,
 } from '../../repositories/monthlyPayrollRepository';
-import { useToast } from '../../contexts/ToastContext';
+import { Driver, Location, DailySettlement, MonthlyPayroll, Transaction, TRANSLATIONS } from '../../types';
+import { getTodayLocalDate } from '../../utils/dateUtils';
+import DriverManagement from '../driver-management';
 import PageErrorBoundary from '../PageErrorBoundary';
+
+import AiLogsTab from './AiLogsTab';
+import DashboardTabs from './DashboardTabs';
+import { useDashboardData } from './hooks/useDashboardData';
+import OverviewTab from './OverviewTab';
+import PayrollActionModal from './PayrollActionModal';
+import SettlementTab from './SettlementTab';
+import SitesTab from './SitesTab';
+import TrackingTab from './TrackingTab';
 
 export interface DashboardProps {
   onNavigate?: (view: any) => void;

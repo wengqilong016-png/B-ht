@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
 import { Download, X, Sparkles } from 'lucide-react';
+import React, { useState } from 'react';
+
 import { useAppUpdateCheck } from '../hooks/useAppUpdateCheck';
 
 interface Props {

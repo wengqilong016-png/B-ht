@@ -1,8 +1,11 @@
-import React from 'react';
 import { TrendingUp, AlertCircle, Pencil, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
-import { FleetStats, DriverWithStats } from './hooks/useDriverManagement';
-import { SortField } from './DriverToolbar';
+import React from 'react';
+
 import { TRANSLATIONS } from '../../types';
+
+import { SortField } from './DriverToolbar';
+import { FleetStats, DriverWithStats } from './hooks/useDriverManagement';
+
 
 interface SortIndicatorProps {
   column: SortField;

@@ -1,6 +1,8 @@
 import { describe, expect, it } from '@jest/globals';
+
 import { calculateAdminApprovalBadge, isDashboardBackedAdminView } from '../admin/adminShellViewState';
 import { resolveCurrentDriver } from '../driver/driverShellViewState';
+
 import type { DailySettlement, Driver, Transaction } from '../types';
 
 describe('shell view state helpers', () => {

@@ -1,11 +1,13 @@
 
-import React, { useState } from 'react';
 import { X, Lock, Mail, Phone, CheckCircle, AlertCircle, Loader2, KeyRound, Clock, WifiOff } from 'lucide-react';
-import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
+import React, { useState } from 'react';
+
+import { useFormStatus } from '../hooks/useFormStatus';
 import { updatePassword } from '../repositories/authRepository';
 import { updateDriverPhone } from '../repositories/driverRepository';
 import { updateUserEmail } from '../services/authService';
-import { useFormStatus } from '../hooks/useFormStatus';
+import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
+
 import { StatusIcon as StatusIconComponent } from './common/StatusIcon';
 
 const isPasswordStrong = (password: string): boolean => {

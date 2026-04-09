@@ -13,8 +13,9 @@
  * for later sync. This service only handles the online path.
  */
 
-import { Transaction } from '../types';
 import { supabase } from '../supabaseClient';
+import { Transaction } from '../types';
+
 import { persistEvidencePhotoUrl } from './evidenceStorage';
 
 /**

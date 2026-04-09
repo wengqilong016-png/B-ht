@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
 import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+
+import { useConfirm } from '../../contexts/ConfirmContext';
+import { useToast } from '../../contexts/ToastContext';
+import { logFinanceAuditBatch } from '../../services/financeAuditService';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
 import { getLocationDeletionDiagnostics, normalizeMachineId } from '../../utils/locationWorkflow';
-import { useToast } from '../../contexts/ToastContext';
-import { useConfirm } from '../../contexts/ConfirmContext';
-import { logFinanceAuditBatch } from '../../services/financeAuditService';
 
 interface SitesTabProps {
   managedLocations: Location[];

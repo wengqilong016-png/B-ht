@@ -1,25 +1,26 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Location, Driver, Transaction, DailySettlement, AILog, User, CONSTANTS } from '../types';
+
 import { enqueueTransaction, flushQueue, reportQueueHealthToServer, resetRetryBackoff } from '../offlineQueue';
-import { submitCollectionV2 } from '../services/collectionSubmissionService';
-import { getTransactionQueryScope, getSettlementQueryScope } from '../services/supabaseRoleScope';
-import { stripClientFields } from '../utils/stripClientFields';
-import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
-import { deleteDriverAccount } from '../services/driverManagementService';
-import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
+import { insertAiLog } from '../repositories/aiLogRepository';
 import {
   approveExpenseRequest as repoApproveExpenseRequest,
   approvePayoutRequest as repoApprovePayoutRequest,
   approveResetRequest as repoApproveResetRequest,
   reviewAnomalyTransaction as repoReviewAnomalyTransaction,
 } from '../repositories/approvalRepository';
+import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
+import { upsertLocations, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
 import { createPayoutRequest, createResetRequest } from '../repositories/requestRepository';
-import { upsertTransaction } from '../repositories/transactionRepository';
 import { createSettlement as repoCreateSettlement, reviewSettlement as repoReviewSettlement } from '../repositories/settlementRepository';
-import { insertAiLog } from '../repositories/aiLogRepository';
-import { supabase } from '../supabaseClient';
-import { shouldApplySettlementDriverCoinUpdate } from '../utils/settlementRules';
+import { upsertTransaction } from '../repositories/transactionRepository';
+import { submitCollectionV2 } from '../services/collectionSubmissionService';
+import { deleteDriverAccount } from '../services/driverManagementService';
 import { localDB } from '../services/localDB';
+import { getTransactionQueryScope, getSettlementQueryScope } from '../services/supabaseRoleScope';
+import { supabase } from '../supabaseClient';
+import { Location, Driver, Transaction, DailySettlement, AILog, User, CONSTANTS } from '../types';
+import { shouldApplySettlementDriverCoinUpdate } from '../utils/settlementRules';
+import { stripClientFields } from '../utils/stripClientFields';
 
 export function useSupabaseMutations(
   isOnline: boolean,

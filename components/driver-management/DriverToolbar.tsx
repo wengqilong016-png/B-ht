@@ -1,5 +1,5 @@
-import React from 'react';
 import { LayoutGrid, BarChart3, Plus, Search, SlidersHorizontal, ArrowUp, ArrowDown } from 'lucide-react';
+import React from 'react';
 
 export type SortField = 'name' | 'revenue' | 'debt' | 'status';
 

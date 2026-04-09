@@ -1,5 +1,5 @@
-import { CONSTANTS, Location } from '../types';
 import { supabase } from '../supabaseClient';
+import { CONSTANTS, Location } from '../types';
 
 export type FinanceCalculationSource = 'local' | 'server';
 

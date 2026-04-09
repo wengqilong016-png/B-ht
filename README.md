@@ -161,11 +161,29 @@ All repository changes must pass:
 
 ```bash
 npm run typecheck   # TypeScript type check
-npm run test:ci     # Jest strict mode (338 unit tests — must not be empty)
+npm run lint        # ESLint for TypeScript / React sources
+npm run test:ci     # Jest strict mode (must not be empty)
+npm run test:coverage:ci  # Jest coverage report + coverage gate
+npm run security:audit    # npm audit (high severity and above)
 npm run build       # Vite production build
 ```
 
 `npm test` (without `:ci`) is the local-friendly alias that allows zero tests during ad hoc development.
+
+Coverage enforcement now targets the repository's **core unit-testable code surface**: services, reusable hooks, utilities, repositories, shared types, `offlineQueue.ts`, `supabaseClient.ts`, and `i18n/index.ts`. The current gate is **80% lines/statements** on that core surface, while heavier integration-oriented modules (for example AI-heavy hooks, Supabase data/mutation hooks, offline sync loop, and GPS capture runtime hooks) remain exercised through targeted tests and CI, but are not yet part of the unit coverage threshold.
+
+## CI / merge gate
+
+- `.github/workflows/ci.yml` runs **typecheck, lint, security audit, coverage-tested Jest, Playwright E2E, and production build** on pushes and pull requests to `main`.
+- `.github/workflows/codeql.yml` runs GitHub CodeQL analysis for JavaScript/TypeScript.
+- `.github/dependabot.yml` keeps npm and GitHub Actions dependencies up to date.
+
+To make these checks mandatory before merge, configure **Branch protection** for `main` in GitHub:
+
+1. Require a pull request before merging.
+2. Require status checks to pass before merging.
+3. Select the CI checks you want enforced once the workflows have run at least once.
+4. Optionally require branches to be up to date before merging.
 
 ---
 
@@ -173,6 +191,7 @@ npm run build       # Vite production build
 
 | File | Contents |
 |------|---------|
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, quality commands, branch-protection checklist, and PR expectations |
 | [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Environment variables, Vercel setup, Supabase migration deployment |
 | [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Operator & support procedures (daily ops, offline replay, fleet diagnostics) |
 | [`docs/MOBILE_BUILD_GUIDE.md`](docs/MOBILE_BUILD_GUIDE.md) | Android APK and iOS build steps via Capacitor |

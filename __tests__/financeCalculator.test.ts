@@ -11,6 +11,12 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+
+import {
+  calculateCollectionFinanceLocal,
+  calculateCollectionFinancePreview,
+  CollectionFinanceInput,
+} from '../services/financeCalculator';
 import { CONSTANTS, type Location } from '../types';
 
 // ── Supabase mock ─────────────────────────────────────────────────────────────
@@ -25,12 +31,6 @@ function asBuilder(val: unknown) {
 jest.mock('../supabaseClient', () => ({
   supabase: { rpc: (...args: unknown[]) => asBuilder(mockRpc(...args)) },
 }));
-
-import {
-  calculateCollectionFinanceLocal,
-  calculateCollectionFinancePreview,
-  CollectionFinanceInput,
-} from '../services/financeCalculator';
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 

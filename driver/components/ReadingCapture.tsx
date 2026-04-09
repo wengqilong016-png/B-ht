@@ -1,9 +1,12 @@
-import React, { useRef, useEffect } from 'react';
 import { Camera, CheckCircle2, ArrowRight, RotateCcw, AlertTriangle, Satellite, ChevronRight, WifiOff } from 'lucide-react';
-import { useGpsCapture } from '../hooks/useGpsCapture';
-import WizardStepBar from './WizardStepBar';
-import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
+import React, { useRef, useEffect } from 'react';
+
 import { Location, Driver, TRANSLATIONS, AILog } from '../../types';
+import { useGpsCapture } from '../hooks/useGpsCapture';
+
+import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
+import WizardStepBar from './WizardStepBar';
+
 import type { AIReviewData } from '../hooks/useCollectionDraft';
 
 interface ReadingCaptureProps {

@@ -1,9 +1,10 @@
 import { useState, useCallback } from 'react';
-import { type Transaction } from '../types';
+
 import {
   orchestrateCollectionSubmission,
   type OrchestrateCollectionSubmissionInput,
 } from '../services/collectionSubmissionOrchestrator';
+import { type Transaction } from '../types';
 
 /**
  * Discriminated-union state exposed by useCollectionSubmission.

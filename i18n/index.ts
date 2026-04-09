@@ -1,5 +1,5 @@
-import { zh } from './zh';
 import { sw } from './sw';
+import { zh } from './zh';
 
 export type Lang = 'zh' | 'sw';
 

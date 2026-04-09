@@ -1,5 +1,5 @@
-import React from 'react';
 import { CheckCircle2 } from 'lucide-react';
+import React from 'react';
 
 // Step numbers start at 2 because step 1 (machine selection) has its own
 // full-page layout without a progress bar.

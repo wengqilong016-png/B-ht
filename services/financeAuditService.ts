@@ -6,6 +6,7 @@
  */
 
 import { supabase } from '../supabaseClient';
+
 import type { FinanceAuditLog, FinanceAuditEventType } from '../types';
 
 // ── Write ────────────────────────────────────────────────────────────────────

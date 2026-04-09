@@ -1,5 +1,5 @@
-import React from 'react';
 import { MapPin, AlertTriangle } from 'lucide-react';
+import React from 'react';
 
 interface State {
   hasError: boolean;

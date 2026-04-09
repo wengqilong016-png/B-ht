@@ -1,9 +1,11 @@
 
-import React, { useState, useEffect } from 'react';
 import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown } from 'lucide-react';
-import { User as UserType, TRANSLATIONS } from '../types';
-import { checkDbHealth, envVarsMissing, supabase } from '../supabaseClient';
+import React, { useState, useEffect } from 'react';
+
 import { fetchCurrentUserProfile, signInWithEmailPassword, signOutCurrentUser } from '../services/authService';
+import { checkDbHealth, envVarsMissing, supabase } from '../supabaseClient';
+import { User as UserType, TRANSLATIONS } from '../types';
+
 import EnvMissingErrorPage from './EnvMissingErrorPage';
 
 interface LoginProps {

@@ -6,7 +6,6 @@
  * verifying cross-module interactions with mocked Supabase.
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { makeLocation, makeDriver, resetFixtureCounter } from '../helpers/fixtures';
 
 // ── Mock Supabase client ──────────────────────────────────────────────────
 const mockRpc = jest.fn<() => Promise<{ data: unknown; error: unknown }>>();
@@ -56,6 +55,7 @@ import {
   buildCollectionSubmissionInput,
   type OrchestrateCollectionSubmissionInput,
 } from '../../services/collectionSubmissionOrchestrator';
+import { makeLocation, makeDriver, resetFixtureCounter } from '../helpers/fixtures';
 
 function makeOrchestratorInput(
   overrides: Partial<OrchestrateCollectionSubmissionInput> = {},

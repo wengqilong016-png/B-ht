@@ -1,10 +1,11 @@
-
+import L from 'leaflet';
+import { Clock, Navigation, Route, ShieldCheck } from 'lucide-react';
 import React, { Suspense, lazy, useEffect, useMemo, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, Polyline } from 'react-leaflet';
-import L from 'leaflet';
+
 import 'leaflet/dist/leaflet.css';
 import { Driver, Location, Transaction, TRANSLATIONS } from '../types';
-import { Navigation, Clock, ShieldCheck, Route } from 'lucide-react';
+
 import { MapErrorBoundary, MapLoadingFallback } from './MapErrorBoundary';
 
 const RouteAuditMap = lazy(() => import('./RouteAuditMap'));

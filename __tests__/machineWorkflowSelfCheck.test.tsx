@@ -1,11 +1,14 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { Driver, Location, Transaction } from '../types';
-import MachineRegistrationForm from '../components/MachineRegistrationForm';
+import React from 'react';
+
+
 import SitesTab from '../components/dashboard/SitesTab';
-import { ToastProvider } from '../contexts/ToastContext';
+import MachineRegistrationForm from '../components/MachineRegistrationForm';
 import { ConfirmProvider } from '../contexts/ConfirmContext';
+import { ToastProvider } from '../contexts/ToastContext';
+
+import type { Driver, Location, Transaction } from '../types';
 
 function withProviders(ui: React.ReactElement) {
   return (

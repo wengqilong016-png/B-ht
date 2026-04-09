@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, jest } from '@jest/globals';
-import React from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import type { User } from '../types';
+import React from 'react';
+
 import AppWithBoundary from '../App';
+
+import type { User } from '../types';
+
 
 const mockUseSupabaseData = jest.fn();
 const mockUseSupabaseMutations = jest.fn();

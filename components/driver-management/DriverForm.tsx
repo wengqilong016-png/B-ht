@@ -1,10 +1,12 @@
-import React from 'react';
 import {
   User, Phone, Save, X, Truck,
   ShieldCheck, Percent, Loader2,
   Banknote, Receipt, Coins, MapPin, ToggleLeft, ToggleRight
 } from 'lucide-react';
+import React from 'react';
+
 import { Location } from '../../types';
+
 import InputField from './InputField';
 
 const MIN_PASSWORD_LENGTH = 8;

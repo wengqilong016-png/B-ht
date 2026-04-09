@@ -1,19 +1,21 @@
 
-import React, { useState, useMemo } from 'react';
 import { 
   ShieldCheck, Building2, User,
   Info, HandCoins, X, Coins, Wallet, 
   Loader2, CheckCircle2, AlertCircle,
   CreditCard, PieChart, Check, Pencil, Save
 } from 'lucide-react';
-import { Driver, Location, TRANSLATIONS } from '../types';
+import React, { useState, useMemo } from 'react';
+
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 import { logFinanceAudit, logFinanceAuditBatch } from '../services/financeAuditService';
+import { Driver, Location, TRANSLATIONS } from '../types';
+
 import FinanceAuditPanel from './dashboard/FinanceAuditPanel';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+ 
 interface DebtManagerProps {}
 
 interface DriverEditFormState {

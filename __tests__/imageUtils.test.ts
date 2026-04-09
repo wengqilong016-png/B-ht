@@ -4,7 +4,7 @@
  * Tests for utils/imageUtils.ts and driver/utils/imageOptimization.ts
  */
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { getOptimizedImageUrl, compressAndResizeImage } from '../utils/imageUtils';
+
 import {
   compressCanvasImage,
   getOptimalVideoConstraints,
@@ -14,6 +14,7 @@ import {
   clearCanvasMemory,
   getMinimumAICallInterval,
 } from '../utils/imageOptimization';
+import { getOptimizedImageUrl, compressAndResizeImage } from '../utils/imageUtils';
 
 // ── getOptimizedImageUrl ──────────────────────────────────────────────────────
 

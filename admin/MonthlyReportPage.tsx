@@ -1,3 +1,4 @@
+import { CalendarDays, TrendingUp, Users, MapPin, DollarSign, Download, Building2 } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 import {
   BarChart,
@@ -10,7 +11,7 @@ import {
   Legend,
   type TooltipProps,
 } from 'recharts';
-import { CalendarDays, TrendingUp, Users, MapPin, DollarSign, Download, Building2 } from 'lucide-react';
+
 import { useAppData } from '../contexts/DataContext';
 
 interface MonthlyStats {

@@ -1,6 +1,7 @@
 /** Pure functions for reading and writing the `drivers` table. */
 
 import { supabase } from '../supabaseClient';
+
 import type { Driver } from '../types/models';
 
 const DRIVER_FIELDS = [

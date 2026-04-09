@@ -5,6 +5,7 @@
  */
 import { describe, it, expect, beforeEach, afterEach } from '@jest/globals';
 import { renderHook } from '@testing-library/react';
+
 import { useDevicePerformance } from '../hooks/useDevicePerformance';
 
 // Track original descriptor so we can restore it after each test

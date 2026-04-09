@@ -1,4 +1,5 @@
 import * as idb from 'idb-keyval';
+
 import { CONSTANTS } from '../types';
 
 export const localDB = {

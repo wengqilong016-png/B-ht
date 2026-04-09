@@ -1,10 +1,12 @@
 import { useEffect, useReducer, useRef } from 'react';
-import { User } from '../types';
-import { supabase } from '../supabaseClient';
+
 import {
   restoreCurrentUserFromSession,
   signOutCurrentUser,
 } from '../services/authService';
+import { supabase } from '../supabaseClient';
+import { User } from '../types';
+
 import { writeCachedUser, readCachedUser, clearCachedUser } from './useAuthPersistence';
 
 // ─── Types ────────────────────────────────────────────────────────────────────

@@ -1,9 +1,10 @@
-import React, { useRef, useState } from 'react';
 import { ArrowRight, RefreshCw, Camera, CheckCircle2 } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+
+import { useToast } from '../../contexts/ToastContext';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
 import { createResetRequestTransaction } from '../../utils/transactionBuilder';
-import { useToast } from '../../contexts/ToastContext';
 
 interface ResetRequestProps {
   location: Location;

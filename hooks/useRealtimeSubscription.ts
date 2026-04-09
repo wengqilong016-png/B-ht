@@ -19,10 +19,11 @@
  * subscribe to all four channels.
  */
 
-import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '../supabaseClient';
+import { useEffect, useState } from 'react';
+
 import { createRealtimeInvalidator } from '../services/realtimeInvalidation';
+import { supabase } from '../supabaseClient';
 
 export type RealtimeStatus = 'connected' | 'disconnected' | 'reconnecting';
 

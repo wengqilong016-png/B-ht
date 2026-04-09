@@ -5,7 +5,9 @@
  * covered by __tests__/types.test.ts.
  */
 import { describe, it, expect } from '@jest/globals';
+
 import { getLocationField } from '../types';
+
 import type { Location } from '../types';
 
 // ── getLocationField ─────────────────────────────────────────────────────────

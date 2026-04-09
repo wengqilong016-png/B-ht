@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
+
 import { Transaction } from '../../types';
 
 const DRAFT_STORAGE_KEY = 'bahati_collection_draft';
@@ -71,6 +72,10 @@ export function useCollectionDraft() {
       // Exclude photoData and aiReviewData from localStorage persistence
       // to avoid hitting the ~5MB quota (photos can be several MB each).
       const toSave = { ...d, photoData: null, aiReviewData: null };
+      if (JSON.stringify(toSave) === JSON.stringify(EMPTY_DRAFT)) {
+        localStorage.removeItem(DRAFT_STORAGE_KEY);
+        return;
+      }
       localStorage.setItem(DRAFT_STORAGE_KEY, JSON.stringify(toSave));
     } catch { /* ignore quota errors */ }
   }, []);

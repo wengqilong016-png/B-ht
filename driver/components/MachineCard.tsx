@@ -1,5 +1,6 @@
-import React, { useRef, useState } from 'react';
 import { ChevronRight, Lock, RefreshCw, Wallet, UserPen, Camera, X, Save, Loader2, Navigation } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+
 import { Location, CONSTANTS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
 

@@ -5,6 +5,7 @@
  */
 
 import { supabase } from '../supabaseClient';
+
 import type { Driver } from '../types/models';
 
 export type CreateDriverResult =

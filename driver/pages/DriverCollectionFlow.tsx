@@ -1,27 +1,28 @@
-import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { Location, Transaction, CONSTANTS } from '../../types';
-import { getTodayLocalDate } from '../../utils/dateUtils';
+import { useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+
+import MachineRegistrationForm from '../../components/MachineRegistrationForm';
+import { useAuth } from '../../contexts/AuthContext';
+import { useAppData } from '../../contexts/DataContext';
+import { useMutations } from '../../contexts/MutationContext';
+import { getQueueHealthSummary } from '../../offlineQueue';
 import {
   calculateCollectionFinanceLocal,
   calculateCollectionFinancePreview,
   type FinanceCalculationResult,
 } from '../../services/financeCalculator';
+import { localDB } from '../../services/localDB';
+import { Location, Transaction, CONSTANTS } from '../../types';
+import { getTodayLocalDate } from '../../utils/dateUtils';
+import FinanceSummary from '../components/FinanceSummary';
+import MachineSelector from '../components/MachineSelector';
+import PayoutRequest from '../components/PayoutRequest';
+import ReadingCapture from '../components/ReadingCapture';
+import ResetRequest from '../components/ResetRequest';
+import SubmitReview from '../components/SubmitReview';
+import { resolveCurrentDriver } from '../driverShellViewState';
 import { useCollectionDraft } from '../hooks/useCollectionDraft';
 import { useGpsCapture } from '../hooks/useGpsCapture';
-import MachineSelector from '../components/MachineSelector';
-import ReadingCapture from '../components/ReadingCapture';
-import FinanceSummary from '../components/FinanceSummary';
-import SubmitReview from '../components/SubmitReview';
-import ResetRequest from '../components/ResetRequest';
-import PayoutRequest from '../components/PayoutRequest';
-import MachineRegistrationForm from '../../components/MachineRegistrationForm';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAppData } from '../../contexts/DataContext';
-import { useMutations } from '../../contexts/MutationContext';
-import { resolveCurrentDriver } from '../driverShellViewState';
-import { useQueryClient } from '@tanstack/react-query';
-import { localDB } from '../../services/localDB';
-import { getQueueHealthSummary } from '../../offlineQueue';
 
 interface DriverCollectionFlowProps {
   onRegisterMachine?: (location: Location) => Promise<void>;
@@ -42,6 +43,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const locations = filteredLocations;
   const allTransactions = filteredTransactions;
   const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
+  const currentDriverId = currentDriver?.id ?? null;
 
   const onLogAI = (log: Parameters<typeof logAI.mutate>[0]) => logAI.mutate(log);
   const onSubmit = async (tx: Transaction) => {
@@ -119,7 +121,6 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     }
   };
 
-  if (!currentDriver) return null;
   const [step, setStep] = useState<FlowStep>('selection');
   const { draft, updateDraft, resetDraft } = useCollectionDraft();
 
@@ -146,16 +147,16 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   );
   const todayStr = useMemo(() => getTodayLocalDate(), []);
   const assignedLocations = useMemo(() => {
-    const mine = locations.filter((location) => location.assignedDriverId === currentDriver.id);
+    const mine = locations.filter((location) => location.assignedDriverId === currentDriverId);
     return mine.length > 0 ? mine : locations;
-  }, [locations, currentDriver.id]);
+  }, [currentDriverId, locations]);
   const visitedLocationIds = useMemo(() => {
     return new Set(
       allTransactions
-        .filter((tx) => tx.driverId === currentDriver.id && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection'))
+        .filter((tx) => tx.driverId === currentDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection'))
         .map((tx) => tx.locationId)
     );
-  }, [allTransactions, currentDriver.id, todayStr]);
+  }, [allTransactions, currentDriverId, todayStr]);
   const nextQueuedMachine = useMemo(() => {
     return assignedLocations
       .filter((location) => location.id !== draft.selectedLocId)
@@ -230,6 +231,8 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       updateDraft({ ownerRetention: Math.floor(revenue * rate).toString() });
     }
   }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining, draft.ownerRetention, financeResult.commission]);
+
+  if (!currentDriver) return null;
 
   const handleSelectMachine = (locId: string) => {
     updateDraft({

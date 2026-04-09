@@ -1,11 +1,12 @@
 
-import React, { useState, useMemo } from 'react';
 import { CheckCircle2, Filter, ChevronDown, WifiOff, AlertTriangle, Clock, Globe, Calculator, Search, BrainCircuit, ShieldAlert, Target, Sparkles, RefreshCw, CloudOff, XCircle } from 'lucide-react';
-import { Transaction, getDistance, TRANSLATIONS } from '../types';
+import React, { useState, useMemo } from 'react';
+
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { Transaction, getDistance, TRANSLATIONS } from '../types';
 
 interface TransactionHistoryProps {
   onAnalyze?: (txId: string) => void;

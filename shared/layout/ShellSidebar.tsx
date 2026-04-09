@@ -1,6 +1,8 @@
-import React from 'react';
 import { Crown } from 'lucide-react';
+import React from 'react';
+
 import SyncStatusPill from '../SyncStatusPill';
+
 import type { SyncStatus } from '../../hooks/useSyncStatus';
 
 export interface SidebarNavItem {

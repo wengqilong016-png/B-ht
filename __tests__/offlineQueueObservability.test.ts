@@ -1,6 +1,8 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
-import type { CollectionSubmissionInput, CollectionSubmissionResult } from '../services/collectionSubmissionService';
+
 import { MAX_RETRIES } from '../offlineQueue';
+
+import type { CollectionSubmissionInput, CollectionSubmissionResult } from '../services/collectionSubmissionService';
 
 function makeTx(overrides: Partial<Record<string, unknown>> = {}): any {
   return {

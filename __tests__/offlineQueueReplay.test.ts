@@ -12,6 +12,7 @@
  *   - classifyError correctly categorizes error messages
  */
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
+
 import type { CollectionSubmissionInput, CollectionSubmissionResult } from '../services/collectionSubmissionService';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

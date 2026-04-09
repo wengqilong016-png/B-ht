@@ -3,6 +3,7 @@
  * Supports both OpenAI and Gemini (via OpenAI-compatible endpoint).
  */
 import OpenAI from 'openai';
+
 import { readEnv } from './readEnv.js';
 
 export interface AIClientConfig {

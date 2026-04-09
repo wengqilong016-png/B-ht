@@ -1,3 +1,4 @@
+import { Geolocation } from '@capacitor/geolocation';
 import { describe, it, expect, beforeEach, jest } from '@jest/globals';
 
 // Mock Capacitor Geolocation
@@ -10,8 +11,6 @@ jest.mock('@capacitor/geolocation', () => ({
     checkPermissions: jest.fn(),
   },
 }));
-
-import { Geolocation } from '@capacitor/geolocation';
 
 describe('Geolocation Service', () => {
   beforeEach(() => {

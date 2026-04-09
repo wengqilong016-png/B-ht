@@ -1,6 +1,6 @@
+import { supabase } from '../supabaseClient';
 import { User } from '../types';
 import { PGRST_NO_ROWS } from '../types/constants';
-import { supabase } from '../supabaseClient';
 
 type UserProfileRow = {
   role: string;

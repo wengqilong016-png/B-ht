@@ -1,8 +1,12 @@
-import React from 'react';
 import { ArrowRight, HandCoins, Banknote, Coins, Trophy, ChevronRight, ShieldAlert } from 'lucide-react';
-import WizardStepBar from './WizardStepBar';
-import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
+import React from 'react';
+
 import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
+
+import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
+import WizardStepBar from './WizardStepBar';
+
+
 import type { FinanceCalculationSource } from '../../services/financeCalculator';
 
 // Tip anomaly thresholds: warn if tip > TIP_WARNING_THRESHOLD and revenue < REVENUE_WARNING_THRESHOLD

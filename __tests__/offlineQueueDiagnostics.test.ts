@@ -8,6 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach, jest } from '@jest/globals';
+
 import { MAX_RETRIES } from '../offlineQueue';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

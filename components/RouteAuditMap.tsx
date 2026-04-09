@@ -1,9 +1,10 @@
+import L from 'leaflet';
+import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 import React, { useMemo } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Circle } from 'react-leaflet';
-import L from 'leaflet';
+
 import 'leaflet/dist/leaflet.css';
 import { Driver, Location, Transaction, TRANSLATIONS } from '../types';
-import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react';
 
 interface RouteAuditMapProps {
   driver: Driver;

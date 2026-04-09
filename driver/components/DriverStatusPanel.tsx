@@ -1,13 +1,14 @@
-import React from 'react';
 import {
   User, Truck, Banknote, Percent, Clock,
   CheckCircle, XCircle, TrendingUp, AlertCircle, MapPin
 } from 'lucide-react';
-import { TRANSLATIONS } from '../../types';
+import React from 'react';
+
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
+import { TRANSLATIONS } from '../../types';
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+ 
 interface DriverStatusPanelProps {}
 
 const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {

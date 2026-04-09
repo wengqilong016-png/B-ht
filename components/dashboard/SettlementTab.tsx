@@ -1,9 +1,10 @@
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Calculator, CheckCircle2, Banknote, ThumbsUp, AlertTriangle, ShieldAlert, RefreshCw, Wallet, ChevronDown, ChevronUp, ScanEye, Loader2 } from 'lucide-react';
-import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';
-import { getScanMeterErrorMessage, scanMeterFromBase64 } from '../../services/scanMeterService';
-import { getOptimizedImageUrl } from '../../utils/imageUtils';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+
 import { useToast } from '../../contexts/ToastContext';
+import { getScanMeterErrorMessage, scanMeterFromBase64 } from '../../services/scanMeterService';
+import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';
+import { getOptimizedImageUrl } from '../../utils/imageUtils';
 
 const taskCard = 'bg-white rounded-2xl border p-4 shadow-[0_10px_28px_rgba(15,23,42,0.04)]';
 const pill = 'inline-flex items-center rounded-full px-2 py-1 text-caption font-black uppercase tracking-wide';

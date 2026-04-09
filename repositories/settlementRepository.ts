@@ -1,6 +1,7 @@
 /** Pure functions for reading and writing the `daily_settlements` table. */
 
 import { supabase } from '../supabaseClient';
+
 import type { DailySettlement } from '../types/models';
 
 const SETTLEMENT_FIELDS = [

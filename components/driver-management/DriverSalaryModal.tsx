@@ -1,7 +1,8 @@
-import React from 'react';
 import { X, Calculator, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
-import { TRANSLATIONS } from '../../types';
+import React from 'react';
+
 import { useAuth } from '../../contexts/AuthContext';
+import { TRANSLATIONS } from '../../types';
 
 interface SalaryData {
   driver: { name: string };

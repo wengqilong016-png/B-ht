@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
 import { ArrowRight, Wallet } from 'lucide-react';
+import React, { useState } from 'react';
+
+import { useToast } from '../../contexts/ToastContext';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { createPayoutRequestTransaction } from '../../utils/transactionBuilder';
-import { useToast } from '../../contexts/ToastContext';
 
 interface PayoutRequestProps {
   location: Location;

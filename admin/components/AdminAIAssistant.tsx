@@ -1,10 +1,11 @@
-import React, { useState, useRef, useEffect } from 'react';
 import {
   Bot, X, Send, Loader2, AlertTriangle, AlertCircle,
   Info, Trash2, ChevronRight, Sparkles, RefreshCw,
 } from 'lucide-react';
-import { useAdminAI, type AdminAIAlert } from '../../hooks/useAdminAI';
+import React, { useState, useRef, useEffect } from 'react';
+
 import { useAppData } from '../../contexts/DataContext';
+import { useAdminAI, type AdminAIAlert } from '../../hooks/useAdminAI';
 
 const QUICK_PROMPTS = [
   '今日运营状况总结',

@@ -1,7 +1,9 @@
-import React from 'react';
 import { describe, expect, it, jest } from '@jest/globals';
 import { fireEvent, render, screen } from '@testing-library/react';
+import React from 'react';
+
 import SyncStatusPill from '../shared/SyncStatusPill';
+
 import type { SyncStatus } from '../hooks/useSyncStatus';
 
 function makeSyncStatus(overrides: Partial<SyncStatus> = {}): SyncStatus {

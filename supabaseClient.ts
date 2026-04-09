@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
+
 import FRONTEND_ENV from './env';
 
 // Supabase credentials MUST be provided via environment variables.

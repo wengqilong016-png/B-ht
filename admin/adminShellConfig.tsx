@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   BarChart2,
   CheckSquare,
@@ -11,6 +10,7 @@ import {
   Store,
   Users,
 } from 'lucide-react';
+import React from 'react';
 
 export type AdminView =
   | 'dashboard'

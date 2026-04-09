@@ -1,9 +1,11 @@
 import React, { lazy } from 'react';
-import type { Location } from '../types';
-import type { DriverView } from './driverShellConfig';
+
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
+
+import type { DriverView } from './driverShellConfig';
+import type { Location } from '../types';
 
 const Dashboard = lazy(() => import('../components/dashboard/DashboardPage'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));

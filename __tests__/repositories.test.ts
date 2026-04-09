@@ -58,12 +58,12 @@ jest.mock('../supabaseClient', () => ({
 }));
 
 // Import repos after mock is in place
-import { fetchDrivers, upsertDrivers, deleteDrivers, updateDriverPhone, updateDriverCoins } from '../repositories/driverRepository';
-import { fetchLocations, upsertLocations, deleteLocations } from '../repositories/locationRepository';
-import { fetchTransactions, upsertTransaction } from '../repositories/transactionRepository';
-import { fetchSettlements, upsertSettlement } from '../repositories/settlementRepository';
 import { insertAiLog, fetchAiLogs } from '../repositories/aiLogRepository';
 import { updatePassword, signOut } from '../repositories/authRepository';
+import { fetchDrivers, upsertDrivers, deleteDrivers, updateDriverPhone, updateDriverCoins } from '../repositories/driverRepository';
+import { fetchLocations, upsertLocations, deleteLocations } from '../repositories/locationRepository';
+import { fetchSettlements, upsertSettlement } from '../repositories/settlementRepository';
+import { fetchTransactions, upsertTransaction } from '../repositories/transactionRepository';
 
 beforeEach(() => {
   jest.clearAllMocks();

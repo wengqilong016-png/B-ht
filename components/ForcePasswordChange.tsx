@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
 import { Lock, Loader2, ShieldCheck } from 'lucide-react';
-import { User, TRANSLATIONS } from '../types';
+import React, { useState } from 'react';
+
 import { updatePassword } from '../repositories/authRepository';
 import { supabase } from '../supabaseClient';
+import { User, TRANSLATIONS } from '../types';
 
 const isPasswordStrong = (password: string): boolean => {
   return /[A-Z]/.test(password) && /[0-9]/.test(password) && password.length >= 8;

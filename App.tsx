@@ -1,24 +1,25 @@
-import React, { useCallback, useMemo, useState } from 'react';
 import { Loader2 } from 'lucide-react';
+import React, { useCallback, useMemo, useState } from 'react';
 
-import { useSupabaseData } from './hooks/useSupabaseData';
-import { useSupabaseMutations } from './hooks/useSupabaseMutations';
-import { useDevicePerformance } from './hooks/useDevicePerformance';
+import AppUpdateModal from './components/AppUpdateModal';
+import ForcePasswordChange from './components/ForcePasswordChange';
+import Login from './components/Login';
+import { AuthProvider, DataProvider, MutationProvider } from './contexts';
+import { ConfirmProvider } from './contexts/ConfirmContext';
+import { NotificationProvider } from './contexts/NotificationContext';
+import { ToastProvider, useToast } from './contexts/ToastContext';
+import { useAppUpdateCheck } from './hooks/useAppUpdateCheck';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
+import { useDevicePerformance } from './hooks/useDevicePerformance';
 import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
 import { useRealtimeSubscription } from './hooks/useRealtimeSubscription';
-import { useAppUpdateCheck } from './hooks/useAppUpdateCheck';
-import { NotificationProvider } from './contexts/NotificationContext';
+import { useSupabaseData } from './hooks/useSupabaseData';
+import { useSupabaseMutations } from './hooks/useSupabaseMutations';
 import AppRouterShell from './shared/AppRouterShell';
 import UpdatePrompt from './shared/UpdatePrompt';
-import AppUpdateModal from './components/AppUpdateModal';
-import { AuthProvider, DataProvider, MutationProvider } from './contexts';
-import { ToastProvider, useToast } from './contexts/ToastContext';
-import { ConfirmProvider } from './contexts/ConfirmContext';
-import Login from './components/Login';
-import ForcePasswordChange from './components/ForcePasswordChange';
-import type { User } from './types';
 import { TRANSLATIONS } from './types';
+
+import type { User } from './types';
 
 class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean; error: string }> {
   constructor(props: { children: React.ReactNode }) {

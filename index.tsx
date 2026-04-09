@@ -1,8 +1,9 @@
-import React from 'react';
-import ReactDOM from 'react-dom/client';
+import * as Sentry from '@sentry/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Analytics } from '@vercel/analytics/react';
-import * as Sentry from '@sentry/react';
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+
 import './styles.css';
 import App from './App';
 import FRONTEND_ENV from './env';

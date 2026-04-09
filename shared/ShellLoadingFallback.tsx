@@ -1,5 +1,5 @@
-import React from 'react';
 import { Loader2 } from 'lucide-react';
+import React from 'react';
 
 const ShellLoadingFallback: React.FC = () => (
   <div className="flex-1 flex flex-col items-center justify-center p-12">

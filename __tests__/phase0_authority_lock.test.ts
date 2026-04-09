@@ -9,9 +9,10 @@
  *   4. SECURITY DEFINER functions pin search_path = public, pg_temp.
  */
 
-import { describe, it, expect } from '@jest/globals';
 import * as fs   from 'fs';
 import * as path from 'path';
+
+import { describe, it, expect } from '@jest/globals';
 
 const ROOT = path.resolve(__dirname, '..');
 

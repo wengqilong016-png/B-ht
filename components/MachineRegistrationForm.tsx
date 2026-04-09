@@ -1,10 +1,11 @@
 
-import React, { useState, useRef } from 'react';
 import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+
+import { useToast } from '../contexts/ToastContext';
 import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
 import { compressAndResizeImage } from '../utils/imageUtils';
 import { normalizeMachineId } from '../utils/locationWorkflow';
-import { useToast } from '../contexts/ToastContext';
 
 interface MachineRegistrationFormProps {
   onSubmit: (location: Location) => Promise<void>;

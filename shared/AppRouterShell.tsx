@@ -1,5 +1,6 @@
-import React, { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
+import React, { Suspense } from 'react';
+
 import { useAuth } from '../contexts';
 
 const AppAdminShell = React.lazy(() => import('../admin/AppAdminShell'));

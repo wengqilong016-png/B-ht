@@ -1,11 +1,13 @@
-import React, { Suspense, lazy, useMemo, useState } from 'react';
 import {
   LogOut, Globe,
   Crown, Settings
 } from 'lucide-react';
-import { TRANSLATIONS } from '../types';
+import React, { Suspense, lazy, useMemo, useState } from 'react';
+
+import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../contexts/DataContext';
+import { useMutations } from '../contexts/MutationContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
-import ShellLoadingFallback from '../shared/ShellLoadingFallback';
 import {
   AppShell,
   ShellSidebar,
@@ -15,13 +17,13 @@ import {
   type SidebarNavItem,
   type MobileNavItem,
 } from '../shared/layout';
-import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/DataContext';
+import ShellLoadingFallback from '../shared/ShellLoadingFallback';
+import { TRANSLATIONS } from '../types';
 import { getTodayLocalDate } from '../utils/dateUtils';
-import { useMutations } from '../contexts/MutationContext';
+
+import DriverAIAssistPanel from './components/DriverAIAssistPanel';
 import { DRIVER_NAV_ITEMS, type DriverView } from './driverShellConfig';
 import DriverShellViewRenderer from './renderDriverShellView';
-import DriverAIAssistPanel from './components/DriverAIAssistPanel';
 
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 

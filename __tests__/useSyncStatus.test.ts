@@ -5,9 +5,11 @@
  */
 import { describe, it, expect, beforeEach } from '@jest/globals';
 import { renderHook, act } from '@testing-library/react';
+
 import { useSyncStatus } from '../hooks/useSyncStatus';
-import type { SyncMutationHandle } from '../hooks/useSyncStatus';
 import { getQueueHealthSummary } from '../offlineQueue';
+
+import type { SyncMutationHandle } from '../hooks/useSyncStatus';
 
 jest.mock('../offlineQueue', () => ({
   getQueueHealthSummary: jest.fn(async () => ({ pending: 0, retryWaiting: 0, deadLetter: 0 })),

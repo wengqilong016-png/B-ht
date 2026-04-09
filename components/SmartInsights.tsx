@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
 import { BrainCircuit, TrendingDown, TrendingUp, AlertTriangle, Zap, CalendarClock, DollarSign, Activity } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+
 import { Transaction, Location, Driver, TRANSLATIONS } from '../types';
 
 interface SmartInsightsProps {

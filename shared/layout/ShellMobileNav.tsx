@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
 import { MoreHorizontal, X } from 'lucide-react';
+import React, { useState } from 'react';
 
 export interface MobileNavItem {
   id: string;

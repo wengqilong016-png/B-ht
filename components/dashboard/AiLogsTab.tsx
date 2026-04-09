@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
 import { Search, ImageIcon, FileText, LayoutList, BrainCircuit } from 'lucide-react';
+import React, { useState } from 'react';
+
 import { AILog, TRANSLATIONS } from '../../types';
 
 interface AiLogsTabProps {
