@@ -238,6 +238,13 @@ All schema objects are created by `supabase/schema.sql`. To verify they exist:
 - [ ] Restore network.  Within 20 seconds the item should sync and disappear
       from the queue.
 
+**Authentication + profile bootstrap**
+- [ ] Open the login page with a provisioned admin or driver account.
+- [ ] Sign in with valid credentials.
+- [ ] Confirm no login error banner shows `Profile not found`, `Invalid role`, or their localized equivalents.
+- [ ] Confirm the app transitions into the authenticated shell instead of staying on the login form.
+- [ ] For driver accounts, confirm the driver workspace loads; for admin accounts, confirm the admin console loads.
+
 **Fleet-wide diagnostics (Stage 6)**
 - [ ] Open Admin → Fleet-Wide Diagnostics.
 - [ ] Confirm the active driver list is visible and no snapshots are stale.

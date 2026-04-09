@@ -2,7 +2,7 @@
  * e2e/app-navigation.spec.ts
  *
  * E2E tests for basic app navigation and rendering.
- * Tests run with VITE_DISABLE_AUTH=true so the driver picker / auth-free mode is used.
+ * Tests run with the normal auth gate enabled.
  */
 import { test, expect } from '@playwright/test';
 

@@ -3,8 +3,8 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for Bahati Jackpots E2E tests.
  *
- * Uses VITE_DISABLE_AUTH=true to bypass Supabase authentication
- * in test environments. Tests run against the local Vite dev server.
+ * Runs against the local Vite dev server with the real auth gate enabled.
+ * Individual specs can still mock Supabase responses with Playwright routes.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -49,11 +49,11 @@ export default defineConfig({
 
   /* Start the Vite dev server before running tests */
   webServer: {
-    command: 'npm run dev',
+    command: 'npm run dev -- --host 127.0.0.1 --port 3000',
     port: 3000,
     reuseExistingServer: !process.env.CI,
     env: {
-      VITE_DISABLE_AUTH: 'true',
+      VITE_DISABLE_AUTH: 'false',
       VITE_SUPABASE_URL: 'http://localhost:54321',
       VITE_SUPABASE_ANON_KEY: 'test-anon-key',
     },

@@ -15,9 +15,11 @@ const ShellFallback = () => (
 const AppRouterShell: React.FC = () => {
   const { currentUser } = useAuth();
   return (
-    <Suspense fallback={<ShellFallback />}>
-      {currentUser?.role === 'admin' ? <AppAdminShell /> : <AppDriverShell />}
-    </Suspense>
+    <div data-testid="authenticated-app-shell">
+      <Suspense fallback={<ShellFallback />}>
+        {currentUser?.role === 'admin' ? <AppAdminShell /> : <AppDriverShell />}
+      </Suspense>
+    </div>
   );
 };
 
