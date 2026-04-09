@@ -1,7 +1,6 @@
 import React, { lazy } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 
 import type { DriverView } from './driverShellConfig';
@@ -23,8 +22,7 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
   onSetView,
 }) => {
   const { activeDriverId } = useAuth();
-  const { filteredLocations } = useAppData();
-  const { updateLocations } = useMutations();
+  const { registerLocation } = useMutations();
 
   switch (view) {
     case 'collect':
@@ -32,10 +30,7 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
         <DriverCollectionFlow
           onRegisterMachine={async (location) => {
             const newLocation: Location = { ...location, isSynced: false, assignedDriverId: activeDriverId };
-            // Driver writes must only include driver-visible rows; using the
-            // unfiltered cache can include unauthorized rows from local fallback
-            // and trigger RLS rejection on upsert.
-            await updateLocations.mutateAsync([...filteredLocations, newLocation]);
+            await registerLocation.mutateAsync(newLocation);
           }}
         />
       );

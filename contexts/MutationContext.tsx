@@ -8,6 +8,7 @@ interface MutationContextValue {
   syncOfflineData: SyncMutationHandle;
   updateDrivers: UseMutationResult<unknown, unknown, Driver[], unknown>;
   updateLocations: UseMutationResult<unknown, unknown, Location[], unknown>;
+  registerLocation: UseMutationResult<unknown, unknown, Location, unknown>;
   deleteLocations: UseMutationResult<unknown, unknown, string[], unknown>;
   deleteDrivers: UseMutationResult<unknown, unknown, string[], unknown>;
   updateTransaction: UseMutationResult<unknown, unknown, { txId: string; updates: Partial<Transaction> }, unknown>;

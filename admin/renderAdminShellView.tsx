@@ -1,7 +1,6 @@
 import React, { lazy } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
-import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 
 import { mapAdminViewToDashboardTab } from './adminShellConfig';
@@ -27,8 +26,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
   onSetView,
 }) => {
   const { activeDriverId } = useAuth();
-  const { locations } = useAppData();
-  const { updateLocations } = useMutations();
+  const { registerLocation } = useMutations();
 
   if (isDashboardBackedAdminView(view)) {
     return (
@@ -48,7 +46,7 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
         <DriverCollectionFlow
           onRegisterMachine={async (location) => {
             const newLocation: Location = { ...location, isSynced: false, assignedDriverId: activeDriverId };
-            await updateLocations.mutateAsync([...locations, newLocation]);
+            await registerLocation.mutateAsync(newLocation);
           }}
         />
       );

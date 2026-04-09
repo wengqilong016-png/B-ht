@@ -165,6 +165,49 @@ export function useSupabaseMutations(
     }
   });
 
+  const registerLocation = useMutation({
+    onMutate: async (newLocation: Location) => {
+      await queryClient.cancelQueries({ queryKey: ['locations'] });
+      const previousLocations = queryClient.getQueryData<Location[]>(['locations']);
+      queryClient.setQueryData(['locations'], (old: Location[] = []) => {
+        const withoutExisting = old.filter((loc) => loc.id !== newLocation.id);
+        return [...withoutExisting, { ...newLocation, isSynced: false }];
+      });
+      return { previousLocations };
+    },
+    mutationFn: async (newLocation: Location) => {
+      if (!isOnline) {
+        throw new Error('当前处于离线状态，无法注册机器。请连接网络后重试。/ Offline — cannot register machine. Please reconnect and try again.');
+      }
+
+      const controller = new AbortController();
+      const timeoutMs = 20_000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        await upsertLocationsWithSignal(
+          [stripClientFields(newLocation as unknown as Record<string, unknown>) as Partial<Location>],
+          controller.signal,
+        );
+      } catch (error) {
+        if (controller.signal.aborted) {
+          throw new Error('注册请求超时（20 秒）。请检查网络后重试。/ Registration timed out (20s). Please check your network and try again.');
+        }
+        throw error;
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+    onError: (error, _variables, context) => {
+      if (context?.previousLocations !== undefined) {
+        queryClient.setQueryData(['locations'], context.previousLocations);
+      }
+      onMutationError?.(error);
+    },
+    onSettled: () => {
+      if (isOnline) queryClient.invalidateQueries({ queryKey: ['locations'] });
+    }
+  });
+
   const deleteLocations = useMutation({
     onMutate: async (ids: string[]) => {
       await queryClient.cancelQueries({ queryKey: ['locations'] });
@@ -650,6 +693,7 @@ export function useSupabaseMutations(
     syncOfflineData,
     updateDrivers,
     updateLocations,
+    registerLocation,
     deleteLocations,
     deleteDrivers,
     updateTransaction,

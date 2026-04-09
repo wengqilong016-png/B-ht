@@ -35,6 +35,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [lastRegisteredMachine, setLastRegisteredMachine] = useState<Location | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -113,6 +114,8 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
   };
 
   const handleSubmit = async () => {
+    setSubmitError(null);
+
     const resolvedGps = gps ?? resolveManualGps();
     const normalizedMachineId = normalizeMachineId(machineId);
 
@@ -173,10 +176,17 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
         ...newLocation,
         createdAt: new Date().toISOString(),
       });
+      showToast(lang === 'zh' ? '机器注册成功' : 'Machine registered successfully', 'success');
       setLastRegisteredMachine(newLocation);
       setIsSuccess(true);
     } catch (error) {
       console.error('Machine registration failed:', error);
+      const detail = error instanceof Error ? error.message : String(error);
+      setSubmitError(
+        lang === 'zh'
+          ? `注册失败：${detail}`
+          : `Registration failed: ${detail}`,
+      );
       showToast(
         lang === 'zh'
           ? '机器注册失败，数据还没有保存到系统。请检查网络后重试。'
@@ -203,6 +213,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
     setCommissionRate('15');
     setIsSuccess(false);
     setLastRegisteredMachine(null);
+    setSubmitError(null);
   };
 
   if (isSuccess && lastRegisteredMachine) {
@@ -414,6 +425,11 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({ onSub
           {isSubmitting ? <Loader2 size={20} className="animate-spin" /> : <Save size={20} />} 
           {isSubmitting ? (lang === 'zh' ? '正在注册...' : 'Inasajili...') : (lang === 'zh' ? '完成注册' : 'Hifadhi Sasa')}
         </button>
+        {submitError && (
+          <p className="text-xs font-black text-rose-600 bg-rose-50 border border-rose-200 rounded-xl px-3 py-2">
+            {submitError}
+          </p>
+        )}
       </div>
     </div>
   );
