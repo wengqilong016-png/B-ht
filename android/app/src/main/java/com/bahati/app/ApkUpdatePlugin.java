@@ -7,11 +7,11 @@ import android.provider.Settings;
 
 import androidx.core.content.FileProvider;
 
-import com.getcapacitor.CapacitorPlugin;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.Plugin;
 import com.getcapacitor.PluginCall;
 import com.getcapacitor.PluginMethod;
+import com.getcapacitor.annotation.CapacitorPlugin;
 
 import java.io.BufferedInputStream;
 import java.io.File;
@@ -149,4 +149,3 @@ public class ApkUpdatePlugin extends Plugin {
     getContext().startActivity(intent);
   }
 }
-
