@@ -67,10 +67,19 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                 {lang === 'zh' ? '发现新版本' : 'Update Available'}
               </p>
-              <p className="text-lg font-black text-white">v{update.latestVersion}</p>
+              <p className="text-lg font-black text-white">
+                v{update.latestVersion}
+                {typeof update.latestVersionCode === 'number' ? ` (${update.latestVersionCode})` : ''}
+              </p>
               <p className="text-[10px] font-black uppercase tracking-widest text-slate-500">
                 {lang === 'zh' ? '当前版本' : 'Current'} v{currentVersion}
               </p>
+              {(update.latestTag || update.latestReleasedAt) && (
+                <p className="text-[10px] font-black uppercase tracking-widest text-slate-600">
+                  {update.latestTag ? `${update.latestTag}` : ''}
+                  {update.latestReleasedAt ? ` · ${update.latestReleasedAt}` : ''}
+                </p>
+              )}
             </div>
           </div>
           {update.releaseNotes && (

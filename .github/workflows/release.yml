@@ -165,11 +165,19 @@ jobs:
           git config user.email "github-actions[bot]@users.noreply.github.com"
           REPO="${{ github.repository }}"
           VERSION="${{ steps.version.outputs.version }}"
+          VERSION_CODE="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
+          GIT_SHA="${{ github.sha }}"
+          TAG="${{ github.event.release.tag_name }}"
+          RELEASED_AT="${{ github.event.release.published_at }}"
           APK_URL="https://github.com/${REPO}/releases/download/v${VERSION}/bahati-latest-release.apk"
           node -e "
             const fs = require('fs');
             fs.writeFileSync('public/version.json', JSON.stringify({
               version: '${VERSION}',
+              versionCode: Number('${VERSION_CODE}') || undefined,
+              gitSha: '${GIT_SHA}',
+              tag: '${TAG}',
+              releasedAt: '${RELEASED_AT}',
               apkUrl: '${APK_URL}',
               releaseNotes: 'v${VERSION} — 正式发布'
             }, null, 2) + '\n');

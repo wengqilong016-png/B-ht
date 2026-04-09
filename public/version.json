@@ -1,5 +1,9 @@
 {
   "version": "1.0.2",
+  "versionCode": 1,
+  "gitSha": "",
+  "tag": "",
+  "releasedAt": "",
   "apkUrl": "https://github.com/wengqilong016-png/B-ht/releases/latest/download/bahati-latest-release.apk",
   "releaseNotes": "v1.0.2 released"
 }

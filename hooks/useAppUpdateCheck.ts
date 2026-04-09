@@ -5,11 +5,19 @@ export interface VersionInfo {
   version: string;
   apkUrl: string;
   releaseNotes?: string;
+  versionCode?: number;
+  gitSha?: string;
+  tag?: string;
+  releasedAt?: string;
 }
 
 export interface UpdateStatus {
   hasUpdate: boolean;
   latestVersion: string;
+  latestVersionCode?: number;
+  latestGitSha?: string;
+  latestTag?: string;
+  latestReleasedAt?: string;
   apkUrl: string;
   releaseNotes: string;
 }
@@ -43,28 +51,49 @@ export function useAppUpdateCheck(): UpdateStatus | null {
     const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
     const manifestUrl = getUpdateManifestUrl();
 
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 8000);
+    let didCancel = false;
+    let controller: AbortController | null = null;
 
-    // Add a cache-buster as extra protection against stale edge caches.
-    fetch(`${manifestUrl}?t=${Date.now()}`, { signal: controller.signal, cache: 'no-store' })
-      .then(r => r.json() as Promise<VersionInfo>)
-      .then(data => {
-        clearTimeout(timeout);
-        if (compareVersions(currentVersion, data.version) > 0) {
-          setStatus({
-            hasUpdate: true,
-            latestVersion: data.version,
-            apkUrl: data.apkUrl,
-            releaseNotes: data.releaseNotes ?? '',
-          });
-        }
-      })
-      .catch(() => clearTimeout(timeout));
+    const check = () => {
+      controller?.abort();
+      controller = new AbortController();
+      const timeout = setTimeout(() => controller?.abort(), 8000);
+
+      // Add a cache-buster as extra protection against stale edge caches.
+      fetch(`${manifestUrl}?t=${Date.now()}`, { signal: controller.signal, cache: 'no-store' })
+        .then(r => r.json() as Promise<VersionInfo>)
+        .then(data => {
+          clearTimeout(timeout);
+          if (didCancel) return;
+          if (compareVersions(currentVersion, data.version) > 0) {
+            setStatus({
+              hasUpdate: true,
+              latestVersion: data.version,
+              latestVersionCode: data.versionCode,
+              latestGitSha: data.gitSha,
+              latestTag: data.tag,
+              latestReleasedAt: data.releasedAt,
+              apkUrl: data.apkUrl,
+              releaseNotes: data.releaseNotes ?? '',
+            });
+          } else {
+            setStatus(null);
+          }
+        })
+        .catch(() => clearTimeout(timeout));
+    };
+
+    check();
+
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') check();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      clearTimeout(timeout);
-      controller.abort();
+      didCancel = true;
+      controller?.abort();
+      document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);
 

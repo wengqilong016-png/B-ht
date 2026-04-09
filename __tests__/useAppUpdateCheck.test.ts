@@ -49,6 +49,10 @@ describe('useAppUpdateCheck', () => {
     mockFetch.mockResolvedValue({
       json: async () => ({
         version: '1.2.0',
+        versionCode: 123,
+        gitSha: 'abc123',
+        tag: 'v1.2.0',
+        releasedAt: '2026-04-09T00:00:00Z',
         apkUrl: 'https://example.com/app-1.2.0.apk',
         releaseNotes: 'Bug fixes',
       }),
@@ -60,6 +64,10 @@ describe('useAppUpdateCheck', () => {
       expect(result.current).toEqual({
         hasUpdate: true,
         latestVersion: '1.2.0',
+        latestVersionCode: 123,
+        latestGitSha: 'abc123',
+        latestTag: 'v1.2.0',
+        latestReleasedAt: '2026-04-09T00:00:00Z',
         apkUrl: 'https://example.com/app-1.2.0.apk',
         releaseNotes: 'Bug fixes',
       });
