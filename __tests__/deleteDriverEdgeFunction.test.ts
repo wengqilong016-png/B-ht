@@ -1,12 +1,46 @@
 import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 
+type MutationResult = { error: { message: string } | null };
+type DriverLookupResult = {
+  data: { auth_user_id: string | null } | null;
+  error: { message: string } | null;
+};
+type DeleteUserResult = { error: { message: string } | null };
+
+type DriversTableStub = {
+  select: () => {
+    eq: () => {
+      maybeSingle: () => Promise<DriverLookupResult>;
+    };
+  };
+  delete: () => {
+    eq: (column: string, value: string) => Promise<MutationResult>;
+  };
+};
+
+type UpdateTableStub = {
+  update: () => {
+    eq: (column: string, value: string) => Promise<MutationResult>;
+  };
+};
+
+type MutableEdgeGlobals = {
+  Deno?: {
+    env: {
+      get(name: string): string | undefined;
+    };
+    serve: typeof mockServe;
+  };
+  Response?: typeof Response;
+};
+
 const mockIsAdmin = jest.fn<() => Promise<string | null>>();
-const mockDeleteUser = jest.fn<() => Promise<unknown>>();
-const mockDriverMaybeSingle = jest.fn<() => Promise<unknown>>();
-const mockTransactionUpdateEq = jest.fn<() => Promise<unknown>>();
-const mockSettlementUpdateEq = jest.fn<() => Promise<unknown>>();
-const mockDriverDeleteEq = jest.fn<() => Promise<unknown>>();
-const mockFrom = jest.fn<(table: string) => unknown>();
+const mockDeleteUser = jest.fn<(userId: string) => Promise<DeleteUserResult>>();
+const mockDriverMaybeSingle = jest.fn<() => Promise<DriverLookupResult>>();
+const mockTransactionUpdateEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
+const mockSettlementUpdateEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
+const mockDriverDeleteEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
+const mockFrom = jest.fn<(table: string) => DriversTableStub | UpdateTableStub>();
 const mockServe = jest.fn<(handler: (req: Request) => Promise<Response>) => void>();
 const originalResponse = globalThis.Response;
 
@@ -18,7 +52,7 @@ jest.mock('../supabase/functions/_shared/supabaseAdmin.ts', () => ({
   supabaseAdmin: {
     auth: {
       admin: {
-        deleteUser: (...args: unknown[]) => mockDeleteUser(...args),
+        deleteUser: (userId: string) => mockDeleteUser(userId),
       },
     },
     from: (table: string) => mockFrom(table),
@@ -28,6 +62,8 @@ jest.mock('../supabase/functions/_shared/supabaseAdmin.ts', () => ({
 async function loadDeleteDriverHandler() {
   jest.resetModules();
   mockServe.mockClear();
+
+  const edgeGlobals = globalThis as unknown as MutableEdgeGlobals;
 
   class MockResponse {
     status: number;
@@ -45,13 +81,13 @@ async function loadDeleteDriverHandler() {
     }
   }
 
-  (globalThis as typeof globalThis & {
-    Deno?: { serve: typeof mockServe };
-    Response?: typeof MockResponse;
-  }).Deno = {
+  edgeGlobals.Deno = {
+    env: {
+      get: () => undefined,
+    },
     serve: mockServe,
   };
-  (globalThis as typeof globalThis & { Response?: typeof MockResponse }).Response = MockResponse as unknown as typeof Response;
+  edgeGlobals.Response = MockResponse as unknown as typeof Response;
 
   await import('../supabase/functions/delete-driver/index.ts');
 
@@ -85,7 +121,7 @@ function makeSupabaseTableStub(table: string) {
         }),
       }),
       delete: () => ({
-        eq: (...args: unknown[]) => mockDriverDeleteEq(...args),
+        eq: (column: string, value: string) => mockDriverDeleteEq(column, value),
       }),
     };
   }
@@ -93,7 +129,7 @@ function makeSupabaseTableStub(table: string) {
   if (table === 'transactions') {
     return {
       update: () => ({
-        eq: (...args: unknown[]) => mockTransactionUpdateEq(...args),
+        eq: (column: string, value: string) => mockTransactionUpdateEq(column, value),
       }),
     };
   }
@@ -101,7 +137,7 @@ function makeSupabaseTableStub(table: string) {
   if (table === 'daily_settlements') {
     return {
       update: () => ({
-        eq: (...args: unknown[]) => mockSettlementUpdateEq(...args),
+        eq: (column: string, value: string) => mockSettlementUpdateEq(column, value),
       }),
     };
   }
@@ -121,11 +157,13 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  delete (globalThis as typeof globalThis & { Deno?: unknown }).Deno;
+  const edgeGlobals = globalThis as unknown as MutableEdgeGlobals;
+
+  delete edgeGlobals.Deno;
   if (originalResponse) {
-    globalThis.Response = originalResponse;
+    edgeGlobals.Response = originalResponse;
   } else {
-    delete (globalThis as typeof globalThis & { Response?: unknown }).Response;
+    delete edgeGlobals.Response;
   }
 });
 

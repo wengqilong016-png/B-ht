@@ -1,3 +1,4 @@
+/// <reference path="../../../types/supabaseEdge.d.ts" />
 // supabase/functions/delete-driver/index.ts
 // Edge Function: POST /functions/v1/delete-driver
 //

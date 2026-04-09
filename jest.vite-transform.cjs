@@ -15,6 +15,9 @@ const transformer = new TsJestTransformer({
     jsx: 'react-jsx',
     esModuleInterop: true,
     allowSyntheticDefaultImports: true,
+    rootDir: '.',
+    moduleResolution: 'node',
+    ignoreDeprecations: '6.0',
   },
 });
 

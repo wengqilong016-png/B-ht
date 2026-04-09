@@ -1,5 +1,7 @@
+/// <reference path="../../../types/supabaseEdge.d.ts" />
 // supabase/functions/_shared/supabaseAdmin.ts
 // Supabase Admin client using service_role key — bypasses RLS for Edge Functions.
+// @ts-expect-error Deno edge functions resolve this runtime URL import outside the app tsconfig graph.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL');
