@@ -143,34 +143,76 @@ Copy `.env.example` to `.env.local` and fill in the values:
 > Only `VITE_*` variables are exposed to the browser bundle. Do **not** store secrets such as AI keys, service-role keys, or internal API keys in `VITE_*` variables.
 ---
 
-## Run locally
+## 本地开发（安装 / 启动 / 测试 / 构建）
 
-**Prerequisites:** Node.js 22+
+### 1) 安装 / Install
+
+**Prerequisites:** Node.js 22+, npm 10+
 
 ```bash
 npm ci
-cp .env.example .env.local   # fill in your credentials
+cp .env.example .env.local
+```
+
+Then fill real values in `.env.local` (at minimum: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`).
+
+### 2) 启动 / Start
+
+```bash
 npm run dev
 ```
 
----
+Vite default URL:
 
-## Quality gates
+```text
+http://localhost:3000
+```
 
-All repository changes must pass:
+### 3) 测试 / Test
+
+Most common commands:
 
 ```bash
-npm run typecheck   # TypeScript type check
-npm run lint        # ESLint for TypeScript / React sources
-npm run test:ci     # Jest strict mode (must not be empty)
-npm run test:coverage:ci  # Jest coverage report + coverage gate
-npm run security:audit    # npm audit (high severity and above)
-npm run build       # Vite production build
+npm run test:ci            # Jest CI mode
+npm run test:coverage:ci   # Jest + coverage
+npm run test:e2e           # Playwright e2e
+```
+
+Quality checks:
+
+```bash
+npm run typecheck
+npm run lint
+npm run security:audit
+```
+
+One-command verifier (recommended):
+
+```bash
+./scripts/verify.sh             # quick: lint + test:ci + build
+./scripts/verify.sh --full      # quick + security:audit
+./scripts/verify.sh --full --android
 ```
 
 `npm test` (without `:ci`) is the local-friendly alias that allows zero tests during ad hoc development.
 
-Coverage enforcement now targets the repository's **core unit-testable code surface**: services, reusable hooks, utilities, repositories, shared types, `offlineQueue.ts`, `supabaseClient.ts`, and `i18n/index.ts`. The current gate is **80% lines/statements** on that core surface, while heavier integration-oriented modules (for example AI-heavy hooks, Supabase data/mutation hooks, offline sync loop, and GPS capture runtime hooks) remain exercised through targeted tests and CI, but are not yet part of the unit coverage threshold.
+Coverage enforcement targets the repository's **core unit-testable code surface**: services, reusable hooks, utilities, repositories, shared types, `offlineQueue.ts`, `supabaseClient.ts`, and `i18n/index.ts`. The current gate is **80% lines/statements** on that core surface. Heavier integration-oriented modules (for example AI-heavy hooks, Supabase data/mutation hooks, offline sync loop, and GPS capture runtime hooks) are still exercised via targeted tests and CI, but are not yet part of the unit coverage threshold.
+
+### 4) 构建 / Build
+
+Web production build:
+
+```bash
+npm run build
+npm run preview
+```
+
+Android debug/release build:
+
+```bash
+npm run cap:build:android
+npm run cap:build:android:release
+```
 
 ## CI / merge gate
 
