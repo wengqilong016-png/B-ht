@@ -157,10 +157,12 @@ function makeMinimalLocation(extra: Record<string, unknown> = {}): Location {
     status: 'active',
     assignedDriverId: 'driver-1',
     commissionRate: 0.3,
+    initialStartupDebt: 0,
+    remainingStartupDebt: 0,
     lastRevenueDate: null,
     resetLocked: false,
     ...extra,
-  } as Location;
+  } as unknown as Location;
 }
 
 describe('getLocationField()', () => {

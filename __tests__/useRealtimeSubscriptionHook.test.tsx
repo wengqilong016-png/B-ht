@@ -8,8 +8,8 @@ type StatusHandler = (status: string) => void;
 
 type MockRealtimeChannel = {
   topic: string;
-  on: jest.Mock;
-  subscribe: jest.Mock;
+  on: (_type: string, filter: { event: string }, callback: BroadcastHandler) => MockRealtimeChannel;
+  subscribe: (callback: StatusHandler) => MockRealtimeChannel;
   emitBroadcast: (event: string) => void;
   emitStatus: (status: string) => void;
 };
@@ -30,11 +30,11 @@ function makeRealtimeChannel(topic: string): MockRealtimeChannel {
       handlers.push(callback);
       broadcastHandlers.set(filter.event, handlers);
       return channel;
-    }),
+    }) as MockRealtimeChannel['on'],
     subscribe: jest.fn((callback: StatusHandler) => {
       statusHandler = callback;
       return channel;
-    }),
+    }) as MockRealtimeChannel['subscribe'],
     emitBroadcast: (event: string) => {
       for (const handler of broadcastHandlers.get(event) ?? []) handler();
     },

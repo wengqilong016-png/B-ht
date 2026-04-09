@@ -46,6 +46,150 @@ interface SettlementTabProps {
   lang: 'zh' | 'sw';
 }
 
+type ScanResult = { status: 'loading' | 'matched' | 'mismatch' | 'unclear' | 'error'; detectedScore?: string; notes?: string };
+type ApprovalTaskType = 'settlement' | 'expense' | 'anomaly' | 'reset' | 'payout';
+
+interface ApprovalTask {
+  key: string;
+  type: ApprovalTaskType;
+  id: string;
+  driverName: string;
+  locationName: string;
+  amount: number;
+  timestamp: string;
+  severity: number;
+  extra: Record<string, unknown>;
+}
+
+const EXPENSE_SEVERITY = 2;
+const RESET_SEVERITY = 3;
+const SETTLEMENT_SEVERITY = 4;
+
+function buildApprovalTasks(
+  lang: 'zh' | 'sw',
+  pendingSettlements: DailySettlement[],
+  anomalyTransactions: Transaction[],
+  pendingResetRequests: Transaction[],
+  pendingExpenses: Transaction[],
+  pendingPayoutRequests: Transaction[],
+): ApprovalTask[] {
+  return [
+    ...pendingSettlements.map((settlement): ApprovalTask => ({
+      key: `settlement:${settlement.id}`,
+      type: 'settlement',
+      id: settlement.id,
+      driverName: settlement.driverName ?? '',
+      locationName: lang === 'zh' ? '日结汇总' : 'Daily summary',
+      amount: settlement.expectedTotal,
+      timestamp: settlement.timestamp,
+      severity: SETTLEMENT_SEVERITY,
+      extra: { settlement },
+    })),
+    ...anomalyTransactions.map((tx): ApprovalTask => ({
+      key: `anomaly:${tx.id}`,
+      type: 'anomaly',
+      id: tx.id,
+      driverName: tx.driverName ?? '',
+      locationName: tx.locationName,
+      amount: tx.revenue,
+      timestamp: tx.timestamp,
+      severity: RESET_SEVERITY,
+      extra: { tx },
+    })),
+    ...pendingResetRequests.map((tx): ApprovalTask => ({
+      key: `reset:${tx.id}`,
+      type: 'reset',
+      id: tx.id,
+      driverName: tx.driverName ?? '',
+      locationName: tx.locationName,
+      amount: tx.currentScore,
+      timestamp: tx.timestamp,
+      severity: RESET_SEVERITY,
+      extra: { tx },
+    })),
+    ...pendingExpenses.map((tx): ApprovalTask => ({
+      key: `expense:${tx.id}`,
+      type: 'expense',
+      id: tx.id,
+      driverName: tx.driverName ?? '',
+      locationName: tx.locationName,
+      amount: tx.expenses,
+      timestamp: tx.timestamp,
+      severity: EXPENSE_SEVERITY,
+      extra: { tx },
+    })),
+    ...pendingPayoutRequests.map((tx): ApprovalTask => ({
+      key: `payout:${tx.id}`,
+      type: 'payout',
+      id: tx.id,
+      driverName: tx.driverName ?? '',
+      locationName: tx.locationName,
+      amount: tx.payoutAmount || 0,
+      timestamp: tx.timestamp,
+      severity: EXPENSE_SEVERITY,
+      extra: { tx },
+    })),
+  ].sort((a, b) =>
+    b.severity !== a.severity
+      ? b.severity - a.severity
+      : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+  );
+}
+
+function getExpenseCategoryLabel(
+  t: typeof TRANSLATIONS['zh'],
+  category: Transaction['expenseCategory'],
+): string {
+  const labels = {
+    tip: `💸 ${t.tipLabel}`,
+    fuel: `⛽ ${t.fuelLabel}`,
+    repair: `🔧 ${t.repairLabel}`,
+    fine: `🚨 ${t.fineLabel}`,
+    transport: `🛺 ${t.transportLabel}`,
+    allowance: `🍽 ${t.allowanceLabel}`,
+    salary_advance: `💰 ${t.salaryAdvanceLabel}`,
+    other: `📋 ${t.otherLabel}`,
+  } satisfies Record<NonNullable<Transaction['expenseCategory']>, string>;
+
+  return labels[category || 'other'] || `📋 ${t.otherLabel}`;
+}
+
+async function convertImageUrlToBase64(url: string): Promise<string> {
+  const resp = await fetch(url);
+  if (!resp.ok) {
+    throw new Error(`Image fetch failed with status ${resp.status}`);
+  }
+
+  const blob = await resp.blob();
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result.split(',')[1] : '';
+      if (!result) {
+        reject(new Error('Image conversion produced empty base64 data'));
+        return;
+      }
+      resolve(result);
+    };
+    reader.onerror = () => reject(reader.error ?? new Error('Image conversion failed'));
+    reader.readAsDataURL(blob);
+  });
+}
+
+function deriveScanResult(
+  tx: Transaction,
+  result: Extract<Awaited<ReturnType<typeof scanMeterFromBase64>>, { success: true }>,
+): ScanResult {
+  const detectedScore = result.data.score ?? '';
+  const submittedScore = String(tx.currentScore ?? '');
+  const diff = Math.abs(parseInt(detectedScore || '0', 10) - parseInt(submittedScore || '0', 10));
+  const status = detectedScore === '' || result.data.condition === 'Unclear'
+    ? 'unclear'
+    : diff <= 5 ? 'matched' : 'mismatch';
+
+  return { status, detectedScore, notes: result.data.notes };
+}
+
 const SettlementTab: React.FC<SettlementTabProps> = ({
   isAdmin,
   unsyncedCollectionsCount,
@@ -78,33 +222,17 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
 
-  // AI scan results: txId → { status, detectedScore, notes }
-  type ScanResult = { status: 'loading' | 'matched' | 'mismatch' | 'unclear' | 'error'; detectedScore?: string; notes?: string };
   const [scanResults, setScanResults] = useState<Map<string, ScanResult>>(new Map());
 
   const triggerAIScan = useCallback(async (tx: Transaction) => {
     if (!tx.photoUrl || scanResults.has(tx.id)) return;
     setScanResults(prev => new Map(prev).set(tx.id, { status: 'loading' }));
     try {
-      // Convert image URL to base64
-      const resp = await fetch(tx.photoUrl);
-      const blob = await resp.blob();
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve((reader.result as string).split(',')[1]);
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      const base64 = await convertImageUrlToBase64(tx.photoUrl);
 
       const result = await scanMeterFromBase64(base64);
       if (result.success) {
-        const detectedScore = result.data.score ?? '';
-        const submittedScore = String(tx.currentScore ?? '');
-        const diff = Math.abs(parseInt(detectedScore || '0') - parseInt(submittedScore || '0'));
-        const status = detectedScore === '' || result.data.condition === 'Unclear'
-          ? 'unclear'
-          : diff <= 5 ? 'matched' : 'mismatch';
-        setScanResults(prev => new Map(prev).set(tx.id, { status, detectedScore, notes: result.data.notes }));
+        setScanResults(prev => new Map(prev).set(tx.id, deriveScanResult(tx, result)));
         return;
       }
 
@@ -113,7 +241,8 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
         status: 'error',
         notes: getScanMeterErrorMessage(failure.code, lang),
       }));
-    } catch {
+    } catch (error) {
+      console.warn('AI scan failed for transaction', tx.id, error);
       setScanResults(prev => new Map(prev).set(tx.id, {
         status: 'error',
         notes: getScanMeterErrorMessage('NETWORK_ERROR', lang),
@@ -168,82 +297,14 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
     }
   };
 
-  // Build unified approval task list for admin view
-  type ApprovalTaskType = 'settlement' | 'expense' | 'anomaly' | 'reset' | 'payout';
-  interface ApprovalTask {
-    key: string;
-    type: ApprovalTaskType;
-    id: string;
-    driverName: string;
-    locationName: string;
-    amount: number;
-    timestamp: string;
-    severity: number;
-    /** extra data for expanded detail */
-    extra: Record<string, unknown>;
-  }
   const approvalTasks = useMemo<ApprovalTask[]>(() => {
-    const tasks: ApprovalTask[] = [
-      ...pendingSettlements.map(s => ({
-        key: `settlement:${s.id}`,
-        type: 'settlement' as ApprovalTaskType,
-        id: s.id,
-        driverName: s.driverName ?? '',
-        locationName: lang === 'zh' ? '日结汇总' : 'Daily summary',
-        amount: s.expectedTotal,
-        timestamp: s.timestamp,
-        severity: 4,
-        extra: { settlement: s },
-      })),
-      ...anomalyTransactions.map(tx => ({
-        key: `anomaly:${tx.id}`,
-        type: 'anomaly' as ApprovalTaskType,
-        id: tx.id,
-        driverName: tx.driverName,
-        locationName: tx.locationName,
-        amount: tx.revenue,
-        timestamp: tx.timestamp,
-        severity: 3,
-        extra: { tx },
-      })),
-      ...pendingResetRequests.map(tx => ({
-        key: `reset:${tx.id}`,
-        type: 'reset' as ApprovalTaskType,
-        id: tx.id,
-        driverName: tx.driverName,
-        locationName: tx.locationName,
-        amount: tx.currentScore,
-        timestamp: tx.timestamp,
-        severity: 3,
-        extra: { tx },
-      })),
-      ...pendingExpenses.map(tx => ({
-        key: `expense:${tx.id}`,
-        type: 'expense' as ApprovalTaskType,
-        id: tx.id,
-        driverName: tx.driverName,
-        locationName: tx.locationName,
-        amount: tx.expenses,
-        timestamp: tx.timestamp,
-        severity: 2,
-        extra: { tx },
-      })),
-      ...pendingPayoutRequests.map(tx => ({
-        key: `payout:${tx.id}`,
-        type: 'payout' as ApprovalTaskType,
-        id: tx.id,
-        driverName: tx.driverName,
-        locationName: tx.locationName,
-        amount: tx.payoutAmount || 0,
-        timestamp: tx.timestamp,
-        severity: 2,
-        extra: { tx },
-      })),
-    ];
-    return tasks.sort((a, b) =>
-      b.severity !== a.severity
-        ? b.severity - a.severity
-        : new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+    return buildApprovalTasks(
+      lang,
+      pendingSettlements,
+      anomalyTransactions,
+      pendingResetRequests,
+      pendingExpenses,
+      pendingPayoutRequests,
     );
   }, [lang, pendingSettlements, anomalyTransactions, pendingResetRequests, pendingExpenses, pendingPayoutRequests]);
 
@@ -353,10 +414,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 
                         {task.type === 'expense' && (() => {
                           const tx = (task.extra as { tx: Transaction }).tx;
-                          const categoryLabel = {
-                            fuel: `⛽ ${t.fuelLabel}`, repair: `🔧 ${t.repairLabel}`, fine: `🚨 ${t.fineLabel}`,
-                            allowance: `🍽 ${t.allowanceLabel}`, salary_advance: `💰 ${t.salaryAdvanceLabel}`, other: `📋 ${t.otherLabel}`,
-                          }[tx.expenseCategory || 'other'] || `📋 ${t.otherLabel}`;
+                          const categoryLabel = getExpenseCategoryLabel(t, tx.expenseCategory);
                           return (
                             <>
                               <div className="flex items-center justify-between">

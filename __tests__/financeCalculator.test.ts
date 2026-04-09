@@ -11,7 +11,7 @@
  */
 
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
-import { CONSTANTS } from '../types';
+import { CONSTANTS, type Location } from '../types';
 
 // ── Supabase mock ─────────────────────────────────────────────────────────────
 const mockRpc = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -34,7 +34,9 @@ import {
 
 // ── Shared fixtures ───────────────────────────────────────────────────────────
 
-function makeLocation(overrides: Partial<{ lastScore: number; commissionRate: number; machineId: string; area: string; initialStartupDebt: number; remainingStartupDebt: number }> = {}) {
+function makeLocation(
+  overrides: Partial<Pick<Location, 'lastScore' | 'commissionRate' | 'machineId' | 'area' | 'initialStartupDebt' | 'remainingStartupDebt'>> = {},
+): Location {
   return {
     id: 'loc-001',
     name: 'Test Site',
@@ -45,14 +47,8 @@ function makeLocation(overrides: Partial<{ lastScore: number; commissionRate: nu
     area: overrides.area ?? 'Test Area',
     initialStartupDebt: overrides.initialStartupDebt ?? 0,
     remainingStartupDebt: overrides.remainingStartupDebt ?? 0,
-    initialFloat: 0,
-    assignedDriverId: null,
+    assignedDriverId: undefined,
     status: 'active' as const,
-    coinStock: 0,
-    debtBalance: 0,
-    startupDebt: 0,
-    notes: null,
-    photoUrl: null,
   };
 }
 

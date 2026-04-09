@@ -8,6 +8,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  type TooltipProps,
 } from 'recharts';
 import { CalendarDays, TrendingUp, Users, MapPin, DollarSign, Download, Building2 } from 'lucide-react';
 import { useAppData } from '../contexts/DataContext';
@@ -33,28 +34,88 @@ interface DriverMonthStat {
   activeSites: number;
 }
 
+const formatMoney = (value: number): string => value.toLocaleString();
+const MONTH_LABEL_LOCALE = 'zh-CN';
+const MONTH_KEY_PAD_LENGTH = 2;
+
+type ChartTooltipFormatter = NonNullable<TooltipProps<any, any>['formatter']>;
+
+const moneyTooltipFormatter: ChartTooltipFormatter = (value, name) => {
+  const numericValue = typeof value === 'number' ? value : Number(value ?? 0);
+  return [`TZS ${formatMoney(numericValue)}`, String(name ?? '')];
+};
+
+function getMonthKey(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(MONTH_KEY_PAD_LENGTH, '0')}`;
+}
+
+function getMonthLabel(date: Date): string {
+  return `${date.getMonth() + 1}月`;
+}
+
+function getTransactionMonthKey(
+  tx: import('../types/models').Transaction,
+): string | null {
+  const ts = tx.timestamp || tx.uploadTimestamp;
+  if (!ts) return null;
+  return getMonthKey(new Date(ts));
+}
+
+function isCollectionTransaction(
+  tx: import('../types/models').Transaction,
+): boolean {
+  return tx.type === 'collection' || tx.type === undefined;
+}
+
+function createMonthBuckets<T extends { month: string; label: string }>(
+  monthCount: number,
+  createBucket: (month: string, label: string) => T,
+): T[] {
+  const now = new Date();
+  const months: T[] = [];
+
+  for (let i = monthCount - 1; i >= 0; i -= 1) {
+    const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const month = getMonthKey(date);
+    months.push(createBucket(month, getMonthLabel(date)));
+  }
+
+  return months;
+}
+
+function sumByMonth<T>(items: T[], selector: (item: T) => number): number {
+  return items.reduce((sum, item) => sum + selector(item), 0);
+}
+
+function exportCsvSafely(filename: string, rows: string[][], headers: string[]) {
+  try {
+    downloadCSV(filename, rows, headers);
+  } catch (error) {
+    console.error('Failed to export monthly report CSV.', error);
+  }
+}
+
 function buildMonthlyStats(
   transactions: import('../types/models').Transaction[],
   monthCount: number,
 ): MonthlyStats[] {
-  const now = new Date();
-  const months: MonthlyStats[] = [];
-
-  for (let i = monthCount - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = `${d.getMonth() + 1}月`;
-    months.push({ month: key, label, revenue: 0, commission: 0, netPayable: 0, collections: 0, activeDrivers: 0, activeSites: 0 });
-  }
+  const months = createMonthBuckets(monthCount, (month, label): MonthlyStats => ({
+    month,
+    label,
+    revenue: 0,
+    commission: 0,
+    netPayable: 0,
+    collections: 0,
+    activeDrivers: 0,
+    activeSites: 0,
+  }));
 
   const byMonth = new Map<string, MonthlyStats>(months.map((m) => [m.month, m]));
 
   for (const tx of transactions) {
-    if (tx.type !== 'collection' && tx.type !== undefined) continue;
-    const ts = tx.timestamp || tx.uploadTimestamp;
-    if (!ts) continue;
-    const d = new Date(ts);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!isCollectionTransaction(tx)) continue;
+    const key = getTransactionMonthKey(tx);
+    if (!key) continue;
     const stat = byMonth.get(key);
     if (!stat) continue;
     stat.revenue += tx.revenue ?? 0;
@@ -65,12 +126,7 @@ function buildMonthlyStats(
 
   for (const stat of months) {
     const monthTxs = transactions.filter((tx) => {
-      if (tx.type !== 'collection' && tx.type !== undefined) return false;
-      const ts = tx.timestamp || tx.uploadTimestamp;
-      if (!ts) return false;
-      const d = new Date(ts);
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      return key === stat.month;
+      return isCollectionTransaction(tx) && getTransactionMonthKey(tx) === stat.month;
     });
     stat.activeDrivers = new Set(monthTxs.map((t) => t.driverId)).size;
     stat.activeSites = new Set(monthTxs.map((t) => t.locationId)).size;
@@ -84,25 +140,23 @@ function buildDriverStats(
   driverId: string,
   monthCount: number,
 ): DriverMonthStat[] {
-  const now = new Date();
-  const months: DriverMonthStat[] = [];
-
-  for (let i = monthCount - 1; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    const label = `${d.getMonth() + 1}月`;
-    months.push({ month: key, label, revenue: 0, commission: 0, netPayable: 0, collections: 0, activeSites: 0 });
-  }
+  const months = createMonthBuckets(monthCount, (month, label): DriverMonthStat => ({
+    month,
+    label,
+    revenue: 0,
+    commission: 0,
+    netPayable: 0,
+    collections: 0,
+    activeSites: 0,
+  }));
 
   const byMonth = new Map<string, DriverMonthStat>(months.map((m) => [m.month, m]));
 
   for (const tx of transactions) {
     if (tx.driverId !== driverId) continue;
-    if (tx.type !== 'collection' && tx.type !== undefined) continue;
-    const ts = tx.timestamp || tx.uploadTimestamp;
-    if (!ts) continue;
-    const d = new Date(ts);
-    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+    if (!isCollectionTransaction(tx)) continue;
+    const key = getTransactionMonthKey(tx);
+    if (!key) continue;
     const stat = byMonth.get(key);
     if (!stat) continue;
     stat.revenue += tx.revenue ?? 0;
@@ -114,12 +168,9 @@ function buildDriverStats(
   // Count unique sites per month for this driver
   for (const stat of months) {
     const monthTxs = transactions.filter((tx) => {
-      if (tx.driverId !== driverId) return false;
-      if (tx.type !== 'collection' && tx.type !== undefined) return false;
-      const ts = tx.timestamp || tx.uploadTimestamp;
-      if (!ts) return false;
-      const d = new Date(ts);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` === stat.month;
+      return tx.driverId === driverId
+        && isCollectionTransaction(tx)
+        && getTransactionMonthKey(tx) === stat.month;
     });
     stat.activeSites = new Set(monthTxs.map((t) => t.locationId)).size;
   }
@@ -167,19 +218,19 @@ const MonthlyReportPage: React.FC = () => {
   }), [fleetStats]);
 
   const driverTotals = useMemo(() => ({
-    revenue: driverStats.reduce((s, m) => s + m.revenue, 0),
-    commission: driverStats.reduce((s, m) => s + m.commission, 0),
-    netPayable: driverStats.reduce((s, m) => s + m.netPayable, 0),
-    collections: driverStats.reduce((s, m) => s + m.collections, 0),
+    revenue: sumByMonth(driverStats, (m) => m.revenue),
+    commission: sumByMonth(driverStats, (m) => m.commission),
+    netPayable: sumByMonth(driverStats, (m) => m.netPayable),
+    collections: sumByMonth(driverStats, (m) => m.collections),
   }), [driverStats]);
 
   const fmt = (n: number) =>
-    n.toLocaleString('zh-CN', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+    n.toLocaleString(MONTH_LABEL_LOCALE, { minimumFractionDigits: 0, maximumFractionDigits: 0 });
 
   const selectedDriver = drivers.find(d => d.id === activeDriverId);
 
   const exportFleetCSV = () => {
-    downloadCSV(
+    exportCsvSafely(
       `fleet-report-${monthCount}months.csv`,
       fleetStats.map(m => [m.label, String(m.revenue), String(m.commission), String(m.netPayable), String(m.collections), String(m.activeDrivers), String(m.activeSites)]),
       ['月份', '营收(TZS)', '提成(TZS)', '净应付(TZS)', '收款次数', '活跃司机', '活跃机器'],
@@ -187,7 +238,7 @@ const MonthlyReportPage: React.FC = () => {
   };
 
   const exportDriverCSV = () => {
-    downloadCSV(
+    exportCsvSafely(
       `driver-${selectedDriver?.name ?? activeDriverId}-${monthCount}months.csv`,
       driverStats.map(m => [m.label, String(m.revenue), String(m.commission), String(m.netPayable), String(m.collections), String(m.activeSites)]),
       ['月份', '营收(TZS)', '提成(TZS)', '净应付(TZS)', '收款次数', '活跃机器'],
@@ -265,7 +316,7 @@ const MonthlyReportPage: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 700 }} />
                 <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number, name: string) => [`TZS ${fmt(value)}`, name]} labelStyle={{ fontWeight: 700 }} />
+                <Tooltip formatter={moneyTooltipFormatter} labelStyle={{ fontWeight: 700 }} />
                 <Legend wrapperStyle={{ fontSize: 10, fontWeight: 700 }} />
                 <Bar dataKey="revenue" name="营收" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="commission" name="提成" fill="#f59e0b" radius={[4, 4, 0, 0]} />
@@ -374,7 +425,7 @@ const MonthlyReportPage: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 10, fontWeight: 700 }} />
                 <YAxis tick={{ fontSize: 9 }} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value: number, name: string) => [`TZS ${fmt(value)}`, name]} labelStyle={{ fontWeight: 700 }} />
+                <Tooltip formatter={moneyTooltipFormatter} labelStyle={{ fontWeight: 700 }} />
                 <Legend wrapperStyle={{ fontSize: 10, fontWeight: 700 }} />
                 <Bar dataKey="revenue" name="营收" fill="#6366f1" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="commission" name="提成" fill="#f59e0b" radius={[4, 4, 0, 0]} />

@@ -53,12 +53,12 @@ function renderModal(
         totalRevenue: 500000,
         status: 'pending',
         paymentMethod: 'bank_transfer',
-        paymentProofUrl: null,
+        paymentProofUrl: undefined,
         note: '',
         createdAt: '2026-04-04T00:00:00Z',
-        paidAt: null,
-        paidBy: null,
-        paidByName: null,
+        paidAt: undefined,
+        paidBy: undefined,
+        paidByName: undefined,
         isSynced: true,
       }}
       isSubmitting={false}

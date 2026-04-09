@@ -45,6 +45,56 @@ const ACTION_COPY: Record<PayrollActionMode, { icon: React.ReactNode }> = {
   },
 };
 
+function getPayrollActionTitle(
+  mode: PayrollActionMode,
+  t: typeof TRANSLATIONS['zh'],
+): string {
+  if (mode === 'create') return t.generatePayroll;
+  if (mode === 'pay') return t.markPaid;
+  return t.cancelPayroll;
+}
+
+function getPayrollSubmitLabel(
+  mode: PayrollActionMode,
+  isBusy: boolean,
+  t: typeof TRANSLATIONS['zh'],
+): string {
+  if (isBusy) return t.processingAction;
+  if (mode === 'create') return t.createPayroll;
+  if (mode === 'pay') return t.confirmPayment;
+  return t.cancelPayroll;
+}
+
+function buildPayrollSubmitPayload(
+  note: string,
+  isPayMode: boolean,
+  paymentMethod: MonthlyPayroll['paymentMethod'],
+  paymentProofUrl: string | undefined,
+): {
+  note?: string;
+  paymentMethod?: MonthlyPayroll['paymentMethod'];
+  paymentProofUrl?: string;
+} {
+  return {
+    note: note.trim() || undefined,
+    paymentMethod: isPayMode ? paymentMethod : undefined,
+    paymentProofUrl,
+  };
+}
+
+async function uploadPayrollProof(
+  proofPreview: string,
+  recordId: string | undefined,
+  driverId: string,
+  month: string,
+): Promise<string | undefined> {
+  return (await persistEvidencePhotoUrl(proofPreview, {
+    category: 'payroll',
+    entityId: recordId || `${driverId}-${month}`,
+    driverId,
+  })) ?? undefined;
+}
+
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -87,11 +137,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
     !isUploading &&
     (!isPayMode || (!!paymentMethod && !!proofPreview));
 
-  const title = useMemo(() => {
-    if (mode === 'create') return t.generatePayroll;
-    if (mode === 'pay') return t.markPaid;
-    return t.cancelPayroll;
-  }, [mode, t]);
+  const title = useMemo(() => getPayrollActionTitle(mode, t), [mode, t]);
 
   const handleFileChange = async (file: File | null) => {
     setProofFile(file);
@@ -112,16 +158,12 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
   };
 
   const handleSubmit = async () => {
-    let paymentProofUrl = record?.paymentProofUrl;
+    let paymentProofUrl: string | undefined = record?.paymentProofUrl ?? undefined;
 
     if (isPayMode && proofPreview && proofPreview.startsWith('data:image/')) {
       setIsUploading(true);
       try {
-        paymentProofUrl = await persistEvidencePhotoUrl(proofPreview, {
-          category: 'payroll',
-          entityId: record?.id || `${driver.id}-${month}`,
-          driverId: driver.id,
-        });
+        paymentProofUrl = await uploadPayrollProof(proofPreview, record?.id, driver.id, month);
       } catch (error) {
         console.error('Failed to upload payroll proof.', error);
         showToast(lang === 'zh' ? '工资凭证上传失败，请重试。' : 'Failed to upload payroll proof. Please retry.', 'error');
@@ -131,11 +173,15 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
       }
     }
 
-    await onSubmit({
-      note: note.trim() || undefined,
-      paymentMethod: isPayMode ? paymentMethod : undefined,
-      paymentProofUrl,
-    });
+    try {
+      await onSubmit(buildPayrollSubmitPayload(note, isPayMode, paymentMethod, paymentProofUrl));
+    } catch (error) {
+      console.error('Failed to submit payroll action.', error);
+      showToast(
+        lang === 'zh' ? '工资操作提交失败，请重试。' : 'Failed to submit payroll action. Please retry.',
+        'error',
+      );
+    }
   };
 
   return (
@@ -249,13 +295,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
               disabled={!canSubmit}
               className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-black uppercase text-xs disabled:opacity-50"
             >
-              {isSubmitting || isUploading
-                ? t.processingAction
-                : mode === 'create'
-                  ? t.createPayroll
-                  : mode === 'pay'
-                    ? t.confirmPayment
-                    : t.cancelPayroll}
+              {getPayrollSubmitLabel(mode, isSubmitting || isUploading, t)}
             </button>
           </div>
         </div>

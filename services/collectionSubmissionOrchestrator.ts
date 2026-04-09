@@ -103,6 +103,73 @@ function normalizeReportedStatus(
   return 'active';
 }
 
+function buildOfflineTransaction(
+  input: OrchestrateCollectionSubmissionInput,
+  rawInput: CollectionSubmissionInput,
+  deps: CollectionSubmissionOrchestratorDeps,
+): Transaction {
+  const offlineTransaction = deps.createCollectionTransaction(
+    input.selectedLocation,
+    input.currentDriver,
+    input.resolvedGps,
+    rawInput.currentScore,
+    {
+      txId: input.draftTxId,
+      revenue: input.calculations.revenue,
+      commission: input.calculations.commission,
+      ownerRetention: input.calculations.finalRetention,
+      startupDebtDeduction: input.calculations.startupDebtDeduction,
+      expenses: rawInput.expenses,
+      coinExchange: rawInput.coinExchange,
+      netPayable: input.calculations.netPayable,
+      photoUrl: input.photoData || undefined,
+      dataUsageKB: 120,
+      notes: rawInput.notes || undefined,
+      anomalyFlag: rawInput.anomalyFlag,
+    },
+  );
+
+  offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
+  offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
+  offlineTransaction.expenseDescription = rawInput.expenseDescription;
+  offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
+  offlineTransaction.paymentStatus = 'pending';
+  offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
+  offlineTransaction.reportedStatus = rawInput.reportedStatus;
+
+  return offlineTransaction;
+}
+
+async function enqueueOfflineTransaction(
+  offlineTransaction: Transaction,
+  rawInput: CollectionSubmissionInput,
+  input: OrchestrateCollectionSubmissionInput,
+  reason: string,
+  deps: CollectionSubmissionOrchestratorDeps,
+): Promise<void> {
+  try {
+    await deps.enqueueTransaction(offlineTransaction, rawInput);
+    appendCollectionSubmissionAudit({
+      timestamp: new Date().toISOString(),
+      event: 'submit_offline_enqueued',
+      txId: offlineTransaction.id,
+      locationId: offlineTransaction.locationId,
+      locationName: offlineTransaction.locationName,
+      driverId: offlineTransaction.driverId,
+      currentScoreRaw: input.currentScore,
+      resolvedScore: offlineTransaction.currentScore,
+      previousScore: offlineTransaction.previousScore,
+      source: 'offline',
+      reason,
+    });
+  } catch (error) {
+    deps.logger.warn('[collectionSubmissionOrchestrator] IDB enqueue failed:', error);
+    throw new Error(
+      `采集数据暂存失败，请截图并联系管理员。/ Collection could not be saved locally. ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+}
+
 export function buildCollectionSubmissionInput(
   input: OrchestrateCollectionSubmissionInput,
 ): CollectionSubmissionInput {
@@ -233,116 +300,21 @@ export async function orchestrateCollectionSubmission(
       },
     });
 
-    const offlineTransaction = deps.createCollectionTransaction(
-      input.selectedLocation,
-      input.currentDriver,
-      input.resolvedGps,
-      rawInput.currentScore,
-      {
-        txId: input.draftTxId,
-        revenue: input.calculations.revenue,
-        commission: input.calculations.commission,
-        ownerRetention: input.calculations.finalRetention,
-        startupDebtDeduction: input.calculations.startupDebtDeduction,
-        expenses: rawInput.expenses,
-        coinExchange: rawInput.coinExchange,
-        netPayable: input.calculations.netPayable,
-        photoUrl: input.photoData || undefined,
-        dataUsageKB: 120,
-        notes: rawInput.notes || undefined,
-        anomalyFlag: rawInput.anomalyFlag,
-      },
-    );
-
-    offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
-    offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
-    offlineTransaction.expenseDescription = rawInput.expenseDescription;
-    offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
-    offlineTransaction.paymentStatus = 'pending';
-    offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
-    offlineTransaction.reportedStatus = rawInput.reportedStatus;
-
-    try {
-      await deps.enqueueTransaction(offlineTransaction, rawInput);
-      appendCollectionSubmissionAudit({
-        timestamp: new Date().toISOString(),
-        event: 'submit_offline_enqueued',
-        txId: offlineTransaction.id,
-        locationId: offlineTransaction.locationId,
-        locationName: offlineTransaction.locationName,
-        driverId: offlineTransaction.driverId,
-        currentScoreRaw: input.currentScore,
-        resolvedScore: offlineTransaction.currentScore,
-        previousScore: offlineTransaction.previousScore,
-        source: 'offline',
-        reason: (result as { success: false; error: string }).error,
-      });
-    } catch (error) {
-      deps.logger.warn('[collectionSubmissionOrchestrator] IDB enqueue failed:', error);
-      throw new Error(
-        `采集数据暂存失败，请截图并联系管理员。/ Collection could not be saved locally. ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
+    const fallbackError = (result as { success: false; error: string }).error;
+    const offlineTransaction = buildOfflineTransaction(input, rawInput, deps);
+    await enqueueOfflineTransaction(offlineTransaction, rawInput, input, fallbackError, deps);
 
     return {
       source: 'offline',
       transaction: offlineTransaction,
       // Cast to narrow the union: TypeScript's control flow narrowing is not
       // reliably applied to discriminated unions in this project's tsconfig.
-      fallbackReason: (result as { success: false; error: string }).error,
+      fallbackReason: fallbackError,
     };
   }
 
-  const offlineTransaction = deps.createCollectionTransaction(
-    input.selectedLocation,
-    input.currentDriver,
-    input.resolvedGps,
-    rawInput.currentScore,
-    {
-      txId: input.draftTxId,
-      revenue: input.calculations.revenue,
-      commission: input.calculations.commission,
-      ownerRetention: input.calculations.finalRetention,
-      startupDebtDeduction: input.calculations.startupDebtDeduction,
-      expenses: rawInput.expenses,
-      coinExchange: rawInput.coinExchange,
-      netPayable: input.calculations.netPayable,
-      photoUrl: input.photoData || undefined,
-      dataUsageKB: 120,
-      notes: rawInput.notes || undefined,
-      anomalyFlag: rawInput.anomalyFlag,
-    },
-  );
-
-  offlineTransaction.expenseType = rawInput.expenseType ?? undefined;
-  offlineTransaction.expenseCategory = rawInput.expenseCategory ?? undefined;
-  offlineTransaction.expenseDescription = rawInput.expenseDescription;
-  offlineTransaction.expenseStatus = rawInput.expenseType ? 'pending' : undefined;
-  offlineTransaction.paymentStatus = 'pending';
-  offlineTransaction.aiScore = rawInput.aiScore ?? undefined;
-  offlineTransaction.reportedStatus = rawInput.reportedStatus;
-
-  try {
-    await deps.enqueueTransaction(offlineTransaction, rawInput);
-    appendCollectionSubmissionAudit({
-      timestamp: new Date().toISOString(),
-      event: 'submit_offline_enqueued',
-      txId: offlineTransaction.id,
-      locationId: offlineTransaction.locationId,
-      locationName: offlineTransaction.locationName,
-      driverId: offlineTransaction.driverId,
-      currentScoreRaw: input.currentScore,
-      resolvedScore: offlineTransaction.currentScore,
-      previousScore: offlineTransaction.previousScore,
-      source: 'offline',
-      reason: 'Offline mode at submit time',
-    });
-  } catch (error) {
-    deps.logger.warn('[collectionSubmissionOrchestrator] IDB enqueue failed:', error);
-    throw new Error(
-      `采集数据暂存失败，请截图并联系管理员。/ Collection could not be saved locally. ${error instanceof Error ? error.message : String(error)}`,
-    );
-  }
+  const offlineTransaction = buildOfflineTransaction(input, rawInput, deps);
+  await enqueueOfflineTransaction(offlineTransaction, rawInput, input, 'Offline mode at submit time', deps);
 
   return {
     source: 'offline',

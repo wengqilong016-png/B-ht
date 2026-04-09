@@ -23,6 +23,7 @@ export interface AuditEntry {
 
 /** Insert one audit row. Fire-and-forget — never throws. */
 export async function logFinanceAudit(entry: AuditEntry): Promise<void> {
+  if (!supabase) return;
   try {
     const { error } = await supabase
       .from('finance_audit_log')
@@ -45,6 +46,7 @@ export async function logFinanceAudit(entry: AuditEntry): Promise<void> {
 /** Insert multiple audit rows in a single request. Fire-and-forget. */
 export async function logFinanceAuditBatch(entries: AuditEntry[]): Promise<void> {
   if (entries.length === 0) return;
+  if (!supabase) return;
   try {
     const { error } = await supabase
       .from('finance_audit_log')
@@ -76,6 +78,7 @@ interface FetchAuditOpts {
 export async function fetchFinanceAuditLog(
   opts: FetchAuditOpts = {},
 ): Promise<FinanceAuditLog[]> {
+  if (!supabase) return [];
   let query = supabase
     .from('finance_audit_log')
     .select('*')

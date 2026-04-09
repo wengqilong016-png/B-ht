@@ -132,6 +132,21 @@ describe('buildCollectionSubmissionInput', () => {
 
     expect(input.reportedStatus).toBe('maintenance');
   });
+
+  it('drops expense metadata when expenses are zero', () => {
+    const input = buildCollectionSubmissionInput(
+      makeInput({
+        expenses: '0',
+        expenseType: 'private',
+        expenseCategory: 'fuel',
+        expenseDescription: 'should not persist',
+      }),
+    );
+
+    expect(input.expenseType).toBeNull();
+    expect(input.expenseCategory).toBeNull();
+    expect(input.expenseDescription).toBeUndefined();
+  });
 });
 
 describe('orchestrateCollectionSubmission', () => {
@@ -183,6 +198,35 @@ describe('orchestrateCollectionSubmission', () => {
     expect(createCollectionTransaction).toHaveBeenCalledTimes(1);
     expect(enqueueTransaction).toHaveBeenCalledTimes(1);
     expect(logger.warn).toHaveBeenCalled();
+  });
+
+  it('hydrates offline fallback transactions with derived workflow fields', async () => {
+    const offlineTransaction = makeTransaction({ id: 'offline-enriched', isSynced: false });
+    const submitCollectionV2 = jest.fn<() => Promise<unknown>>().mockResolvedValue({
+      success: false,
+      error: 'rpc failed',
+    });
+
+    const result = await orchestrateCollectionSubmission(makeInput({
+      expenseType: 'private',
+      expenseCategory: 'transport',
+      expenseDescription: 'Taxi fare',
+      aiReviewData: { score: '149', condition: 'Repair', notes: 'Needs service' },
+    }), {
+      submitCollectionV2,
+      createCollectionTransaction: jest.fn().mockReturnValue(offlineTransaction),
+      enqueueTransaction: jest.fn<() => Promise<unknown>>().mockResolvedValue(undefined),
+      logger: { warn: jest.fn() },
+    } as any);
+
+    expect(result.source).toBe('offline');
+    expect(offlineTransaction.expenseType).toBe('private');
+    expect(offlineTransaction.expenseCategory).toBe('transport');
+    expect(offlineTransaction.expenseDescription).toBe('Taxi fare');
+    expect(offlineTransaction.expenseStatus).toBe('pending');
+    expect(offlineTransaction.paymentStatus).toBe('pending');
+    expect(offlineTransaction.aiScore).toBe(149);
+    expect(offlineTransaction.reportedStatus).toBe('maintenance');
   });
 
   it('uses offline path immediately when not online', async () => {

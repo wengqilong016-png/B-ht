@@ -9,13 +9,13 @@
  * - restoreCurrentUserFromSession: delegates to fetchCurrentUserProfile and
  *   returns 'No active session' when both getUser and getSession find nothing.
  */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterEach } from '@jest/globals';
 
 // ── Supabase mock ──────────────────────────────────────────────────────────
 const mockFrom = jest.fn<(...args: unknown[]) => unknown>();
 const mockGetUser = jest.fn<() => Promise<unknown>>();
 const mockGetSession = jest.fn<() => Promise<unknown>>();
-const mockSignOut = jest.fn<() => Promise<unknown>>();
+const mockSignOut = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockSignInWithPassword = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockUpdateUser = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 
@@ -25,7 +25,7 @@ jest.mock('../supabaseClient', () => ({
     auth: {
       getUser: () => mockGetUser(),
       getSession: () => mockGetSession(),
-      signOut: () => mockSignOut(),
+      signOut: (args?: unknown) => mockSignOut(args),
       signInWithPassword: (args: unknown) => mockSignInWithPassword(args),
       updateUser: (args: unknown) => mockUpdateUser(args),
     },
@@ -42,11 +42,19 @@ import {
 
 // ── Query builder chain helper ─────────────────────────────────────────────
 function makeQueryChain(resolvedValue: unknown) {
-  const chain = {
-    select: jest.fn<() => typeof chain>().mockReturnThis(),
-    eq: jest.fn<() => typeof chain>().mockReturnThis(),
+  type QueryChain = {
+    select: jest.Mock;
+    eq: jest.Mock;
+    single: jest.Mock<() => Promise<unknown>>;
+  };
+
+  const chain: QueryChain = {
+    select: jest.fn(),
+    eq: jest.fn(),
     single: jest.fn<() => Promise<unknown>>().mockResolvedValue(resolvedValue),
   };
+  chain.select.mockReturnValue(chain);
+  chain.eq.mockReturnValue(chain);
   return chain;
 }
 
@@ -55,6 +63,10 @@ beforeEach(() => {
   mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'no session' } });
   mockGetSession.mockResolvedValue({ data: { session: null } });
   mockSignOut.mockResolvedValue({});
+});
+
+afterEach(() => {
+  jest.restoreAllMocks();
 });
 
 // ══ fetchCurrentUserProfile ═══════════════════════════════════════════════
@@ -202,6 +214,29 @@ describe('restoreCurrentUserFromSession', () => {
     expect(result.user.id).toBe('user-2');
   });
 
+  it('falls back to getSession() when getUser() throws unexpectedly', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetUser.mockRejectedValue(new Error('network down'));
+    mockGetSession.mockResolvedValue({
+      data: { session: { user: { id: 'user-9', email: 'x@y.com' } } },
+    });
+    const chain = makeQueryChain({
+      data: { role: 'driver', display_name: 'X', driver_id: 'drv-9' },
+      error: null,
+    });
+    mockFrom.mockReturnValue(chain);
+
+    const result = await restoreCurrentUserFromSession();
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.user.id).toBe('user-9');
+    expect(console.warn).toHaveBeenCalledWith(
+      'Supabase getUser failed during session restore.',
+      expect.any(Error),
+    );
+  });
+
   it('returns No active session when both getUser and getSession find nothing', async () => {
     mockGetUser.mockResolvedValue({ data: { user: null }, error: { message: 'no session' } });
     mockGetSession.mockResolvedValue({ data: { session: null } });
@@ -224,6 +259,24 @@ describe('restoreCurrentUserFromSession', () => {
     // Must NOT be 'No active session' — the session is valid, the profile query failed
     expect(result).toMatchObject({ success: false, error: 'Profile fetch failed' });
   });
+
+  it('returns No active session when both getUser and getSession throw', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockGetUser.mockRejectedValue(new Error('jwt service unavailable'));
+    mockGetSession.mockRejectedValue(new Error('session lookup unavailable'));
+
+    const result = await restoreCurrentUserFromSession();
+
+    expect(result).toMatchObject({ success: false, error: 'No active session' });
+    expect(console.warn).toHaveBeenCalledWith(
+      'Supabase getUser failed during session restore.',
+      expect.any(Error),
+    );
+    expect(console.warn).toHaveBeenCalledWith(
+      'Supabase getSession failed during session restore.',
+      expect.any(Error),
+    );
+  });
 });
 
 // ══ signOutCurrentUser ════════════════════════════════════════════════════
@@ -232,6 +285,38 @@ describe('signOutCurrentUser', () => {
   it('calls supabase.auth.signOut()', async () => {
     await signOutCurrentUser();
     expect(mockSignOut).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to local signOut when global signOut returns an error', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSignOut
+      .mockResolvedValueOnce({ error: { message: 'global failed' } })
+      .mockResolvedValueOnce({ error: null });
+
+    await signOutCurrentUser();
+
+    expect(mockSignOut).toHaveBeenNthCalledWith(1, undefined);
+    expect(mockSignOut).toHaveBeenNthCalledWith(2, { scope: 'local' });
+    expect(console.warn).toHaveBeenCalledWith(
+      'Supabase global sign-out failed; attempting local session clear.',
+      expect.objectContaining({ message: 'global failed' }),
+    );
+  });
+
+  it('falls back to local signOut when global signOut throws', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockSignOut
+      .mockRejectedValueOnce(new Error('network failure'))
+      .mockResolvedValueOnce({ error: null });
+
+    await signOutCurrentUser();
+
+    expect(mockSignOut).toHaveBeenNthCalledWith(1, undefined);
+    expect(mockSignOut).toHaveBeenNthCalledWith(2, { scope: 'local' });
+    expect(console.warn).toHaveBeenCalledWith(
+      'Supabase global sign-out threw; attempting local session clear.',
+      expect.any(Error),
+    );
   });
 });
 
@@ -300,5 +385,20 @@ describe('updateUserEmail', () => {
     expect(result.success).toBe(false);
     if (result.success) return;
     expect(result.error).toBe('Email already in use');
+  });
+
+  it('returns a fallback error when updateUser throws unexpectedly', async () => {
+    jest.spyOn(console, 'warn').mockImplementation(() => {});
+    mockUpdateUser.mockRejectedValue(new Error('network timeout'));
+
+    const result = await updateUserEmail('new@example.com');
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error).toBe('network timeout');
+    expect(console.warn).toHaveBeenCalledWith(
+      'Unexpected error updating user email.',
+      expect.any(Error),
+    );
   });
 });

@@ -50,6 +50,50 @@ export const authReducer = (state: AuthState, action: AuthAction): AuthState => 
 /** Reduced from 20 s → 8 s for faster fallback on slow networks. */
 const AUTH_INIT_TIMEOUT_MS = 8000;
 
+type AuthBootstrapResult =
+  | Awaited<ReturnType<typeof restoreCurrentUserFromSession>>
+  | { success: false; error: 'Timeout' };
+
+function syncCachedUser(currentUser: User | null) {
+  if (currentUser) {
+    writeCachedUser(currentUser);
+    return;
+  }
+  clearCachedUser();
+}
+
+async function restoreUserWithTimeout(): Promise<AuthBootstrapResult> {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<{ success: false; error: 'Timeout' }>((resolve) => {
+    timeoutId = setTimeout(() => resolve({ success: false, error: 'Timeout' }), AUTH_INIT_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([restoreCurrentUserFromSession(), timeout]);
+  } finally {
+    if (timeoutId !== null) clearTimeout(timeoutId);
+  }
+}
+
+function handleRestoreFailure(
+  cachedUser: User | null,
+  error: string,
+  dispatch: React.Dispatch<AuthAction>,
+) {
+  // Never call signOutCurrentUser() here — doing so would wipe the
+  // Supabase session token from localStorage, making subsequent logins
+  // fail in the same browser. signOut must only happen when the user
+  // explicitly clicks "Log out".
+  if (!cachedUser) {
+    dispatch({ type: 'FINISH_INITIALIZING' });
+    return;
+  }
+
+  if (error === 'No active session') {
+    dispatch({ type: 'LOGOUT' });
+  }
+}
+
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 export function useAuthBootstrap() {
@@ -69,11 +113,7 @@ export function useAuthBootstrap() {
       isMountedRef.current = true;
       return;
     }
-    if (state.currentUser) {
-      writeCachedUser(state.currentUser);
-    } else {
-      clearCachedUser();
-    }
+    syncCachedUser(state.currentUser);
   }, [state.currentUser]);
 
   useEffect(() => {
@@ -83,39 +123,22 @@ export function useAuthBootstrap() {
     }
 
     const loadUser = async () => {
-      // ── Fast path: restore from localStorage cache immediately so the UI is
-      //    visible without waiting for Supabase.
       const cached = readCachedUser();
       if (cached) {
         dispatch({ type: 'SET_USER', user: cached });
-        // Continue with a background validation — no spinner shown.
       }
 
-      let timeoutId: ReturnType<typeof setTimeout> | null = null;
-      const timeout = new Promise<{ success: false; error: 'Timeout' }>(
-        (resolve) => {
-          timeoutId = setTimeout(() => resolve({ success: false, error: 'Timeout' }), AUTH_INIT_TIMEOUT_MS);
+      try {
+        const result = await restoreUserWithTimeout();
+        if (!result.success) {
+          handleRestoreFailure(cached, result.error, dispatch);
+          return;
         }
-      );
-      const result = await Promise.race([restoreCurrentUserFromSession(), timeout]);
-      if (timeoutId !== null) clearTimeout(timeoutId);
-
-      if (!result.success) {
-        const err = (result as { error: string }).error;
-        // Never call signOutCurrentUser() here — doing so would wipe the
-        // Supabase session token from localStorage, making subsequent logins
-        // fail in the same browser.  signOut must only happen when the user
-        // explicitly clicks "Log out".
-        if (!cached) {
-          dispatch({ type: 'FINISH_INITIALIZING' });
-        } else if (err === 'No active session') {
-          // Session is truly gone — clear cached user and show login.
-          dispatch({ type: 'LOGOUT' });
-        }
-        // cached + any other error (Timeout, Profile not found, network, etc.) → keep cached user, skip update.
-        return;
+        dispatch({ type: 'SET_USER', user: result.user });
+      } catch (error) {
+        console.error('Unexpected auth bootstrap failure.', error);
+        handleRestoreFailure(cached, 'Profile fetch failed', dispatch);
       }
-      dispatch({ type: 'SET_USER', user: result.user });
     };
 
     loadUser();
@@ -140,7 +163,11 @@ export function useAuthBootstrap() {
 
   const handleLogout = async () => {
     clearCachedUser();
-    await signOutCurrentUser();
+    try {
+      await signOutCurrentUser();
+    } catch (error) {
+      console.error('Unexpected logout failure.', error);
+    }
     dispatch({ type: 'LOGOUT' });
   };
 

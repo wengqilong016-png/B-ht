@@ -13,6 +13,11 @@ interface ParsedDataUrl {
   bytes: Uint8Array;
 }
 
+interface EvidenceBucket {
+  upload: (path: string, body: Blob, options?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
+  getPublicUrl: (path: string) => { data: { publicUrl: string } };
+}
+
 function isDataImageUrl(value: string): boolean {
   return /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
 }
@@ -44,6 +49,64 @@ function buildObjectPath(options: EvidenceUploadOptions, extension: string): str
   return `${options.category}/${driverSegment}/${options.entityId}.${extension}`;
 }
 
+function createBlobFromBytes(bytes: Uint8Array, mimeType: string): Blob {
+  const buffer = new ArrayBuffer(bytes.byteLength);
+  new Uint8Array(buffer).set(bytes);
+  return new Blob([buffer], { type: mimeType });
+}
+
+function getEvidenceStorageBucket(): EvidenceBucket | null {
+  const storage = (supabase as typeof supabase & {
+    storage?: {
+      from?: (bucket: string) => EvidenceBucket;
+    };
+  }).storage;
+
+  if (!storage?.from) {
+    return null;
+  }
+
+  return storage.from(EVIDENCE_BUCKET);
+}
+
+async function uploadWithRetry(
+  bucket: EvidenceBucket,
+  objectPath: string,
+  blob: Blob,
+  mimeType: string,
+): Promise<{ message: string } | null> {
+  const MAX_RETRIES = 2;
+  let uploadError: { message: string } | null = null;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    uploadError = null;
+    try {
+      const { error } = await bucket.upload(objectPath, blob, {
+        contentType: mimeType,
+        upsert: true,
+        signal: AbortSignal.timeout(15_000),
+      });
+      uploadError = error;
+    } catch (error) {
+      uploadError = { message: error instanceof Error ? error.message : String(error) };
+    }
+
+    if (!uploadError) {
+      return null;
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+    }
+  }
+
+  console.warn(
+    `[evidenceStorage] Upload failed for ${objectPath} after ${MAX_RETRIES + 1} attempts — proceeding without photo URL.`,
+    uploadError?.message,
+  );
+  return uploadError;
+}
+
 export async function persistEvidencePhotoUrl(
   photoUrl: string | null | undefined,
   options: EvidenceUploadOptions,
@@ -52,60 +115,18 @@ export async function persistEvidencePhotoUrl(
   if (!isDataImageUrl(photoUrl)) return photoUrl;
   if (!supabase) throw new Error('Supabase client unavailable');
 
-  const storage = (supabase as typeof supabase & {
-    storage?: {
-      from?: (bucket: string) => {
-        upload: (path: string, body: Blob, options?: Record<string, unknown>) => Promise<{ error: { message: string } | null }>;
-        getPublicUrl: (path: string) => { data: { publicUrl: string } };
-      };
-    };
-  }).storage;
-
-  if (!storage?.from) {
+  const bucket = getEvidenceStorageBucket();
+  if (!bucket) {
     return photoUrl;
   }
 
   const { mimeType, bytes } = parseDataUrl(photoUrl);
   const extension = getFileExtension(mimeType);
   const objectPath = buildObjectPath(options, extension);
-  const blob = new Blob([bytes], { type: mimeType });
-  const bucket = storage.from(EVIDENCE_BUCKET);
+  const blob = createBlobFromBytes(bytes, mimeType);
 
-  const MAX_RETRIES = 2;
-  let uploadError: { message: string } | null = null;
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    uploadError = null;
-    try {
-      const { error } = await (bucket.upload as (
-        path: string,
-        body: Blob,
-        options?: Record<string, unknown>,
-      ) => Promise<{ error: { message: string } | null }>)(objectPath, blob, {
-        contentType: mimeType,
-        upsert: true,
-        signal: AbortSignal.timeout(15_000),
-      });
-      uploadError = error;
-    } catch (e) {
-      uploadError = { message: e instanceof Error ? e.message : String(e) };
-    }
-
-    if (!uploadError) break;
-
-    if (attempt < MAX_RETRIES) {
-      // Exponential back-off: 1s, 2s
-      await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
-    }
-  }
-
+  const uploadError = await uploadWithRetry(bucket, objectPath, blob, mimeType);
   if (uploadError) {
-    // Non-blocking: log and fall back to no photo URL so the collection
-    // submission is not blocked by a Storage outage or RLS misconfiguration.
-    console.warn(
-      `[evidenceStorage] Upload failed for ${objectPath} after ${MAX_RETRIES + 1} attempts — proceeding without photo URL.`,
-      uploadError.message,
-    );
     return null;
   }
 

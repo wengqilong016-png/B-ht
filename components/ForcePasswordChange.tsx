@@ -33,6 +33,7 @@ const ForcePasswordChange: React.FC<ForcePasswordChangeProps> = ({ currentUser, 
     try {
       await updatePassword(newPwd);
       // Clear the must_change_password flag via the SECURITY DEFINER function
+      if (!supabase) throw new Error('Supabase client unavailable');
       await supabase.rpc('clear_my_must_change_password');
       onComplete();
     } catch (err) {

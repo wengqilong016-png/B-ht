@@ -31,7 +31,7 @@ function makeInput(): OrchestrateCollectionSubmissionInput {
     aiReviewData: null,
     expenses: '0',
     expenseType: 'public',
-    expenseCategory: null,
+    expenseCategory: undefined,
     coinExchange: '0',
     tip: '0',
     draftTxId: 'draft-1',

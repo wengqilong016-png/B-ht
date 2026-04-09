@@ -490,7 +490,12 @@ describe('offline-to-online transition', () => {
     });
     expect(submitCollection).toHaveBeenCalledTimes(1);
 
-    resolveSubmission?.({
+    if (!resolveSubmission) {
+      throw new Error('Expected resolveSubmission to be set');
+    }
+
+    const finishSubmission = resolveSubmission as (value: CollectionSubmissionResult) => void;
+    finishSubmission({
       success: true,
       transaction: { ...tx, isSynced: true } as any,
       source: 'server',

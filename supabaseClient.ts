@@ -20,7 +20,7 @@ export const SUPABASE_ANON_KEY: string = envKey ?? '';
 
 export const supabase: SupabaseClient | null =
   !envVarsMissing
-    ? createClient(envUrl, envKey, {
+    ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
         auth: {
           storageKey: 'bht-main-auth',
           persistSession: true,

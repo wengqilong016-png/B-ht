@@ -18,6 +18,52 @@ interface UseDashboardDataParams {
   aiLogTypeFilter: 'all' | 'image' | 'text';
 }
 
+function groupByKey<T>(items: T[], getKey: (item: T) => string | null | undefined): Map<string, T[]> {
+  const grouped = new Map<string, T[]>();
+  for (const item of items) {
+    const key = getKey(item);
+    if (!key) continue;
+    const existing = grouped.get(key);
+    if (existing) existing.push(item);
+    else grouped.set(key, [item]);
+  }
+  return grouped;
+}
+
+function sumTransactions(
+  transactions: Transaction[],
+  selector: (transaction: Transaction) => number,
+): number {
+  let total = 0;
+  for (const transaction of transactions) {
+    total += selector(transaction);
+  }
+  return total;
+}
+
+function buildSearchBlob(driver: Driver, locations: Location[]): string {
+  return [
+    driver.name,
+    driver.phone,
+    driver.vehicleInfo?.plate,
+    ...locations.map((location) => `${location.name} ${location.area} ${location.machineId}`),
+  ].join(' ').toLowerCase();
+}
+
+function matchesTrackingFilter(
+  trackingStatusFilter: UseDashboardDataParams['trackingStatusFilter'],
+  item: {
+    attentionLocations: Location[];
+    hasStaleGps: boolean;
+    driver: Driver;
+  },
+): boolean {
+  return trackingStatusFilter === 'all'
+    || (trackingStatusFilter === 'attention' && item.attentionLocations.length > 0)
+    || (trackingStatusFilter === 'active' && item.driver.status === 'active' && !item.hasStaleGps)
+    || (trackingStatusFilter === 'stale' && item.hasStaleGps);
+}
+
 export function useDashboardData({
   transactions,
   drivers,
@@ -123,50 +169,28 @@ export function useDashboardData({
       ...confirmedSettlements.map(s => s.date.substring(0, 7)),
       ...paidCollections.map(t => t.timestamp.substring(0, 7)),
     ])).sort().reverse();
-    const txByDriver = new Map<string, Transaction[]>();
-    paidCollections.forEach(t => {
-      const arr = txByDriver.get(t.driverId);
-      if (arr) arr.push(t);
-      else txByDriver.set(t.driverId, [t]);
-    });
-    const settlementByDriver = new Map<string, DailySettlement[]>();
-    confirmedSettlements.forEach(s => {
-      const arr = settlementByDriver.get(s.driverId);
-      if (arr) arr.push(s);
-      else settlementByDriver.set(s.driverId, [s]);
-    });
+    const txByDriver = groupByKey(paidCollections, (transaction) => transaction.driverId);
+    const settlementByDriver = groupByKey(confirmedSettlements, (settlement) => settlement.driverId);
     return drivers.filter(d => d.status === 'active').map(driver => {
       const driverTxs = txByDriver.get(driver.id) ?? [];
       const driverSettlements = settlementByDriver.get(driver.id) ?? [];
 
-      // Pre-group this driver's transactions and settlements by month to avoid
-      // an O(n×m) nested filter (one pass over driverTxs per month).
-      const txByMonth = new Map<string, Transaction[]>();
-      for (const t of driverTxs) {
-        const month = t.timestamp.substring(0, 7);
-        const arr = txByMonth.get(month);
-        if (arr) arr.push(t);
-        else txByMonth.set(month, [t]);
-      }
-      const settlByMonth = new Map<string, DailySettlement[]>();
-      for (const s of driverSettlements) {
-        const month = s.date.substring(0, 7);
-        const arr = settlByMonth.get(month);
-        if (arr) arr.push(s);
-        else settlByMonth.set(month, [s]);
-      }
+      const txByMonth = groupByKey(driverTxs, (transaction) => transaction.timestamp.substring(0, 7));
+      const settlByMonth = groupByKey(driverSettlements, (settlement) => settlement.date.substring(0, 7));
 
       const monthlyBreakdown = (months as string[]).map((month: string) => {
         const monthTxs = txByMonth.get(month) ?? [];
         const monthSettlements = settlByMonth.get(month) ?? [];
-        // Single pass to accumulate private-loan recoveries from paid collections.
-        let loans = 0;
-        for (const t of monthTxs) {
-          if (t.expenseType === 'private') loans += t.expenses;
-        }
-        const totalRevenue = monthSettlements.reduce((sum, s) => sum + s.totalRevenue, 0);
+        const loans = sumTransactions(
+          monthTxs,
+          (transaction) => transaction.expenseType === 'private' ? transaction.expenses : 0,
+        );
+        const totalRevenue = monthSettlements.reduce((sum, settlement) => sum + settlement.totalRevenue, 0);
         const commission = Math.floor(totalRevenue * (driver.commissionRate || 0.05));
-        const shortage = monthSettlements.reduce((sum, s) => sum + (s.shortage < 0 ? Math.abs(s.shortage) : 0), 0);
+        const shortage = monthSettlements.reduce(
+          (sum, settlement) => sum + (settlement.shortage < 0 ? Math.abs(settlement.shortage) : 0),
+          0,
+        );
         const netPayout = (driver.baseSalary || 0) + commission - loans - shortage;
         return { month, totalRevenue, commission, loans, shortage, netPayout, collectionCount: monthTxs.length };
       }).filter(m => m.totalRevenue > 0 || m.shortage > 0);
@@ -215,30 +239,17 @@ export function useDashboardData({
   }, [transactions, drivers, locations, todayStr]);
 
   const trackingDriverCards = useMemo(() => {
-    // Pre-group locations and today's collection transactions by driver to avoid
-    // O(drivers × locations) and O(drivers × todayCollections) nested filter passes.
-    const locsByDriver = new Map<string, Location[]>();
-    for (const l of locations) {
-      if (!l.assignedDriverId) continue;
-      const arr = locsByDriver.get(l.assignedDriverId);
-      if (arr) arr.push(l);
-      else locsByDriver.set(l.assignedDriverId, [l]);
-    }
-
-    const txTodayByDriver = new Map<string, Transaction[]>();
-    for (const t of transactions) {
-      if (!t.timestamp.startsWith(todayStr)) continue;
-      if (t.type !== undefined && t.type !== 'collection') continue;
-      const arr = txTodayByDriver.get(t.driverId);
-      if (arr) arr.push(t);
-      else txTodayByDriver.set(t.driverId, [t]);
-    }
+    const locsByDriver = groupByKey(locations, (location) => location.assignedDriverId);
+    const txTodayByDriver = groupByKey(
+      transactions.filter((transaction) => transaction.timestamp.startsWith(todayStr) && (transaction.type === undefined || transaction.type === 'collection')),
+      (transaction) => transaction.driverId,
+    );
 
     return drivers
       .map(driver => {
         const driverLocs = locsByDriver.get(driver.id) ?? [];
         const driverTxsToday = txTodayByDriver.get(driver.id) ?? [];
-        const todayRevenue = driverTxsToday.reduce((sum, tx) => sum + tx.netPayable, 0);
+        const todayRevenue = sumTransactions(driverTxsToday, (transaction) => transaction.netPayable);
         const attentionLocations = driverLocs.filter(
           l => l.status !== 'active' || l.resetLocked || l.lastScore >= 9000
         );
@@ -246,22 +257,13 @@ export function useDashboardData({
           ? Math.floor((Date.now() - new Date(driver.lastActive).getTime()) / 60000)
           : null;
         const hasStaleGps = driver.status === 'active' && (lastActiveMinutes === null || lastActiveMinutes > 30);
-        const searchBlob = [
-          driver.name,
-          driver.phone,
-          driver.vehicleInfo?.plate,
-          ...driverLocs.map(l => `${l.name} ${l.area} ${l.machineId}`),
-        ].join(' ').toLowerCase();
+        const searchBlob = buildSearchBlob(driver, driverLocs);
 
         return { driver, driverLocs, driverTxsToday, todayRevenue, attentionLocations, lastActiveMinutes, hasStaleGps, searchBlob };
       })
       .filter(item => {
         const matchSearch = !trackingSearch || item.searchBlob.includes(trackingSearch.toLowerCase());
-        const matchFilter =
-          trackingStatusFilter === 'all' ||
-          (trackingStatusFilter === 'attention' && item.attentionLocations.length > 0) ||
-          (trackingStatusFilter === 'active' && item.driver.status === 'active' && !item.hasStaleGps) ||
-          (trackingStatusFilter === 'stale' && item.hasStaleGps);
+        const matchFilter = matchesTrackingFilter(trackingStatusFilter, item);
         return matchSearch && matchFilter;
       })
       .sort((a, b) => {

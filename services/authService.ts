@@ -9,6 +9,8 @@ type UserProfileRow = {
   must_change_password: boolean | null;
 };
 
+type NoActiveSessionResult = { success: false; error: 'No active session' };
+
 const VALID_USER_ROLES = ['admin', 'driver'] as const;
 
 const isValidUserRole = (role: string): role is User['role'] =>
@@ -17,6 +19,87 @@ const isValidUserRole = (role: string): role is User['role'] =>
 export type FetchCurrentUserProfileResult =
   | { success: true; user: User }
   | { success: false; error: 'Supabase not configured' | 'Profile not found' | 'Invalid user role' | 'Profile fetch failed' };
+
+function mapProfileRowToUser(
+  authUserId: string,
+  fallbackIdentity: string,
+  profile: UserProfileRow,
+): FetchCurrentUserProfileResult {
+  if (!isValidUserRole(profile.role)) {
+    return { success: false, error: 'Invalid user role' };
+  }
+
+  return {
+    success: true,
+    user: {
+      id: authUserId,
+      username: fallbackIdentity,
+      role: profile.role,
+      name: profile.display_name || fallbackIdentity,
+      driverId: profile.driver_id || undefined,
+      mustChangePassword: profile.must_change_password === true,
+    },
+  };
+}
+
+function normalizeProfileError(error: { code?: string | null } | null): Extract<FetchCurrentUserProfileResult, { success: false }>['error'] {
+  if (!error) {
+    return 'Profile not found';
+  }
+  const isNotFound = !error.code || error.code === PGRST_NO_ROWS;
+  return isNotFound ? 'Profile not found' : 'Profile fetch failed';
+}
+
+async function resolveSessionUser(): Promise<{ id: string; email?: string | null } | null> {
+  if (!supabase) {
+    return null;
+  }
+
+  try {
+    const { data: userData, error: userError } = await supabase.auth.getUser();
+    if (!userError && userData.user) {
+      return userData.user;
+    }
+  } catch (error) {
+    console.warn('Supabase getUser failed during session restore.', error);
+  }
+
+  try {
+    const { data: sessionData } = await supabase.auth.getSession();
+    return sessionData.session?.user ?? null;
+  } catch (error) {
+    console.warn('Supabase getSession failed during session restore.', error);
+    return null;
+  }
+}
+
+async function attemptSignOut(scope?: 'local'): Promise<boolean> {
+  if (!supabase) {
+    return false;
+  }
+
+  try {
+    const { error } = await supabase.auth.signOut(scope ? { scope } : undefined);
+    if (error) {
+      console.warn(
+        scope
+          ? 'Supabase local sign-out fallback failed.'
+          : 'Supabase global sign-out failed; attempting local session clear.',
+        error,
+      );
+      return false;
+    }
+    return true;
+  } catch (error) {
+    console.warn(
+      scope
+        ? 'Supabase local sign-out fallback threw.'
+        : 'Supabase global sign-out threw; attempting local session clear.',
+      error,
+    );
+    return false;
+  }
+}
 
 /**
  * PostgREST error code is now centralised in types/constants.ts.
@@ -35,58 +118,32 @@ export const fetchCurrentUserProfile = async (
     return { success: false, error: 'Supabase not configured' };
   }
 
-  const { data: profile, error } = await supabase
-    .from('profiles')
-    .select('role, display_name, driver_id, must_change_password')
-    .eq('auth_user_id', authUserId)
-    .single<UserProfileRow>();
+  try {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('role, display_name, driver_id, must_change_password')
+      .eq('auth_user_id', authUserId)
+      .single<UserProfileRow>();
 
-  if (error) {
-    // PGRST116 = no rows returned by .single() → the profile genuinely doesn't exist.
-    // Any other error code (network failure, server error, etc.) is transient — return a
-    // distinct value so callers can avoid wiping the session unnecessarily.
-    const isNotFound = !error.code || error.code === PGRST_NO_ROWS;
-    return { success: false, error: isNotFound ? 'Profile not found' : 'Profile fetch failed' };
-  }
-  if (!profile) {
-    return { success: false, error: 'Profile not found' };
-  }
+    if (error || !profile) {
+      return { success: false, error: normalizeProfileError(error) };
+    }
 
-  if (!isValidUserRole(profile.role)) {
-    return { success: false, error: 'Invalid user role' };
+    return mapProfileRowToUser(authUserId, fallbackIdentity, profile);
+  } catch (error) {
+    console.warn('Unexpected error fetching current user profile.', error);
+    return { success: false, error: 'Profile fetch failed' };
   }
-
-  return {
-    success: true,
-    user: {
-      id: authUserId,
-      username: fallbackIdentity,
-      role: profile.role,
-      name: profile.display_name || fallbackIdentity,
-      driverId: profile.driver_id || undefined,
-      mustChangePassword: profile.must_change_password === true,
-    },
-  };
 };
 
 export const restoreCurrentUserFromSession = async (): Promise<
-  FetchCurrentUserProfileResult | { success: false; error: 'No active session' }
+  FetchCurrentUserProfileResult | NoActiveSessionResult
 > => {
   if (!supabase) {
     return { success: false, error: 'Supabase not configured' };
   }
 
-  // Attempt to validate the token (checking server if needed).
-  const { data: userData, error: userError } = await supabase.auth.getUser();
-
-  if (!userError && userData.user) {
-    return fetchCurrentUserProfile(userData.user.id, userData.user.email || '');
-  }
-
-  // getUser() failed (network error, expired token, missing session, etc.).
-  // Always fallback to getSession() to check if a local session still exists.
-  const { data: sessionData } = await supabase.auth.getSession();
-  const sessionUser = sessionData.session?.user;
+  const sessionUser = await resolveSessionUser();
   if (sessionUser) {
     return fetchCurrentUserProfile(sessionUser.id, sessionUser.email || '');
   }
@@ -112,24 +169,9 @@ export const signOutCurrentUser = async () => {
     return;
   }
 
-  try {
-    const { error } = await supabase.auth.signOut();
-    if (!error) {
-      return;
-    }
-
-    console.warn('Supabase global sign-out failed; attempting local session clear.', error);
-  } catch (error) {
-    console.warn('Supabase global sign-out threw; attempting local session clear.', error);
-  }
-
-  try {
-    const { error } = await supabase.auth.signOut({ scope: 'local' });
-    if (error) {
-      console.warn('Supabase local sign-out fallback failed.', error);
-    }
-  } catch (error) {
-    console.warn('Supabase local sign-out fallback threw.', error);
+  const globalSignOutSucceeded = await attemptSignOut();
+  if (!globalSignOutSucceeded) {
+    await attemptSignOut('local');
   }
 };
 
@@ -137,9 +179,15 @@ export const updateUserEmail = async (newEmail: string) => {
   if (!supabase) {
     return { success: false as const, error: 'Supabase not configured' };
   }
-  const { error } = await supabase.auth.updateUser({ email: newEmail });
-  if (error) {
-    return { success: false as const, error: error.message };
+
+  try {
+    const { error } = await supabase.auth.updateUser({ email: newEmail });
+    if (error) {
+      return { success: false as const, error: error.message };
+    }
+    return { success: true as const };
+  } catch (error) {
+    console.warn('Unexpected error updating user email.', error);
+    return { success: false as const, error: error instanceof Error ? error.message : 'Failed to update email' };
   }
-  return { success: true as const };
 };

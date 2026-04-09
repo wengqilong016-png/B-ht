@@ -20,11 +20,16 @@ import type { User } from '../types';
 // Capture the onAuthStateChange callback so tests can fire it directly.
 let capturedAuthListener: ((event: string, session: null) => void) | null = null;
 const mockUnsubscribe = jest.fn();
-const mockOnAuthStateChange = jest.fn().mockImplementation(
-  (cb: (event: string, session: null) => void) => {
+type AuthStateChangeHandler = (event: string, session: null) => void;
+type OnAuthStateChange = (cb: AuthStateChangeHandler) => {
+  data: { subscription: { unsubscribe: typeof mockUnsubscribe } };
+};
+
+const mockOnAuthStateChange = jest.fn<OnAuthStateChange>().mockImplementation(
+  (cb) => {
     capturedAuthListener = cb;
     return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-  }
+  },
 );
 
 const mockRestoreCurrentUserFromSession =
@@ -131,10 +136,10 @@ describe('useAuthBootstrap', () => {
     localStorage.clear();
     // Re-attach the listener capture after clearAllMocks resets it.
     mockOnAuthStateChange.mockImplementation(
-      (cb: (event: string, session: null) => void) => {
+      (cb) => {
         capturedAuthListener = cb;
         return { data: { subscription: { unsubscribe: mockUnsubscribe } } };
-      }
+      },
     );
   });
 

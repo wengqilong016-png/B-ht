@@ -42,6 +42,64 @@ const DRIVER_CHANNELS = [
   { topic: 'db:transactions',      table: 'transactions'      },
 ] as const;
 
+type RealtimeChannelConfig = (typeof ADMIN_CHANNELS | typeof DRIVER_CHANNELS)[number];
+type RealtimeTableName = RealtimeChannelConfig['table'];
+
+function getChannelConfigs(userRole: 'admin' | 'driver') {
+  return userRole === 'driver' ? DRIVER_CHANNELS : ADMIN_CHANNELS;
+}
+
+function createStatusHandler(
+  subscribedTopics: Set<string>,
+  expectedChannelCount: number,
+  setRealtimeStatus: React.Dispatch<React.SetStateAction<RealtimeStatus>>,
+) {
+  return (topic: string) => (status: string) => {
+    if (status === 'SUBSCRIBED') {
+      subscribedTopics.add(topic);
+      if (subscribedTopics.size === expectedChannelCount) {
+        setRealtimeStatus('connected');
+      }
+      return;
+    }
+
+    if (status === 'CLOSED') {
+      subscribedTopics.delete(topic);
+      if (subscribedTopics.size === 0) {
+        setRealtimeStatus('disconnected');
+      }
+      return;
+    }
+
+    setRealtimeStatus('reconnecting');
+  };
+}
+
+function subscribeToRealtimeChannels(
+  client: NonNullable<typeof supabase>,
+  channelConfigs: typeof ADMIN_CHANNELS | typeof DRIVER_CHANNELS,
+  queue: (table: RealtimeTableName) => void,
+  setRealtimeStatus: React.Dispatch<React.SetStateAction<RealtimeStatus>>,
+) {
+  const subscribedTopics = new Set<string>();
+  const statusHandlerFactory = createStatusHandler(
+    subscribedTopics,
+    channelConfigs.length,
+    setRealtimeStatus,
+  );
+
+  return channelConfigs.map(({ topic, table }) => {
+    const channel = client.channel(topic, { config: { private: true } });
+
+    for (const event of BROADCAST_EVENTS) {
+      channel.on('broadcast', { event }, () => queue(table));
+    }
+
+    channel.subscribe(statusHandlerFactory(topic));
+    return channel;
+  });
+}
+
 export function useRealtimeSubscription(userRole?: 'admin' | 'driver', isOnline?: boolean) {
   const queryClient = useQueryClient();
   const [realtimeStatus, setRealtimeStatus] = useState<RealtimeStatus>('disconnected');
@@ -59,44 +117,15 @@ export function useRealtimeSubscription(userRole?: 'admin' | 'driver', isOnline?
     // Set auth token so private channels pass RLS checks on realtime.messages.
     // Passing no argument automatically uses the current session token from the
     // Supabase client.
-    supabase.realtime.setAuth();
+    const client = supabase;
+    client.realtime.setAuth();
 
-    const channelConfigs = userRole === 'driver' ? DRIVER_CHANNELS : ADMIN_CHANNELS;
-
-    // Track which channel topics have reached SUBSCRIBED state so the aggregate
-    // status indicator is accurate even when channels transition independently.
-    const subscribedTopics = new Set<string>();
-
-    const makeStatusHandler = (topic: string) => (status: string) => {
-      if (status === 'SUBSCRIBED') {
-        subscribedTopics.add(topic);
-        if (subscribedTopics.size === channelConfigs.length) {
-          setRealtimeStatus('connected');
-        }
-      } else if (status === 'CLOSED') {
-        subscribedTopics.delete(topic);
-        if (subscribedTopics.size === 0) {
-          setRealtimeStatus('disconnected');
-        }
-      } else {
-        setRealtimeStatus('reconnecting');
-      }
-    };
-
-    const channels = channelConfigs.map(({ topic, table }) => {
-      const ch = supabase.channel(topic, { config: { private: true } });
-
-      for (const event of BROADCAST_EVENTS) {
-        ch.on('broadcast', { event }, () => queue(table));
-      }
-
-      ch.subscribe(makeStatusHandler(topic));
-      return ch;
-    });
+    const channelConfigs = getChannelConfigs(userRole);
+    const channels = subscribeToRealtimeChannels(client, channelConfigs, queue, setRealtimeStatus);
 
     return () => {
       cleanup();
-      channels.forEach((ch) => supabase.removeChannel(ch));
+      channels.forEach((ch) => client.removeChannel(ch));
     };
   }, [queryClient, userRole]);
 
@@ -105,9 +134,12 @@ export function useRealtimeSubscription(userRole?: 'admin' | 'driver', isOnline?
   // the SDK's built-in reconnect uses a valid token instead of silently failing.
   useEffect(() => {
     if (!supabase || !userRole || !isOnline) return;
-    supabase.auth.getSession().then(() => {
-      supabase.realtime.setAuth();
-    }).catch(() => {});
+    const client = supabase;
+    client.auth.getSession().then(() => {
+      client.realtime.setAuth();
+    }).catch((error) => {
+      console.warn('Failed to refresh realtime auth session.', error);
+    });
   }, [isOnline, userRole]);
 
   return { realtimeStatus };

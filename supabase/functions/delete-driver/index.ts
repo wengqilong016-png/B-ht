@@ -2,8 +2,8 @@
 // Edge Function: POST /functions/v1/delete-driver
 //
 // Fully removes a driver account in three steps:
-//   1. Looks up the auth_user_id from public.profiles (via driver_id).
-//   2. Deletes the Supabase Auth user → cascades to public.profiles deletion.
+//   1. Looks up the auth_user_id from public.drivers.
+//   2. Deletes the Supabase Auth user.
 //   3. Deletes the public.drivers row.
 //
 // Security: only callers whose public.profiles.role = 'admin' may invoke this
@@ -32,20 +32,46 @@ function json(body: unknown, status = 200): Response {
   });
 }
 
+function errorJson(error: string, status: number, code: string): Response {
+  return json({ success: false, error, code }, status);
+}
+
+async function unlinkDriverReferences(driverId: string): Promise<{ error: string; code: string } | null> {
+  const { error: transactionUnlinkError } = await supabaseAdmin
+    .from('transactions')
+    .update({ driverId: null })
+    .eq('driverId', driverId);
+
+  if (transactionUnlinkError) {
+    return { error: transactionUnlinkError.message, code: 'TRANSACTION_UNLINK_FAILED' };
+  }
+
+  const { error: settlementUnlinkError } = await supabaseAdmin
+    .from('daily_settlements')
+    .update({ driverId: null })
+    .eq('driverId', driverId);
+
+  if (settlementUnlinkError) {
+    return { error: settlementUnlinkError.message, code: 'SETTLEMENT_UNLINK_FAILED' };
+  }
+
+  return null;
+}
+
 Deno.serve(async (req: Request) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
   if (req.method !== 'POST') {
-    return json({ success: false, error: 'Method not allowed' }, 405);
+    return errorJson('Method not allowed', 405, 'METHOD_NOT_ALLOWED');
   }
 
   // ── 1. Authorization ─────────────────────────────────────────────────────
   const authHeader = req.headers.get('Authorization');
   const callerId = await isAdmin(authHeader);
   if (!callerId) {
-    return json({ success: false, error: 'Forbidden: admin access required' }, 403);
+    return errorJson('Forbidden: admin access required', 403, 'FORBIDDEN');
   }
 
   // ── 2. Parse & validate request body ────────────────────────────────────
@@ -53,47 +79,42 @@ Deno.serve(async (req: Request) => {
   try {
     body = await req.json();
   } catch {
-    return json({ success: false, error: 'Invalid JSON body' }, 400);
+    return errorJson('Invalid JSON body', 400, 'INVALID_JSON');
   }
 
   const driverId = typeof body.driver_id === 'string' ? body.driver_id.trim() : '';
   if (!driverId) {
-    return json({ success: false, error: 'driver_id is required', code: 'MISSING_DRIVER_ID' }, 400);
+    return errorJson('driver_id is required', 400, 'MISSING_DRIVER_ID');
   }
 
-  // ── 3. Look up auth_user_id from profiles ────────────────────────────────
-  const { data: profile, error: profileError } = await supabaseAdmin
-    .from('profiles')
+  // ── 3. Look up auth_user_id from drivers ─────────────────────────────────
+  const { data: driverRow, error: driverLookupError } = await supabaseAdmin
+    .from('drivers')
     .select('auth_user_id')
-    .eq('driver_id', driverId)
-    .maybeSingle<{ auth_user_id: string }>();
+    .eq('id', driverId)
+    .maybeSingle<{ auth_user_id: string | null }>();
 
-  if (profileError) {
-    return json({ success: false, error: profileError.message, code: 'PROFILE_LOOKUP_FAILED' }, 500);
+  if (driverLookupError) {
+    return errorJson(driverLookupError.message, 500, 'DRIVER_LOOKUP_FAILED');
   }
 
-  // ── 4. Delete Supabase Auth user (cascades to profiles row) ─────────────
-  if (profile?.auth_user_id) {
+  // ── 4. Delete Supabase Auth user when linked ─────────────────────────────
+  if (driverRow?.auth_user_id) {
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(
-      profile.auth_user_id,
+      driverRow.auth_user_id,
     );
     if (authDeleteError) {
-      return json({ success: false, error: authDeleteError.message, code: 'AUTH_DELETE_FAILED' }, 500);
+      return errorJson(authDeleteError.message, 500, 'AUTH_DELETE_FAILED');
     }
   }
 
   // ── 5. Unlink transactions and settlements, then delete drivers row ──────
   // Transactions and daily_settlements have FK constraints on drivers.id, so
   // we NULL out the driverId first to preserve historical financial records.
-  await supabaseAdmin
-    .from('transactions')
-    .update({ driverId: null })
-    .eq('driverId', driverId);
-
-  await supabaseAdmin
-    .from('daily_settlements')
-    .update({ driverId: null })
-    .eq('driverId', driverId);
+  const unlinkError = await unlinkDriverReferences(driverId);
+  if (unlinkError) {
+    return errorJson(unlinkError.error, 500, unlinkError.code);
+  }
 
   const { error: driverDeleteError } = await supabaseAdmin
     .from('drivers')
@@ -101,7 +122,7 @@ Deno.serve(async (req: Request) => {
     .eq('id', driverId);
 
   if (driverDeleteError) {
-    return json({ success: false, error: driverDeleteError.message, code: 'DRIVER_DELETE_FAILED' }, 500);
+    return errorJson(driverDeleteError.message, 500, 'DRIVER_DELETE_FAILED');
   }
 
   return json({ success: true, driver_id: driverId });

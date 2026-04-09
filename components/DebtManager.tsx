@@ -16,6 +16,85 @@ import FinanceAuditPanel from './dashboard/FinanceAuditPanel';
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface DebtManagerProps {}
 
+interface DriverEditFormState {
+  remainingDebt: string;
+  dailyFloatingCoins: string;
+}
+
+function scheduleSuccessPulse(
+  setSuccessPulse: React.Dispatch<React.SetStateAction<string | null>>,
+  entityId: string,
+) {
+  setSuccessPulse(entityId);
+  setTimeout(() => setSuccessPulse(null), 2000);
+}
+
+function buildRecoveredLocations(
+  locations: Location[],
+  locationId: string,
+  amount: number,
+): { updatedLocations: Location[]; targetLocation: Location | undefined; nextDebt: number } {
+  const targetLocation = locations.find((location) => location.id === locationId);
+  const oldDebt = targetLocation?.remainingStartupDebt ?? 0;
+  const nextDebt = Math.max(0, oldDebt - amount);
+
+  return {
+    updatedLocations: locations.map((location) => (
+      location.id === locationId
+        ? { ...location, remainingStartupDebt: nextDebt }
+        : location
+    )),
+    targetLocation,
+    nextDebt,
+  };
+}
+
+function buildUpdatedDriver(
+  driver: Driver,
+  form: DriverEditFormState,
+): Driver {
+  return {
+    ...driver,
+    remainingDebt: parseInt(form.remainingDebt, 10) || 0,
+    dailyFloatingCoins: parseInt(form.dailyFloatingCoins, 10) || 0,
+    isSynced: false,
+  };
+}
+
+function buildDriverAuditEntries(
+  driver: Driver,
+  updatedDriver: Driver,
+  actorId: string,
+): Parameters<typeof logFinanceAuditBatch>[0] {
+  const auditEntries: Parameters<typeof logFinanceAuditBatch>[0] = [];
+
+  if ((driver.remainingDebt ?? 0) !== updatedDriver.remainingDebt) {
+    auditEntries.push({
+      event_type: 'driver_debt_change',
+      entity_type: 'driver',
+      entity_id: driver.id,
+      entity_name: driver.name,
+      actor_id: actorId,
+      old_value: driver.remainingDebt ?? 0,
+      new_value: updatedDriver.remainingDebt,
+    });
+  }
+
+  if ((driver.dailyFloatingCoins ?? 0) !== updatedDriver.dailyFloatingCoins) {
+    auditEntries.push({
+      event_type: 'floating_coins_change',
+      entity_type: 'driver',
+      entity_id: driver.id,
+      entity_name: driver.name,
+      actor_id: actorId,
+      old_value: driver.dailyFloatingCoins ?? 0,
+      new_value: updatedDriver.dailyFloatingCoins,
+    });
+  }
+
+  return auditEntries;
+}
+
 const DebtManager: React.FC<DebtManagerProps> = () => {
   const { currentUser, lang } = useAuth();
   const { filteredDrivers: drivers, filteredLocations: locations } = useAppData();
@@ -35,7 +114,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
 
   // Driver debt editing (admin only)
   const [editingDriverId, setEditingDriverId] = useState<string | null>(null);
-  const [driverEditForm, setDriverEditForm] = useState({ remainingDebt: '', dailyFloatingCoins: '' });
+  const [driverEditForm, setDriverEditForm] = useState<DriverEditFormState>({ remainingDebt: '', dailyFloatingCoins: '' });
 
   // --- Data Calculations ---
   const startupDebtPoints = useMemo(() => locations.filter(l => {
@@ -66,7 +145,7 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
   }, [startupDebtPoints, displayedDrivers]);
 
   const handleRecoverSubmit = async (locationId: string) => {
-    const amount = parseInt(recoveryAmount);
+    const amount = parseInt(recoveryAmount, 10);
     if (!amount || amount <= 0) return;
     
     setIsActionLoading(true);
@@ -74,38 +153,27 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
     // Simulate slight delay for smoothness
     await new Promise(resolve => setTimeout(resolve, 800));
 
-    if (onUpdateLocations) {
-       const updatedLocations = locations.map(l => {
-         if (l.id === locationId) {
-           const newDebt = Math.max(0, (l.remainingStartupDebt ?? 0) - amount);
-           return { ...l, remainingStartupDebt: newDebt };
-         }
-         return l;
-       });
-       
-       try {
-         await onUpdateLocations(updatedLocations);
-         const loc = locations.find(l => l.id === locationId);
-         const oldDebt = loc?.remainingStartupDebt ?? 0;
-         logFinanceAudit({
-           event_type: 'startup_debt_recovery',
-           entity_type: 'location',
-           entity_id: locationId,
-           entity_name: loc?.name,
-           actor_id: activeDriverId,
-           old_value: oldDebt,
-           new_value: Math.max(0, oldDebt - amount),
-           payload: { recoveryAmount: amount },
-         });
-         setSuccessPulse(locationId);
-         setRecoveringLocId(null);
-         setRecoveryAmount('');
-         setTimeout(() => setSuccessPulse(null), 2000);
-       } catch (err) {
-         console.error("Failed to update debt", err);
-       } finally {
-         setIsActionLoading(false);
-       }
+    const { updatedLocations, targetLocation, nextDebt } = buildRecoveredLocations(locations, locationId, amount);
+
+    try {
+      await onUpdateLocations(updatedLocations);
+      logFinanceAudit({
+        event_type: 'startup_debt_recovery',
+        entity_type: 'location',
+        entity_id: locationId,
+        entity_name: targetLocation?.name,
+        actor_id: activeDriverId,
+        old_value: targetLocation?.remainingStartupDebt ?? 0,
+        new_value: nextDebt,
+        payload: { recoveryAmount: amount },
+      });
+      scheduleSuccessPulse(setSuccessPulse, locationId);
+      setRecoveringLocId(null);
+      setRecoveryAmount('');
+    } catch (error) {
+      console.error('Failed to update startup debt recovery.', error);
+    } finally {
+      setIsActionLoading(false);
     }
   };
 
@@ -118,44 +186,15 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
   };
 
   const handleDriverDebtSave = async (driver: Driver) => {
-    if (!onUpdateDrivers) return;
     setIsActionLoading(true);
-    const updated: Driver = {
-      ...driver,
-      remainingDebt: parseInt(driverEditForm.remainingDebt) || 0,
-      dailyFloatingCoins: parseInt(driverEditForm.dailyFloatingCoins) || 0,
-      isSynced: false,
-    };
+    const updatedDriver = buildUpdatedDriver(driver, driverEditForm);
     try {
-      await onUpdateDrivers(drivers.map(d => d.id === driver.id ? updated : d));
-      const auditEntries: Parameters<typeof logFinanceAuditBatch>[0] = [];
-      if ((driver.remainingDebt ?? 0) !== updated.remainingDebt) {
-        auditEntries.push({
-          event_type: 'driver_debt_change',
-          entity_type: 'driver',
-          entity_id: driver.id,
-          entity_name: driver.name,
-          actor_id: activeDriverId,
-          old_value: driver.remainingDebt ?? 0,
-          new_value: updated.remainingDebt,
-        });
-      }
-      if ((driver.dailyFloatingCoins ?? 0) !== updated.dailyFloatingCoins) {
-        auditEntries.push({
-          event_type: 'floating_coins_change',
-          entity_type: 'driver',
-          entity_id: driver.id,
-          entity_name: driver.name,
-          actor_id: activeDriverId,
-          old_value: driver.dailyFloatingCoins ?? 0,
-          new_value: updated.dailyFloatingCoins,
-        });
-      }
+      await onUpdateDrivers(drivers.map(d => d.id === driver.id ? updatedDriver : d));
+      const auditEntries = buildDriverAuditEntries(driver, updatedDriver, activeDriverId);
       if (auditEntries.length > 0) logFinanceAuditBatch(auditEntries);
-      setSuccessPulse(driver.id);
-      setTimeout(() => setSuccessPulse(null), 2000);
-    } catch (err) {
-      console.error("Failed to update driver", err);
+      scheduleSuccessPulse(setSuccessPulse, driver.id);
+    } catch (error) {
+      console.error('Failed to update driver debt settings.', error);
     } finally {
       setIsActionLoading(false);
       setEditingDriverId(null);
@@ -381,11 +420,11 @@ const DebtManager: React.FC<DebtManagerProps> = () => {
                     </div>
                   </div>
                   {isDebtFree && <ShieldCheck size={16} className="text-emerald-400 shrink-0" />}
-                  {currentUser.role === 'admin' && onUpdateDrivers && (
-                    <button onClick={() => isEditingThis ? setEditingDriverId(null) : openDriverEdit(driver)} className="p-1.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shrink-0">
-                      {isEditingThis ? <X size={14}/> : <Pencil size={14}/>}
-                    </button>
-                  )}
+                   {currentUser.role === 'admin' && (
+                     <button onClick={() => isEditingThis ? setEditingDriverId(null) : openDriverEdit(driver)} className="p-1.5 bg-slate-50 border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 transition-colors shrink-0">
+                       {isEditingThis ? <X size={14}/> : <Pencil size={14}/>}
+                     </button>
+                   )}
                 </div>
 
                 <div className="space-y-3">
