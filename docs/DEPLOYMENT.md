@@ -237,6 +237,12 @@ All schema objects are created by `supabase/schema.sql`. To verify they exist:
 - [ ] Confirm Admin → Local Queue Diagnostics shows the item as pending.
 - [ ] Restore network.  Within 20 seconds the item should sync and disappear
       from the queue.
+- [ ] Confirm only one effective transaction row is written for the offline submission (no duplicate replay write after reconnect).
+- [ ] Confirm Local Queue Diagnostics shows no dead-letter items after the sync completes.
+
+**Settlement submission behavior**
+- [ ] Confirm daily settlement submission is only attempted while online.
+- [ ] If the device was offline during settlement preparation, reconnect first, then submit once and confirm the settlement is written exactly once.
 
 **Authentication + profile bootstrap**
 - [ ] Open the login page with a provisioned admin or driver account.

@@ -5,7 +5,7 @@
  * Verifies that transactions enqueued via the offlineQueue module
  * are correctly stored in IndexedDB (mocked) and can be read back.
  */
-import { describe, it, expect, jest, beforeEach } from '@jest/globals';
+import { describe, it, expect, jest, beforeEach, afterAll } from '@jest/globals';
 
 // ── Mock IndexedDB ────────────────────────────────────────────────────────
 const idbStore = new Map<string, unknown>();
@@ -29,8 +29,11 @@ function makeMockIDBStore() {
       return { set onsuccess(fn: () => void) { fn(); }, set onerror(_: unknown) {} };
     }),
     index: jest.fn(() => ({
-      getAll: jest.fn(() => ({
-        result: [...idbStore.values()],
+      getAll: jest.fn((query?: { value?: unknown }) => ({
+        result: [...idbStore.values()].filter((item) => {
+          if (!query || query.value === undefined) return true;
+          return (item as { isSynced?: boolean }).isSynced === query.value;
+        }),
         set onsuccess(fn: () => void) { fn(); },
         set onerror(_: unknown) {},
       })),
@@ -65,6 +68,14 @@ Object.defineProperty(global, 'indexedDB', {
       };
       return req;
     }),
+  },
+  writable: true,
+  configurable: true,
+});
+
+Object.defineProperty(global, 'IDBKeyRange', {
+  value: {
+    only: (value: unknown) => ({ value }),
   },
   writable: true,
   configurable: true,
@@ -207,6 +218,74 @@ describe('Offline Sync Flow (Integration)', () => {
       const rawInput = putArg.rawInput as Record<string, unknown> | undefined;
       // rawInput.photoUrl should be null (stripped to save space)
       expect(rawInput?.photoUrl).toBeNull();
+    });
+  });
+
+  describe('offline submit → reconnect → auto sync idempotency', () => {
+    it('flushes an offline collection exactly once, clears pending work, and leaves no dead-letter residue', async () => {
+      const { enqueueTransaction, flushQueue, getAllQueuedTransactions, getDeadLetterItems } = await import('../../offlineQueue');
+
+      const tx = makeTransaction({
+        id: 'offline-sync-tx-1',
+        isSynced: false,
+      });
+      const rawInput = {
+        txId: tx.id,
+        locationId: tx.locationId,
+        driverId: tx.driverId,
+        currentScore: tx.currentScore,
+        expenses: tx.expenses,
+        tip: 0,
+        startupDebtDeduction: 0,
+        isOwnerRetaining: false,
+        ownerRetention: null,
+        coinExchange: 0,
+        gps: tx.gps,
+        photoUrl: null,
+        aiScore: null,
+        anomalyFlag: false,
+        notes: null,
+        expenseType: null,
+        expenseCategory: null,
+        reportedStatus: 'active' as const,
+      };
+
+      await enqueueTransaction(tx, rawInput);
+
+      const serverTx = {
+        ...tx,
+        isSynced: true,
+        revenue: 250,
+        netPayable: 180,
+      };
+      const submitCollection = jest.fn<() => Promise<unknown>>().mockResolvedValue({
+        success: true,
+        transaction: serverTx,
+        source: 'server',
+      });
+
+      const firstFlush = await flushQueue({ from: jest.fn() } as any, {
+        submitCollection: submitCollection as any,
+      });
+      const secondFlush = await flushQueue({ from: jest.fn() } as any, {
+        submitCollection: submitCollection as any,
+      });
+
+      expect(firstFlush).toBe(1);
+      expect(secondFlush).toBe(0);
+      expect(submitCollection).toHaveBeenCalledTimes(1);
+
+      const storedEntries = await getAllQueuedTransactions() as unknown as Array<Record<string, unknown>>;
+      expect(storedEntries).toHaveLength(1);
+      expect(storedEntries[0].isSynced).toBe(true);
+      expect(storedEntries[0].revenue).toBe(250);
+      expect(storedEntries[0].netPayable).toBe(180);
+
+      const pendingEntries = storedEntries.filter((entry) => entry.isSynced !== true);
+      expect(pendingEntries).toHaveLength(0);
+
+      const deadLetters = await getDeadLetterItems();
+      expect(deadLetters).toHaveLength(0);
     });
   });
 });
