@@ -1,425 +1,414 @@
 # B-ht 移动端构建指南
 
-## 🎯 项目概述
+## 目标
 
-B-ht 项目已成功配置为移动端应用，支持 Android 和 iOS 平台。主要特性：
+这份文档只定义一套移动端构建口径：**以仓库 CI 为准**。
 
-- ✅ **实时定位功能** - 解决了 Web App 无法实时定位的问题
-- ✅ **Capacitor 框架** - 支持原生功能访问
-- ✅ **测试环境配置** - 完整的 Jest 测试环境
-- ✅ **代码优化** - 清理了无用的文件和代码
+- Java: **21**（Temurin）
+- Node.js: **22.x**
+- npm: **10.x**
+- Android Gradle Plugin: `8.13.0`
+- Android 打包方式: **Capacitor + Gradle**
 
-## 🚀 移动端配置完成
+当前 CI 配置来源：
 
-### 已配置的功能
+- [build-apk.yml](/root/b-ht/.github/workflows/build-apk.yml)
+- [release.yml](/root/b-ht/.github/workflows/release.yml)
+- [package.json](/root/b-ht/package.json)
 
-**定位功能:**
-- ✅ ACCESS_FINE_LOCATION - 精确定位
-- ✅ ACCESS_COARSE_LOCATION - 粗略定位  
-- ✅ ACCESS_BACKGROUND_LOCATION - 后台定位
+## 当前约定
 
-**其他权限:**
-- ✅ 相机权限 (用于拍照功能)
-- ✅ 存储权限 (用于文件管理)
-- ✅ 网络权限
+### CI 会做什么
 
-**Capacitor 插件:**
-- ✅ @capacitor/geolocation - 地理定位
-- ✅ @capacitor/camera - 相机功能
-- ✅ @capacitor/network - 网络状态
+`main` 和 `v*` tag 的 Android 流程默认按 **release** 构建，手动触发时才允许选择 `debug`。
 
-## 📱 构建 Android APK
+CI 的固定顺序是：
 
-### 前置要求
+1. `npm ci`
+2. `npm run build`
+3. `npx cap sync android`
+4. `cd android && ./gradlew assembleDebug` 或 `assembleRelease`
 
-在 Windows/Mac/Linux 上构建需要：
+### 本地也必须跟 CI 保持一致
 
-1. **Java Development Kit (JDK) 11 或更高版本**
-   ```bash
-   java -version
-   ```
+本地排查 Android 构建问题时，不要再用旧口径：
 
-2. **Android SDK**
-   - Android Studio 或 Android SDK 命令行工具
-   - Android SDK Platform-Tools
-   - Android SDK Build-Tools
+- 不要按 JDK 11 写环境
+- 不要按 Node 20 写环境
+- 不要跳过 `npm run build` 或 `npx cap sync android`
 
-3. **环境变量**
-   ```bash
-   export ANDROID_HOME=/path/to/android/sdk
-   export PATH=$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/tools
-   ```
+## 前置要求
 
-### 构建步骤
+### 1. Node.js / npm
 
-#### 1. 安装依赖
-```bash
-cd B-ht
-npm install
+仓库已经在 [package.json](/root/b-ht/package.json) 里固定了：
+
+```json
+"engines": {
+  "node": "22.x",
+  "npm": "10.x"
+}
 ```
 
-#### 2. 构建 Web 应用
+确认版本：
+
+```bash
+node -v
+npm -v
+```
+
+### 2. Java 21
+
+确认版本：
+
+```bash
+java -version
+```
+
+输出应为 Java 21。
+
+### 3. Android SDK
+
+本地需要安装：
+
+- Android Studio，或 Android SDK Command-line Tools
+- Android SDK Platform-Tools
+- Android SDK Build-Tools
+
+常见环境变量示例：
+
+```bash
+export ANDROID_HOME="$HOME/Library/Android/sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+```
+
+Linux 用户通常是：
+
+```bash
+export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin:$PATH"
+```
+
+## 本地构建步骤
+
+### 1. 安装依赖
+
+```bash
+npm ci
+```
+
+### 2. 准备前端环境变量
+
+复制示例文件：
+
+```bash
+cp .env.example .env.local
+```
+
+至少填好：
+
+```env
+VITE_SUPABASE_URL=...
+VITE_SUPABASE_ANON_KEY=...
+```
+
+### 3. 构建 Web 资源
+
 ```bash
 npm run build
 ```
 
-#### 3. 同步到 Android 平台
+### 4. 同步到 Android 平台
+
+```bash
+npx cap sync android
+```
+
+也可以使用脚本：
+
 ```bash
 npm run cap:sync:android
 ```
 
-#### 4. 构建 Debug APK
+### 5. 构建 Debug APK
+
 ```bash
 cd android
 ./gradlew assembleDebug
 ```
 
-> **仅用于开发联调 / USB 安装 / ADB 调试。** 不要把 `app-debug.apk` 发给最终用户。
+Debug APK 输出位置：
 
-#### 5. 构建 Release APK
+```text
+android/app/build/outputs/apk/debug/app-debug.apk
+```
+
+> `debug` 只用于开发联调、ADB 安装、USB 调试，不要发给最终用户。
+
+### 6. 构建 Release APK
+
 ```bash
 cd android
 ./gradlew assembleRelease
 ```
 
-> **给最终用户安装的应当是 Release APK。** 只要 APK 已正确签名，用户通常只需要允许“安装未知应用”，不应该要求开启 USB 调试。
+Release APK 输出位置：
 
-### APK 位置
-
-- **Debug APK**: `android/app/build/outputs/apk/debug/app-debug.apk`
-- **Release APK**: `android/app/build/outputs/apk/release/app-release.apk`
-
-### GitHub Actions 产物说明
-
-- `main` 分支和 tag 构建应产出 **release APK**
-- 手动选择 `debug` 时才产出 **debug APK**
-- 面向用户分发时，优先使用 `bahati-v*-release.apk`
-
-## 🍎 构建 iOS 应用
-
-### 前置要求
-
-1. **Mac 电脑** - iOS 开发只能在 Mac 上进行
-2. **Xcode 14 或更高版本**
-3. **CocoaPods**
-
-### 构建步骤
-
-#### 1. 添加 iOS 平台
-```bash
-npx cap add ios
+```text
+android/app/build/outputs/apk/release/app-release.apk
 ```
 
-#### 2. 同步到 iOS 平台
+> 给最终用户分发的必须是 **Release APK**，并且应当已经完成签名。
+
+## 推荐的一键命令
+
+仓库已经提供了本地脚本：
+
 ```bash
-npm run cap:sync:ios
-```
-
-#### 3. 打开 Xcode
-```bash
-npm run cap:open:ios
-```
-
-#### 4. 在 Xcode 中构建
-- 选择目标设备或模拟器
-- 点击 Product > Build (Cmd+B)
-- 产品 > Archive (用于发布版本)
-
-## 🛠️ 使用 Capacitor 命令
-
-### 同步命令
-```bash
-# 同步所有平台
-npm run cap:sync
-
-# 只同步 Android
-npm run cap:sync:android
-
-# 只同步 iOS
-npm run cap:sync:ios
-```
-
-### 打开 IDE
-```bash
-# 打开 Android Studio
-npm run cap:open:android
-
-# 打开 Xcode
-npm run cap:open:ios
-```
-
-### 一键构建脚本
-```bash
-# 构建 Debug APK
+# Debug
 npm run cap:build:android
 
-# 构建 Release APK
+# Release
 npm run cap:build:android:release
 ```
 
-## 📍 定位功能实现
+它们内部仍然遵循 CI 同样的顺序：
 
-### 使用 Capacitor Geolocation API
+1. `npm run build`
+2. `npx cap sync android`
+3. `./gradlew assembleDebug` / `assembleRelease`
 
-```typescript
-import { Geolocation } from '@capacitor/geolocation';
+## 本地签名配置
 
-// 获取当前位置
-const getCurrentPosition = async () => {
-  try {
-    const position = await Geolocation.getCurrentPosition({
-      enableHighAccuracy: true,
-      timeout: 10000,
-      maximumAge: 0
-    });
-    
-    return {
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy
-    };
-  } catch (error) {
-    console.error('定位失败:', error);
-    throw error;
-  }
-};
+Android Release 签名依赖 [android/app/build.gradle](/root/b-ht/android/app/build.gradle) 里的四个环境变量：
 
-// 监听位置变化
-const watchPosition = (callback: (position: any) => void) => {
-  const watchId = Geolocation.watchPosition({
-    enableHighAccuracy: true,
-    timeout: 10000,
-    maximumAge: 0
-  }, (position, err) => {
-    if (err) {
-      console.error('位置监听错误:', err);
-      return;
-    }
-    
-    callback({
-      latitude: position.coords.latitude,
-      longitude: position.coords.longitude,
-      accuracy: position.coords.accuracy
-    });
-  });
-  
-  return watchId;
-};
+- `KEYSTORE_FILE`
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
 
-// 停止位置监听
-const clearWatch = (watchId: string) => {
-  Geolocation.clearWatch({ id: watchId });
-};
-```
+Gradle 只有在 `KEYSTORE_FILE` 存在时才会启用 release signing。
 
-### 权限处理
+### 方案 A：新生成一个 keystore
 
-```typescript
-import { Geolocation } from '@capacitor/geolocation';
-
-// 请求定位权限
-const requestPermissions = async () => {
-  const result = await Geolocation.requestPermissions({
-    permissions: ['location', 'locationAlways']
-  });
-  
-  console.log('权限请求结果:', result);
-  return result;
-};
-
-// 检查权限状态
-const checkPermissions = async () => {
-  const result = await Geolocation.checkPermissions();
-  console.log('当前权限状态:', result);
-  return result;
-};
-```
-
-## 🧪 测试环境
-
-### 运行测试
 ```bash
-# 运行所有测试
-npm test
-
-# 运行测试并生成覆盖率报告
-npm test:coverage
-
-# 监听模式（自动重新运行测试）
-npm test:watch
+keytool -genkeypair \
+  -v \
+  -storetype PKCS12 \
+  -keystore bahati-release.keystore \
+  -alias bahati \
+  -keyalg RSA \
+  -keysize 2048 \
+  -validity 10000
 ```
 
-### 测试文件位置
-- 主应用测试: `src/__tests__/`
-- 司机端测试: `driver-app/src/__tests__/`
+### 方案 B：使用已有 keystore
 
-### 当前测试状态
-- ✅ 基础测试环境配置完成
-- ✅ 3个基础测试用例通过
-- ✅ Jest + React Testing Library 配置完成
+如果你已经有线上在用的签名文件，直接复用，不要重新生成。
 
-## 🔧 代码优化
+### 校验 keystore 可读
 
-### 已完成的优化
-- ✅ 清理了 16MB 的备份文件
-- ✅ 归档了临时文档和脚本文件
-- ✅ 移除了无用的 SQL 文件
-- ✅ 优化了项目结构
-
-### 性能优化建议
-1. **代码分割** - 使用动态导入减少初始加载时间
-2. **图片优化** - 压缩和优化图片资源
-3. **缓存策略** - 实现更有效的缓存机制
-4. **懒加载** - 对非关键组件实现懒加载
-
-## 📦 部署到生产环境
-
-### Android 部署
-
-1. **签名 Release APK**
-   ```bash
-   # 使用 keytool 生成密钥
-   keytool -genkey -v -keystore my-release-key.keystore -alias alias_name -keyalg RSA -keysize 2048 -validity 10000
-   
-   # 配置 build.gradle 签名信息
-   ```
-
-2. **上传到 Google Play**
-   - 创建 Google Play 开发者账号
-   - 创建应用并上传 APK
-   - 填写应用信息和截图
-   - 发布应用
-
-### iOS 部署
-
-1. **App Store 分发**
-   - 在 Xcode 中配置签名和证书
-   - Archive 应用
-   - 上传到 App Store Connect
-
-2. **TestFlight 测试**
-   - 上传到 TestFlight
-   - 邀请测试人员
-   - 收集反馈
-
-## 🎨 UI/UX 优化
-
-### 响应式设计
-- ✅ 移动端优先设计
-- ✅ 适配不同屏幕尺寸
-- ✅ 触摸友好的交互
-
-### 性能优化
-- ⚡ 快速启动时间
-- ⚡ 流畅的动画效果
-- ⚡ 优化的地图渲染
-
-## 🔐 安全考虑
-
-### 数据安全
-- ✅ Supabase RLS (行级安全)
-- ✅ HTTPS 加密通信
-- ✅ 安全的认证机制
-
-### 移动端安全
-- ✅ 权限最小化原则
-- ✅ 敏感数据本地加密
-- ✅ 安全的文件存储
-
-## 📊 监控和分析
-
-### 应用监控
-- 集成 Firebase Analytics
-- 错误追踪
-- 性能监控
-
-### 用户分析
-- 用户行为追踪
-- 使用情况分析
-- 转化率统计
-
-## 🔄 持续集成
-
-### CI/CD 配置
-可以配置 GitHub Actions 或其他 CI/CD 工具：
-
-```yaml
-# .github/workflows/build-android.yml
-name: Build Android APK
-on: [push]
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-java@v2
-        with:
-          java-version: '11'
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '20'
-      - run: npm install
-      - run: npm run build
-      - run: npm run cap:sync:android
-      - run: cd android && ./gradlew assembleDebug
-      - uses: actions/upload-artifact@v2
-        with:
-          name: app-debug.apk
-          path: android/app/build/outputs/apk/debug/app-debug.apk
-```
-
-## 📞 故障排除
-
-### 常见问题
-
-**1. Gradle 构建失败**
 ```bash
-# 清理并重新构建
+keytool -list \
+  -keystore bahati-release.keystore \
+  -storetype PKCS12
+```
+
+### 配置本地环境变量
+
+最稳妥的是用**绝对路径**：
+
+```bash
+export KEYSTORE_FILE="/absolute/path/to/bahati-release.keystore"
+export KEYSTORE_PASSWORD="your-store-password"
+export KEY_ALIAS="bahati"
+export KEY_PASSWORD="your-key-password"
+```
+
+如果你把文件放在 `android/app/` 目录下，也可以像 CI 一样只传文件名：
+
+```bash
+export KEYSTORE_FILE="bahati.keystore"
+export KEYSTORE_PASSWORD="your-store-password"
+export KEY_ALIAS="bahati"
+export KEY_PASSWORD="your-key-password"
+```
+
+然后构建：
+
+```bash
+npm run build
+npx cap sync android
+cd android
+./gradlew assembleRelease
+```
+
+### 本地签名与 CI 密钥的对应关系
+
+CI 使用的是 GitHub Secrets：
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+本地不需要 `ANDROID_KEYSTORE_BASE64`，而是直接使用：
+
+- `KEYSTORE_FILE`
+- `KEYSTORE_PASSWORD`
+- `KEY_ALIAS`
+- `KEY_PASSWORD`
+
+## 本地推送配置
+
+仓库的 Android 工程已经支持 **Firebase Google Services**，但只有在本地放入
+`google-services.json` 时才会启用。
+
+相关逻辑在：
+
+- [android/build.gradle](/root/b-ht/android/build.gradle)
+- [android/app/build.gradle](/root/b-ht/android/app/build.gradle)
+
+如果缺少这个文件，Gradle 会跳过 Google Services 插件，并记录日志：
+
+```text
+Push Notifications won't work
+```
+
+### 1. 在 Firebase 项目中注册 Android 应用
+
+包名必须与 Android 工程一致：
+
+```text
+com.bahati.app
+```
+
+### 2. 下载 `google-services.json`
+
+从 Firebase Console 下载后，放到：
+
+```text
+android/app/google-services.json
+```
+
+> 这个文件不应提交到仓库。`android/.gitignore` 已经忽略它。
+
+### 3. 重新同步并构建
+
+```bash
+npx cap sync android
+cd android
+./gradlew assembleDebug
+```
+
+或：
+
+```bash
+./gradlew assembleRelease
+```
+
+### 4. 本地验证推送配置是否已接入
+
+构建日志里不应再出现：
+
+```text
+google-services.json not found
+```
+
+如果仍然出现，说明文件位置不对，或者包名与 Firebase 配置不匹配。
+
+## GitHub Actions 产物说明
+
+### `build-apk.yml`
+
+- `main` 分支：默认产出 release APK
+- `v*` tag：默认产出 release APK
+- 手动触发：可选 `debug` / `release`
+
+### `release.yml`
+
+GitHub Release 发布后会：
+
+1. 重新跑测试
+2. 构建 release APK
+3. 上传 `bahati-*.apk`
+4. 更新 [public/version.json](/root/b-ht/public/version.json)
+
+稳定下载名为：
+
+```text
+bahati-latest-release.apk
+```
+
+## iOS 构建
+
+### 前置要求
+
+- macOS
+- Xcode 14+
+- CocoaPods
+
+### 基本步骤
+
+```bash
+npx cap add ios
+npx cap sync ios
+npx cap open ios
+```
+
+然后在 Xcode 中：
+
+1. 选择设备或模拟器
+2. `Product -> Build`
+3. 发布时使用 `Product -> Archive`
+
+## 常见问题
+
+### 1. Release 构建成功，但 APK 未签名
+
+先检查四个签名环境变量是否都已设置：
+
+```bash
+echo "$KEYSTORE_FILE"
+echo "$KEY_ALIAS"
+```
+
+再确认 keystore 可读：
+
+```bash
+keytool -list -keystore "$KEYSTORE_FILE" -storetype PKCS12
+```
+
+### 2. 本地和 CI 构建结果不一致
+
+优先核对这三项：
+
+1. `node -v` 是否为 22.x
+2. `java -version` 是否为 21
+3. 是否执行了 `npm run build` 和 `npx cap sync android`
+
+### 3. Push Notifications 本地不可用
+
+优先检查：
+
+1. `android/app/google-services.json` 是否存在
+2. Firebase Android 包名是否是 `com.bahati.app`
+3. 构建日志里是否出现 `google-services.json not found`
+
+### 4. Gradle 构建失败
+
+```bash
 cd android
 ./gradlew clean
 ./gradlew assembleDebug
 ```
 
-**2. 定位权限问题**
-```typescript
-// 确保在 AndroidManifest.xml 中配置了权限
-<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
-<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
-```
+## 最小发布检查清单
 
-**3. iOS 构建问题**
-```bash
-# 清理 Derived Data
-rm -rf ~/Library/Developer/Xcode/DerivedData
-# 重新打开项目
-npx cap open ios
-```
+发布给真实用户前，至少确认：
 
-## 🎯 下一步建议
-
-1. **完整测试** - 在真实设备上测试所有功能
-2. **性能优化** - 使用 Profiler 工具优化性能
-3. **用户测试** - 收集真实用户的反馈
-4. **文档完善** - 补充用户使用手册
-5. **持续迭代** - 根据用户反馈持续改进
-
-## 📝 开发环境配置文件
-
-### 环境变量配置
-创建 `.env` 文件：
-```env
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_key
-VITE_GOOGLE_API_KEY=your_google_api_key
-```
-
-### 测试环境变量
-创建 `.env.test` 文件：
-```env
-VITE_SUPABASE_URL=https://test.supabase.co
-VITE_SUPABASE_ANON_KEY=test_key
-```
-
----
-
-**注意**: 移动端构建需要在相应的开发环境中进行。当前 Android 项目已配置完成，可以在有 Android SDK 的环境中构建 APK。
+1. 本地或 CI 使用的是 Node 22 / Java 21。
+2. 构建命令走过 `npm run build` 和 `npx cap sync android`。
+3. Release APK 已正确签名。
+4. 如需推送，`android/app/google-services.json` 已就位。
+5. 最终交付物是 `release` APK，而不是 `debug` APK。

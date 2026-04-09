@@ -49,7 +49,7 @@ App.tsx  →  AuthContext / DataContext / MutationContext
 
 **Offline-first:** writes are queued in IndexedDB (`offlineQueue.ts`) with `isSynced: false` and flushed when connectivity is restored.
 
-**Mobile:** the app is packaged for Android and iOS with Capacitor (`capacitor.config.ts`).
+**Mobile:** the app is packaged for Android and iOS with Capacitor (`capacitor.config.ts`). Android builds follow the CI-standard toolchain of Java 21 + Node.js 22; see [`docs/MOBILE_BUILD_GUIDE.md`](docs/MOBILE_BUILD_GUIDE.md) for local signing and push-configuration steps.
 
 ---
 
