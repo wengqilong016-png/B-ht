@@ -86,6 +86,11 @@ The workflow `.github/workflows/supabase-deploy.yml` automatically applies any n
 migration files in `supabase/migrations/` to the **production** Supabase project
 whenever a commit that touches those files is merged (pushed) to `main`.
 
+It intentionally runs plain `supabase db push` and **does not** use
+`--include-all`, because this repository contains multiple historical baseline
+packs. Production should only receive forward, still-pending migrations from its
+current remote migration history.
+
 ### Required GitHub Secrets
 
 Add these three secrets under **Repository → Settings → Secrets and variables → Actions**:
@@ -100,9 +105,10 @@ Add these three secrets under **Repository → Settings → Secrets and variable
 > rotate it immediately if you believe it has been compromised (Supabase Dashboard →
 > **Settings → Database → Reset database password**).
 
-Once set, the workflow runs automatically — no manual steps needed.  Any SQL file
-added under `supabase/migrations/` and merged to `main` will be pushed to the live
-database within seconds.
+Once set, the workflow runs automatically — no manual steps needed. Any new SQL
+file added under `supabase/migrations/` and merged to `main` will be pushed to
+the live database within seconds, as long as it is a forward migration that has
+not already been recorded in the remote migration history.
 
 > **PR preview branches:** The `supabase-preview.yml` workflow handles `db push` for
 > each pull request independently, so migrations are verified against a preview

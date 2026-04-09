@@ -82,4 +82,8 @@ jobs:
           fi
 
       - name: Push migrations to production
-        run: supabase db push --include-all
+        run: |
+          # Do not use --include-all here: this repository keeps multiple historical
+          # baseline packs, and production should only receive forward, pending
+          # migrations from its current remote migration history.
+          supabase db push
