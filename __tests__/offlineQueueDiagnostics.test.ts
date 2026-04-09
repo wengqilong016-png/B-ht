@@ -245,3 +245,59 @@ describe('getDeadLetterItems — metadata completeness', () => {
     expect((items[0] as any).id).toBe(txDead.id);
   });
 });
+
+// ── Recovery helpers ─────────────────────────────────────────────────────────
+
+describe('dead-letter recovery helpers', () => {
+  it('resetDeadLetterItems clears error metadata and restores retryability', async () => {
+    const { enqueueTransaction, getAllQueuedTransactions, resetDeadLetterItems } = await import('../offlineQueue');
+    const tx = makeTx();
+    await enqueueTransaction(tx);
+
+    const raw = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    raw[0].retryCount = MAX_RETRIES;
+    raw[0].lastError = 'Location not found: loc-1';
+    raw[0].lastErrorCategory = 'permanent';
+    raw[0].nextRetryAt = new Date(Date.now() + 120_000).toISOString();
+    localStorage.setItem('bahati_offline_queue', JSON.stringify(raw));
+
+    const resetCount = await resetDeadLetterItems();
+
+    expect(resetCount).toBe(1);
+    const [entry] = await getAllQueuedTransactions() as any[];
+    expect(entry.retryCount).toBe(0);
+    expect(entry.lastError).toBeUndefined();
+    expect(entry.lastErrorCategory).toBeUndefined();
+    expect(entry.nextRetryAt).toBeUndefined();
+  });
+
+  it('resetRetryBackoff clears future retry timers without touching dead-letter entries', async () => {
+    const { enqueueTransaction, getAllQueuedTransactions, resetRetryBackoff } = await import('../offlineQueue');
+    const pending = makeTx({ id: 'tx-pending' });
+    const dead = makeTx({ id: 'tx-dead' });
+    await enqueueTransaction(pending);
+    await enqueueTransaction(dead);
+
+    const raw = JSON.parse(localStorage.getItem('bahati_offline_queue')!);
+    const pendingEntry = raw.find((t: any) => t.id === 'tx-pending');
+    pendingEntry.retryCount = 2;
+    pendingEntry.nextRetryAt = new Date(Date.now() + 60_000).toISOString();
+
+    const deadEntry = raw.find((t: any) => t.id === 'tx-dead');
+    deadEntry.retryCount = MAX_RETRIES;
+    deadEntry.nextRetryAt = new Date(Date.now() + 60_000).toISOString();
+
+    localStorage.setItem('bahati_offline_queue', JSON.stringify(raw));
+
+    const resetCount = await resetRetryBackoff();
+
+    expect(resetCount).toBe(1);
+    const entries = await getAllQueuedTransactions() as any[];
+    const updatedPending = entries.find((t: any) => t.id === 'tx-pending');
+    const updatedDead = entries.find((t: any) => t.id === 'tx-dead');
+    expect(updatedPending.nextRetryAt).toBeUndefined();
+    expect(updatedPending.retryCount).toBe(2);
+    expect(updatedDead.nextRetryAt).toBeDefined();
+    expect(updatedDead.retryCount).toBe(MAX_RETRIES);
+  });
+});

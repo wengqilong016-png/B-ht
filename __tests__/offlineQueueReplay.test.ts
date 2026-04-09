@@ -455,4 +455,48 @@ describe('offline-to-online transition', () => {
     expect(capturedInput!).not.toHaveProperty('revenue');
     expect(capturedInput!).not.toHaveProperty('netPayable');
   });
+
+  it('prevents concurrent flush calls from double-submitting the same queued entry', async () => {
+    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+
+    const tx = makeTx();
+    await enqueueTransaction(tx, makeRawInput(tx.id));
+
+    let resolveSubmission: ((value: CollectionSubmissionResult) => void) | null = null;
+    const pendingSubmission = new Promise<CollectionSubmissionResult>((resolve) => {
+      resolveSubmission = resolve;
+    });
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>()
+      .mockImplementation(() => pendingSubmission);
+
+    const firstFlush = flushQueue(makeSupabaseStub(), { submitCollection });
+    const secondFlush = flushQueue(makeSupabaseStub(), { submitCollection });
+
+    expect(await secondFlush).toBe(0);
+    await new Promise<void>((resolve, reject) => {
+      const startedAt = Date.now();
+      const waitForSubmission = () => {
+        if (submitCollection.mock.calls.length === 1) {
+          resolve();
+          return;
+        }
+        if (Date.now() - startedAt > 1_000) {
+          reject(new Error('submitCollection was not invoked by the in-flight flush'));
+          return;
+        }
+        setTimeout(waitForSubmission, 0);
+      };
+      waitForSubmission();
+    });
+    expect(submitCollection).toHaveBeenCalledTimes(1);
+
+    resolveSubmission?.({
+      success: true,
+      transaction: { ...tx, isSynced: true } as any,
+      source: 'server',
+    });
+
+    expect(await firstFlush).toBe(1);
+    expect(submitCollection).toHaveBeenCalledTimes(1);
+  });
 });

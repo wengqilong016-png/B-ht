@@ -15,6 +15,7 @@
 import { Transaction, safeRandomUUID } from './types';
 import { SupabaseClient } from '@supabase/supabase-js';
 import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
+import * as Sentry from '@sentry/react';
 import { appendCollectionSubmissionAudit } from './services/collectionSubmissionAudit';
 
 const DB_NAME    = 'bahati_offline_db';
@@ -23,6 +24,41 @@ const STORE_TX   = 'pending_transactions';
 const MS_PER_DAY = 86_400_000;
 export const MAX_RETRIES = 5;
 const BASE_BACKOFF_MS = 2_000; // 2 s → 4 s → 8 s → 16 s → 32 s
+
+function captureQueueMessage(message: string, extras: Record<string, unknown> = {}): void {
+  try {
+    Sentry.withScope((scope) => {
+      for (const [key, value] of Object.entries(extras)) {
+        scope.setExtra?.(key, value);
+      }
+      Sentry.captureMessage(message);
+    });
+  } catch {
+    // Best-effort only; queue behavior must not depend on telemetry.
+  }
+}
+
+function captureQueueException(
+  message: string,
+  error: unknown,
+  extras: Record<string, unknown> = {},
+): void {
+  try {
+    Sentry.withScope((scope) => {
+      scope.setExtra?.('queue_message', message);
+      for (const [key, value] of Object.entries(extras)) {
+        scope.setExtra?.(key, value);
+      }
+      if (error instanceof Error) {
+        Sentry.captureException(error);
+      } else {
+        Sentry.captureMessage(`${message}: ${String(error)}`);
+      }
+    });
+  } catch {
+    // Best-effort only; queue behavior must not depend on telemetry.
+  }
+}
 
 /** Metadata attached to every queued entry for idempotent, retry-aware sync. */
 export interface QueueMeta {
@@ -512,6 +548,14 @@ async function recordRetryFailure(
         r.onsuccess = () => res();
         r.onerror   = () => rej(r.error);
       });
+      if (newRetry >= MAX_RETRIES) {
+        captureQueueMessage('offline_queue_dead_lettered', {
+          txId: id,
+          errorMessage,
+          errorCategory: category,
+          retryCount: newRetry,
+        });
+      }
     }
     db.close();
   } catch {
@@ -538,6 +582,15 @@ async function recordRetryFailure(
         };
       });
       localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
+      const updatedEntry = updated.find(t => t.id === id);
+      if ((updatedEntry?.retryCount ?? 0) >= MAX_RETRIES) {
+        captureQueueMessage('offline_queue_dead_lettered', {
+          txId: id,
+          errorMessage,
+          errorCategory: category,
+          retryCount: updatedEntry?.retryCount ?? MAX_RETRIES,
+        });
+      }
     } catch (_) {
       // Truly best-effort
     }
@@ -596,7 +649,27 @@ export async function resetDeadLetterItems(): Promise<number> {
 
     return count;
   } catch {
-    return 0;
+    try {
+      const raw = localStorage.getItem('bahati_offline_queue') || '[]';
+      const list = JSON.parse(raw) as Array<Transaction & Partial<QueueMeta>>;
+      let count = 0;
+      const updated = list.map(entry => {
+        if (entry.isSynced || (entry.retryCount ?? 0) < MAX_RETRIES) return entry;
+        count++;
+        return {
+          ...entry,
+          retryCount: 0,
+          nextRetryAt: undefined,
+          lastError: undefined,
+          lastErrorCategory: undefined,
+        };
+      });
+      if (count === 0) return 0;
+      localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
+      return count;
+    } catch {
+      return 0;
+    }
   }
 }
 
@@ -642,7 +715,28 @@ export async function resetRetryBackoff(): Promise<number> {
 
     return count;
   } catch {
-    return 0;
+    try {
+      const raw = localStorage.getItem('bahati_offline_queue') || '[]';
+      const list = JSON.parse(raw) as Array<Transaction & Partial<QueueMeta>>;
+      const now = Date.now();
+      let count = 0;
+      const updated = list.map(entry => {
+        if (entry.isSynced) return entry;
+        if ((entry.retryCount ?? 0) >= MAX_RETRIES) return entry;
+        if (!entry.nextRetryAt) return entry;
+        if (new Date(entry.nextRetryAt).getTime() <= now) return entry;
+        count++;
+        return {
+          ...entry,
+          nextRetryAt: undefined,
+        };
+      });
+      if (count === 0) return 0;
+      localStorage.setItem('bahati_offline_queue', JSON.stringify(updated));
+      return count;
+    } catch {
+      return 0;
+    }
   }
 }
 
@@ -812,6 +906,12 @@ export async function replayDeadLetterItem(
         // reliably applied to discriminated unions in this project's tsconfig.
         const failureResult = result as { success: false; error: string };
         await _updateDeadLetterError(id, failureResult.error, classifyError(failureResult.error));
+        captureQueueMessage('offline_queue_manual_replay_failed', {
+          txId: id,
+          errorMessage: failureResult.error,
+          errorCategory: classifyError(failureResult.error),
+          entryType: entry.type ?? 'collection',
+        });
         return { success: false, error: failureResult.error };
       }
     }
@@ -852,10 +952,22 @@ export async function replayDeadLetterItem(
     }
 
     await _updateDeadLetterError(id, error.message, classifyError(error.message));
+    captureQueueMessage('offline_queue_manual_replay_failed', {
+      txId: id,
+      errorMessage: error.message,
+      errorCategory: classifyError(error.message),
+      entryType: entry.type ?? 'legacy',
+    });
     return { success: false, error: error.message };
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     await _updateDeadLetterError(id, msg, classifyError(msg));
+    captureQueueException('offline_queue_manual_replay_failed', e, {
+      txId: id,
+      errorMessage: msg,
+      errorCategory: classifyError(msg),
+      entryType: entry.type ?? 'legacy',
+    });
     return { success: false, error: msg };
   }
 }
@@ -997,9 +1109,23 @@ export async function reportQueueHealthToServer(
 
     if (error) {
       console.warn('[reportQueueHealthToServer] Upsert failed:', error.message);
+      captureQueueMessage('offline_queue_health_report_failed', {
+        driverId,
+        driverName,
+        deviceId: id,
+        errorMessage: error.message,
+        pendingCount: summary.pending,
+        retryWaitingCount: summary.retryWaiting,
+        deadLetterCount: summary.deadLetter,
+      });
     }
   } catch (err) {
     console.warn('[reportQueueHealthToServer] Unexpected error:', err);
+    captureQueueException('offline_queue_health_report_unexpected_error', err, {
+      driverId,
+      driverName,
+      deviceId,
+    });
   }
 }
 
