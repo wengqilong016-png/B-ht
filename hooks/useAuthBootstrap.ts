@@ -105,6 +105,7 @@ export function useAuthBootstrap() {
     lang: 'zh',
     isInitializing: true,
   });
+  const restoreAttemptRef = useRef(0);
 
   // Persist the user to localStorage whenever it changes; clear on logout.
   // Skip the initial render (currentUser starts as null) so we don't wipe the
@@ -124,22 +125,30 @@ export function useAuthBootstrap() {
       return;
     }
 
+    let isActive = true;
+    const restoreAttemptId = ++restoreAttemptRef.current;
+    const dispatchIfCurrent: React.Dispatch<AuthAction> = (action) => {
+      if (isActive && restoreAttemptRef.current === restoreAttemptId) {
+        dispatch(action);
+      }
+    };
+
     const loadUser = async () => {
       const cached = readCachedUser();
       if (cached) {
-        dispatch({ type: 'SET_USER', user: cached });
+        dispatchIfCurrent({ type: 'SET_USER', user: cached });
       }
 
       try {
         const result = await restoreUserWithTimeout();
         if (!result.success) {
-          handleRestoreFailure(cached, result.error, dispatch);
+          handleRestoreFailure(cached, result.error, dispatchIfCurrent);
           return;
         }
-        dispatch({ type: 'SET_USER', user: result.user });
+        dispatchIfCurrent({ type: 'SET_USER', user: result.user });
       } catch (error) {
         console.error('Unexpected auth bootstrap failure.', error);
-        handleRestoreFailure(cached, 'Profile fetch failed', dispatch);
+        handleRestoreFailure(cached, 'Profile fetch failed', dispatchIfCurrent);
       }
     };
 
@@ -155,15 +164,24 @@ export function useAuthBootstrap() {
       if (_event !== 'SIGNED_OUT') return;
 
       // Supabase has already cleared the session; just update UI state.
+      restoreAttemptRef.current += 1;
       dispatch({ type: 'LOGOUT' });
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      isActive = false;
+      restoreAttemptRef.current += 1;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const handleLogin = (user: User) => dispatch({ type: 'SET_USER', user });
+  const handleLogin = (user: User) => {
+    restoreAttemptRef.current += 1;
+    dispatch({ type: 'SET_USER', user });
+  };
 
   const handleLogout = async () => {
+    restoreAttemptRef.current += 1;
     clearCachedUser();
     try {
       await signOutCurrentUser();

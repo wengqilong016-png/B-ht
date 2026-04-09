@@ -298,6 +298,31 @@ describe('useAuthBootstrap', () => {
     expect(result.current.currentUser).toBeNull();
   });
 
+  it('ignores a late restore result after handleLogout', async () => {
+    let resolveRestore: ((value: { success: true; user: User }) => void) | null = null;
+    const pendingRestore = new Promise<{ success: true; user: User }>((resolve) => {
+      resolveRestore = resolve;
+    });
+
+    localStorage.setItem(CACHED_USER_KEY, JSON.stringify(makeUser({ name: 'Cached Driver' })));
+    mockRestoreCurrentUserFromSession.mockReturnValueOnce(pendingRestore);
+    mockSignOutCurrentUser.mockResolvedValueOnce(undefined);
+
+    const { result } = renderHook(() => useAuthBootstrap());
+    await waitFor(() => expect(result.current.currentUser?.name).toBe('Cached Driver'));
+
+    await act(async () => {
+      await result.current.handleLogout();
+    });
+
+    await act(async () => {
+      resolveRestore?.({ success: true, user: makeUser({ name: 'Late Session User' }) });
+      await Promise.resolve();
+    });
+
+    expect(result.current.currentUser).toBeNull();
+  });
+
   // ── handleLogin ───────────────────────────────────────────────────────
 
   it('handleLogin sets current user without calling signOut', async () => {
