@@ -8,9 +8,9 @@ import type { Transaction } from '../types';
 
 const mockSetQueryData = jest.fn();
 const mockGetQueryData = jest.fn();
-const mockUpdateLocationsMutateAsync = jest.fn();
+const mockUpdateLocationsMutateAsync = jest.fn<() => Promise<void>>();
 const mockLogAIMutate = jest.fn();
-const mockSubmitTransactionMutateAsync = jest.fn();
+const mockSubmitTransactionMutateAsync = jest.fn<() => Promise<void>>();
 const mockSyncOfflineDataMutate = jest.fn();
 
 const mockDriver = {
