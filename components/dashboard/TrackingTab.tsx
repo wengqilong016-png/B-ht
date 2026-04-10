@@ -324,4 +324,4 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
   );
 };
 
-export default TrackingTab;
+export default React.memo(TrackingTab);

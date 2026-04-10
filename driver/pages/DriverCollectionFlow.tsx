@@ -219,19 +219,26 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   }), [selectedLocation, draft.currentScore, draft.expenses, draft.coinExchange, draft.ownerRetention, draft.isOwnerRetaining, draft.tip, draft.startupDebtDeduction, currentDriver?.dailyFloatingCoins]);
 
   const requestIdRef = useRef<number>(0);
+  const rpcDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    // Apply local calc immediately so UI stays responsive
+    // Apply local calc immediately so UI stays responsive on every keystroke
     setFinanceResult(calculateCollectionFinanceLocal(financeInput));
 
-    // Then attempt server preview; fall back silently on failure
-    // Use a monotonic request id so that only the most recent async response is applied.
+    // Debounce the server RPC by 400 ms to avoid firing on every keystroke.
+    // The monotonic requestId ensures only the last in-flight response is applied.
     requestIdRef.current += 1;
     const requestId = requestIdRef.current;
-    calculateCollectionFinancePreview(financeInput).then(result => {
-      if (requestId === requestIdRef.current) setFinanceResult(result);
-    }).catch(() => {
-      // Server preview failed — local calc already applied above, no action needed
-    });
+    if (rpcDebounceRef.current) clearTimeout(rpcDebounceRef.current);
+    rpcDebounceRef.current = setTimeout(() => {
+      calculateCollectionFinancePreview(financeInput).then(result => {
+        if (requestId === requestIdRef.current) setFinanceResult(result);
+      }).catch(() => {
+        // Server preview failed — local calc already applied above, no action needed
+      });
+    }, 400);
+    return () => {
+      if (rpcDebounceRef.current) clearTimeout(rpcDebounceRef.current);
+    };
   }, [financeInput]);
 
   // Auto-fill retention when conditions met

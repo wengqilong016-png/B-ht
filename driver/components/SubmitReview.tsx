@@ -139,7 +139,7 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
 
     return (
       <div data-testid="driver-submit-complete" className="max-w-md mx-auto py-3 px-3 pb-24 animate-in fade-in space-y-3">
-        <div className="rounded-[28px] border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white px-4 py-5 shadow-sm">
+        <div className="rounded-card border border-emerald-200 bg-gradient-to-b from-emerald-50 to-white px-4 py-5 shadow-sm">
           <div className="flex items-center gap-3">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-500 text-white shadow-md shadow-emerald-200">
               <CheckCircle2 size={22} />

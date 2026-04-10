@@ -310,4 +310,4 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   );
 };
 
-export default OverviewTab;
+export default React.memo(OverviewTab);

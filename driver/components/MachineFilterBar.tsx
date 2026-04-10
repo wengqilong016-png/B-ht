@@ -28,7 +28,7 @@ const MachineFilterBar: React.FC<MachineFilterBarProps> = ({
   selectedArea, onAreaChange, availableAreas, counts,
   showRegisterButton, onStartRegister,
 }) => (
-  <div className="sticky top-2 z-20 space-y-2 rounded-[22px] border border-slate-200 bg-white/92 p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.06)] backdrop-blur">
+  <div className="sticky top-2 z-20 space-y-2 rounded-card border border-slate-200 bg-white/92 p-2.5 shadow-[0_12px_28px_rgba(15,23,42,0.06)] backdrop-blur">
     {/* Search */}
     <div className="relative group">
       <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-amber-500 transition-colors" />

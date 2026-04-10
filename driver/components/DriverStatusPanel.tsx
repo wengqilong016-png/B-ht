@@ -55,7 +55,7 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
       {/* Profile card */}
       <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">
         <div className="p-5 flex items-center gap-4">
-          <div className="w-16 h-16 rounded-[18px] bg-slate-800 text-white flex items-center justify-center font-black text-2xl shadow-md flex-shrink-0">
+          <div className="w-16 h-16 rounded-subcard bg-slate-800 text-white flex items-center justify-center font-black text-2xl shadow-md flex-shrink-0">
             {driver.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">

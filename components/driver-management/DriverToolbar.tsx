@@ -57,10 +57,10 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
           placeholder="Search Name / Phone..."
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
-          className="w-full bg-white border border-slate-200 rounded-[20px] py-3 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 transition-all shadow-sm"
+          className="w-full bg-white border border-slate-200 rounded-card py-3 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 transition-all shadow-sm"
         />
       </div>
-      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-[20px] px-4 py-2 shadow-sm min-w-[200px]">
+      <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-card px-4 py-2 shadow-sm min-w-[200px]">
         <SlidersHorizontal size={14} className="text-slate-400" />
         <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">Sort By:</span>
         <select

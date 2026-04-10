@@ -3,6 +3,7 @@ import React, { useRef, useState } from 'react';
 
 import { Location, CONSTANTS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
+import { useToast } from '../../contexts/ToastContext';
 
 export interface MachineCardMeta {
   loc: Location;
@@ -30,6 +31,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
   const { loc, distanceMeters, daysSinceActive, isLocked, isUrgent, isPending } = item;
   const isNear9999 = (loc.lastScore ?? 0) >= 9000;
   const hasDividendBalance = (loc.dividendBalance ?? 0) > 0;
+  const { showToast } = useToast();
 
   const [showSiteInfoForm, setShowSiteInfoForm] = useState(false);
   const [sitePhone, setSitePhone] = useState(loc.shopOwnerPhone ?? '');
@@ -62,6 +64,12 @@ const MachineCard: React.FC<MachineCardProps> = ({
       await onUpdateLocation(loc.id, updates);
       setShowSiteInfoForm(false);
       setSitePhotoPreview(null);
+    } catch (err) {
+      console.error('Failed to save site info', err);
+      showToast(
+        lang === 'zh' ? '保存失败，请检查网络后重试' : 'Save failed — please check your connection and try again',
+        'error',
+      );
     } finally {
       setIsSavingSiteInfo(false);
     }
@@ -84,7 +92,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
           : loc.status;
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
+    <div className="bg-white rounded-card border border-slate-200 overflow-hidden shadow-[0_8px_20px_rgba(15,23,42,0.03)]">
       <button
         onClick={() => { if (!isLocked) onSelect(loc.id); }}
         disabled={isLocked}
@@ -192,7 +200,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
                 e.stopPropagation();
                 window.open(`https://www.google.com/maps/dir/?api=1&destination=${loc.coords!.lat},${loc.coords!.lng}`, '_blank');
               }}
-              className="flex-1 px-3 py-2 min-h-11 text-[10px] font-black uppercase text-amber-600 hover:bg-amber-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
+              className="flex-1 px-3 py-2 min-h-11 text-caption font-black uppercase text-amber-600 hover:bg-amber-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
             >
               <Navigation size={11} /> {t.navigateTo}
             </button>

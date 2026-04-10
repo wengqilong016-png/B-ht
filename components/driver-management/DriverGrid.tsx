@@ -30,7 +30,7 @@ const DriverGrid: React.FC<DriverGridProps> = ({
           <div key={driver.id} className="bg-white/95 rounded-card border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
             <div className="flex items-center justify-between px-5 pt-5 pb-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-[14px] bg-gradient-to-br from-slate-900 to-amber-700 text-white flex items-center justify-center font-black text-base shadow-md">
+                <div className="w-11 h-11 rounded-btn bg-gradient-to-br from-slate-900 to-amber-700 text-white flex items-center justify-center font-black text-base shadow-md">
                   {driver.name.charAt(0)}
                 </div>
                 <div>

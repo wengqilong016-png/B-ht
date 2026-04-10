@@ -736,4 +736,4 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   );
 };
 
-export default SettlementTab;
+export default React.memo(SettlementTab);

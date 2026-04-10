@@ -16,7 +16,7 @@ const DashboardTabs: React.FC<DashboardTabsProps> = ({ activeTab, setActiveTab, 
   const t = TRANSLATIONS[lang];
 
   return (
-    <div className={`flex items-center gap-2 bg-[#f0f2f5] p-1.5 rounded-[20px] shadow-silicone-pressed overflow-x-auto scrollbar-hide mb-4 ${hideTabs ? 'hidden' : ''}`}>
+    <div className={`flex items-center gap-2 bg-[#f0f2f5] p-1.5 rounded-card shadow-silicone-pressed overflow-x-auto scrollbar-hide mb-4 ${hideTabs ? 'hidden' : ''}`}>
       {isAdmin && (
         <button
           onClick={() => setActiveTab('overview')}

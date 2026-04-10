@@ -146,7 +146,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
          </div>
          <div className="flex items-center gap-2">
             <div
-              className={`px-3 py-2 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 flex items-center gap-1.5 ${
+              className={`px-3 py-2 rounded-xl text-caption font-black uppercase tracking-widest transition-all shadow-silicone border border-white/60 flex items-center gap-1.5 ${
                 dbStatus === 'online'
                   ? 'bg-emerald-50 text-emerald-600'
                   : dbStatus === 'offline'
@@ -244,7 +244,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
 
         {/* ── Connection Settings Panel ─────────────────────────────────── */}
         {showSettings && (
-          <div className="w-full mt-4 bg-[#f5f7fa] rounded-[32px] shadow-silicone border border-white/60 p-7 space-y-5">
+          <div className="w-full mt-4 bg-[#f5f7fa] rounded-card shadow-silicone border border-white/60 p-7 space-y-5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Settings size={14} className="text-amber-500" />
@@ -253,7 +253,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
                 </span>
               </div>
               {usingRuntimeCredentials && (
-                <span className="text-[8px] font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
+                <span className="text-caption font-black uppercase tracking-widest text-amber-500 bg-amber-50 px-2 py-1 rounded-lg border border-amber-100">
                   {lang === 'zh' ? '已使用本地配置' : 'Using local config'}
                 </span>
               )}
@@ -295,7 +295,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
                 placeholder={lang === 'zh' ? '粘贴你的 anon key...' : 'Paste your anon key...'}
                 className="w-full bg-[#f0f2f5] border-none rounded-2xl py-3.5 px-4 font-bold text-slate-700 text-xs shadow-silicone-pressed outline-none placeholder:text-slate-400"
               />
-              <p className="text-[9px] text-slate-400 px-1 leading-relaxed">
+              <p className="text-caption text-slate-400 px-1 leading-relaxed">
                 {lang === 'zh'
                   ? 'Supabase 控制台 → Settings → API → Project API Keys → anon public'
                   : 'Supabase Dashboard → Settings → API → Project API Keys → anon public'}

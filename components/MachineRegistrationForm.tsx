@@ -232,7 +232,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
 
     return (
       <div className="max-w-md mx-auto py-12 px-6 animate-in zoom-in-95 duration-500">
-        <div className="bg-white rounded-[40px] shadow-2xl border border-slate-100 overflow-hidden relative">
+        <div className="bg-white rounded-card shadow-2xl border border-slate-100 overflow-hidden relative">
            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-emerald-400 to-amber-500"></div>
            
            <div className="p-8 flex flex-col items-center text-center space-y-6">
@@ -279,7 +279,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
 
   return (
     <div className="max-w-lg mx-auto pb-24 px-4 animate-in slide-in-from-bottom-4">
-      <div className="bg-white rounded-[40px] p-8 shadow-2xl border border-slate-200 space-y-6 relative">
+      <div className="bg-white rounded-card p-8 shadow-2xl border border-slate-200 space-y-6 relative">
         {/* Header */}
         <div className="border-b border-slate-100 pb-4 mb-2 flex items-center justify-between">
            <button onClick={onCancel} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-amber-600 transition-colors">
@@ -299,7 +299,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
           <label className="text-caption font-black text-slate-400 uppercase tracking-widest ml-1">{lang === 'zh' ? '现场存证 (机器 + 老板合影) *' : 'Picha ya Eneo *'}</label>
           <div 
             onClick={() => fileInputRef.current?.click()}
-            className={`relative h-48 rounded-[30px] border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all active:scale-98 ${machinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-amber-300'}`}
+            className={`relative h-48 rounded-card border-2 border-dashed flex flex-col items-center justify-center overflow-hidden cursor-pointer transition-all active:scale-98 ${machinePhoto ? 'border-emerald-400 bg-emerald-50' : 'border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-amber-300'}`}
           >
              <input type="file" accept="image/*" ref={fileInputRef} onChange={handlePhotoCapture} className="hidden" />
              {machinePhoto ? (

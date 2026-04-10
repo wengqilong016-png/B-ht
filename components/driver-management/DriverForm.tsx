@@ -48,7 +48,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
-      <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden animate-in zoom-in-95">
+      <div className="bg-white w-full max-w-lg rounded-card shadow-2xl overflow-hidden animate-in zoom-in-95">
         <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-amber-600 rounded-xl text-white"><User size={20} /></div>
@@ -96,7 +96,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
           {/* Status toggle — edit mode only */}
           {editingId && (
-            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-[20px] border border-slate-200">
+            <div className="flex items-center justify-between p-4 bg-slate-50 rounded-card border border-slate-200">
               <div>
                 <p className="text-caption font-black text-slate-500 uppercase tracking-widest">账号状态 Account Status</p>
                 <p className="text-xs font-bold text-slate-700 mt-0.5">

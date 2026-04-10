@@ -708,4 +708,4 @@ const SitesTab: React.FC<SitesTabProps> = ({
   );
 };
 
-export default SitesTab;
+export default React.memo(SitesTab);
