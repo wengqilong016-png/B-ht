@@ -6,7 +6,7 @@ import React, { useMemo, useState, useCallback } from 'react';
 
 import { useToast } from '../../contexts/ToastContext';
 
-import type { Driver, Location } from '../../types';
+import type { Driver, Location } from '../../types/models';
 
 interface ContactGroup {
   driverId: string;
