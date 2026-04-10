@@ -3,6 +3,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import MachineRegistrationForm from '../../components/MachineRegistrationForm';
 import { useAuth } from '../../contexts/AuthContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { getQueueHealthSummary } from '../../offlineQueue';
@@ -40,6 +41,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, filteredTransactions, isOnline, drivers } = useAppData();
   const { logAI, submitTransaction, syncOfflineData, updateLocations } = useMutations();
+  const { confirm } = useConfirm();
   const queryClient = useQueryClient();
   const transactionQueryKey = useMemo(() => ['transactions', `driver:${activeDriverId}`] as const, [activeDriverId]);
   const transactionStorageKey = useMemo(
@@ -277,14 +279,18 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
         draft.coinExchange ||
         draft.startupDebtDeduction)
   );
-  const handleResumeDraft = (locId: string) => {
+  const handleResumeDraft = async (locId: string) => {
     if (draft.selectedLocId !== locId) {
       if (hasDraftInProgress) {
-        const ok = window.confirm(
-          lang === 'zh'
-            ? '⚠️ 当前有未提交的收款草稿，切换机器将丢失已填数据。确定切换？'
-            : '⚠️ You have an unsaved collection draft. Switching machines will discard it. Continue?',
-        );
+        const ok = await confirm({
+          title: lang === 'zh' ? '切换机器' : 'Switch Machine',
+          message:
+            lang === 'zh'
+              ? '⚠️ 当前有未提交的收款草稿，切换机器将丢失已填数据。确定切换？'
+              : '⚠️ You have an unsaved collection draft. Switching machines will discard it. Continue?',
+          confirmLabel: lang === 'zh' ? '确认切换' : 'Switch',
+          destructive: true,
+        });
         if (!ok) return;
       }
       handleSelectMachine(locId);
@@ -292,13 +298,17 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     }
     setStep('capture');
   };
-  const handleSwitchMachine = () => {
+  const handleSwitchMachine = async () => {
     if (hasDraftInProgress) {
-      const ok = window.confirm(
-        lang === 'zh'
-          ? '⚠️ 当前有未提交的收款草稿，切换将丢失已填数据。确定切换？'
-          : '⚠️ You have an unsaved draft. Switching will discard it. Continue?',
-      );
+      const ok = await confirm({
+        title: lang === 'zh' ? '切换机器' : 'Switch Machine',
+        message:
+          lang === 'zh'
+            ? '⚠️ 当前有未提交的收款草稿，切换将丢失已填数据。确定切换？'
+            : '⚠️ You have an unsaved draft. Switching will discard it. Continue?',
+        confirmLabel: lang === 'zh' ? '确认切换' : 'Switch',
+        destructive: true,
+      });
       if (!ok) return;
     }
     setStep('selection');
@@ -436,6 +446,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           onUpdateAiReview={(data) => updateDraft({ aiReviewData: data })}
           onUpdateGps={(coords) => updateDraft({ gpsCoords: coords })}
           onUpdateGpsPermission={(perm) => updateDraft({ gpsPermission: perm })}
+          onRequestGps={requestGps}
           onNext={() => setStep('amounts')}
           onBack={handleBackToSelection}
           onSwitchMachine={handleSwitchMachine}
