@@ -89,7 +89,7 @@ const DriverGrid: React.FC<DriverGridProps> = ({
                   <Calculator size={10} /> {t.payrollTitle}
                 </button>
                 <button onClick={() => onEdit(driver)} className="px-3 py-1.5 bg-indigo-600 text-white rounded-xl text-caption font-black uppercase hover:bg-indigo-700 transition-all">
-                  {t.saveChanges}
+                  {t.settings}
                 </button>
               </div>
             </div>

@@ -42,24 +42,26 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {children}
       {state && (
         <div
-          className="fixed inset-0 z-[300] flex items-center justify-center bg-black/60 px-4"
+          className="fixed inset-0 z-[300] flex items-end sm:items-center justify-center bg-black/60 px-4 py-4"
           onClick={() => handleResult(false)}
           aria-modal="true"
           role="dialog"
         >
           <div
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full p-6 flex flex-col gap-4"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col max-h-[90vh]"
             onClick={e => e.stopPropagation()}
           >
-            {state.title && (
-              <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                {state.title}
-              </h3>
-            )}
-            <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
-              {state.message}
-            </p>
-            <div className="flex gap-3 justify-end mt-2">
+            <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
+              {state.title && (
+                <h3 className="text-base font-bold text-slate-900 dark:text-white">
+                  {state.title}
+                </h3>
+              )}
+              <p className="text-sm text-slate-600 dark:text-slate-300 whitespace-pre-line leading-relaxed">
+                {state.message}
+              </p>
+            </div>
+            <div className="flex gap-3 justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
               <button
                 onClick={() => handleResult(false)}
                 className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"

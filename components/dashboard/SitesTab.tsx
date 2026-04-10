@@ -339,7 +339,10 @@ const SitesTab: React.FC<SitesTabProps> = ({
     if (!loc) return;
 
     const diagnostics = deletionDiagnosticsById.get(locId);
-    if (!diagnostics || diagnostics.blockers.length === 0) return;
+    if (!diagnostics || diagnostics.blockers.length === 0) {
+      showToast(lang === 'zh' ? '该机器当前没有删除阻塞项' : 'No blockers found for this machine', 'warning');
+      return;
+    }
 
     const ok = await confirm({
       title: lang === 'zh' ? '强制清除删除阻塞' : 'Force Clear Blockers',
