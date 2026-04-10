@@ -148,6 +148,58 @@ describe('buildCollectionSubmissionInput', () => {
     expect(input.expenseCategory).toBeNull();
     expect(input.expenseDescription).toBeUndefined();
   });
+
+  it('folds tip amount into expenses when expenseCategory is tip', () => {
+    // When the driver selects category "tip", the amount is stored in `tip` field.
+    // buildCollectionSubmissionInput should fold it into expenses (set tip=0) so
+    // expenseType is non-null and expenseStatus will be set to 'pending' downstream.
+    const input = buildCollectionSubmissionInput(
+      makeInput({
+        expenses: '',
+        tip: '500',
+        expenseType: 'public',
+        expenseCategory: 'tip',
+      }),
+    );
+
+    expect(input.expenses).toBe(500);
+    expect(input.tip).toBe(0);
+    expect(input.expenseType).toBe('public');
+    expect(input.expenseCategory).toBe('tip');
+    expect(input.expenseDescription).toBeUndefined();
+  });
+
+  it('keeps tip separate when expenseCategory is not tip', () => {
+    // A non-tip category uses expenses field normally; tip remains independent.
+    const input = buildCollectionSubmissionInput(
+      makeInput({
+        expenses: '300',
+        tip: '50',
+        expenseType: 'public',
+        expenseCategory: 'fuel',
+      }),
+    );
+
+    expect(input.expenses).toBe(300);
+    expect(input.tip).toBe(50);
+    expect(input.expenseType).toBe('public');
+    expect(input.expenseCategory).toBe('fuel');
+  });
+
+  it('notes field includes [Tip:…] annotation even when tip is folded into expenses', () => {
+    // The driver entered the tip amount; the notes annotation should still reference it
+    // for human-readable audit trail purposes.
+    const input = buildCollectionSubmissionInput(
+      makeInput({
+        expenses: '',
+        tip: '800',
+        expenseCategory: 'tip',
+        aiReviewData: null,
+      }),
+    );
+
+    expect(input.notes).toContain('[Tip: TZS 800]');
+  });
 });
 
 describe('orchestrateCollectionSubmission', () => {

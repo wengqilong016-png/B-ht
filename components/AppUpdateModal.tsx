@@ -13,6 +13,7 @@ interface Props {
 const AppUpdateModal: React.FC<Props> = ({ lang }) => {
   const { showToast } = useToast();
   const update = useAppUpdateCheck();
+  const [localDismissed, setLocalDismissed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—';
 
@@ -26,9 +27,10 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
       ? sessionStorage.getItem('update-dismissed-version')
       : null;
   } catch {}
-  const isDismissed = update?.hasUpdate && dismissedVersion === update.latestVersion;
+  const isSessionDismissed = update?.hasUpdate && dismissedVersion === update.latestVersion;
 
   const handleDismiss = () => {
+    setLocalDismissed(true);
     try {
       if (update?.latestVersion && typeof sessionStorage !== 'undefined') {
         sessionStorage.setItem('update-dismissed-version', update.latestVersion);
@@ -36,7 +38,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
     } catch {}
   };
 
-  if (!update?.hasUpdate || isDismissed) return null;
+  if (!update?.hasUpdate || localDismissed || isSessionDismissed) return null;
 
   const handleDownload = async () => {
     setDownloading(true);

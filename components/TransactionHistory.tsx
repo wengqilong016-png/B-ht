@@ -188,12 +188,16 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                   <div className="text-right">
                     {tx.type === 'payout_request' ? (
                       <>
-                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">提现申请</p>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">
+                          {lang === 'zh' ? '提现申请' : 'Payout Request'}
+                        </p>
                         <p className="text-sm font-black text-emerald-600">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
                       </>
                     ) : tx.type === 'reset_request' ? (
                       <>
-                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">重置申请</p>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">
+                          {lang === 'zh' ? '重置申请' : 'Reset Request'}
+                        </p>
                         <p className="text-sm font-black text-amber-600">
                           {tx.approvalStatus === 'approved'
                             ? (lang === 'zh' ? '已批准' : 'Imeidhinishwa')
@@ -204,7 +208,9 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                       </>
                     ) : (
                       <>
-                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">净营收</p>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">
+                          {lang === 'zh' ? '净营收' : 'Net Cash'}
+                        </p>
                         <p className="text-sm font-black text-amber-600">TZS {tx.netPayable.toLocaleString()}</p>
                       </>
                     )}
