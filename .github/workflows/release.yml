@@ -184,7 +184,7 @@ jobs:
           "
           git add public/version.json
           git diff --cached --quiet || git commit -m "chore: update version.json to v${VERSION} [skip ci]"
-          git push
+          git push origin HEAD:main
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
