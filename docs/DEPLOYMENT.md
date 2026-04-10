@@ -80,16 +80,31 @@ npm run dev     # local development server (http://localhost:3000)
 > **Use `npm ci` (not `npm install`) for reproducible installs.**
 > `.env.local` is listed in `.gitignore` and will not be committed to the repository.
 
-## Automatic Supabase Migration Deployment
+## Supabase Validation and Production Deployment
 
-The workflow `.github/workflows/supabase-deploy.yml` automatically applies any new
-migration files in `supabase/migrations/` to the **production** Supabase project
-whenever a commit that touches those files is merged (pushed) to `main`.
+This repository now separates **automatic remote validation** from **manual
+production deployment**:
 
-It intentionally runs plain `supabase db push` and **does not** use
-`--include-all`, because this repository contains multiple historical baseline
-packs. Production should only receive forward, still-pending migrations from its
-current remote migration history.
+1. `.github/workflows/supabase-db-check.yml` runs automatically on pushes / PRs
+   that touch `supabase/migrations/**` or `supabase/config.toml`.
+2. `.github/workflows/supabase-deploy.yml` is **manual** (`workflow_dispatch`)
+   and is the only workflow that pushes migrations to the production Supabase
+   project.
+
+The production deploy workflow intentionally runs plain `supabase db push` and
+**does not** use `--include-all`, because this repository contains multiple
+historical baseline packs. Production should only receive forward, still-pending
+migrations from its current remote migration history.
+
+### Automatic validation workflow
+
+`Validate Supabase Changes` links to the configured remote project and runs:
+
+1. `supabase db lint --linked --fail-on error`
+2. `supabase db push --dry-run --linked --yes`
+
+This validates the **real linked database state** before any production deploy.
+It does **not** publish migrations to production.
 
 ### Required GitHub Secrets
 
@@ -105,14 +120,20 @@ Add these three secrets under **Repository → Settings → Secrets and variable
 > rotate it immediately if you believe it has been compromised (Supabase Dashboard →
 > **Settings → Database → Reset database password**).
 
-Once set, the workflow runs automatically — no manual steps needed. Any new SQL
-file added under `supabase/migrations/` and merged to `main` will be pushed to
-the live database within seconds, as long as it is a forward migration that has
-not already been recorded in the remote migration history.
+### Manual production deploy
 
-> **PR preview branches:** The `supabase-preview.yml` workflow handles `db push` for
-> each pull request independently, so migrations are verified against a preview
-> environment before hitting production.
+To apply pending migrations to production:
+
+1. Open **GitHub Actions → Deploy Supabase Migrations**
+2. Click **Run workflow**
+3. Fill in the required `reason`
+4. Confirm the run targets the intended ref / SHA
+
+Use this only after the migration change has been reviewed and validated.
+
+> There is currently **no** `supabase-preview.yml` workflow in this repository.
+> PR-time safety comes from `Validate Supabase Changes`, not from an automatic
+> preview database deploy.
 
 ### Troubleshooting CI Migration Failures
 
@@ -160,6 +181,41 @@ not already been recorded in the remote migration history.
 1. Check [status.supabase.com](https://status.supabase.com) for any active incidents
 2. Wait a few minutes and re-run the failed workflow
 3. If the issue persists, verify your `SUPABASE_PROJECT_ID` is correct
+
+#### SQL function lint errors
+
+**Error:** messages such as `column reference "status" is ambiguous`
+
+**Cause:** a PL/pgSQL function body is invalid for the linked database schema.
+This is a code issue in the SQL definition, not a GitHub Actions secret or
+network problem.
+
+**Fix:**
+1. Identify the failing function from the lint output
+2. Add a new forward migration that recreates the function with the corrected SQL
+3. Re-run validation
+
+> Do not edit old production baseline files in place to repair an already-linked
+> environment. Use a new migration so existing projects can move forward safely.
+
+#### Linked database schema drift
+
+**Error:** messages such as `column "sync_state" does not exist` for objects that
+the repository expects to exist
+
+**Cause:** the linked remote database predates the current baseline shape, or an
+older environment was created before a column / constraint was added. Historical
+`CREATE TABLE IF NOT EXISTS` migrations do not retroactively add missing columns
+to existing tables.
+
+**Fix:**
+1. Add a new forward migration with explicit `ALTER TABLE ... ADD COLUMN IF NOT EXISTS ...`
+   or other targeted repair statements
+2. Apply defaults / `NOT NULL` / `CHECK` constraints explicitly in that migration
+3. Use the manual production deploy workflow to bring the linked database forward
+
+> Do not re-run historical baseline packs against production to repair drift.
+> Repair drift with targeted forward migrations only.
 
 
 ## Supabase Authentication Settings (Production)
