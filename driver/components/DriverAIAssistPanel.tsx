@@ -89,10 +89,31 @@ const LEVEL_ICON = {
 
 const DriverAIAssistPanel: React.FC<Props> = (props) => {
   const [open, setOpen] = useState(false);
-  const checks = useMemo(() => runChecks(props), [
-    props.isOnline, props.unsyncedCount,
-    props.filteredLocations, props.filteredTransactions,
-    props.filteredSettlements, props.activeDriverId, props.lang,
+  const {
+    isOnline,
+    unsyncedCount,
+    filteredLocations,
+    filteredTransactions,
+    filteredSettlements,
+    activeDriverId,
+    lang,
+  } = props;
+  const checks = useMemo(() => runChecks({
+    isOnline,
+    unsyncedCount,
+    filteredLocations,
+    filteredTransactions,
+    filteredSettlements,
+    activeDriverId,
+    lang,
+  }), [
+    isOnline,
+    unsyncedCount,
+    filteredLocations,
+    filteredTransactions,
+    filteredSettlements,
+    activeDriverId,
+    lang,
   ]);
 
   const warnCount = checks.filter(c => c.level === 'warn').length;

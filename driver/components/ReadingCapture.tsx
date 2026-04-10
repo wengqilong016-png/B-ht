@@ -50,15 +50,15 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   // Keep draft in sync whenever the hook resolves coords or status
   useEffect(() => {
     if (gpsHookCoords) onUpdateGps(gpsHookCoords);
-  }, [gpsHookCoords]);
+  }, [gpsHookCoords, onUpdateGps]);
 
   useEffect(() => {
     if (gpsHookStatus === 'granted') onUpdateGpsPermission('granted');
     else if (gpsHookStatus === 'denied') onUpdateGpsPermission('denied');
-  }, [gpsHookStatus]);
+  }, [gpsHookStatus, onUpdateGpsPermission]);
 
   // Auto-request GPS on mount
-  useEffect(() => { requestGps(); }, []);
+  useEffect(() => { requestGps(); }, [requestGps]);
 
   const photoInputRef = useRef<HTMLInputElement>(null);
 

@@ -130,11 +130,11 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   // Keep draft GPS in sync with hook results
   useEffect(() => {
     if (gpsCoords) updateDraft({ gpsCoords });
-  }, [gpsCoords]);
+  }, [gpsCoords, updateDraft]);
   useEffect(() => {
     if (gpsStatus === 'granted') updateDraft({ gpsPermission: 'granted' });
     else if (gpsStatus === 'denied') updateDraft({ gpsPermission: 'denied' });
-  }, [gpsStatus]);
+  }, [gpsStatus, updateDraft]);
 
   // Sub-views
   const [isRegistering, setIsRegistering] = useState(false);
@@ -230,7 +230,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
       const rate = selectedLocation.commissionRate || CONSTANTS.DEFAULT_PROFIT_SHARE;
       updateDraft({ ownerRetention: Math.floor(revenue * rate).toString() });
     }
-  }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining, draft.ownerRetention, financeResult.commission]);
+  }, [selectedLocation, draft.currentScore, draft.isOwnerRetaining, draft.ownerRetention, financeResult.commission, updateDraft]);
 
   if (!currentDriver) return null;
 
