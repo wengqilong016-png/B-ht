@@ -1,6 +1,8 @@
 import { Capacitor } from '@capacitor/core';
 import { useEffect, useState } from 'react';
 
+const NATIVE_UPDATE_CHECK_INTERVAL_MS = 15 * 60 * 1000;
+
 export interface VersionInfo {
   version: string;
   apkUrl: string;
@@ -50,9 +52,11 @@ export function useAppUpdateCheck(): UpdateStatus | null {
   useEffect(() => {
     const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '0.0.0';
     const manifestUrl = getUpdateManifestUrl();
+    const isNative = Capacitor.isNativePlatform();
 
     let didCancel = false;
     let controller: AbortController | null = null;
+    let intervalId: ReturnType<typeof setInterval> | null = null;
 
     const check = () => {
       controller?.abort();
@@ -90,9 +94,14 @@ export function useAppUpdateCheck(): UpdateStatus | null {
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
 
+    if (isNative) {
+      intervalId = setInterval(check, NATIVE_UPDATE_CHECK_INTERVAL_MS);
+    }
+
     return () => {
       didCancel = true;
       controller?.abort();
+      if (intervalId) clearInterval(intervalId);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
   }, []);

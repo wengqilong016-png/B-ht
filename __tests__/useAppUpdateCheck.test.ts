@@ -3,6 +3,12 @@ import { renderHook, waitFor } from '@testing-library/react';
 
 import { useAppUpdateCheck } from '../hooks/useAppUpdateCheck';
 
+jest.mock('@capacitor/core', () => ({
+  Capacitor: {
+    isNativePlatform: jest.fn(() => false),
+  },
+}));
+
 type GlobalWithVersion = typeof globalThis & {
   __APP_VERSION__?: string;
   fetch?: typeof fetch;
@@ -12,12 +18,14 @@ const mockFetch = jest.fn<typeof fetch>();
 
 describe('useAppUpdateCheck', () => {
   beforeEach(() => {
+    jest.useRealTimers();
     mockFetch.mockReset();
     (globalThis as GlobalWithVersion).__APP_VERSION__ = '1.0.0';
     (globalThis as GlobalWithVersion).fetch = mockFetch;
   });
 
   afterEach(() => {
+    jest.useRealTimers();
     Reflect.deleteProperty(globalThis, '__APP_VERSION__');
     Reflect.deleteProperty(globalThis, 'fetch');
   });
@@ -71,6 +79,33 @@ describe('useAppUpdateCheck', () => {
         apkUrl: 'https://example.com/app-1.2.0.apk',
         releaseNotes: 'Bug fixes',
       });
+    });
+  });
+
+  it('polls for updates on native builds', async () => {
+    jest.useFakeTimers();
+    const { Capacitor } = jest.requireMock('@capacitor/core') as {
+      Capacitor: { isNativePlatform: jest.Mock };
+    };
+    Capacitor.isNativePlatform.mockReturnValue(true);
+
+    mockFetch.mockResolvedValue({
+      json: async () => ({
+        version: '1.0.0',
+        apkUrl: 'https://example.com/app.apk',
+      }),
+    } as Response);
+
+    renderHook(() => useAppUpdateCheck());
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    jest.advanceTimersByTime(15 * 60 * 1000);
+
+    await waitFor(() => {
+      expect(mockFetch).toHaveBeenCalledTimes(2);
     });
   });
 });
