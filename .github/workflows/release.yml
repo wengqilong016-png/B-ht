@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [published]
+    types: [created]
 
 permissions:
   contents: write
@@ -193,6 +193,12 @@ jobs:
           gh release upload "${{ github.event.release.tag_name }}" \
             android/app/build/outputs/apk/bahati-*.apk \
             --clobber
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish release
+        if: github.event.release.draft == true
+        run: gh release edit "${{ github.event.release.tag_name }}" --draft=false
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
