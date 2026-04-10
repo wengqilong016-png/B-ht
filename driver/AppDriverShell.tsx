@@ -1,6 +1,6 @@
 import {
   LogOut, Globe,
-  Crown, Settings
+  Settings
 } from 'lucide-react';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 
@@ -31,13 +31,12 @@ const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
   const {
     isOnline,
-    locations, drivers, transactions, dailySettlements, aiLogs,
-    filteredLocations, filteredDrivers, filteredTransactions, filteredSettlements,
+    drivers,
+    filteredLocations, filteredTransactions, filteredSettlements,
     unsyncedCount,
   } = useAppData();
   const {
-    syncOfflineData, updateDrivers, updateLocations, deleteLocations,
-    updateTransaction, logAI,
+    syncOfflineData, updateDrivers,
   } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<DriverView>('collect');
@@ -52,12 +51,15 @@ const AppDriverShell: React.FC = () => {
   const assignedMachineCount = filteredLocations.length;
   const todayCollectionCount = filteredTransactions.filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection')).length;
   const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;
-  const navStatByView: Partial<Record<DriverView, { value: number; label: string }>> = {
-    collect: { value: todayCollectionCount, label: t.todaysCollections },
-    settlement: { value: pendingSettlementCount, label: t.pendingSettlementShort },
-    history: { value: unsyncedCount, label: t.unsyncedLabel },
-    status: { value: assignedMachineCount, label: t.assignedMachines },
-  };
+  const navStatByView = useMemo<Partial<Record<DriverView, { value: number; label: string }>>>(
+    () => ({
+      collect: { value: todayCollectionCount, label: t.todaysCollections },
+      settlement: { value: pendingSettlementCount, label: t.pendingSettlementShort },
+      history: { value: unsyncedCount, label: t.unsyncedLabel },
+      status: { value: assignedMachineCount, label: t.assignedMachines },
+    }),
+    [assignedMachineCount, pendingSettlementCount, t, todayCollectionCount, unsyncedCount]
+  );
 
   // Build sidebar nav items
   const sidebarNav: SidebarNavItem[] = useMemo(

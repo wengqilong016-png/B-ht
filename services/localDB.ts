@@ -1,7 +1,5 @@
 import * as idb from 'idb-keyval';
 
-import { CONSTANTS } from '../types';
-
 export const localDB = {
   async get<T>(key: string): Promise<T | null> {
     try {
@@ -12,7 +10,7 @@ export const localDB = {
       try {
         const raw = localStorage.getItem(key);
         return raw ? JSON.parse(raw) as T : null;
-      } catch (e) {
+      } catch {
         return null;
       }
     }
@@ -25,8 +23,8 @@ export const localDB = {
       console.warn(`[localDB] Failed to set ${key} in IDB, falling back to localStorage`, err);
       try {
         localStorage.setItem(key, JSON.stringify(value));
-      } catch (e) {
-        console.error(`[localDB] localStorage fallback failed for ${key}`, e);
+      } catch {
+        console.error(`[localDB] localStorage fallback failed for ${key}`);
       }
     }
   },
@@ -34,7 +32,7 @@ export const localDB = {
   async clear(key: string): Promise<void> {
     try {
       await idb.del(key);
-    } catch (err) {
+    } catch {
       localStorage.removeItem(key);
     }
   }

@@ -1,4 +1,4 @@
-import { Camera, CheckCircle2, ArrowRight, RotateCcw, AlertTriangle, Satellite, ChevronRight, WifiOff } from 'lucide-react';
+import { Camera, CheckCircle2, RotateCcw, Satellite, ChevronRight, WifiOff } from 'lucide-react';
 import React, { useRef, useEffect } from 'react';
 
 import { Location, Driver, TRANSLATIONS, AILog } from '../../types';
@@ -35,8 +35,8 @@ interface ReadingCaptureProps {
 }
 
 const ReadingCapture: React.FC<ReadingCaptureProps> = ({
-  selectedLocation, currentDriver, lang, currentScore, photoData, aiReviewData,
-  gpsCoords, gpsPermission, draftTxId, onLogAI,
+  selectedLocation, currentDriver: _currentDriver, lang, currentScore, photoData, aiReviewData: _aiReviewData,
+  gpsCoords, gpsPermission: _gpsPermission, draftTxId: _draftTxId, onLogAI: _onLogAI,
   onUpdateScore, onUpdatePhoto, onUpdateAiReview, onUpdateGps, onUpdateGpsPermission,
   onNext, onBack, onSwitchMachine, revenue, diff, nextMachine, pendingCount,
 }) => {

@@ -1,5 +1,5 @@
 
-import { CheckCircle2, Filter, ChevronDown, WifiOff, AlertTriangle, Clock, Globe, Calculator, Search, BrainCircuit, ShieldAlert, Target, Sparkles, RefreshCw, CloudOff, XCircle } from 'lucide-react';
+import { CheckCircle2, Filter, ChevronDown, WifiOff, AlertTriangle, Clock, Globe, Calculator, Search, ShieldAlert, Target, Sparkles, RefreshCw, CloudOff, XCircle } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
@@ -12,7 +12,7 @@ interface TransactionHistoryProps {
   onAnalyze?: (txId: string) => void;
 }
 
-const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () => {} }) => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onAnalyze = () => {} }) => {
   const { currentUser, lang } = useAuth();
   const { syncOfflineData } = useMutations();
   const { filteredTransactions: transactions, locations, isOnline, unsyncedCount: globalUnsyncedCount } = useAppData();
@@ -224,7 +224,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze = () 
                                       const res = await translateToChinese(tx.notes || '');
                                       btn.parentElement!.querySelector('p')!.innerText = `“ ${res} ”`;
                                       btn.style.display = 'none';
-                                    } catch (err) {
+                                    } catch {
                                       btn.innerHTML = '翻译失败';
                                     }
                                   }}

@@ -125,7 +125,6 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
   const [paymentMethod, setPaymentMethod] = useState<MonthlyPayroll['paymentMethod']>(
     record?.paymentMethod || 'bank_transfer',
   );
-  const [proofFile, setProofFile] = useState<File | null>(null);
   const [proofPreview, setProofPreview] = useState<string | null>(record?.paymentProofUrl || null);
   const [isUploading, setIsUploading] = useState(false);
 
@@ -141,7 +140,6 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
   const title = useMemo(() => getPayrollActionTitle(mode, t), [mode, t]);
 
   const handleFileChange = async (file: File | null) => {
-    setProofFile(file);
     if (!file) {
       setProofPreview(record?.paymentProofUrl || null);
       return;
@@ -153,7 +151,6 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
     } catch (error) {
       console.error('Failed to preview payroll proof.', error);
       showToast(lang === 'zh' ? '凭证预览失败，请重试。' : 'Failed to preview payment proof. Please retry.', 'error');
-      setProofFile(null);
       setProofPreview(record?.paymentProofUrl || null);
     }
   };

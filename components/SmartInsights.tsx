@@ -54,7 +54,6 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
         totalRevenue = locTxs.reduce((sum, t) => sum + t.revenue, 0);
         const avgDaily = totalRevenue / 7;
         const latestTx = locTxs[locTxs.length - 1];
-        const previousTx = locTxs[locTxs.length - 2];
 
         // 异动检测算法：如果单日营收低于 7天平均值的 50%，触发严重警告
         if (latestTx.revenue < avgDaily * 0.5 && latestTx.revenue > 0) {
@@ -87,7 +86,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
     // 筛选出有问题的机器并按风险等级排序
     return locStats
       .filter(s => s.warningMsg !== '')
-      .sort((a, b) => (a.riskLevel === 'high' ? -1 : 1));
+      .sort((a) => (a.riskLevel === 'high' ? -1 : 1));
   }, [transactions, locations]);
 
   const totalRiskCount = useMemo(() => insights.filter(i => i.riskLevel === 'high').length, [insights]);
@@ -154,7 +153,7 @@ const SmartInsights: React.FC<SmartInsightsProps> = ({ transactions, locations, 
            </div>
         ) : (
            <div className="grid grid-cols-1 gap-3">
-             {visibleInsights.map((insight, idx) => (
+             {visibleInsights.map((insight) => (
                <button
                  key={insight.loc.id}
                  type="button"

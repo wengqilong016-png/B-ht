@@ -24,7 +24,7 @@ interface MachineFilterBarProps {
 }
 
 const MachineFilterBar: React.FC<MachineFilterBarProps> = ({
-  t, lang, searchQuery, onSearchChange, locationFilter, onFilterChange,
+  t, lang: _lang, searchQuery, onSearchChange, locationFilter, onFilterChange,
   selectedArea, onAreaChange, availableAreas, counts,
   showRegisterButton, onStartRegister,
 }) => (

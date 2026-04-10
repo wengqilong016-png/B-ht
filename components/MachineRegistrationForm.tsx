@@ -1,5 +1,5 @@
 
-import { Camera, MapPinned, Loader2, CheckCircle2, User, Phone, MapPin, Building2, Coins, Save, ImagePlus, X, Percent, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Camera, MapPinned, Loader2, CheckCircle2, Building2, Coins, Save, ImagePlus, Percent, ArrowLeft } from 'lucide-react';
 import React, { useState, useRef } from 'react';
 
 import { useToast } from '../contexts/ToastContext';

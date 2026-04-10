@@ -13,18 +13,6 @@ const mockUseRealtimeSubscription = jest.fn();
 const mockUseOfflineSyncLoop = jest.fn();
 const mockUseDevicePerformance = jest.fn();
 
-function makeUser(overrides: Partial<User> = {}): User {
-  return {
-    id: 'auth-user-1',
-    username: 'driver@example.com',
-    role: 'driver',
-    name: 'Driver One',
-    driverId: 'drv-1',
-    mustChangePassword: false,
-    ...overrides,
-  };
-}
-
 jest.mock('../hooks/useAuthBootstrap', () => {
   const React = require('react');
   const user = {

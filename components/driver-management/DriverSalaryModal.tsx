@@ -1,4 +1,4 @@
-import { X, Calculator, AlertCircle, TrendingUp, Receipt } from 'lucide-react';
+import { X, Calculator, AlertCircle } from 'lucide-react';
 import React from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';

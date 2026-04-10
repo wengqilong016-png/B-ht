@@ -1,7 +1,7 @@
 import { ArrowRight, HandCoins, Banknote, Coins, Trophy, ChevronRight, ShieldAlert } from 'lucide-react';
 import React from 'react';
 
-import { Location, CONSTANTS, TRANSLATIONS, Transaction } from '../../types';
+import { Location, TRANSLATIONS, Transaction } from '../../types';
 
 import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
 import WizardStepBar from './WizardStepBar';

@@ -43,13 +43,11 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
   const {
     isOnline,
     isSyncing,
-    unsyncedCount,
     pendingCount,
     retryWaitingCount,
     deadLetterCount,
     state,
     lastSyncedAt,
-    trigger,
     forceRetry,
   } = syncStatus;
   const isZh = lang === 'zh';
@@ -169,7 +167,7 @@ const SyncStatusPill: React.FC<SyncStatusPillProps> = ({
         value: deadLetterCount,
       },
     ].filter(item => item.value > 0),
-    [deadLetterCount, isZh, pendingCount, retryWaitingCount, unsyncedCount]
+    [deadLetterCount, isZh, pendingCount, retryWaitingCount]
   );
 
   const label = labelMap[isZh ? 'zh' : 'sw'][state];

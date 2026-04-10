@@ -1,8 +1,6 @@
 import { BotMessageSquare, X, CheckCircle2, AlertTriangle, Info, WifiOff, Clock } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
-import { TRANSLATIONS } from '../../types';
-
 import type { Transaction, Location, DailySettlement } from '../../types';
 
 interface Check {

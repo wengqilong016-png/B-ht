@@ -1,5 +1,5 @@
 import { Loader2 } from 'lucide-react';
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import AppUpdateModal from './components/AppUpdateModal';
 import ForcePasswordChange from './components/ForcePasswordChange';
@@ -8,7 +8,6 @@ import { AuthProvider, DataProvider, MutationProvider } from './contexts';
 import { ConfirmProvider } from './contexts/ConfirmContext';
 import { NotificationProvider } from './contexts/NotificationContext';
 import { ToastProvider, useToast } from './contexts/ToastContext';
-import { useAppUpdateCheck } from './hooks/useAppUpdateCheck';
 import { useAuthBootstrap } from './hooks/useAuthBootstrap';
 import { useDevicePerformance } from './hooks/useDevicePerformance';
 import { useOfflineSyncLoop } from './hooks/useOfflineSyncLoop';
@@ -17,7 +16,6 @@ import { useSupabaseData } from './hooks/useSupabaseData';
 import { useSupabaseMutations } from './hooks/useSupabaseMutations';
 import AppRouterShell from './shared/AppRouterShell';
 import UpdatePrompt from './shared/UpdatePrompt';
-import { TRANSLATIONS } from './types';
 
 import type { User } from './types';
 
@@ -71,7 +69,6 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   handleLogout,
 }) => {
   const { showToast } = useToast();
-  const t = TRANSLATIONS[lang];
   const handleMutationError = useCallback(
     (error: unknown) => {
       const msg = error instanceof Error ? error.message : String(error);

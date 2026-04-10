@@ -5,7 +5,6 @@ import {
   History,
   LayoutDashboard,
   MapPin,
-  PieChart,
   PlusCircle,
   Store,
   Users,

@@ -5,7 +5,7 @@ import { getPendingTransactions } from '../../offlineQueue';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
 
-import MachineCard, { type MachineCardMeta } from './MachineCard';
+import MachineCard from './MachineCard';
 import MachineFilterBar from './MachineFilterBar';
 
 const NEARBY_DISTANCE_METERS = 1500;

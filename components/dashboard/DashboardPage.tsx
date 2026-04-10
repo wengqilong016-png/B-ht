@@ -12,7 +12,7 @@ import {
   fetchMonthlyPayrolls,
   markMonthlyPayrollPaid,
 } from '../../repositories/monthlyPayrollRepository';
-import { Driver, Location, DailySettlement, MonthlyPayroll, Transaction, TRANSLATIONS } from '../../types';
+import { Location, DailySettlement, MonthlyPayroll, TRANSLATIONS } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
 import DriverManagement from '../driver-management';
 import PageErrorBoundary from '../PageErrorBoundary';
@@ -54,7 +54,7 @@ type PayrollModalState = {
 };
 
 const DashboardPage: React.FC<DashboardProps> = React.memo(({
-  onNavigate,
+  onNavigate: _onNavigate,
   initialTab,
   hideTabs,
 }) => {
@@ -71,25 +71,20 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     isOnline,
   } = useAppData();
   const {
-    updateDrivers,
     updateLocations,
     deleteLocations,
-    updateTransaction,
     createSettlement,
     reviewSettlement,
     approveExpenseRequest,
     reviewAnomalyTransaction,
     approveResetRequest,
     approvePayoutRequest,
-    syncOfflineData,
   } = useMutations();
 
-  const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave).then(() => {});
   const onDeleteLocations = async (ids: string[]) => {
     await deleteLocations.mutateAsync(ids);
   };
-  const onUpdateTransaction = (txId: string, updates: Partial<Transaction>) => updateTransaction.mutate({ txId, updates });
   const onCreateSettlement = async (settlement: DailySettlement) => {
     await createSettlement.mutateAsync(settlement);
   };
@@ -108,9 +103,6 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
   const onApprovePayoutRequest = async (txId: string, approve: boolean) => {
     await approvePayoutRequest.mutateAsync({ txId, approve });
   };
-  const onSync = async () => syncOfflineData.mutate();
-  const isSyncing = syncOfflineData.isPending;
-  const offlineCount = unsyncedCount;
   const isAdmin = currentUser.role === 'admin';
   const activeDriverId = currentUser.driverId ?? currentUser.id;
   const todayStr = getTodayLocalDate();

@@ -1,6 +1,6 @@
 import {
   LogOut, Globe,
-  Crown, Settings,
+  Settings,
 } from 'lucide-react';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 
@@ -32,28 +32,20 @@ import AdminShellViewRenderer from './renderAdminShellView';
 const AccountSettings = lazy(() => import('../components/AccountSettings'));
 
 const AppAdminShell: React.FC = () => {
-  const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
+  const { currentUser, lang, setLang, handleLogout } = useAuth();
   const {
     isOnline,
     locations,
     drivers,
     transactions,
     dailySettlements,
-    aiLogs,
     filteredLocations,
     filteredDrivers,
-    filteredTransactions,
-    filteredSettlements,
     unsyncedCount,
   } = useAppData();
   const {
     syncOfflineData,
     updateDrivers,
-    updateLocations,
-    deleteLocations,
-    deleteDrivers,
-    updateTransaction,
-    logAI,
   } = useMutations();
   const [view, setView] = useState<AdminView>('dashboard');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -76,13 +68,16 @@ const AppAdminShell: React.FC = () => {
     };
     return titles[view];
   }, [t, view]);
-  const navStatByView: Partial<Record<AdminView, { value: number; label: string }>> = {
-    settlement: { value: totalApprovalBadge, label: t.pendingApproval },
-    map: { value: locations.filter(location => location.coords).length, label: t.mappedSites },
-    sites: { value: filteredLocations.length || locations.length, label: t.totalSites },
-    team: { value: filteredDrivers.length || drivers.length, label: t.totalDrivers },
-    history: { value: unsyncedCount, label: t.unsyncedLabel },
-  };
+  const navStatByView = useMemo<Partial<Record<AdminView, { value: number; label: string }>>>(
+    () => ({
+      settlement: { value: totalApprovalBadge, label: t.pendingApproval },
+      map: { value: locations.filter(location => location.coords).length, label: t.mappedSites },
+      sites: { value: filteredLocations.length || locations.length, label: t.totalSites },
+      team: { value: filteredDrivers.length || drivers.length, label: t.totalDrivers },
+      history: { value: unsyncedCount, label: t.unsyncedLabel },
+    }),
+    [drivers.length, filteredDrivers.length, filteredLocations.length, locations, t, totalApprovalBadge, unsyncedCount]
+  );
 
   // Build sidebar nav items with labels/stats resolved
   const primarySidebarNav: SidebarNavItem[] = useMemo(
