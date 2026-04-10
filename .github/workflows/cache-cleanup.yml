@@ -1,0 +1,68 @@
+name: Cache Cleanup
+
+on:
+  schedule:
+    # Every Monday at 02:00 UTC
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      max_age_days:
+        description: 'Delete caches not accessed in this many days'
+        required: false
+        default: '7'
+        type: string
+
+permissions:
+  actions: write
+
+jobs:
+  cleanup:
+    name: Delete Stale Caches
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Delete stale caches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MAX_AGE_DAYS: ${{ github.event.inputs.max_age_days || '7' }}
+          REPO: ${{ github.repository }}
+        run: |
+          echo "Deleting caches not accessed in the last ${MAX_AGE_DAYS} days..."
+
+          CUTOFF=$(date -u -d "${MAX_AGE_DAYS} days ago" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
+            || date -u -v-${MAX_AGE_DAYS}d '+%Y-%m-%dT%H:%M:%SZ')
+
+          PAGE=1
+          DELETED=0
+          FREED_BYTES=0
+
+          while true; do
+            RESPONSE=$(gh api \
+              "repos/${REPO}/actions/caches?per_page=100&page=${PAGE}" \
+              --jq '.actions_caches // []')
+
+            COUNT=$(echo "$RESPONSE" | python3 -c "import json,sys; print(len(json.load(sys.stdin)))")
+            if [ "$COUNT" -eq 0 ]; then
+              break
+            fi
+
+            while IFS=$'\t' read -r CACHE_ID LAST_ACCESSED SIZE_BYTES KEY; do
+              if [[ "$LAST_ACCESSED" < "$CUTOFF" ]]; then
+                if gh api --method DELETE "repos/${REPO}/actions/caches/${CACHE_ID}" 2>/dev/null; then
+                  DELETED=$((DELETED + 1))
+                  FREED_BYTES=$((FREED_BYTES + SIZE_BYTES))
+                  echo "  Deleted cache ${CACHE_ID} (last used ${LAST_ACCESSED}): ${KEY}"
+                fi
+              fi
+            done < <(echo "$RESPONSE" | python3 -c "
+import json, sys
+for c in json.load(sys.stdin):
+    print(c['id'], c.get('last_accessed_at',''), c.get('size_in_bytes',0), c.get('key',''), sep='\t')
+")
+
+            PAGE=$((PAGE + 1))
+          done
+
+          FREED_MB=$(python3 -c "print(f'{${FREED_BYTES} / 1024 / 1024:.1f}')" 2>/dev/null || echo "?")
+          echo ""
+          echo "Done. Deleted ${DELETED} cache(s), freed ~${FREED_MB} MB."
