@@ -14,6 +14,7 @@ on:
 
 permissions:
   actions: write
+  contents: read
 
 jobs:
   cleanup:
@@ -24,9 +25,13 @@ jobs:
       - name: Delete stale caches
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MAX_AGE_DAYS: ${{ github.event.inputs.max_age_days || '7' }}
+          MAX_AGE_DAYS: '7'
           REPO: ${{ github.repository }}
         run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ inputs.max_age_days }}" ]; then
+            MAX_AGE_DAYS="${{ inputs.max_age_days }}"
+          fi
+
           echo "Deleting caches not accessed in the last ${MAX_AGE_DAYS} days..."
 
           CUTOFF=$(date -u -d "${MAX_AGE_DAYS} days ago" '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null \
@@ -54,15 +59,11 @@ jobs:
                   echo "  Deleted cache ${CACHE_ID} (last used ${LAST_ACCESSED}): ${KEY}"
                 fi
               fi
-            done < <(echo "$RESPONSE" | python3 -c "
-import json, sys
-for c in json.load(sys.stdin):
-    print(c['id'], c.get('last_accessed_at',''), c.get('size_in_bytes',0), c.get('key',''), sep='\t')
-")
+            done < <(echo "$RESPONSE" | python3 -c "import json, sys; [print(c['id'], c.get('last_accessed_at',''), c.get('size_in_bytes',0), c.get('key',''), sep='\t') for c in json.load(sys.stdin)]")
 
             PAGE=$((PAGE + 1))
           done
 
-          FREED_MB=$(python3 -c "print(f'{${FREED_BYTES} / 1024 / 1024:.1f}')" 2>/dev/null || echo "?")
+          FREED_MB=$(python3 -c "print(f'{int(${FREED_BYTES}) / 1024 / 1024:.1f}')" 2>/dev/null || echo "?")
           echo ""
           echo "Done. Deleted ${DELETED} cache(s), freed ~${FREED_MB} MB."
