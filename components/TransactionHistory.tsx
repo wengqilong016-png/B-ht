@@ -165,7 +165,18 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                     {tx.isSynced ? <CheckCircle2 size={20} /> : <WifiOff size={20} />}
                   </div>
                   <div>
-                    <h4 className="font-black text-slate-900 text-sm tracking-tight">{tx.locationName}</h4>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-slate-900 text-sm tracking-tight">{tx.locationName}</h4>
+                      {tx.type === 'payout_request' && (
+                        <span className="px-1.5 py-0.5 rounded bg-emerald-100 text-emerald-700 text-caption font-black uppercase">{lang === 'zh' ? '提现' : 'Payout'}</span>
+                      )}
+                      {tx.type === 'reset_request' && (
+                        <span className="px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-caption font-black uppercase">{lang === 'zh' ? '重置' : 'Reset'}</span>
+                      )}
+                      {(tx.expenses > 0 && tx.expenseStatus === 'pending') && (
+                        <span className="px-1.5 py-0.5 rounded bg-rose-100 text-rose-700 text-caption font-black uppercase">{t.pendingApproval}</span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-3 text-caption font-black text-slate-400 uppercase tracking-widest mt-1">
                       <div className="flex items-center gap-1"><Clock size={10} /> {new Date(tx.timestamp).toLocaleString([], {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'})}</div>
                       <div className="w-1 h-1 bg-slate-200 rounded-full"></div>
@@ -175,8 +186,22 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right">
-                    <p className="text-xs font-black text-slate-400 uppercase mb-0.5">净营收</p>
-                    <p className="text-sm font-black text-amber-600">TZS {tx.netPayable.toLocaleString()}</p>
+                    {tx.type === 'payout_request' ? (
+                      <>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">提现申请</p>
+                        <p className="text-sm font-black text-emerald-600">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
+                      </>
+                    ) : tx.type === 'reset_request' ? (
+                      <>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">重置申请</p>
+                        <p className="text-sm font-black text-amber-600">{t.pendingApproval}</p>
+                      </>
+                    ) : (
+                      <>
+                        <p className="text-xs font-black text-slate-400 uppercase mb-0.5">净营收</p>
+                        <p className="text-sm font-black text-amber-600">TZS {tx.netPayable.toLocaleString()}</p>
+                      </>
+                    )}
                   </div>
                   <button onClick={() => setExpandedId(expandedId === tx.id ? null : tx.id)} className={`p-2 rounded-xl transition-all ${expandedId === tx.id ? 'bg-slate-900 text-white' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}>
                     <ChevronDown size={18} className={`transition-transform duration-300 ${expandedId === tx.id ? 'rotate-180' : ''}`} />
@@ -185,6 +210,47 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
               </div>
               {expandedId === tx.id && (
                 <div className="px-5 pb-5 animate-in slide-in-from-top-2 duration-300">
+                  {/* ── Payout request detail ── */}
+                  {tx.type === 'payout_request' ? (
+                    <div className="bg-emerald-50 p-5 rounded-card border border-emerald-200 space-y-3">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Calculator size={16} className="text-emerald-600" />
+                        <h4 className="text-caption font-black text-emerald-800 uppercase tracking-widest">
+                          {lang === 'zh' ? '店主分红提现申请' : 'Owner Dividend Payout Request'}
+                        </h4>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="bg-white p-3 rounded-subcard border border-emerald-100">
+                          <p className="text-caption font-black text-slate-400 uppercase mb-1">
+                            {lang === 'zh' ? '申请金额' : 'Requested Amount'}
+                          </p>
+                          <p className="text-lg font-black text-emerald-700">TZS {(tx.payoutAmount || 0).toLocaleString()}</p>
+                        </div>
+                        <div className="bg-white p-3 rounded-subcard border border-emerald-100">
+                          <p className="text-caption font-black text-slate-400 uppercase mb-1">
+                            {lang === 'zh' ? '审批状态' : 'Approval Status'}
+                          </p>
+                          <p className={`text-xs font-black uppercase ${
+                            tx.approvalStatus === 'approved' ? 'text-emerald-600' :
+                            tx.approvalStatus === 'rejected' ? 'text-rose-600' :
+                            'text-amber-600'
+                          }`}>
+                            {tx.approvalStatus === 'approved'
+                              ? (lang === 'zh' ? '✅ 已批准' : '✅ Approved')
+                              : tx.approvalStatus === 'rejected'
+                              ? (lang === 'zh' ? '❌ 已拒绝' : '❌ Rejected')
+                              : (lang === 'zh' ? '⏳ 待审批' : '⏳ Pending')}
+                          </p>
+                        </div>
+                      </div>
+                      {tx.notes && (
+                        <div className="bg-white p-3 rounded-subcard border border-emerald-100">
+                          <p className="text-caption font-black text-slate-400 uppercase mb-1">{lang === 'zh' ? '备注' : 'Notes'}</p>
+                          <p className="text-xs font-bold text-slate-600">{tx.notes}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
                   <div className="bg-slate-50 p-6 rounded-card border border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
@@ -239,11 +305,17 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
 
                       <div className="space-y-2">
                         <div className="flex justify-between text-[11px] font-bold text-slate-500"><span>总收入 (Coins Value)</span><span>TZS {tx.revenue.toLocaleString()}</span></div>
-                        <div className="flex justify-between text-[11px] font-bold text-emerald-600"><span>分红佣金 (+)</span><span>+ {tx.commission.toLocaleString()}</span></div>
+                        <div className="flex justify-between text-[11px] font-bold text-amber-600"><span>{lang === 'zh' ? '店主分红 (−)' : 'Owner Dividend (−)'}</span><span>− {tx.ownerRetention.toLocaleString()}</span></div>
                         <div className="flex justify-between text-[11px] font-bold text-rose-500"><span>日常支出 (-)</span><span>- {tx.expenses.toLocaleString()}</span></div>
                         <div className="flex justify-between text-[11px] font-bold text-amber-600"><span>欠款回收 (-)</span><span>- {(tx.debtDeduction + tx.startupDebtDeduction).toLocaleString()}</span></div>
                         <div className="h-px bg-slate-200 my-2"></div>
                         <div className="flex justify-between text-sm font-black text-slate-900"><span>应缴库现金</span><span>TZS {tx.netPayable.toLocaleString()}</span></div>
+                        {tx.commission > 0 && tx.commission !== tx.ownerRetention && (
+                          <div className="flex justify-between text-[10px] font-bold text-slate-400">
+                            <span>{lang === 'zh' ? '系统计提分红' : 'Calc. Commission'}</span>
+                            <span>TZS {tx.commission.toLocaleString()}</span>
+                          </div>
+                        )}
                       </div>
 
                       <div className="grid grid-cols-2 gap-3 pt-2">
@@ -299,6 +371,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                        )}
                     </div>
                   </div>
+                  )} {/* end non-payout expanded view */}
                 </div>
               )}
             </div>
