@@ -24,6 +24,7 @@ interface PayrollEntry {
 interface SettlementTabProps {
   isAdmin: boolean;
   unsyncedCollectionsCount: number;
+  transactions: Transaction[];
   pendingSettlements: DailySettlement[];
   pendingExpenses: Transaction[];
   anomalyTransactions: Transaction[];
@@ -194,6 +195,7 @@ function deriveScanResult(
 const SettlementTab: React.FC<SettlementTabProps> = ({
   isAdmin,
   unsyncedCollectionsCount,
+  transactions,
   pendingSettlements,
   pendingExpenses,
   anomalyTransactions,
@@ -264,12 +266,22 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const myPendingSettlements = pendingSettlements
     .filter(settlement => settlement.driverId === activeDriverId && settlement.status === 'pending')
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  const overduePendingSettlements = myPendingSettlements.filter((settlement) => settlement.date < todayStr);
+  const overduePendingAmount = overduePendingSettlements.reduce((sum, settlement) => sum + settlement.expectedTotal, 0);
+  const collectionCountByDriverDate = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const tx of transactions) {
+      if (tx.type !== 'collection' || !tx.driverId || !tx.timestamp) continue;
+      const key = `${tx.driverId}:${tx.timestamp.slice(0, 10)}`;
+      counts.set(key, (counts.get(key) || 0) + 1);
+    }
+    return counts;
+  }, [transactions]);
 
   // Block duplicate submissions: if a settlement already exists for today
   // (pending or confirmed), the driver should not be able to submit another one.
-  const hasSubmittedToday = pendingSettlements.some(
+  const hasSubmittedToday = myPendingSettlements.some(
     (settlement) =>
-      settlement.driverId === activeDriverId &&
       settlement.date === todayStr,
   );
 
@@ -384,16 +396,48 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                       <div className="mt-3 pt-3 border-t border-slate-100 space-y-3">
                         {task.type === 'settlement' && (() => {
                           const s = (task.extra as { settlement: DailySettlement }).settlement;
+                          const collectionCount = collectionCountByDriverDate.get(`${s.driverId ?? ''}:${s.date}`) ?? 0;
                           return (
                             <>
+                              <div className="space-y-2">
+                                <p className="text-caption font-black text-slate-400 uppercase">
+                                  {t.dailySummaryLabel}
+                                </p>
+                                <div className="grid grid-cols-2 gap-2">
+                                  <div className="bg-slate-50 p-3 rounded-xl">
+                                    <p className="text-caption font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
+                                    <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
+                                  </div>
+                                  <div className="bg-amber-50 p-3 rounded-xl">
+                                    <p className="text-caption font-black text-amber-500 uppercase">{t.actualSubmittedLabel}</p>
+                                    <p className="text-xs font-black text-amber-700">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-3 rounded-xl">
+                                    <p className="text-caption font-black text-slate-400 uppercase">{t.inputCash}</p>
+                                    <p className="text-xs font-black text-slate-900">TZS {s.actualCash.toLocaleString()}</p>
+                                  </div>
+                                  <div className="bg-slate-50 p-3 rounded-xl">
+                                    <p className="text-caption font-black text-slate-400 uppercase">{t.inputCoins}</p>
+                                    <p className="text-xs font-black text-slate-900">TZS {s.actualCoins.toLocaleString()}</p>
+                                  </div>
+                                </div>
+                              </div>
                               <div className="grid grid-cols-2 gap-2">
                                 <div className="bg-slate-50 p-3 rounded-xl">
-                                  <p className="text-caption font-black text-slate-400 uppercase">{t.expectedTotalLabel}</p>
-                                  <p className="text-xs font-black text-slate-900">TZS {s.expectedTotal.toLocaleString()}</p>
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.collectionsCount}</p>
+                                  <p className="text-xs font-black text-slate-900">{collectionCount.toLocaleString()}</p>
                                 </div>
                                 <div className="bg-slate-50 p-3 rounded-xl">
-                                  <p className="text-caption font-black text-slate-400 uppercase">{t.actualSubmittedLabel}</p>
-                                  <p className="text-xs font-black text-amber-700">TZS {(s.actualCash + s.actualCoins).toLocaleString()}</p>
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.revenueLabel}</p>
+                                  <p className="text-xs font-black text-slate-900">TZS {s.totalRevenue.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-xl">
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.publicExp}</p>
+                                  <p className="text-xs font-black text-slate-900">TZS {s.totalExpenses.toLocaleString()}</p>
+                                </div>
+                                <div className="bg-slate-50 p-3 rounded-xl">
+                                  <p className="text-caption font-black text-slate-400 uppercase">{t.cashInHand}</p>
+                                  <p className="text-xs font-black text-slate-900">TZS {s.totalNetPayable.toLocaleString()}</p>
                                 </div>
                               </div>
                               {s.shortage !== 0 && (
@@ -613,6 +657,39 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          )}
+
+          {overduePendingSettlements.length > 0 && (
+            <div className="rounded-3xl border border-rose-200 bg-rose-50 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-black text-rose-900 uppercase tracking-tight">
+                  {t.overdueSettlementAlert}
+                </p>
+                <p className="mt-1 text-[11px] font-bold text-rose-600 leading-relaxed">
+                  {lang === 'zh'
+                    ? '昨日及更早提交的结账还在等待管理员确认，今天提交前请一并核对。'
+                    : 'Older settlement submissions are still waiting for admin approval. Review them before closing today.'}
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-2xl bg-white/90 p-3 border border-rose-100">
+                  <p className="text-caption font-black uppercase text-rose-400">
+                    {t.overdueSettlementCountLabel}
+                  </p>
+                  <p className="text-sm font-black text-rose-700">
+                    {overduePendingSettlements.length.toLocaleString()}
+                  </p>
+                </div>
+                <div className="rounded-2xl bg-white/90 p-3 border border-rose-100">
+                  <p className="text-caption font-black uppercase text-rose-400">
+                    {t.overdueSettlementAmountLabel}
+                  </p>
+                  <p className="text-sm font-black text-rose-700">
+                    TZS {overduePendingAmount.toLocaleString()}
+                  </p>
+                </div>
               </div>
             </div>
           )}
