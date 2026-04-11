@@ -1,9 +1,9 @@
 import { ChevronRight, Lock, RefreshCw, Wallet, UserPen, Camera, X, Save, Loader2, Navigation } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
+import { useToast } from '../../contexts/ToastContext';
 import { Location, CONSTANTS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
-import { useToast } from '../../contexts/ToastContext';
 
 export interface MachineCardMeta {
   loc: Location;

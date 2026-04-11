@@ -5,6 +5,7 @@ import {
 import React, { useMemo, useState, useCallback } from 'react';
 
 import { useToast } from '../../contexts/ToastContext';
+import supabase from '../../supabaseClient';
 
 import type { Driver, Location } from '../../types/models';
 
@@ -21,7 +22,7 @@ interface AdminContactSummaryPanelProps {
   lang: 'zh' | 'sw';
 }
 
-function buildContactGroups(locations: Location[], drivers: Driver[]): ContactGroup[] {
+function buildContactGroups(locations: Location[], drivers: Driver[], lang: 'zh' | 'sw'): ContactGroup[] {
   const driverMap = new Map(drivers.map(d => [d.id, d]));
 
   // Group locations by assignedDriverId
@@ -59,7 +60,7 @@ function buildContactGroups(locations: Location[], drivers: Driver[]): ContactGr
   if (unassigned.some(l => l.shopOwnerPhone)) {
     groups.push({
       driverId: '__unassigned__',
-      driverName: '未分配司机',
+      driverName: lang === 'zh' ? '未分配司机' : 'Unassigned Driver',
       driverPhone: '',
       locations: unassigned
         .filter(l => l.shopOwnerPhone || l.ownerName)
@@ -93,9 +94,14 @@ const SMSCompose: React.FC<SMSComposeProps> = ({ phones, onClose, lang }) => {
     if (!message.trim() || validPhones.length === 0) return;
     setIsSending(true);
     try {
+      const session = supabase ? (await supabase.auth.getSession()).data.session : null;
+      const authHeader = session?.access_token ? `Bearer ${session.access_token}` : '';
       const res = await fetch('/api/send-sms', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { Authorization: authHeader } : {}),
+        },
         body: JSON.stringify({ phones: validPhones, message: message.trim() }),
       });
       const data = await res.json() as { sent?: number; failed?: number; error?: string };
@@ -300,7 +306,7 @@ const AdminContactSummaryPanel: React.FC<AdminContactSummaryPanelProps> = ({
   const [search, setSearch] = useState('');
   const [showGlobalSMS, setShowGlobalSMS] = useState(false);
 
-  const groups = useMemo(() => buildContactGroups(locations, drivers), [locations, drivers]);
+  const groups = useMemo(() => buildContactGroups(locations, drivers, lang), [locations, drivers, lang]);
 
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return groups;

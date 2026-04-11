@@ -7,6 +7,7 @@ import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
 import WizardStepBar from './WizardStepBar';
 
 import type { AIReviewData } from '../hooks/useCollectionDraft';
+import type { GpsStatus } from '../hooks/useGpsCapture';
 
 interface ReadingCaptureProps {
   selectedLocation: Location;
@@ -17,6 +18,8 @@ interface ReadingCaptureProps {
   aiReviewData: AIReviewData | null;
   gpsCoords: { lat: number; lng: number } | null;
   gpsPermission: 'prompt' | 'granted' | 'denied';
+  /** Live GPS acquisition status from the parent hook — used to distinguish timeout/error from requesting. */
+  gpsStatus: GpsStatus;
   draftTxId: string;
   onLogAI: (log: AILog) => void;
   onUpdateScore: (score: string) => void;
@@ -43,7 +46,8 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
   photoData,
   aiReviewData: _aiReviewData,
   gpsCoords,
-  gpsPermission,
+  gpsPermission: _gpsPermission,
+  gpsStatus,
   draftTxId: _draftTxId,
   onLogAI: _onLogAI,
   onUpdateScore,
@@ -67,8 +71,9 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
 
   // Derive GPS display state from parent props (no duplicate hook instantiation here)
   const isGpsGranted = !!gpsCoords;
-  const isGpsError = gpsPermission === 'denied';
-  const isGpsRequesting = !gpsCoords && gpsPermission === 'prompt';
+  const isGpsError = gpsStatus === 'denied' || gpsStatus === 'error';
+  const isGpsTimeout = gpsStatus === 'timeout';
+  const isGpsRequesting = gpsStatus === 'requesting';
 
   const photoInputRef = useRef<HTMLInputElement>(null);
 
@@ -194,18 +199,20 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
           : 'bg-slate-50 border-slate-200';
         const iconCls = isGpsGranted
           ? 'bg-emerald-500 text-white'
-          : isGpsError
+          : (isGpsError || isGpsTimeout)
           ? 'bg-rose-500 text-white'
           : 'bg-slate-400 text-white';
         const textCls = isGpsGranted
           ? 'text-emerald-700'
-          : isGpsError
+          : (isGpsError || isGpsTimeout)
           ? 'text-rose-600'
           : 'text-slate-500';
         const label = isGpsGranted
           ? `${t.gpsLocked} (${gpsCoords!.lat.toFixed(4)}, ${gpsCoords!.lng.toFixed(4)})`
+          : isGpsTimeout
+          ? t.gpsTimedOut
           : isGpsError
-          ? t.gpsDenied
+          ? (gpsStatus === 'error' ? t.gpsUnavailable : t.gpsDenied)
           : t.gpsAcquiring;
         return (
           <div className={`flex items-center gap-2 px-3 py-2 rounded-card border ${containerCls}`}>
