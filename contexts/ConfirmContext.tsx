@@ -48,7 +48,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
           role="dialog"
         >
           <div
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col max-h-[90vh]"
+            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col max-h-[90vh] overflow-hidden"
             onClick={e => e.stopPropagation()}
           >
             <div className="p-6 flex flex-col gap-4 overflow-y-auto flex-1 min-h-0">
@@ -61,16 +61,20 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 {state.message}
               </p>
             </div>
-            <div className="flex gap-3 justify-end px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex-shrink-0">
+            <div className="grid grid-cols-2 gap-3 px-6 py-4 border-t border-slate-100 dark:border-slate-700 flex-shrink-0 bg-slate-50/80 dark:bg-slate-900/40">
               <button
                 onClick={() => handleResult(false)}
-                className="px-4 py-2 rounded-xl text-sm font-semibold bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                className="inline-flex min-h-12 items-center justify-center rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
               >
                 {state.cancelLabel ?? '取消 / Cancel'}
               </button>
               <button
                 onClick={() => handleResult(true)}
-                className={`px-4 py-2 rounded-xl text-sm font-semibold text-white transition-colors ${state.destructive ? 'bg-red-600 hover:bg-red-700' : 'bg-amber-500 hover:bg-amber-600'}`}
+                className={`inline-flex min-h-12 items-center justify-center rounded-xl px-4 py-3 text-sm font-black shadow-sm transition-colors ${
+                  state.destructive
+                    ? 'border border-rose-700 bg-rose-600 text-white hover:bg-rose-700'
+                    : 'border border-amber-600 bg-amber-500 text-white hover:bg-amber-600'
+                }`}
               >
                 {state.confirmLabel ?? '确认 / Confirm'}
               </button>
