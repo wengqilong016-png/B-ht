@@ -5,9 +5,12 @@
  * Requires: AT_API_KEY, AT_USERNAME (and optionally AT_SENDER_ID) env vars.
  *
  * POST /api/send-sms
+ * Authorization: Bearer <supabase_access_token>  (admin role required)
  * Body: { phones: string[], message: string }
  * Response: { sent: number, failed: number, results: AT result array }
  */
+import { createClient } from '@supabase/supabase-js';
+
 import { readEnv } from './_lib/readEnv.js';
 
 interface SendSMSBody {
@@ -30,10 +33,54 @@ interface ATResponse {
   };
 }
 
+/** Verify the request carries a valid Supabase JWT belonging to an admin. */
+async function verifyAdminAuth(request: Request): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
+  const supabaseUrl = readEnv('SUPABASE_URL', 'VITE_SUPABASE_URL');
+  const supabaseKey = readEnv('SUPABASE_KEY', 'VITE_SUPABASE_ANON_KEY');
+
+  if (!supabaseUrl || !supabaseKey) {
+    // Cannot verify — reject to be safe
+    return { ok: false, status: 503, message: 'Auth service not configured' };
+  }
+
+  const authHeader = request.headers.get('Authorization') ?? '';
+  const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+  if (!token) {
+    return { ok: false, status: 401, message: 'Missing Authorization header' };
+  }
+
+  const supabase = createClient(supabaseUrl, supabaseKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } },
+    auth: { persistSession: false },
+  });
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { ok: false, status: 401, message: 'Invalid or expired token' };
+  }
+
+  // Check admin role via the get_my_role() RPC
+  const { data: role } = await supabase.rpc('get_my_role');
+  if (role !== 'admin') {
+    return { ok: false, status: 403, message: 'Admin role required' };
+  }
+
+  return { ok: true };
+}
+
 export default {
   async fetch(request: Request): Promise<Response> {
     if (request.method !== 'POST') {
       return new Response('Method Not Allowed', { status: 405 });
+    }
+
+    // Auth gate — only admin-role users may send SMS
+    const auth = await verifyAdminAuth(request);
+    if (!auth.ok) {
+      return new Response(
+        JSON.stringify({ error: auth.message, sent: 0, failed: 0 }),
+        { status: auth.status, headers: { 'Content-Type': 'application/json' } },
+      );
     }
 
     const apiKey = readEnv('AT_API_KEY');

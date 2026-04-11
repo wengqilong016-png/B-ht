@@ -446,6 +446,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           aiReviewData={draft.aiReviewData}
           gpsCoords={draft.gpsCoords}
           gpsPermission={draft.gpsPermission}
+          gpsStatus={gpsStatus}
           draftTxId={draft.draftTxId}
           onLogAI={onLogAI}
           onUpdateScore={(score) => updateDraft({ currentScore: score })}
