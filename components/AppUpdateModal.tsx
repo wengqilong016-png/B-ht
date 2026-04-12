@@ -16,6 +16,9 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
   const [localDismissed, setLocalDismissed] = useState(false);
   const [downloading, setDownloading] = useState(false);
   const currentVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '—';
+  const updateIdentity = update
+    ? [update.latestVersion, update.latestVersionCode, update.latestGitSha].filter(Boolean).join(':')
+    : null;
 
   // Persist dismissal keyed by the latest version so re-mounting the component
   // (e.g. after a parent re-render) doesn't re-show a modal the user already dismissed.
@@ -27,13 +30,20 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
       ? sessionStorage.getItem('update-dismissed-version')
       : null;
   } catch {}
-  const isSessionDismissed = update?.hasUpdate && dismissedVersion === update.latestVersion;
+  const isSessionDismissed = update?.hasUpdate && !!updateIdentity && dismissedVersion === updateIdentity;
+
+  const openBrowserDownload = () => {
+    const popup = window.open(update?.apkUrl, '_blank', 'noopener,noreferrer');
+    if (!popup && update?.apkUrl) {
+      window.location.assign(update.apkUrl);
+    }
+  };
 
   const handleDismiss = () => {
     setLocalDismissed(true);
     try {
-      if (update?.latestVersion && typeof sessionStorage !== 'undefined') {
-        sessionStorage.setItem('update-dismissed-version', update.latestVersion);
+      if (updateIdentity && typeof sessionStorage !== 'undefined') {
+        sessionStorage.setItem('update-dismissed-version', updateIdentity);
       }
     } catch {}
   };
@@ -44,9 +54,15 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
     setDownloading(true);
     try {
       if (Capacitor.getPlatform() === 'android') {
+        showToast(
+          lang === 'zh'
+            ? '正在准备完整安装包，系统随后会弹出安装界面。'
+            : 'Preparing the full APK. Android should open the installer next.',
+          'info',
+        );
         await ApkUpdate.downloadAndInstall({ url: update.apkUrl });
       } else {
-        window.open(update.apkUrl, '_blank');
+        openBrowserDownload();
       }
     } catch (err) {
       const anyErr = err as any;
@@ -62,7 +78,13 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
           await ApkUpdate.openUnknownSourcesSettings();
         } catch {}
       } else {
-        showToast(lang === 'zh' ? `更新失败：${msg}` : `Update failed: ${msg}`, 'error');
+        showToast(
+          lang === 'zh'
+            ? `系统安装器未正常拉起，改为浏览器下载安装：${msg}`
+            : `Installer did not open. Falling back to browser download: ${msg}`,
+          'warning',
+        );
+        openBrowserDownload();
       }
     } finally {
       setDownloading(false);
@@ -112,19 +134,26 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
         <div className="px-5 py-4 space-y-3">
           <p className="text-xs font-bold text-slate-600 leading-relaxed">
             {lang === 'zh'
-              ? '新版本已发布，安装后旧数据不会丢失。点击下载安装包，覆盖安装即可完成更新。'
-              : 'A new version is available. Tap download to install over your existing app — your data is safe.'}
+              ? '这是完整 APK 覆盖安装，不是热更新。点击后会下载新安装包并打开系统安装器；安装完成后旧数据不会丢失。'
+              : 'This is a full APK replacement, not a hot patch. Tap download to fetch the new APK and open the Android installer — your data stays safe.'}
           </p>
 
           <button
             onClick={handleDownload}
             disabled={downloading}
             className="w-full flex items-center justify-center gap-2 rounded-2xl bg-amber-400 py-3.5 text-sm font-black text-slate-900 shadow-lg shadow-amber-200 active:scale-95 transition-transform disabled:opacity-70"
+            >
+              <Download size={16} />
+              {downloading
+                ? (lang === 'zh' ? '正在准备安装…' : 'Preparing install…')
+                : (lang === 'zh' ? '立即下载安装' : 'Download & Install')}
+            </button>
+
+          <button
+            onClick={openBrowserDownload}
+            className="w-full py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700"
           >
-            <Download size={16} />
-            {downloading
-              ? (lang === 'zh' ? '正在打开下载…' : 'Opening download…')
-              : (lang === 'zh' ? '立即下载安装' : 'Download & Install')}
+            {lang === 'zh' ? '如果系统安装器没有弹出，改用浏览器下载 APK' : 'If the installer does not open, download the APK in your browser'}
           </button>
 
           <button
