@@ -1,9 +1,9 @@
 {
   "version": "1.0.8",
   "versionCode": 1,
-  "gitSha": "983ee7dbfc5fcf51853d4e6ae4f5f4b880a18bf1",
+  "gitSha": "cc1a7d73ba43fa7a321da8becefd234b0b215140",
   "tag": "main-latest",
-  "releasedAt": "2026-04-12T03:42:51Z",
+  "releasedAt": "2026-04-12T04:22:08Z",
   "apkUrl": "https://b-ht.vercel.app/downloads/bahati-latest-release.apk",
-  "releaseNotes": "main build 1.0.8 (983ee7d)"
+  "releaseNotes": "main build 1.0.8 (cc1a7d7)"
 }
