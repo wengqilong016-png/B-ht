@@ -88,10 +88,27 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   // Idempotency lock — prevents a second submission while the success/error
   // useEffect is pending (e.g. user taps Submit again while alert() is open).
   const submittedRef = React.useRef(false);
+  const consumedSubmissionRef = React.useRef<string | null>(null);
+  const mountedRef = React.useRef(true);
+  const onSubmitRef = React.useRef(onSubmit);
+  const showToastRef = React.useRef(showToast);
+
+  React.useEffect(() => {
+    onSubmitRef.current = onSubmit;
+    showToastRef.current = showToast;
+  }, [onSubmit, showToast]);
+
+  React.useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   // Reset the idempotency lock whenever the draftTxId changes (new collection).
   React.useEffect(() => {
     submittedRef.current = false;
+    consumedSubmissionRef.current = null;
     setCompletionResult(null);
     setCompletionPending(false);
   }, [draftTxId]);
@@ -114,45 +131,44 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
   useEffect(() => {
     if (submissionState.status === 'success') {
       const { source, transaction } = submissionState;
+      const submissionKey = `${source}:${transaction.id}`;
+      if (consumedSubmissionRef.current === submissionKey) return;
+      consumedSubmissionRef.current = submissionKey;
+
       const completion = { source, transaction };
-      let cancelled = false;
       setCompletionPending(true);
 
       void (async () => {
         try {
-          await onSubmit(completion);
-          if (cancelled) return;
+          await onSubmitRef.current(completion);
+          if (!mountedRef.current) return;
           setCompletionResult(completion);
           if (source === 'server') {
-            showToast(lang === 'zh' ? '已提交到云端' : 'Imetumwa kwenye seva', 'success');
+            showToastRef.current(lang === 'zh' ? '已提交到云端' : 'Imetumwa kwenye seva', 'success');
           } else {
-            showToast(lang === 'zh' ? '已加入待同步队列' : 'Imeongezwa kwenye foleni', 'success');
+            showToastRef.current(lang === 'zh' ? '已加入待同步队列' : 'Imeongezwa kwenye foleni', 'success');
           }
         } catch (error) {
-          if (cancelled) return;
+          if (!mountedRef.current) return;
           console.error('Submission completion handler failed', error);
           submittedRef.current = false;
           setCompletionResult(null);
-          showToast(lang === 'zh' ? '提交后处理失败，请重试' : 'Post-submit update failed, please retry', 'error');
+          showToastRef.current(lang === 'zh' ? '提交后处理失败，请重试' : 'Post-submit update failed, please retry', 'error');
         } finally {
-          if (!cancelled) {
+          if (mountedRef.current) {
             setCompletionPending(false);
             resetSubmissionState();
           }
         }
       })();
-
-      return () => {
-        cancelled = true;
-      };
     } else if (submissionState.status === 'error') {
       submittedRef.current = false;
       setCompletionResult(null);
       setCompletionPending(false);
       resetSubmissionState();
-      showToast(lang === 'zh' ? '提交失败，请重试' : 'Imeshindwa, jaribu tena', 'error');
+      showToastRef.current(lang === 'zh' ? '提交失败，请重试' : 'Imeshindwa, jaribu tena', 'error');
     }
-  }, [submissionState, lang, onSubmit, resetSubmissionState, showToast]);
+  }, [submissionState, lang, resetSubmissionState]);
 
   if (completionResult) {
     const { source, transaction } = completionResult;

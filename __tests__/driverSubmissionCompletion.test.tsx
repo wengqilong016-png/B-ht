@@ -177,6 +177,69 @@ describe('driver submission completion', () => {
     expect(screen.getByText('已加入待同步队列。')).toBeTruthy();
   });
 
+  it('consumes a successful submission once even when completion handling rerenders the parent', async () => {
+    mockedOrchestrateCollectionSubmission.mockResolvedValue({
+      source: 'server',
+      transaction: baseTransaction,
+      fallbackReason: null,
+    });
+
+    const onSubmitSpy = jest.fn((_result: CompletionResult) => undefined);
+
+    function RerenderingHarness() {
+      const [completionCount, setCompletionCount] = React.useState(0);
+
+      return (
+        <>
+          <span data-testid="parent-completion-count">{completionCount}</span>
+          <SubmitReview
+            selectedLocation={baseLocation as any}
+            currentDriver={baseDriver as any}
+            lang="zh"
+            isOnline={true}
+            currentScore="1200"
+            photoData="data:image/jpeg;base64,abc"
+            aiReviewData={null}
+            expenses="0"
+            expenseType="public"
+            expenseCategory="tip"
+            expenseDescription=""
+            coinExchange="0"
+            tip="0"
+            startupDebtDeduction="0"
+            draftTxId="draft-rerender"
+            gpsCoords={{ lat: -6.8, lng: 39.2 }}
+            gpsPermission="granted"
+            isOwnerRetaining={true}
+            ownerRetention=""
+            calculations={baseCalculations}
+            onSubmit={async (result) => {
+              onSubmitSpy(result);
+              setCompletionCount((count) => count + 1);
+              await Promise.resolve();
+            }}
+            onBack={jest.fn()}
+            onSwitchMachine={jest.fn()}
+            onReset={jest.fn()}
+            onRequestGps={jest.fn()}
+            nextMachine={null}
+            pendingCount={0}
+            allTransactions={[]}
+            todayStr="2026-04-10"
+          />
+        </>
+      );
+    }
+
+    render(<React.StrictMode>{withProviders(<RerenderingHarness />)}</React.StrictMode>);
+
+    fireEvent.click(screen.getByRole('button', { name: '提交报告' }));
+
+    await waitFor(() => expect(screen.getByText('任务完成')).toBeTruthy());
+    expect(onSubmitSpy).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId('parent-completion-count').textContent).toBe('1');
+  });
+
   it('blocks duplicate same-day submission when user cancels at confirm modal', async () => {
     mockedOrchestrateCollectionSubmission.mockResolvedValue({
       source: 'server',

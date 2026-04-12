@@ -98,14 +98,15 @@ export function useDriverSubmissionCompletion({
     });
 
     if (isOnline && source === 'server') {
-      try {
-        const queueHealth = await getQueueHealthSummary();
-        if (queueHealth.pending > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0) {
-          syncOfflineData.mutate();
-        }
-      } catch (error) {
-        console.warn('Failed to inspect queue health after submission.', error);
-      }
+      void getQueueHealthSummary()
+        .then((queueHealth) => {
+          if (queueHealth.pending > 0 || queueHealth.retryWaiting > 0 || queueHealth.deadLetter > 0) {
+            syncOfflineData.mutate();
+          }
+        })
+        .catch((error) => {
+          console.warn('Failed to inspect queue health after submission.', error);
+        });
     }
   }, [
     allTransactions,
