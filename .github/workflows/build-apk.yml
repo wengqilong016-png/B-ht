@@ -230,6 +230,7 @@ jobs:
       - name: Publish rolling main release
         if: github.ref == 'refs/heads/main' && steps.resolve_build_type.outputs.build_type == 'release'
         run: |
+          gh release delete main-latest --cleanup-tag --yes || true
           gh release create main-latest \
             --target "${GITHUB_SHA}" \
             --title "main-latest" \
@@ -237,10 +238,6 @@ jobs:
             --prerelease \
             android/app/build/outputs/apk/bahati-latest-release.apk \
             android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk \
-          || gh release upload main-latest \
-               android/app/build/outputs/apk/bahati-latest-release.apk \
-               android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk \
-               --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
