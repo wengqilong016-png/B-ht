@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths-ignore:
       - public/version.json
+      - public/downloads/**
   pull_request:
     branches: [main]
 
