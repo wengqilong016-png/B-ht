@@ -245,6 +245,7 @@ jobs:
           fi
 
       - name: Update remote update manifest
+        id: update_manifest
         if: github.ref == 'refs/heads/main' && steps.resolve_build_type.outputs.build_type == 'release'
         run: |
           git config user.name "github-actions[bot]"
@@ -271,11 +272,35 @@ jobs:
           "
           if git diff --quiet -- public/version.json public/downloads/bahati-latest-release.apk; then
             echo "manifest and apk already up to date"
+            echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
           git add public/version.json public/downloads/bahati-latest-release.apk
           git commit -m "chore: refresh update manifest for ${SHORT_SHA}"
           git push origin HEAD:main
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+
+      - name: Install Vercel CLI
+        if: github.ref == 'refs/heads/main' && steps.resolve_build_type.outputs.build_type == 'release' && steps.update_manifest.outputs.changed == 'true'
+        run: npm install -g vercel@latest
+
+      - name: Pull Vercel environment
+        if: github.ref == 'refs/heads/main' && steps.resolve_build_type.outputs.build_type == 'release' && steps.update_manifest.outputs.changed == 'true'
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Deploy refreshed update manifest to Vercel
+        if: github.ref == 'refs/heads/main' && steps.resolve_build_type.outputs.build_type == 'release' && steps.update_manifest.outputs.changed == 'true'
+        run: |
+          vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+          vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
