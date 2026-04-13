@@ -1,7 +1,7 @@
 {
   "name": "bahati-jackpots",
   "private": true,
-  "version": "1.0.8",
+  "version": "1.0.9",
   "type": "module",
   "engines": {
     "node": "22.x",
