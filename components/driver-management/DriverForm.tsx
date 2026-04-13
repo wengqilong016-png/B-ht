@@ -25,7 +25,6 @@ export interface DriverFormState {
   baseSalary: string;
   commissionRate: string;
   status: 'active' | 'inactive';
-  seedMachines: string;
 }
 
 interface DriverFormProps {
@@ -94,23 +93,6 @@ const DriverForm: React.FC<DriverFormProps> = ({
               </div>
             </div>
           )}
-
-          {/* Bulk machine seeding (new or edit) */}
-          <div className="p-5 bg-slate-50 rounded-card border border-slate-200 space-y-3">
-            <p className="text-caption font-black text-slate-400 uppercase tracking-widest">
-              批量录入机器（仅需编号+分数）
-            </p>
-            <p className="text-[10px] font-bold text-slate-500 leading-relaxed">
-              粘贴格式：<span className="font-black">A11-0 A11(2)-2005 A20-3006</span>（空格/换行/逗号分隔均可）。
-              保存后会自动创建点位并绑定到此司机；其它信息可后续在工作中补充。
-            </p>
-            <textarea
-              value={form.seedMachines}
-              onChange={(e) => onChange({ seedMachines: e.target.value })}
-              className="w-full min-h-[92px] bg-white border border-slate-200 rounded-xl px-4 py-3 text-[11px] font-bold uppercase outline-none focus:border-emerald-300 focus:ring-4 focus:ring-emerald-50"
-              placeholder="A11-0 A11(2)-2005 A20-3006"
-            />
-          </div>
 
           {/* Status toggle — edit mode only */}
           {editingId && (
