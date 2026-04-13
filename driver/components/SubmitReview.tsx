@@ -11,8 +11,8 @@ import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
 import WizardStepBar from './WizardStepBar';
 
 
-import type { AIReviewData } from '../hooks/useCollectionDraft';
 import type { Transaction } from '../../types';
+import type { AIReviewData } from '../hooks/useCollectionDraft';
 
 
 interface SubmitReviewProps {
