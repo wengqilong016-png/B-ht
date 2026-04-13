@@ -180,6 +180,8 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git fetch origin main
+          git checkout -B release-version-json origin/main
           REPO="${{ github.repository }}"
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_CODE="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
@@ -201,8 +203,27 @@ jobs:
           "
           node scripts/sync-pwa-cache-version.cjs
           git add public/version.json public/sw.js
-          git diff --cached --quiet || git commit -m "chore: update version.json to v${VERSION} [skip ci]"
-          git push origin HEAD:main
+          if git diff --cached --quiet; then
+            echo "No version metadata changes to push."
+            exit 0
+          fi
+
+          git commit -m "chore: update version.json to v${VERSION} [skip ci]"
+
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::Failed to push version metadata back to main after ${attempt} attempts."
+              exit 1
+            fi
+
+            sleep $((attempt * 2))
+            git fetch origin main
+            git rebase origin/main
+          done
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
