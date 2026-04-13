@@ -5,8 +5,10 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
+import { useToast } from '../../contexts/ToastContext';
 import { Location, CONSTANTS } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
+import { createExpenseTransaction } from '../../utils/transactionBuilder';
 import FinanceSummary from '../components/FinanceSummary';
 import MachineSelector from '../components/MachineSelector';
 import PayoutRequest from '../components/PayoutRequest';
@@ -35,6 +37,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
   const { filteredLocations, filteredTransactions, isOnline, drivers } = useAppData();
   const { submitTransaction, syncOfflineData, updateLocations } = useMutations();
   const { confirm } = useConfirm();
+  const { showToast } = useToast();
 
   const locations = filteredLocations;
   const allTransactions = filteredTransactions;
@@ -187,6 +190,23 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     await updateLocations.mutateAsync([{ ...target, ...updates }]);
   };
 
+  const handleCreateOfficeLoan = async (locationId: string, amount: number, note: string) => {
+    const location = locations.find((item) => item.id === locationId);
+    if (!location) {
+      throw new Error(`Location not found: ${locationId}`);
+    }
+    requestGps();
+    const transaction = createExpenseTransaction(location, currentDriver, gpsCoords, {
+      amount,
+      expenseType: 'private',
+      expenseCategory: 'office_loan',
+      expenseDescription: note || undefined,
+      notes: note || undefined,
+    });
+    await submitTransaction.mutateAsync(transaction);
+    showToast(lang === 'zh' ? '办公室借款已提交，等待审批。' : 'Office loan submitted. Waiting for approval.', 'success');
+  };
+
   const handleFullReset = () => {
     setStep('selection');
     resetDraft();
@@ -274,6 +294,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           onStartRegister={() => setIsRegistering(true)}
           onRequestReset={(locId) => { requestGps(); setResetRequestLocId(locId); }}
           onRequestPayout={(locId) => { requestGps(); setPayoutRequestLocId(locId); }}
+          onCreateOfficeLoan={handleCreateOfficeLoan}
           onRegisterMachine={onRegisterMachine}
           onUpdateLocation={handleUpdateLocation}
         />

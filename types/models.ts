@@ -87,7 +87,17 @@ export interface Transaction {
 
   /** Public = Company Cost, Private = Driver Loan */
   expenseType?: 'public' | 'private';
-  expenseCategory?: 'tip' | 'fuel' | 'repair' | 'fine' | 'allowance' | 'salary_advance' | 'other' | 'transport';
+  expenseCategory?:
+    | 'tip'
+    | 'fuel'
+    | 'repair'
+    | 'fine'
+    | 'allowance'
+    | 'salary_advance'
+    | 'office_loan'
+    | 'electricity'
+    | 'other'
+    | 'transport';
   expenseStatus?: 'pending' | 'approved' | 'rejected';
   expenseDescription?: string;
 
@@ -131,6 +141,9 @@ export interface DailySettlement {
   totalExpenses: number;
   driverFloat: number;
   expectedTotal: number;
+  settlementExpenseAmount?: number;
+  settlementExpenseCategory?: 'tip' | 'electricity' | 'other';
+  settlementExpenseNote?: string;
 
   actualCash: number;
   actualCoins: number;

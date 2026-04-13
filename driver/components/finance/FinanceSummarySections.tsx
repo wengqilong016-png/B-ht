@@ -2,11 +2,7 @@ import { ArrowRight, Banknote, ChevronRight, Coins, HandCoins, ShieldAlert, Trop
 import React from 'react';
 
 import type { FinanceCalculationSource } from '../../../services/financeCalculator';
-import type { Location, Transaction } from '../../../types';
-
-// Tip anomaly thresholds: warn if tip > TIP_WARNING_THRESHOLD and revenue < REVENUE_WARNING_THRESHOLD.
-const TIP_WARNING_THRESHOLD = 2000;
-const REVENUE_WARNING_THRESHOLD = 40000;
+import type { Location } from '../../../types';
 
 export interface FinanceSummaryCalculations {
   diff: number;
@@ -229,130 +225,42 @@ export function OwnerRetentionSection({
   );
 }
 
-export function ExpenseInputSection({
-  displayedExpenseValue,
-  expenseAmount,
-  expenseCategory,
-  expenseDescription,
-  expenseType,
-  isTipExpense,
-  onUpdateExpenseCategory,
-  onUpdateExpenseDescription,
-  onUpdateExpenses,
-  onUpdateExpenseType,
-  onUpdateTip,
-  tip,
-  ...shared
-}: SharedFinanceSectionProps & {
-  displayedExpenseValue: string;
-  expenseAmount: number;
-  expenseCategory: Transaction['expenseCategory'];
-  expenseDescription: string;
-  expenseType: 'public' | 'private';
-  isTipExpense: boolean;
-  onUpdateExpenseCategory: (val: Transaction['expenseCategory']) => void;
-  onUpdateExpenseDescription: (val: string) => void;
-  onUpdateExpenses: (val: string) => void;
-  onUpdateExpenseType: (val: 'public' | 'private') => void;
-  onUpdateTip: (val: string) => void;
-  tip: string;
-}) {
-  const { lang, t, calculations } = shared;
+export function CollectionExpenseNoticeSection({
+  lang,
+  t,
+}: SharedFinanceSectionProps) {
 
   return (
     <div className="bg-rose-50 p-3 rounded-2xl border border-rose-100">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-between gap-2 mb-3">
         <label className="text-caption font-black text-rose-500 uppercase flex items-center gap-2">
-          <Banknote size={13} /> {lang === 'zh' ? '费用 / 借支' : 'Expense / Loan'}
+          <Banknote size={13} /> {t.settlementExpenseLabel}
         </label>
-        {expenseAmount > 0 && (
-          <span className="px-2 py-0.5 bg-rose-200 text-rose-800 rounded-tag text-caption font-black uppercase">{t.pendingApproval}</span>
-        )}
+        <span className="px-2 py-0.5 bg-white text-rose-500 rounded-tag text-caption font-black uppercase">
+          {lang === 'zh' ? '已迁移' : 'Moved'}
+        </span>
       </div>
-
-      <div className="mb-3 grid grid-cols-2 gap-2">
-        <button
-          type="button"
-          onClick={() => onUpdateExpenseType('public')}
-          className={`rounded-btn border px-3 py-2 text-caption font-black uppercase transition-colors ${
-            expenseType === 'public'
-              ? 'border-rose-300 bg-white text-rose-700'
-              : 'border-rose-100 bg-rose-50 text-rose-300'
-          }`}
-        >
-          {t.companyLabel}
-        </button>
-        <button
-          type="button"
-          onClick={() => onUpdateExpenseType('private')}
-          className={`rounded-btn border px-3 py-2 text-caption font-black uppercase transition-colors ${
-            expenseType === 'private'
-              ? 'border-amber-300 bg-white text-amber-700'
-              : 'border-amber-100 bg-amber-50 text-amber-300'
-          }`}
-        >
-          {t.loanLabel}
-        </button>
-      </div>
-
-      <div className="flex items-center gap-2">
-        <select
-          value={expenseCategory}
-          onChange={e => onUpdateExpenseCategory(e.target.value as Transaction['expenseCategory'])}
-          className="bg-white border border-rose-100 rounded-btn px-2 py-2 text-caption font-black text-rose-600 outline-none uppercase w-28 flex-shrink-0"
-        >
-          <option value="tip">{lang === 'zh' ? '小费支出' : 'Tip / Gratuity'}</option>
-          <option value="fuel">{t.fuelLabel}</option>
-          <option value="repair">{t.repairLabel}</option>
-          <option value="fine">{t.fineLabel}</option>
-          <option value="transport">{t.transportLabel}</option>
-          <option value="allowance">{t.allowanceLabel}</option>
-          <option value="salary_advance">{t.salaryAdvanceLabel}</option>
-          <option value="other">{t.otherLabel}</option>
-        </select>
-        <div className="flex-1 flex items-baseline gap-1 border-b border-rose-200 px-1">
-          <span className="text-xs font-black text-rose-300">TZS</span>
-          <input
-            type="number"
-            value={displayedExpenseValue}
-            onChange={e => {
-              if (isTipExpense) {
-                onUpdateTip(e.target.value);
-                onUpdateExpenses('');
-              } else {
-                onUpdateExpenses(e.target.value);
-                onUpdateTip('');
-              }
-            }}
-            className="w-full text-xl font-black bg-transparent outline-none text-rose-900 placeholder:text-rose-200"
-            placeholder="0"
-          />
+      <p className="text-caption font-bold leading-relaxed text-rose-700">
+        {t.settlementExpenseMovedHint}
+      </p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <div className="rounded-xl border border-white/80 bg-white px-3 py-2">
+          <p className="text-caption font-black uppercase text-rose-300">
+            {t.companyLabel}
+          </p>
+          <p className="mt-1 text-caption font-black text-rose-700">
+            {t.tipLabel} / {t.electricityLabel} / {t.otherLabel}
+          </p>
+        </div>
+        <div className="rounded-xl border border-white/80 bg-white px-3 py-2">
+          <p className="text-caption font-black uppercase text-amber-400">
+            {t.officeLoanLabel}
+          </p>
+          <p className="mt-1 text-caption font-black text-amber-700">
+            {lang === 'zh' ? '机器卡片单独提交' : 'Submit from machine card'}
+          </p>
         </div>
       </div>
-      <p className={`mt-2 text-caption font-black uppercase ${expenseType === 'public' ? 'text-rose-400' : 'text-amber-500'}`}>
-        {expenseType === 'public'
-          ? (lang === 'zh'
-              ? '公账：管理员审批后计为公司成本。'
-              : 'Company: admin approval records this as a company cost.')
-          : (lang === 'zh'
-              ? '借支：管理员审批后计入司机私账，并进入后续工资扣减口径。'
-              : 'Loan: admin approval records this as a driver/private advance for later payroll deduction.')}
-      </p>
-      {!isTipExpense && (
-        <input
-          type="text"
-          value={expenseDescription}
-          onChange={e => onUpdateExpenseDescription(e.target.value)}
-          maxLength={80}
-          placeholder={lang === 'zh' ? '费用备注（可选）' : 'Expense note (optional)'}
-          className="mt-2 w-full bg-white border border-rose-100 rounded-btn px-3 py-2 text-[10px] font-bold text-rose-700 outline-none placeholder:text-rose-200"
-        />
-      )}
-      {isTipExpense && (parseInt(tip) || 0) > TIP_WARNING_THRESHOLD && calculations.revenue < REVENUE_WARNING_THRESHOLD && (
-        <p className="mt-2 text-caption font-black uppercase text-amber-700">
-          {lang === 'zh' ? '小费偏高，请确认' : 'High tip for this revenue - confirm with admin'}
-        </p>
-      )}
     </div>
   );
 }

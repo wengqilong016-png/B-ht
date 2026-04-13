@@ -95,12 +95,14 @@ export function getExpenseCategoryLabel(
 ): string {
   const labels = {
     tip: `💸 ${t.tipLabel}`,
+    electricity: `💡 ${t.electricityLabel}`,
     fuel: `⛽ ${t.fuelLabel}`,
     repair: `🔧 ${t.repairLabel}`,
     fine: `🚨 ${t.fineLabel}`,
     transport: `🛺 ${t.transportLabel}`,
     allowance: `🍽 ${t.allowanceLabel}`,
     salary_advance: `💰 ${t.salaryAdvanceLabel}`,
+    office_loan: `🏢 ${t.officeLoanLabel}`,
     other: `📋 ${t.otherLabel}`,
   } satisfies Record<NonNullable<Transaction['expenseCategory']>, string>;
 

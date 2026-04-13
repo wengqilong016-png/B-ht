@@ -1,4 +1,4 @@
-import { ChevronRight, Lock, RefreshCw, Wallet, UserPen, Camera, X, Save, Loader2, Navigation } from 'lucide-react';
+import { ChevronRight, Lock, RefreshCw, Wallet, UserPen, Camera, X, Save, Loader2, Navigation, Banknote } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
 import { useToast } from '../../contexts/ToastContext';
@@ -22,11 +22,12 @@ interface MachineCardProps {
   onSelect: (locId: string) => void;
   onRequestReset: (locId: string) => void;
   onRequestPayout: (locId: string) => void;
+  onCreateOfficeLoan?: (locationId: string, amount: number, note: string) => Promise<void>;
   onUpdateLocation?: (locationId: string, updates: Partial<Location>) => Promise<void>;
 }
 
 const MachineCard: React.FC<MachineCardProps> = ({
-  item, lang, t, onSelect, onRequestReset, onRequestPayout, onUpdateLocation,
+  item, lang, t, onSelect, onRequestReset, onRequestPayout, onCreateOfficeLoan, onUpdateLocation,
 }) => {
   const { loc, distanceMeters, daysSinceActive, isLocked, isUrgent, isPending } = item;
   const isNear9999 = (loc.lastScore ?? 0) >= 9000;
@@ -38,6 +39,10 @@ const MachineCard: React.FC<MachineCardProps> = ({
   const [siteOwnerName, setSiteOwnerName] = useState(loc.ownerName ?? '');
   const [sitePhotoPreview, setSitePhotoPreview] = useState<string | null>(null);
   const [isSavingSiteInfo, setIsSavingSiteInfo] = useState(false);
+  const [showOfficeLoanForm, setShowOfficeLoanForm] = useState(false);
+  const [officeLoanAmount, setOfficeLoanAmount] = useState('');
+  const [officeLoanNote, setOfficeLoanNote] = useState('');
+  const [isSubmittingOfficeLoan, setIsSubmittingOfficeLoan] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
 
   const openSiteInfoForm = () => {
@@ -79,6 +84,33 @@ const MachineCard: React.FC<MachineCardProps> = ({
       );
     } finally {
       setIsSavingSiteInfo(false);
+    }
+  };
+
+  const handleSubmitOfficeLoan = async () => {
+    if (!onCreateOfficeLoan) return;
+    const amount = parseInt(officeLoanAmount, 10) || 0;
+    if (amount <= 0) {
+      showToast(
+        lang === 'zh' ? '请输入有效借款金额' : 'Enter a valid loan amount',
+        'warning',
+      );
+      return;
+    }
+    setIsSubmittingOfficeLoan(true);
+    try {
+      await onCreateOfficeLoan(loc.id, amount, officeLoanNote.trim());
+      setOfficeLoanAmount('');
+      setOfficeLoanNote('');
+      setShowOfficeLoanForm(false);
+    } catch (err) {
+      console.error('Failed to submit office loan', err);
+      showToast(
+        lang === 'zh' ? '借款提交失败，请稍后重试' : 'Office loan submission failed. Please retry.',
+        'error',
+      );
+    } finally {
+      setIsSubmittingOfficeLoan(false);
     }
   };
   const statusTone =
@@ -207,6 +239,17 @@ const MachineCard: React.FC<MachineCardProps> = ({
           >
             <Wallet size={11} /> {lang === 'zh' ? '提现' : 'Payout'}
           </button>
+          {onCreateOfficeLoan && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowOfficeLoanForm(current => !current);
+              }}
+              className="flex-1 px-3 py-2 min-h-11 text-caption font-black uppercase text-amber-700 hover:bg-amber-50 transition-colors flex items-center justify-center gap-1.5 border-l border-slate-100"
+            >
+              <Banknote size={11} /> {t.officeLoanAction}
+            </button>
+          )}
           {loc.coords && (
             <button
               onClick={(e) => {
@@ -233,6 +276,48 @@ const MachineCard: React.FC<MachineCardProps> = ({
               <UserPen size={11} /> {lang === 'zh' ? '补充信息' : 'Site Info'}
             </button>
           )}
+        </div>
+      )}
+
+      {showOfficeLoanForm && onCreateOfficeLoan && (
+        <div className="border-t border-slate-100 bg-amber-50 px-4 py-3 space-y-2.5">
+          <div className="flex items-center justify-between">
+            <p className="text-caption font-black uppercase text-amber-700">
+              {t.officeLoanLabel}
+            </p>
+            <button
+              type="button"
+              onClick={() => setShowOfficeLoanForm(false)}
+              className="text-amber-500 hover:text-amber-700"
+            >
+              <X size={14} />
+            </button>
+          </div>
+          <input
+            type="number"
+            min={0}
+            value={officeLoanAmount}
+            onChange={(event) => setOfficeLoanAmount(event.target.value.replace(/[^0-9]/g, ''))}
+            placeholder={t.officeLoanAmountLabel}
+            className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-800 placeholder:text-slate-300 outline-none focus:border-amber-400"
+          />
+          <textarea
+            value={officeLoanNote}
+            onChange={(event) => setOfficeLoanNote(event.target.value)}
+            rows={2}
+            maxLength={120}
+            placeholder={t.officeLoanNoteLabel}
+            className="w-full rounded-xl border border-amber-200 bg-white px-3 py-2 text-[11px] font-bold text-slate-800 placeholder:text-slate-300 outline-none focus:border-amber-400"
+          />
+          <button
+            type="button"
+            disabled={isSubmittingOfficeLoan}
+            onClick={handleSubmitOfficeLoan}
+            className="flex w-full items-center justify-center gap-2 rounded-btn bg-amber-600 px-3 py-2 text-caption font-black uppercase text-white disabled:opacity-50"
+          >
+            {isSubmittingOfficeLoan ? <Loader2 size={12} className="animate-spin" /> : <Banknote size={12} />}
+            {t.officeLoanSubmit}
+          </button>
         </div>
       )}
 

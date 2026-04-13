@@ -45,6 +45,9 @@ function makeSettlement(overrides: Partial<DailySettlement> = {}): DailySettleme
     totalExpenses: 2000,
     driverFloat: 1200,
     expectedTotal: 30000,
+    settlementExpenseAmount: undefined,
+    settlementExpenseCategory: undefined,
+    settlementExpenseNote: undefined,
     actualCash: 25000,
     actualCoins: 5000,
     shortage: 0,
@@ -190,6 +193,29 @@ describe('SettlementTab', () => {
     expect(screen.getByText('营收')).toBeTruthy();
   });
 
+  it('shows settlement expense details in admin settlement approval details', () => {
+    renderSettlementTab({
+      isAdmin: true,
+      currentUser: makeUser('admin'),
+      pendingSettlements: [
+        makeSettlement({
+          settlementExpenseAmount: 2500,
+          settlementExpenseCategory: 'electricity',
+          settlementExpenseNote: '晚班补电费',
+          totalExpenses: 4500,
+          expectedTotal: 27500,
+        }),
+      ],
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Driver One/i }));
+
+    expect(screen.getByText('日结支出')).toBeTruthy();
+    expect(screen.getByText('💡 电费')).toBeTruthy();
+    expect(screen.getByText('晚班补电费')).toBeTruthy();
+    expect(screen.getAllByText('TZS 2,500').length).toBeGreaterThan(0);
+  });
+
   it('shows an overdue settlement reminder for older pending settlements on the driver view', () => {
     renderSettlementTab({
       pendingSettlements: [makeSettlement({ date: '2026-04-10', timestamp: '2026-04-10T18:00:00.000Z', expectedTotal: 18000 })],
@@ -219,6 +245,27 @@ describe('SettlementTab', () => {
 
     expect(screen.getByText('今日已提交结算')).toBeTruthy();
     expect(screen.queryByRole('button', { name: /提交日结|submit/i })).toBeNull();
+  });
+
+  it('requires a note when driver selects other settlement expense', async () => {
+    const onCreateSettlement = jest.fn<() => Promise<void>>().mockResolvedValue(undefined);
+
+    renderSettlementTab({
+      todayDriverTxs: [makeTransaction({ timestamp: '2026-04-11T09:00:00.000Z' })],
+      onCreateSettlement,
+    });
+
+    const numericInputs = screen.getAllByPlaceholderText('0');
+    fireEvent.change(numericInputs[0], { target: { value: '10000' } });
+    fireEvent.change(numericInputs[1], { target: { value: '5000' } });
+    fireEvent.change(screen.getByDisplayValue('小费'), { target: { value: 'other' } });
+    fireEvent.change(numericInputs[2], { target: { value: '1000' } });
+    fireEvent.click(screen.getByRole('button', { name: /提交今日结算/i }));
+
+    await waitFor(() => {
+      expect(onCreateSettlement).not.toHaveBeenCalled();
+      expect(screen.getAllByText('选择“其他”时必须填写备注。').length).toBeGreaterThan(0);
+    });
   });
 
   it('auto scans anomaly proof photos once in admin approval view', async () => {

@@ -5,7 +5,7 @@ import { Location, TRANSLATIONS, Transaction } from '../../types';
 import CollectionWorkbenchHeader from './CollectionWorkbenchHeader';
 import {
   CoinExchangeSection,
-  ExpenseInputSection,
+  CollectionExpenseNoticeSection,
   FinanceFlowExplanation,
   FinanceMetricGrid,
   FinanceNavigation,
@@ -136,7 +136,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
               {lang === 'zh' ? '金额录入' : 'Cash Inputs'}
             </p>
             <p className="mt-1 text-caption font-bold uppercase tracking-wide text-slate-300">
-              {lang === 'zh' ? '分红、公账支出、换币、商家欠款' : 'Retention, company expenses, exchange, merchant debt'}
+              {lang === 'zh' ? '分红、换币、商家欠款' : 'Retention, exchange, merchant debt'}
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-2 py-1 text-caption font-black uppercase text-slate-500">
@@ -155,21 +155,7 @@ const FinanceSummary: React.FC<FinanceSummaryProps> = ({
         />
 
         <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
-          <ExpenseInputSection
-            {...shared}
-            displayedExpenseValue={displayedExpenseValue}
-            expenseAmount={expenseAmount}
-            expenseCategory={expenseCategory}
-            expenseDescription={expenseDescription}
-            expenseType={expenseType}
-            isTipExpense={isTipExpense}
-            onUpdateExpenseCategory={onUpdateExpenseCategory}
-            onUpdateExpenseDescription={onUpdateExpenseDescription}
-            onUpdateExpenses={onUpdateExpenses}
-            onUpdateExpenseType={onUpdateExpenseType}
-            onUpdateTip={onUpdateTip}
-            tip={tip}
-          />
+          <CollectionExpenseNoticeSection {...shared} />
           <CoinExchangeSection
             {...shared}
             coinExchange={coinExchange}

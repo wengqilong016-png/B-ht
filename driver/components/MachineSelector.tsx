@@ -32,6 +32,7 @@ interface MachineSelectorProps {
   onStartRegister: () => void;
   onRequestReset: (locId: string) => void;
   onRequestPayout: (locId: string) => void;
+  onCreateOfficeLoan?: (locId: string, amount: number, note: string) => Promise<void>;
   onRegisterMachine?: (location: Location) => void;
   onUpdateLocation?: (locationId: string, updates: Partial<Location>) => Promise<void>;
 }
@@ -39,7 +40,7 @@ interface MachineSelectorProps {
 const MachineSelector: React.FC<MachineSelectorProps> = ({
   locations, currentDriver, allTransactions, lang, isOnline, gpsCoords,
   currentDraftLocation, hasDraftInProgress = false,
-  onSelectMachine, onResumeDraft, onStartRegister, onRequestReset, onRequestPayout, onRegisterMachine, onUpdateLocation,
+  onSelectMachine, onResumeDraft, onStartRegister, onRequestReset, onRequestPayout, onCreateOfficeLoan, onRegisterMachine, onUpdateLocation,
 }) => {
   const t = TRANSLATIONS[lang];
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,6 +278,7 @@ const MachineSelector: React.FC<MachineSelectorProps> = ({
             onSelect={onSelectMachine}
             onRequestReset={(locId) => onRequestReset(locId)}
             onRequestPayout={(locId) => onRequestPayout(locId)}
+            onCreateOfficeLoan={onCreateOfficeLoan}
             onUpdateLocation={onUpdateLocation}
           />
         ))}

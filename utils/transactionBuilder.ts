@@ -1,4 +1,4 @@
-import { Transaction, Location, Driver } from '../types';
+import { Transaction, Location, Driver, safeRandomUUID } from '../types';
 
 /**
  * Common fields shared across all transaction types
@@ -145,5 +145,34 @@ export function createCollectionTransaction(
     approvalStatus: 'approved',
     notes: options.notes,
     anomalyFlag: options.anomalyFlag,
+  };
+}
+
+export function createExpenseTransaction(
+  location: Location,
+  driver: Driver,
+  gpsCoords: { lat: number; lng: number } | null,
+  options: {
+    amount: number;
+    expenseType: NonNullable<Transaction['expenseType']>;
+    expenseCategory: NonNullable<Transaction['expenseCategory']>;
+    expenseDescription?: string;
+    notes?: string;
+  }
+): Transaction {
+  return {
+    id: `EXP-${safeRandomUUID()}`,
+    timestamp: new Date().toISOString(),
+    ...createBaseTransaction(location, driver, gpsCoords),
+    ...createDefaultFinancials(),
+    dataUsageKB: 40,
+    type: 'expense',
+    approvalStatus: 'pending',
+    expenseStatus: 'pending',
+    expenses: options.amount,
+    expenseType: options.expenseType,
+    expenseCategory: options.expenseCategory,
+    expenseDescription: options.expenseDescription,
+    notes: options.notes,
   };
 }

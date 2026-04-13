@@ -135,4 +135,20 @@ describe('MachineSelector', () => {
     await waitFor(() => expect(screen.getAllByText(/Merchant Alpha/)).toHaveLength(2));
     expect(screen.getAllByText(/Merchant Beta/)).toHaveLength(1);
   });
+
+  it('submits an office loan request from the machine card', async () => {
+    const onCreateOfficeLoan = jest.fn(async (_locId: string, _amount: number, _note: string) => {});
+    renderSelector({ onCreateOfficeLoan });
+
+    await waitFor(() => expect(screen.getByTestId('driver-machine-select-loc-1')).toBeTruthy());
+
+    fireEvent.click(screen.getAllByRole('button', { name: /办公室借款/i })[0]);
+    fireEvent.change(screen.getByPlaceholderText('借款金额'), { target: { value: '3500' } });
+    fireEvent.change(screen.getByPlaceholderText('借款备注'), { target: { value: 'Office float top-up' } });
+    fireEvent.click(screen.getByRole('button', { name: /提交借款/i }));
+
+    await waitFor(() => {
+      expect(onCreateOfficeLoan).toHaveBeenCalledWith('loc-1', 3500, 'Office float top-up');
+    });
+  });
 });

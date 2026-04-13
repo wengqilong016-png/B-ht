@@ -84,6 +84,9 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   const { showToast } = useToast();
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
+  const [settlementExpenseAmount, setSettlementExpenseAmount] = useState<string>('');
+  const [settlementExpenseCategory, setSettlementExpenseCategory] = useState<NonNullable<DailySettlement['settlementExpenseCategory']>>('tip');
+  const [settlementExpenseNote, setSettlementExpenseNote] = useState<string>('');
   const [pendingActionKey, setPendingActionKey] = useState<string | null>(null);
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const scanResults = useAnomalyScanResults(isAdmin, anomalyTransactions, lang);
@@ -113,7 +116,15 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 
   const cashAmount = parseInt(actualCash) || 0;
   const coinAmount = parseInt(actualCoins) || 0;
+  const settlementExpenseValue = parseInt(settlementExpenseAmount) || 0;
+  const totalRevenue = todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0);
+  const baseExpenses = todayDriverTxs.reduce((sum, tx) => sum + tx.expenses, 0);
+  const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
+  const expectedTotal = Math.max(0, totalNet - settlementExpenseValue);
+  const submittedTotal = cashAmount + coinAmount;
+  const varianceAmount = submittedTotal - expectedTotal;
   const hasSettlementInput = actualCash.trim() !== '' || actualCoins.trim() !== '';
+  const requiresExpenseNote = settlementExpenseCategory === 'other' && settlementExpenseValue > 0;
 
   const runApprovalAction = async (actionKey: string, action: () => Promise<void>) => {
     if (!isOnline) {
@@ -305,17 +316,17 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
               <Banknote size={40} />
             </div>
             <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">{t.dailySettlement}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">{todayStr} • {todayDriverTxs.length} {t.collectionsCount}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">{todayStr} • {todayDriverTxs.length} {t.collectionsCount}</p>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <p className="text-caption font-black text-slate-400 uppercase mb-1 tracking-widest">{t.revenue}</p>
-                <p className="text-xl font-black text-slate-800">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0).toLocaleString()}</p>
+                <p className="text-xl font-black text-slate-800">TZS {totalRevenue.toLocaleString()}</p>
               </div>
               <div className="bg-amber-50 p-4 rounded-2xl border border-amber-100">
                 <p className="text-caption font-black text-amber-400 uppercase mb-1 tracking-widest">{t.cashInHand}</p>
-                <p className="text-xl font-black text-amber-700">TZS {todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0).toLocaleString()}</p>
+                <p className="text-xl font-black text-amber-700">TZS {totalNet.toLocaleString()}</p>
               </div>
             </div>
 
@@ -367,14 +378,83 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
               </div>
             </div>
 
+            <div className="rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3 space-y-3">
+              <div>
+                <p className="text-caption font-black uppercase tracking-[0.18em] text-rose-500">
+                  {t.settlementExpenseLabel}
+                </p>
+                <p className="mt-1 text-caption font-bold leading-relaxed text-rose-700">
+                  {t.settlementExpenseHint}
+                </p>
+              </div>
+              <div className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_1fr]">
+                <label className="space-y-1">
+                  <span className="text-caption font-black uppercase text-rose-500">
+                    {t.settlementExpenseCategoryLabel}
+                  </span>
+                  <select
+                    value={settlementExpenseCategory}
+                    onChange={(event) =>
+                      setSettlementExpenseCategory(
+                        event.target.value as NonNullable<DailySettlement['settlementExpenseCategory']>,
+                      )
+                    }
+                    className="w-full rounded-btn border border-rose-200 bg-white px-3 py-2 text-[11px] font-black uppercase text-rose-700 outline-none"
+                  >
+                    <option value="tip">{t.tipLabel}</option>
+                    <option value="electricity">{t.electricityLabel}</option>
+                    <option value="other">{t.otherLabel}</option>
+                  </select>
+                </label>
+                <label className="space-y-1">
+                  <span className="text-caption font-black uppercase text-rose-500">
+                    {t.settlementExpenseAmountLabel}
+                  </span>
+                  <input
+                    type="number"
+                    min={0}
+                    value={settlementExpenseAmount}
+                    onChange={(event) => setSettlementExpenseAmount(event.target.value.replace(/[^0-9]/g, ''))}
+                    placeholder="0"
+                    className="w-full rounded-btn border border-rose-200 bg-white px-3 py-2 text-sm font-black text-rose-900 outline-none placeholder:text-rose-200"
+                  />
+                </label>
+              </div>
+              <label className="block space-y-1">
+                <span className="flex items-center justify-between gap-2 text-caption font-black uppercase text-rose-500">
+                  <span>{t.settlementExpenseNoteLabel}</span>
+                  <span className="text-rose-300">{t.settlementExpenseOptionalLabel}</span>
+                </span>
+                <textarea
+                  value={settlementExpenseNote}
+                  onChange={(event) => setSettlementExpenseNote(event.target.value)}
+                  rows={2}
+                  maxLength={120}
+                  placeholder={lang === 'zh' ? '例如：电费补贴 / 其他说明' : 'Example: electricity / other explanation'}
+                  className="w-full rounded-btn border border-rose-200 bg-white px-3 py-2 text-[11px] font-bold text-rose-900 outline-none placeholder:text-rose-200"
+                />
+              </label>
+              {requiresExpenseNote && !settlementExpenseNote.trim() && (
+                <p className="text-caption font-black uppercase text-rose-600">
+                  {t.settlementExpenseRequiredNote}
+                </p>
+              )}
+            </div>
+
             {hasSettlementInput && (
-              <div className={`p-4 rounded-2xl flex justify-between items-center animate-in slide-in-from-top-4 border ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
+              <div className={`p-4 rounded-2xl flex justify-between items-center animate-in slide-in-from-top-4 border ${varianceAmount === 0 ? 'bg-emerald-50 border-emerald-100' : 'bg-rose-50 border-rose-100'}`}>
                 <div>
-                  <p className={`text-caption font-black uppercase ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-400' : 'text-rose-400'}`}>{t.varianceLabel}</p>
-                  <p className={`text-2xl font-black ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {(cashAmount + coinAmount - todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0)).toLocaleString()}</p>
+                  <p className={`text-caption font-black uppercase ${varianceAmount === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{t.varianceLabel}</p>
+                  <p className={`text-2xl font-black ${varianceAmount === 0 ? 'text-emerald-600' : 'text-rose-600'}`}>TZS {varianceAmount.toLocaleString()}</p>
                 </div>
-                <div className={`p-3 rounded-2xl bg-white ${cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? 'text-emerald-500' : 'text-rose-500'}`}>
-                  {cashAmount + coinAmount === todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0) ? <ThumbsUp size={32} /> : <AlertTriangle size={32} />}
+                <div className="text-right">
+                  <p className="text-caption font-black uppercase text-slate-400">
+                    {t.expectedTotalLabel}
+                  </p>
+                  <p className="text-sm font-black text-slate-900">TZS {expectedTotal.toLocaleString()}</p>
+                </div>
+                <div className={`p-3 rounded-2xl bg-white ${varianceAmount === 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                  {varianceAmount === 0 ? <ThumbsUp size={32} /> : <AlertTriangle size={32} />}
                 </div>
               </div>
             )}
@@ -382,22 +462,30 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
             <button
               disabled={!hasSettlementInput || pendingActionKey === 'driver:settlement-submit'}
               onClick={async () => {
+                if (requiresExpenseNote && !settlementExpenseNote.trim()) {
+                  showToast(t.settlementExpenseRequiredNote, 'warning');
+                  return;
+                }
                 setPendingActionKey('driver:settlement-submit');
-                const totalNet = todayDriverTxs.reduce((sum, tx) => sum + tx.netPayable, 0);
-                const actual = cashAmount + coinAmount;
+                const actual = submittedTotal;
                 const settlement: DailySettlement = {
                   id: `STL-${Date.now()}`,
                   date: todayStr,
                   driverId: activeDriverId,
                   driverName: currentUser.name,
-                  totalRevenue: todayDriverTxs.reduce((sum, tx) => sum + tx.revenue, 0),
+                  totalRevenue,
                   totalNetPayable: totalNet,
-                  totalExpenses: todayDriverTxs.reduce((sum, tx) => sum + tx.expenses, 0),
+                  totalExpenses: baseExpenses + settlementExpenseValue,
                   driverFloat: myProfile?.dailyFloatingCoins || 0,
-                  expectedTotal: totalNet,
+                  expectedTotal,
+                  settlementExpenseAmount: settlementExpenseValue || undefined,
+                  settlementExpenseCategory: settlementExpenseValue > 0 ? settlementExpenseCategory : undefined,
+                  settlementExpenseNote: settlementExpenseValue > 0 && settlementExpenseNote.trim()
+                    ? settlementExpenseNote.trim()
+                    : undefined,
                   actualCash: cashAmount,
                   actualCoins: coinAmount,
-                  shortage: actual - totalNet,
+                  shortage: actual - expectedTotal,
                   status: 'pending',
                   timestamp: new Date().toISOString(),
                   isSynced: false,
@@ -407,6 +495,9 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                   showToast(lang === 'zh' ? '结算已提交，等待审批。' : 'Settlement submitted. Waiting for approval.', 'success');
                   setActualCash('');
                   setActualCoins('');
+                  setSettlementExpenseAmount('');
+                  setSettlementExpenseCategory('tip');
+                  setSettlementExpenseNote('');
                 } catch (error) {
                   console.error('Settlement submission failed.', error);
                   showToast(lang === 'zh' ? '结算提交失败，请重试。' : 'Settlement submission failed. Please retry.', 'error');

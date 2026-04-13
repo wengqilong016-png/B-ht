@@ -155,6 +155,31 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                               </div>
                             </div>
                           </div>
+                          {(s.settlementExpenseAmount || 0) > 0 && (
+                            <div className="rounded-xl border border-rose-100 bg-rose-50 p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <div>
+                                  <p className="text-caption font-black uppercase text-rose-400">
+                                    {t.settlementExpenseLabel}
+                                  </p>
+                                  <p className="text-xs font-black text-rose-700">
+                                    {getExpenseCategoryLabel(
+                                      t,
+                                      (s.settlementExpenseCategory ?? 'other') as Transaction['expenseCategory'],
+                                    )}
+                                  </p>
+                                </div>
+                                <p className="text-sm font-black text-rose-700">
+                                  TZS {(s.settlementExpenseAmount || 0).toLocaleString()}
+                                </p>
+                              </div>
+                              {s.settlementExpenseNote && (
+                                <p className="mt-2 text-caption font-bold leading-relaxed text-rose-700">
+                                  {s.settlementExpenseNote}
+                                </p>
+                              )}
+                            </div>
+                          )}
                           <div className="grid grid-cols-2 gap-2">
                             <div className="bg-slate-50 p-3 rounded-xl">
                               <p className="text-caption font-black text-slate-400 uppercase">{t.collectionsCount}</p>

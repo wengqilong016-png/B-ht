@@ -7,7 +7,8 @@ import type { DailySettlement } from '../types/models';
 const SETTLEMENT_FIELDS = [
   'id', 'date', 'adminId', 'adminName', 'driverId', 'driverName',
   'totalRevenue', 'totalNetPayable', 'totalExpenses', 'driverFloat',
-  'expectedTotal', 'actualCash', 'actualCoins', 'shortage', 'note',
+  'expectedTotal', 'settlementExpenseAmount', 'settlementExpenseCategory', 'settlementExpenseNote',
+  'actualCash', 'actualCoins', 'shortage', 'note',
   'timestamp', 'transferProofUrl', 'checkInAt', 'checkOutAt',
   'checkInGps', 'checkOutGps', 'hasCheckedIn', 'hasCheckedOut', 'status',
 ].join(', ');
@@ -49,6 +50,9 @@ export async function createSettlement(settlement: DailySettlement): Promise<Dai
     p_total_expenses: settlement.totalExpenses,
     p_driver_float: settlement.driverFloat,
     p_expected_total: settlement.expectedTotal,
+    p_settlement_expense_amount: settlement.settlementExpenseAmount ?? null,
+    p_settlement_expense_category: settlement.settlementExpenseCategory ?? null,
+    p_settlement_expense_note: settlement.settlementExpenseNote ?? null,
     p_actual_cash: settlement.actualCash,
     p_actual_coins: settlement.actualCoins,
     p_shortage: settlement.shortage,
