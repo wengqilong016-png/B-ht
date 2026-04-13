@@ -1,9 +1,9 @@
 {
-  "version": "1.0.8",
+  "version": "1.0.9",
   "versionCode": 1,
-  "gitSha": "0327f349bcb9b1307ec3ebdf120fd851adf2e4b0",
+  "gitSha": "48a023bb77fed696f0135cab1d7e095bb2b1aa8c",
   "tag": "main-latest",
-  "releasedAt": "2026-04-13T07:24:04Z",
+  "releasedAt": "2026-04-13T07:38:07Z",
   "apkUrl": "https://bahatiwin.space/downloads/bahati-latest-release.apk",
-  "releaseNotes": "main build 1.0.8 (0327f34)"
+  "releaseNotes": "main build 1.0.9 (48a023b)"
 }
