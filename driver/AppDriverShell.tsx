@@ -1,6 +1,5 @@
 import {
-  LogOut, Globe,
-  Settings
+  LogOut, Globe
 } from 'lucide-react';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 
@@ -25,29 +24,24 @@ import DriverAIAssistPanel from './components/DriverAIAssistPanel';
 import { DRIVER_NAV_ITEMS, type DriverView } from './driverShellConfig';
 import DriverShellViewRenderer from './renderDriverShellView';
 
-const AccountSettings = lazy(() => import('../components/AccountSettings'));
-
 const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
   const {
     isOnline,
-    drivers,
     filteredLocations, filteredTransactions, filteredSettlements,
     unsyncedCount,
   } = useAppData();
   const {
-    syncOfflineData, updateDrivers,
+    syncOfflineData,
   } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<DriverView>('collect');
-  const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   const isDriverView = (candidate: string): candidate is DriverView =>
     DRIVER_NAV_ITEMS.some((item) => item.id === candidate);
 
   const syncStatus = useSyncStatus({ syncMutation: syncOfflineData, isOnline, unsyncedCount, userId: currentUser.id });
   const todayStr = getTodayLocalDate();
-  const currentDriver = drivers.find(d => d.id === activeDriverId);
   const assignedMachineCount = filteredLocations.length;
   const todayCollectionCount = filteredTransactions.filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection')).length;
   const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;
@@ -107,10 +101,6 @@ const AppDriverShell: React.FC = () => {
               <Globe size={15} />
               <span className="text-caption uppercase">{t.language}</span>
             </button>
-            <button onClick={() => setShowAccountSettings(true)} className="flex w-full items-center gap-3 rounded-subcard px-3 py-2.5 text-left text-slate-400 hover:bg-white/5 hover:text-white">
-              <Settings size={15} />
-              <span className="text-caption uppercase">{t.settings}</span>
-            </button>
             <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-subcard px-3 py-2.5 text-left text-rose-300 hover:bg-rose-500/10 hover:text-rose-200">
               <LogOut size={15} />
               <span className="text-caption uppercase">{t.logout}</span>
@@ -129,7 +119,6 @@ const AppDriverShell: React.FC = () => {
           actions={
             <>
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900"><Globe size={15}/></button>
-              <button onClick={() => setShowAccountSettings(true)} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900"><Settings size={15}/></button>
               <button onClick={handleLogout} className="p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </>
           }
@@ -152,24 +141,6 @@ const AppDriverShell: React.FC = () => {
           lang={lang}
         />
       </div>
-
-      {showAccountSettings && currentUser && (
-        <AccountSettings
-          currentUser={currentUser}
-          lang={lang}
-          isOnline={isOnline}
-          currentFloatingCoins={currentDriver?.dailyFloatingCoins}
-          onClose={() => setShowAccountSettings(false)}
-          onPhoneUpdated={async (driverId, phone) => {
-            const updated = drivers.map(d => d.id === driverId ? { ...d, phone } : d);
-            await updateDrivers.mutateAsync(updated);
-          }}
-          onCoinsUpdated={async (driverId, coins) => {
-            const updated = drivers.map(d => d.id === driverId ? { ...d, dailyFloatingCoins: coins } : d);
-            await updateDrivers.mutateAsync(updated);
-          }}
-        />
-      )}
 
       <DriverAIAssistPanel
         lang={lang}

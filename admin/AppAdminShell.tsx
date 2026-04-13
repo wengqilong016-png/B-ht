@@ -46,7 +46,6 @@ const AppAdminShell: React.FC = () => {
   } = useAppData();
   const {
     syncOfflineData,
-    updateDrivers,
   } = useMutations();
   const [view, setView] = useState<AdminView>('dashboard');
   const [showAccountSettings, setShowAccountSettings] = useState(false);
@@ -205,10 +204,6 @@ const AppAdminShell: React.FC = () => {
           lang={lang}
           isOnline={isOnline}
           onClose={() => setShowAccountSettings(false)}
-          onPhoneUpdated={async (driverId, phone) => {
-            const updated = drivers.map((d) => d.id === driverId ? { ...d, phone } : d);
-            await updateDrivers.mutateAsync(updated);
-          }}
         />
       )}
 

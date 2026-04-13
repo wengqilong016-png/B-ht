@@ -5,7 +5,7 @@ import { supabase } from '../supabaseClient';
 import type { Driver } from '../types/models';
 
 const DRIVER_FIELDS = [
-  'id', 'name', 'username', 'phone', 'initialDebt', 'remainingDebt',
+  'id', 'name', 'username', 'phone', 'backgroundPhotoUrl', 'initialDebt', 'remainingDebt',
   'dailyFloatingCoins', 'vehicleInfo', 'currentGps', 'lastActive',
   'status', 'baseSalary', 'commissionRate',
 ].join(', ');

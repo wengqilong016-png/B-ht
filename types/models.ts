@@ -102,6 +102,7 @@ export interface Driver {
   name: string;
   username: string;
   phone: string;
+  backgroundPhotoUrl?: string;
   initialDebt: number;
   remainingDebt: number;
   dailyFloatingCoins: number;

@@ -1,10 +1,9 @@
 
-import { X, Lock, Mail, Phone, AlertCircle, Loader2, KeyRound, Clock, WifiOff, Coins } from 'lucide-react';
+import { X, Lock, Mail, AlertCircle, Loader2, KeyRound, Clock, WifiOff, ShieldBan } from 'lucide-react';
 import React, { useState } from 'react';
 
 import { useFormStatus } from '../hooks/useFormStatus';
 import { updatePassword } from '../repositories/authRepository';
-import { updateDriverCoins, updateDriverPhone } from '../repositories/driverRepository';
 import { updateUserEmail } from '../services/authService';
 import { User as UserType, TRANSLATIONS, isLikelyEmail } from '../types';
 
@@ -18,19 +17,15 @@ interface AccountSettingsProps {
   currentUser: UserType;
   lang: 'zh' | 'sw';
   isOnline?: boolean;
-  currentFloatingCoins?: number;
   onClose: () => void;
-  /** Called when the driver's phone is updated so parent can reflect it */
-  onPhoneUpdated?: (driverId: string, phone: string) => Promise<void> | void;
-  /** Called when the driver's floating coins are updated so parent can reflect it */
-  onCoinsUpdated?: (driverId: string, coins: number) => Promise<void> | void;
 }
 
-const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, isOnline = true, currentFloatingCoins, onClose, onPhoneUpdated, onCoinsUpdated }) => {
+const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, isOnline = true, onClose }) => {
   const t = TRANSLATIONS[lang];
   const currentEmail = isLikelyEmail(currentUser.username)
     ? currentUser.username.trim()
     : '';
+  const isDriver = currentUser.role === 'driver';
 
   // Password section
   const [newPwd, setNewPwd] = useState('');
@@ -41,18 +36,6 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
   const [newEmail, setNewEmail] = useState('');
   const emailForm = useFormStatus();
   const [submittedEmail, setSubmittedEmail] = useState('');
-
-  // Phone section (stored in drivers table)
-  const [newPhone, setNewPhone] = useState('');
-  const phoneForm = useFormStatus();
-  const [floatingCoins, setFloatingCoins] = useState('');
-  const coinsForm = useFormStatus();
-
-  React.useEffect(() => {
-    if (typeof currentFloatingCoins === 'number') {
-      setFloatingCoins(String(currentFloatingCoins));
-    }
-  }, [currentFloatingCoins]);
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -96,53 +79,6 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
     }
   };
 
-  const handleUpdatePhone = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isOnline) { phoneForm.setError(t.offlineWarning); return; }
-    if (!newPhone.trim()) {
-      phoneForm.setError(t.updateError);
-      return;
-    }
-    if (!currentUser.driverId) {
-      phoneForm.setError(t.updateError);
-      return;
-    }
-    phoneForm.setLoading();
-    try {
-      await updateDriverPhone(currentUser.driverId, newPhone.trim());
-      await onPhoneUpdated?.(currentUser.driverId, newPhone.trim());
-      phoneForm.setSuccess(t.updateSuccess);
-      setNewPhone('');
-    } catch (err) {
-      phoneForm.setError((err as Error).message || t.updateError);
-    }
-  };
-
-  const handleUpdateCoins = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!isOnline) { coinsForm.setError(t.offlineWarning); return; }
-    if (!currentUser.driverId) {
-      coinsForm.setError(t.updateError);
-      return;
-    }
-
-    const parsedCoins = parseInt(floatingCoins.replace(/,/g, '').trim(), 10);
-    if (Number.isNaN(parsedCoins) || parsedCoins < 0) {
-      coinsForm.setError(lang === 'zh' ? '请输入有效的流动硬币金额' : 'Enter a valid floating coin amount');
-      return;
-    }
-
-    coinsForm.setLoading();
-    try {
-      await updateDriverCoins(currentUser.driverId, parsedCoins);
-      await onCoinsUpdated?.(currentUser.driverId, parsedCoins);
-      coinsForm.setSuccess(t.updateSuccess);
-      setFloatingCoins('');
-    } catch (err) {
-      coinsForm.setError((err as Error).message || t.updateError);
-    }
-  };
-
   const StatusIcon = StatusIconComponent;
 
   const inputClass = "w-full bg-[#f0f2f5] border-none rounded-xl py-3 px-4 text-sm font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 disabled:opacity-50";
@@ -180,195 +116,131 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
 
         {/* Scrollable body */}
         <div className="overflow-y-auto flex-1 p-5 space-y-6">
-
-          {/* ── Change Password ── */}
-          <div className={sectionClass}>
-            <div className="flex items-center gap-2 mb-3">
-              <KeyRound size={14} className="text-amber-500" />
-              <p className="text-xs font-black text-white uppercase tracking-widest">{t.changePassword}</p>
-            </div>
-            <form onSubmit={handleChangePassword} className="space-y-3">
-              <div>
-                <label className={labelClass}><Lock size={10} className="text-amber-500" />{t.newPassword}</label>
-                <input
-                  type="password"
-                  value={newPwd}
-                  onChange={e => { setNewPwd(e.target.value); pwdForm.reset(); }}
-                  className={inputClass}
-                  placeholder="••••••••"
-                  minLength={8}
-                  required
-                  disabled={!isOnline}
-                />
-              </div>
-              <div>
-                <label className={labelClass}><Lock size={10} className="text-amber-500" />{t.confirmPassword}</label>
-                <input
-                  type="password"
-                  value={confirmPwd}
-                  onChange={e => { setConfirmPwd(e.target.value); pwdForm.reset(); }}
-                  className={inputClass}
-                  placeholder="••••••••"
-                  minLength={8}
-                  required
-                  disabled={!isOnline}
-                />
-              </div>
-              {!pwdForm.isIdle && (
-                <div className={`flex items-center gap-2 text-xs font-bold ${pwdForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
-                  <StatusIcon status={pwdForm.status} />
-                  <span>{pwdForm.message}</span>
-                </div>
-              )}
-              <button type="submit" disabled={pwdForm.isLoading || !isOnline} className={submitClass}>
-                {pwdForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
-              </button>
-            </form>
-          </div>
-
-          {/* ── Change Email ── */}
-          <div className={sectionClass}>
-            <div className="flex items-center gap-2 mb-3">
-              <Mail size={14} className="text-amber-400" />
-              <p className="text-xs font-black text-white uppercase tracking-widest">{t.changeEmail}</p>
-            </div>
-
-            {/* Current email read-only display */}
-            <div className="mb-1">
-              <label className={labelClass}><Mail size={10} className="text-slate-400" />{t.currentEmailLabel}</label>
-              <p
-                className="w-full bg-[#e8eaed] rounded-xl py-2.5 px-4 text-sm font-bold text-slate-500 shadow-silicone-pressed border border-slate-200/60 truncate"
-                title={currentEmail || undefined}
-              >
-                {currentEmail || '—'}
-              </p>
-            </div>
-
-            {/* Pending confirmation panel – shown instead of the form after a successful request */}
-            {emailForm.isSuccess ? (
-              <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
-                <div className="flex items-center gap-2">
-                  <Clock size={14} className="text-amber-500 flex-shrink-0" />
-                  <span className="text-xs font-black text-amber-700 uppercase tracking-wide">{t.emailPendingConfirmation}</span>
-                </div>
-                <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
-                  {t.emailCheckNewInboxNote}
-                  {submittedEmail ? (
-                    <span className="block mt-1 text-amber-600 break-all">{submittedEmail}</span>
-                  ) : null}
-                </p>
-                <p className="text-[10px] text-slate-500 font-medium leading-relaxed">
-                  {t.emailOldRemainsActiveNote}
-                </p>
-                <button
-                  type="button"
-                  onClick={() => { emailForm.reset(); setSubmittedEmail(''); setNewEmail(''); }}
-                  className="text-[10px] text-amber-500 font-black underline underline-offset-2 hover:text-amber-700 transition-colors"
-                >
-                  {t.emailSubmitAnotherRequest} →
-                </button>
-              </div>
-            ) : (
-              <form onSubmit={handleChangeEmail} className="space-y-3">
-                <div>
-                  <label className={labelClass}><Mail size={10} className="text-amber-400" />{t.newEmail}</label>
-                  <input
-                    type="email"
-                    value={newEmail}
-                    onChange={e => { setNewEmail(e.target.value); emailForm.reset(); }}
-                    className={inputClass}
-                    placeholder="new@example.com"
-                    required
-                    disabled={!isOnline}
-                  />
-                </div>
-                {emailForm.isError && (
-                  <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
-                    <AlertCircle size={14} className="text-rose-400" />
-                    <span>{emailForm.message}</span>
-                  </div>
-                )}
-                <button type="submit" disabled={emailForm.isLoading || !isOnline} className={submitClass}>
-                  {emailForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
-                </button>
-              </form>
-            )}
-          </div>
-
-          {/* ── Update Phone (driver only) ── */}
-          {currentUser.role === 'driver' && currentUser.driverId && (
+          {isDriver ? (
             <div className={sectionClass}>
               <div className="flex items-center gap-2 mb-3">
-                <Phone size={14} className="text-emerald-400" />
-                <p className="text-xs font-black text-white uppercase tracking-widest">{t.updatePhone}</p>
+                <ShieldBan size={14} className="text-amber-500" />
+                <p className="text-xs font-black text-slate-700 uppercase tracking-widest">{t.driverSettingsManagedElsewhere}</p>
               </div>
-              <form onSubmit={handleUpdatePhone} className="space-y-3">
-                <div>
-                  <label className={labelClass}><Phone size={10} className="text-emerald-400" />{t.newPhone}</label>
-                  <input
-                    type="tel"
-                    value={newPhone}
-                    onChange={e => { setNewPhone(e.target.value); phoneForm.reset(); }}
-                    className={inputClass}
-                    placeholder="+255 6xx xxx xxxx"
-                    required
-                    disabled={!isOnline}
-                  />
-                </div>
-                {!phoneForm.isIdle && (
-                  <div className={`flex items-center gap-2 text-xs font-bold ${phoneForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    <StatusIcon status={phoneForm.status} />
-                    <span>{phoneForm.message}</span>
-                  </div>
-                )}
-                <button type="submit" disabled={phoneForm.isLoading || !isOnline} className={submitClass}>
-                  {phoneForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Phone size={14} /> {t.saveChanges}</>}
-                </button>
-              </form>
+              <p className="text-xs font-bold text-slate-500 leading-relaxed">
+                {t.driverSettingsManagedElsewhereNote}
+              </p>
             </div>
-          )}
+          ) : (
+            <>
 
-          {currentUser.role === 'driver' && currentUser.driverId && (
-            <div className="rounded-2xl border border-amber-200 bg-gradient-to-br from-amber-50 to-white shadow-silicone p-5 space-y-3">
-              <div className="flex items-center gap-2">
-                <Coins size={14} className="text-amber-500" />
-                <p className="text-xs font-black text-amber-700 uppercase tracking-widest">
-                  {lang === 'zh' ? '流动硬币设置' : 'Floating Coins'}
-                </p>
+              {/* ── Change Password ── */}
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3">
+                  <KeyRound size={14} className="text-amber-500" />
+                  <p className="text-xs font-black text-slate-700 uppercase tracking-widest">{t.changePassword}</p>
+                </div>
+                <form onSubmit={handleChangePassword} className="space-y-3">
+                  <div>
+                    <label className={labelClass}><Lock size={10} className="text-amber-500" />{t.newPassword}</label>
+                    <input
+                      type="password"
+                      value={newPwd}
+                      onChange={e => { setNewPwd(e.target.value); pwdForm.reset(); }}
+                      className={inputClass}
+                      placeholder="••••••••"
+                      minLength={8}
+                      required
+                      disabled={!isOnline}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelClass}><Lock size={10} className="text-amber-500" />{t.confirmPassword}</label>
+                    <input
+                      type="password"
+                      value={confirmPwd}
+                      onChange={e => { setConfirmPwd(e.target.value); pwdForm.reset(); }}
+                      className={inputClass}
+                      placeholder="••••••••"
+                      minLength={8}
+                      required
+                      disabled={!isOnline}
+                    />
+                  </div>
+                  {!pwdForm.isIdle && (
+                    <div className={`flex items-center gap-2 text-xs font-bold ${pwdForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
+                      <StatusIcon status={pwdForm.status} />
+                      <span>{pwdForm.message}</span>
+                    </div>
+                  )}
+                  <button type="submit" disabled={pwdForm.isLoading || !isOnline} className={submitClass}>
+                    {pwdForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
+                  </button>
+                </form>
               </div>
-              <form onSubmit={handleUpdateCoins} className="space-y-3">
-                <div>
-                  <label className={labelClass}>
-                    <Coins size={10} className="text-amber-500" />
-                    {lang === 'zh' ? '当前可用流动硬币 (TZS)' : 'Available Floating Coins (TZS)'}
-                  </label>
-                  <input
-                    type="number"
-                    min="0"
-                    value={floatingCoins}
-                    onChange={e => { setFloatingCoins(e.target.value); coinsForm.reset(); }}
-                    className="w-full bg-white border border-amber-200 rounded-xl py-3 px-4 text-sm font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 disabled:opacity-50 focus:border-amber-400"
-                    placeholder={lang === 'zh' ? '例如 10000' : 'e.g. 10000'}
-                    required
-                    disabled={!isOnline}
-                  />
-                  <p className="mt-1 text-[10px] font-bold text-slate-400">
-                    {lang === 'zh'
-                      ? '这里填写司机当前随身携带、用于换币的流动硬币金额。'
-                      : 'Set the driver coin float used for machine coin exchange.'}
+
+              {/* ── Change Email ── */}
+              <div className={sectionClass}>
+                <div className="flex items-center gap-2 mb-3">
+                  <Mail size={14} className="text-amber-400" />
+                  <p className="text-xs font-black text-slate-700 uppercase tracking-widest">{t.changeEmail}</p>
+                </div>
+
+                <div className="mb-1">
+                  <label className={labelClass}><Mail size={10} className="text-slate-400" />{t.currentEmailLabel}</label>
+                  <p
+                    className="w-full bg-[#e8eaed] rounded-xl py-2.5 px-4 text-sm font-bold text-slate-500 shadow-silicone-pressed border border-slate-200/60 truncate"
+                    title={currentEmail || undefined}
+                  >
+                    {currentEmail || '—'}
                   </p>
                 </div>
-                {!coinsForm.isIdle && (
-                  <div className={`flex items-center gap-2 text-xs font-bold ${coinsForm.isSuccess ? 'text-emerald-400' : 'text-rose-400'}`}>
-                    <StatusIcon status={coinsForm.status} />
-                    <span>{coinsForm.message}</span>
+
+                {emailForm.isSuccess ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-2xl p-4 space-y-2.5">
+                    <div className="flex items-center gap-2">
+                      <Clock size={14} className="text-amber-500 flex-shrink-0" />
+                      <span className="text-xs font-black text-amber-700 uppercase tracking-wide">{t.emailPendingConfirmation}</span>
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-600 leading-relaxed">
+                      {t.emailCheckNewInboxNote}
+                      {submittedEmail ? (
+                        <span className="block mt-1 text-amber-600 break-all">{submittedEmail}</span>
+                      ) : null}
+                    </p>
+                    <p className="text-caption text-slate-500 font-medium leading-relaxed">
+                      {t.emailOldRemainsActiveNote}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => { emailForm.reset(); setSubmittedEmail(''); setNewEmail(''); }}
+                      className="text-caption text-amber-500 font-black underline underline-offset-2 hover:text-amber-700 transition-colors"
+                    >
+                      {t.emailSubmitAnotherRequest} →
+                    </button>
                   </div>
+                ) : (
+                  <form onSubmit={handleChangeEmail} className="space-y-3">
+                    <div>
+                      <label className={labelClass}><Mail size={10} className="text-amber-400" />{t.newEmail}</label>
+                      <input
+                        type="email"
+                        value={newEmail}
+                        onChange={e => { setNewEmail(e.target.value); emailForm.reset(); }}
+                        className={inputClass}
+                        placeholder="new@example.com"
+                        required
+                        disabled={!isOnline}
+                      />
+                    </div>
+                    {emailForm.isError && (
+                      <div className="flex items-center gap-2 text-xs font-bold text-rose-400">
+                        <AlertCircle size={14} className="text-rose-400" />
+                        <span>{emailForm.message}</span>
+                      </div>
+                    )}
+                    <button type="submit" disabled={emailForm.isLoading || !isOnline} className={submitClass}>
+                      {emailForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
+                    </button>
+                  </form>
                 )}
-                <button type="submit" disabled={coinsForm.isLoading || !isOnline} className="w-full bg-amber-500 text-white font-black py-3 rounded-xl text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-200 hover:shadow-amber-300 active:shadow-amber-200 transition-all disabled:opacity-50 border border-amber-400/20">
-                  {coinsForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Coins size={14} /> {t.saveChanges}</>}
-                </button>
-              </form>
-            </div>
+              </div>
+            </>
           )}
 
         </div>

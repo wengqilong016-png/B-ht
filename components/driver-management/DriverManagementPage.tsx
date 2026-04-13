@@ -8,6 +8,7 @@ import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
 import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
 import { Driver, Location, safeRandomUUID } from '../../types';
+import { normalizeDriverId, normalizeDriverName } from '../../utils/identityNormalization';
 
 import DriverAnalytics from './DriverAnalytics';
 import DriverForm, { DriverFormState } from './DriverForm';
@@ -140,8 +141,12 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
     setIsSaving(true);
 
-    // Auto-generate a driver ID (UUID) if the user left the field empty.
-    const resolvedUsername = form.username.trim() || safeRandomUUID();
+    const normalizedName = normalizeDriverName(form.name);
+    // Preserve the current UUID fallback when no explicit driver ID is provided,
+    // but normalize user-entered IDs so account binding stays consistent.
+    const resolvedUsername = form.username.trim()
+      ? normalizeDriverId(form.username, normalizedName)
+      : safeRandomUUID();
 
     const parseNum = (str: string) => {
       const cleanStr = str.replace(/,/g, '').trim();
@@ -153,9 +158,9 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
     const parsedCommRate = parseFloat(form.commissionRate);
 
     const driverData = {
-      name: form.name,
+      name: normalizedName,
       username: resolvedUsername,
-      phone: form.phone,
+      phone: form.phone.trim(),
       dailyFloatingCoins: parseNum(form.dailyFloatingCoins),
       initialDebt: parseNum(form.initialDebt),
       vehicleInfo: { model: form.model, plate: form.plate },

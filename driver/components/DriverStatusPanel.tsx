@@ -1,22 +1,46 @@
 import {
-  User, Truck, Banknote, Percent, Clock,
-  CheckCircle, XCircle, TrendingUp, AlertCircle, MapPin, Coins
+  AlertCircle,
+  Banknote,
+  Camera,
+  CheckCircle,
+  Clock,
+  Coins,
+  Loader2,
+  MapPin,
+  Percent,
+  Phone,
+  TrendingUp,
+  Truck,
+  User,
+  XCircle,
 } from 'lucide-react';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
-import { TRANSLATIONS } from '../../types';
+import { useMutations } from '../../contexts/MutationContext';
+import { useFormStatus } from '../../hooks/useFormStatus';
+import { persistEvidencePhotoUrl } from '../../services/evidenceStorage';
+import { TRANSLATIONS, resizeImage } from '../../types';
 
- 
 interface DriverStatusPanelProps {}
 
 const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
   const { lang, activeDriverId } = useAuth();
-  const { drivers, locations, filteredTransactions: transactions } = useAppData();
-  const driver = drivers.find(d => d.id === activeDriverId);
+  const { drivers, locations, filteredTransactions: transactions, isOnline } = useAppData();
+  const { updateDrivers } = useMutations();
+  const driver = drivers.find((item) => item.id === activeDriverId);
   const t = TRANSLATIONS[lang];
-  const assignedMachines = locations.filter(l => l.assignedDriverId === activeDriverId);
+  const assignedMachines = locations.filter((location) => location.assignedDriverId === activeDriverId);
+  const profileForm = useFormStatus();
+  const [phoneDraft, setPhoneDraft] = useState('');
+  const [backgroundPhotoDraft, setBackgroundPhotoDraft] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPhoneDraft(driver?.phone ?? '');
+    setBackgroundPhotoDraft(driver?.backgroundPhotoUrl ?? null);
+    profileForm.reset();
+  }, [driver?.backgroundPhotoUrl, driver?.phone]);
 
   if (!driver) {
     return (
@@ -29,13 +53,67 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
     );
   }
 
+  const handlePhotoChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      const resized = await resizeImage(file, 1280, 0.7);
+      setBackgroundPhotoDraft(resized);
+      profileForm.reset();
+    } catch (error) {
+      profileForm.setError(error instanceof Error ? error.message : t.updateError);
+    } finally {
+      event.target.value = '';
+    }
+  };
+
+  const handleSaveProfile = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!isOnline) {
+      profileForm.setError(t.offlineWarning);
+      return;
+    }
+
+    if (!phoneDraft.trim()) {
+      profileForm.setError(t.driverPhoneRequired);
+      return;
+    }
+
+    profileForm.setLoading();
+
+    try {
+      const backgroundPhotoUrl = await persistEvidencePhotoUrl(backgroundPhotoDraft, {
+        category: 'driver-profile',
+        entityId: 'background-photo',
+        driverId: driver.id,
+      });
+
+      const nextDriver = {
+        ...driver,
+        phone: phoneDraft.trim(),
+        backgroundPhotoUrl: backgroundPhotoUrl ?? undefined,
+      };
+
+      await updateDrivers.mutateAsync(
+        drivers.map((item) => (item.id === driver.id ? nextDriver : item)),
+      );
+
+      setBackgroundPhotoDraft(backgroundPhotoUrl);
+      profileForm.setSuccess(t.updateSuccess);
+    } catch (error) {
+      profileForm.setError(error instanceof Error ? error.message : t.updateError);
+    }
+  };
+
   const recentTx = transactions
-    .filter(tx => tx.driverId === driver.id)
+    .filter((tx) => tx.driverId === driver.id)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, 5);
 
   const totalRevenue = transactions
-    .filter(tx => tx.driverId === driver.id)
+    .filter((tx) => tx.driverId === driver.id)
     .reduce((sum, tx) => sum + tx.revenue, 0);
 
   const debtPct = driver.initialDebt > 0
@@ -44,34 +122,33 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
 
   const lastActiveDisplay = driver.lastActive
     ? new Date(driver.lastActive).toLocaleString(lang === 'zh' ? 'zh-CN' : 'en-US', {
-        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+        month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit',
       })
     : t.neverActive;
 
   const isActive = driver.status === 'active';
+  const cardBackgroundStyle = driver.backgroundPhotoUrl
+    ? { backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.58)), url(${driver.backgroundPhotoUrl})` }
+    : undefined;
 
   return (
     <div className="space-y-4 animate-in fade-in">
-      {/* Profile card */}
       <div className="bg-white rounded-card border border-slate-200 shadow-sm overflow-hidden">
-        <div className="p-5 flex items-center gap-4">
+        <div className="bg-cover bg-center p-5 flex items-center gap-4" style={cardBackgroundStyle}>
           <div className="w-16 h-16 rounded-subcard bg-slate-800 text-white flex items-center justify-center font-black text-2xl shadow-md flex-shrink-0">
             {driver.name.charAt(0).toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="font-black text-slate-900 text-base uppercase tracking-wide truncate">{driver.name}</h2>
-            <p className="text-[10px] font-bold text-slate-400 uppercase truncate">{driver.username}</p>
+            <h2 className={`font-black text-base uppercase tracking-wide truncate ${driver.backgroundPhotoUrl ? 'text-white' : 'text-slate-900'}`}>{driver.name}</h2>
+            <p className={`text-caption font-bold uppercase truncate ${driver.backgroundPhotoUrl ? 'text-slate-200' : 'text-slate-400'}`}>{driver.username}</p>
             {driver.phone && (
-              <p className="text-[10px] font-bold text-slate-400 mt-0.5">{driver.phone}</p>
+              <p className={`text-caption font-bold mt-0.5 ${driver.backgroundPhotoUrl ? 'text-slate-100' : 'text-slate-400'}`}>{driver.phone}</p>
             )}
           </div>
           <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-caption font-black uppercase flex-shrink-0 ${
             isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-500 border border-rose-100'
           }`}>
-            {isActive
-              ? <CheckCircle size={12} />
-              : <XCircle size={12} />
-            }
+            {isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
             {isActive ? t.driverStatusActive : t.driverStatusInactive}
           </div>
         </div>
@@ -81,7 +158,71 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         </div>
       </div>
 
-      {/* Salary, commission, and floating coins */}
+      <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
+        <div className="flex items-center gap-2 mb-3">
+          <Phone size={12} className="text-emerald-500" />
+          <p className="text-caption font-black text-slate-400 uppercase tracking-widest">{t.driverProfileDetails}</p>
+        </div>
+        <form onSubmit={handleSaveProfile} className="space-y-4">
+          <div>
+            <label className="mb-1.5 flex items-center gap-2 text-caption font-black uppercase tracking-widest text-slate-500">
+              <Phone size={10} className="text-emerald-500" />
+              {t.currentPhoneLabel}
+            </label>
+            <input
+              type="tel"
+              value={phoneDraft}
+              onChange={(event) => {
+                setPhoneDraft(event.target.value);
+                profileForm.reset();
+              }}
+              placeholder="+255 6xx xxx xxxx"
+              disabled={!isOnline}
+              className="w-full rounded-btn border border-slate-200 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none transition placeholder:text-slate-400 disabled:opacity-60 focus:border-emerald-300"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <label className="flex items-center gap-2 text-caption font-black uppercase tracking-widest text-slate-500">
+              <Camera size={10} className="text-amber-500" />
+              {t.driverBackgroundPhoto}
+            </label>
+            <div className="overflow-hidden rounded-subcard border border-slate-200 bg-slate-50">
+              {backgroundPhotoDraft ? (
+                <img src={backgroundPhotoDraft} alt={t.driverBackgroundPhoto} className="h-40 w-full object-cover" />
+              ) : (
+                <div className="flex h-40 flex-col items-center justify-center gap-2 text-slate-400">
+                  <Camera size={20} />
+                  <p className="text-caption font-bold">{t.driverBackgroundPhotoPlaceholder}</p>
+                </div>
+              )}
+            </div>
+            <label className="inline-flex cursor-pointer items-center gap-2 rounded-btn border border-amber-200 bg-amber-50 px-4 py-2 text-caption font-black uppercase text-amber-700 transition hover:bg-amber-100">
+              <Camera size={12} />
+              {backgroundPhotoDraft ? t.replaceBackgroundPhoto : t.uploadBackgroundPhoto}
+              <input type="file" accept="image/*" className="hidden" onChange={handlePhotoChange} disabled={!isOnline} />
+            </label>
+            <p className="text-caption font-bold text-slate-400">{t.driverProfileDetailsNote}</p>
+          </div>
+
+          {!profileForm.isIdle && (
+            <div className={`flex items-center gap-2 text-xs font-bold ${profileForm.isSuccess ? 'text-emerald-500' : 'text-rose-500'}`}>
+              {profileForm.isLoading ? <Loader2 size={14} className="animate-spin" /> : profileForm.isSuccess ? <CheckCircle size={14} /> : <AlertCircle size={14} />}
+              <span>{profileForm.message}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={profileForm.isLoading || updateDrivers.isPending || !isOnline}
+            className="inline-flex items-center gap-2 rounded-btn bg-slate-900 px-4 py-3 text-caption font-black uppercase text-white transition hover:bg-slate-800 disabled:opacity-60"
+          >
+            {profileForm.isLoading || updateDrivers.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            {t.saveDriverProfile}
+          </button>
+        </form>
+      </div>
+
       <div className="grid grid-cols-3 gap-4">
         <div className="bg-white rounded-card border border-slate-200 shadow-sm p-4">
           <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1">
@@ -109,7 +250,6 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         </div>
       </div>
 
-      {/* Debt status */}
       {driver.initialDebt > 0 && (
         <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
           <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
@@ -132,7 +272,6 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         </div>
       )}
 
-      {/* Revenue summary */}
       <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
         <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <TrendingUp size={12} /> {t.totalRevenue}
@@ -143,26 +282,25 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         </p>
       </div>
 
-      {/* Assigned machines */}
       <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
         <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <MapPin size={12} /> {t.assignedMachines} ({assignedMachines.length})
         </p>
         {assignedMachines.length > 0 ? (
           <div className="space-y-2 max-h-48 overflow-y-auto">
-            {assignedMachines.map(loc => (
-              <div key={loc.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-subcard border border-slate-100">
+            {assignedMachines.map((location) => (
+              <div key={location.id} className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-subcard border border-slate-100">
                 <div className="w-8 h-8 rounded-btn bg-amber-100 text-amber-600 flex items-center justify-center flex-shrink-0">
                   <MapPin size={14} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-black text-slate-800 truncate">{loc.name || loc.machineId}</p>
-                  <p className="text-caption font-bold text-slate-400 truncate">{loc.area || '—'}</p>
+                  <p className="text-xs font-black text-slate-800 truncate">{location.name || location.machineId}</p>
+                  <p className="text-caption font-bold text-slate-400 truncate">{location.area || '—'}</p>
                 </div>
                 <span className={`text-caption font-black uppercase px-2 py-0.5 rounded-tag ${
-                  loc.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
+                  location.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'
                 }`}>
-                  {loc.status === 'active' ? '✓' : '—'}
+                  {location.status === 'active' ? '✓' : '—'}
                 </span>
               </div>
             ))}
@@ -172,7 +310,6 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         )}
       </div>
 
-      {/* Vehicle info */}
       <div className="bg-white rounded-card border border-slate-200 shadow-sm p-5">
         <p className="text-caption font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-1.5">
           <Truck size={12} /> {t.vehicleInfo}
@@ -184,14 +321,13 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
             </div>
             <div>
               <p className="text-sm font-black text-slate-800">{driver.vehicleInfo.model || '—'}</p>
-              <p className="text-[10px] font-bold text-slate-400 uppercase">{driver.vehicleInfo.plate || '—'}</p>
+              <p className="text-caption font-bold text-slate-400 uppercase">{driver.vehicleInfo.plate || '—'}</p>
             </div>
           </div>
         ) : (
           <p className="text-xs font-bold text-slate-400">{t.noVehicleInfo}</p>
         )}
       </div>
-
     </div>
   );
 };
