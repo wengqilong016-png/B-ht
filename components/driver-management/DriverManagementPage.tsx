@@ -7,7 +7,8 @@ import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
 import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
-import { Driver, Location, safeRandomUUID } from '../../types';
+import { CONSTANTS, Driver, Location, safeRandomUUID } from '../../types';
+import { normalizeMachineId } from '../../utils/locationWorkflow';
 
 import DriverAnalytics from './DriverAnalytics';
 import DriverForm, { DriverFormState } from './DriverForm';
@@ -24,8 +25,54 @@ const DEFAULT_FORM: DriverFormState = {
   name: '', username: '', email: '', password: '', phone: '',
   model: '', plate: '', dailyFloatingCoins: '10000',
   initialDebt: '0', remainingDebt: '0', baseSalary: '300000', commissionRate: '5',
-  status: 'active'
+  status: 'active',
+  seedMachines: '',
 };
+
+function normalizeSeedToken(raw: string): string {
+  return raw
+    .trim()
+    .replace(/[，,;；]+/g, ' ')
+    .replace(/[（]/g, '(')
+    .replace(/[）]/g, ')')
+    .replace(/^\.+/, '')
+    .replace(/\s+/g, ' ');
+}
+
+function parseSeedMachines(input: string): { machines: Array<{ machineId: string; lastScore: number }>; invalid: string[] } {
+  const cleaned = normalizeSeedToken(input)
+    .replace(/\n+/g, ' ')
+    .replace(/\t+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!cleaned) return { machines: [], invalid: [] };
+
+  const tokens = cleaned.split(' ').filter(Boolean);
+  const invalid: string[] = [];
+  const seen = new Set<string>();
+  const machines: Array<{ machineId: string; lastScore: number }> = [];
+
+  for (const t of tokens) {
+    const token = t.replace(/\s+/g, '');
+    const m = token.match(/^([A-Z0-9()_-]+)-([0-9]+)$/i);
+    if (!m) {
+      invalid.push(t);
+      continue;
+    }
+    const id = normalizeMachineId(m[1].replace(/_/g, '-'));
+    const score = Number.parseInt(m[2], 10);
+    if (!id || !Number.isFinite(score)) {
+      invalid.push(t);
+      continue;
+    }
+    if (seen.has(id)) continue;
+    seen.add(id);
+    machines.push({ machineId: id, lastScore: score });
+  }
+
+  return { machines, invalid };
+}
 
 const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { filteredDrivers: drivers, locations, filteredTransactions: transactions, filteredSettlements: dailySettlements, isOnline } = useAppData();
@@ -118,7 +165,8 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
       remainingDebt: (d.remainingDebt ?? 0).toString(),
       baseSalary: (d.baseSalary ?? 300000).toString(),
       commissionRate: ((d.commissionRate ?? 0.05) * 100).toString(),
-      status: d.status ?? 'active'
+      status: d.status ?? 'active',
+      seedMachines: '',
     });
     // Pre-populate assigned locations for this driver
     setPendingLocationIds(locations.filter(l => l.assignedDriverId === d.id).map(l => l.id));
@@ -164,12 +212,18 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
       status: form.status
     };
 
+    const { machines: seedMachines, invalid: invalidSeeds } = parseSeedMachines(form.seedMachines);
+    if (invalidSeeds.length > 0) {
+      const preview = invalidSeeds.slice(0, 6).join(' ');
+      showToast(`部分机器格式无法识别，已忽略：${preview}${invalidSeeds.length > 6 ? ' ...' : ''}`, 'warning');
+    }
+
     if (editingId) {
       // ── Edit existing driver ──────────────────────────────────────────
       try {
         const remainingDebt = parseNum(form.remainingDebt);
         const updatedDrivers = drivers.map(d => d.id === editingId ? { ...d, ...driverData, remainingDebt } : d);
-        const updatedLocations = locations.map(loc => {
+        const updatedLocationsBase = locations.map(loc => {
           if (pendingLocationIds.includes(loc.id)) {
             return { ...loc, assignedDriverId: editingId };
           }
@@ -179,10 +233,32 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           }
           return loc;
         });
+
+        const existingMachineIds = new Set(locations.map((l) => normalizeMachineId(l.machineId)));
+        const seedLocations: Location[] = seedMachines
+          .filter((m) => !existingMachineIds.has(m.machineId))
+          .map((m) => ({
+            id: safeRandomUUID(),
+            name: m.machineId,
+            machineId: m.machineId,
+            lastScore: m.lastScore,
+            area: 'TBD',
+            assignedDriverId: editingId,
+            initialStartupDebt: 0,
+            remainingStartupDebt: 0,
+            status: 'active',
+            commissionRate: CONSTANTS.DEFAULT_PROFIT_SHARE,
+            isSynced: false,
+          }));
+
+        const updatedLocations = [...updatedLocationsBase, ...seedLocations];
         await Promise.all([
           onUpdateDrivers(updatedDrivers),
           onUpdateLocations(updatedLocations),
         ]);
+        if (seedLocations.length > 0) {
+          showToast(`已批量新增并分配 ${seedLocations.length} 台机器`, 'success');
+        }
         resetForm();
       } catch (error) {
         console.error('Failed to save driver assignment changes.', error);
@@ -243,6 +319,33 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           remainingDebt: driverData.initialDebt,
         };
         await onUpdateDrivers([...drivers, newDriver]);
+
+        if (seedMachines.length > 0) {
+          const existingMachineIds = new Set(locations.map((l) => normalizeMachineId(l.machineId)));
+          const seedLocations: Location[] = seedMachines
+            .filter((m) => !existingMachineIds.has(m.machineId))
+            .map((m) => ({
+              id: safeRandomUUID(),
+              name: m.machineId,
+              machineId: m.machineId,
+              lastScore: m.lastScore,
+              area: 'TBD',
+              assignedDriverId: createdDriverId,
+              initialStartupDebt: 0,
+              remainingStartupDebt: 0,
+              status: 'active',
+              commissionRate: CONSTANTS.DEFAULT_PROFIT_SHARE,
+              isSynced: false,
+            }));
+
+          if (seedLocations.length > 0) {
+            await onUpdateLocations([...locations, ...seedLocations]);
+            showToast(`已批量新增并分配 ${seedLocations.length} 台机器`, 'success');
+          } else {
+            showToast('批量机器已存在（未新增）', 'info');
+          }
+        }
+
         resetForm();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
