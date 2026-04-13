@@ -1,9 +1,9 @@
 {
   "version": "1.0.9",
-  "versionCode": 2,
-  "gitSha": "fa773d580be95431428597d86cf5d2da30d9aac2",
-  "tag": "v1.0.9",
-  "releasedAt": "2026-04-13T07:46:12Z",
-  "apkUrl": "https://github.com/wengqilong016-png/B-ht/releases/download/v1.0.9/bahati-latest-release.apk",
-  "releaseNotes": "v1.0.9 — 正式发布"
+  "versionCode": 1,
+  "gitSha": "5cdc532f4e8a10e0a119ab483f3ed6f6dab939d5",
+  "tag": "main-latest",
+  "releasedAt": "2026-04-13T11:05:28Z",
+  "apkUrl": "https://bahatiwin.space/downloads/bahati-latest-release.apk",
+  "releaseNotes": "main build 1.0.9 (5cdc532)"
 }
