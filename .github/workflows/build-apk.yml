@@ -305,7 +305,7 @@ jobs:
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
       - name: Upload APK artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: bahati-apk-${{ steps.resolve_build_type.outputs.build_type }}
           path: android/app/build/outputs/apk/bahati-*.apk
