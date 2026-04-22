@@ -2,6 +2,7 @@ BEGIN;
 
 -- 1. Tighten queue_health_reports insert policy (replace permissive qhr_driver_insert)
 DROP POLICY IF EXISTS qhr_driver_insert ON public.queue_health_reports;
+DROP POLICY IF EXISTS queue_health_driver_insert ON public.queue_health_reports;
 CREATE POLICY queue_health_driver_insert
   ON public.queue_health_reports
   FOR INSERT
@@ -10,6 +11,7 @@ CREATE POLICY queue_health_driver_insert
 
 -- 2. Tighten queue_health_reports update policy (replace permissive qhr_driver_update)
 DROP POLICY IF EXISTS qhr_driver_update ON public.queue_health_reports;
+DROP POLICY IF EXISTS queue_health_driver_update ON public.queue_health_reports;
 CREATE POLICY queue_health_driver_update
   ON public.queue_health_reports
   FOR UPDATE
