@@ -173,7 +173,7 @@ BEGIN
       TO authenticated
       WITH CHECK (
         public.get_my_role() = 'driver'
-        AND "driverId" = public.get_my_driver_id()
+        AND driver_id = public.get_my_driver_id()
       );
   END IF;
 END;
@@ -193,7 +193,7 @@ BEGIN
       TO authenticated
       USING (
         public.get_my_role() = 'driver'
-        AND "driverId" = public.get_my_driver_id()
+        AND driver_id = public.get_my_driver_id()
       );
   END IF;
 END;
