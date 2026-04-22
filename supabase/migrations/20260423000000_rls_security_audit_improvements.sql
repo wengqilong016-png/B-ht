@@ -236,7 +236,7 @@ BEGIN
     SELECT COUNT(*) INTO v_recent_count
     FROM public.transactions
     WHERE "driverId" = NEW."driverId"
-      AND created_at > now() - make_interval(mins => v_window_minutes);
+      AND "timestamp" > now() - make_interval(mins => v_window_minutes);
     
     IF v_recent_count >= v_max_per_window THEN
       RAISE EXCEPTION 'Transaction rate limit exceeded (max % per % minute)', 

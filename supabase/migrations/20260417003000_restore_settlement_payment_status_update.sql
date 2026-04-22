@@ -85,6 +85,6 @@ BEGIN
 
     RETURN row_to_json(v_settlement);
 END;
-$$
-REVOKE EXECUTE ON FUNCTION public.review_daily_settlement_v1(TEXT, TEXT, TEXT) FROM PUBLIC
-GRANT EXECUTE ON FUNCTION public.review_daily_settlement_v1(TEXT, TEXT, TEXT) TO authenticated
+$$;
+REVOKE EXECUTE ON FUNCTION public.review_daily_settlement_v1(TEXT, TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.review_daily_settlement_v1(TEXT, TEXT, TEXT) TO authenticated;

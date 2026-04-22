@@ -508,27 +508,10 @@ export async function flushQueue(
         // Reconstruct photoUrl from the stored tx entry rather than rawInput,
         // since photoUrl is stripped from rawInput at enqueue time to avoid
         // storing duplicate base64 payloads.
-        const replayInput: CollectionSubmissionInput = {
-          ...entry.rawInput,
-          photoUrl: entry.rawInput.photoUrl ?? (entry.photoUrl ?? null),
-        };
-        
-        // ✅ 问题 3 修复：硬性要求 photoUrl，失败时重试
-        // 如果 entry 有 photoData，必须确保 photoUrl 被正确上传到 Storage
-        // 否则审计证据会丢失
-        if (entry.photoUrl && !isValidHttpUrl(replayInput.photoUrl)) {
-          // photoUrl 应该已经是公共 URL，如果不是表示上传失败
-          console.warn(
-            `[PhotoUrl Missing] Transaction ${tx.id} has photoData but no valid URL after replay. ` +
-            'Storage upload may have failed. Marking for retry.'
-          );
-          await recordRetryFailure(
-            tx.id,
-            'photo_upload_failed: Storage unavailable or upload incomplete',
-            'transient',
-          );
-          continue;  // ← 不标记为同步，留在队列中待重试
-        }
+      const replayInput: CollectionSubmissionInput = {
+        ...entry.rawInput,
+        photoUrl: entry.rawInput.photoUrl ?? (entry.photoUrl ?? null),
+      };
 
         const result = await options.submitCollection(replayInput);
         if (result.success) {
