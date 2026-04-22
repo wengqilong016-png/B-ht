@@ -57,13 +57,10 @@
       ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "handle": "filesystem"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
+      "source": "/((?!assets/)(?!.*\\.[^/]+$).*)",
+      "destination": "/index.html"
     }
   ]
 }
