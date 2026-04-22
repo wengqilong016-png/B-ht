@@ -73,7 +73,7 @@ jobs:
           echo "SHA: ${{ github.sha }}"
 
       - name: Set up Supabase CLI
-        uses: supabase/setup-cli@v1
+        uses: supabase/setup-cli@v2
         with:
           version: latest
 
