@@ -69,3 +69,4 @@ supabase/.temp/
 # Local debug/smoke-test scripts (contain hardcoded test credentials)
 scripts/debug/
 .env*.local
+.env
