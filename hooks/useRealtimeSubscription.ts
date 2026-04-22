@@ -137,7 +137,9 @@ export function useRealtimeSubscription(userRole?: 'admin' | 'driver', isOnline?
       // - 用户切换角色或登出时，不会泄露来自旧订阅的数据更新
       
       channels.forEach((ch) => {
-        ch.unsubscribe();  // ← 显式卸载订阅
+        if (typeof ch.unsubscribe === 'function') {
+          ch.unsubscribe();  // ← 显式卸载订阅
+        }
         client.removeChannel(ch);  // ← 释放 channel 资源
       });
       cleanup();  // ← 清理 invalidation 队列的待处理计时器
