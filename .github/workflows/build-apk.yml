@@ -258,7 +258,8 @@ jobs:
           RELEASED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
           mkdir -p public/downloads
           cp android/app/build/outputs/apk/bahati-latest-release.apk public/downloads/bahati-latest-release.apk
-          APK_URL="https://bahatiwin.space/downloads/bahati-latest-release.apk"
+          REPO="${{ github.repository }}"
+          APK_URL="https://github.com/${REPO}/releases/latest/download/bahati-latest-release.apk"
           node -e "
             const fs = require('fs');
             fs.writeFileSync('public/version.json', JSON.stringify({
