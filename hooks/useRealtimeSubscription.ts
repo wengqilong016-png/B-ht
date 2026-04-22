@@ -125,8 +125,22 @@ export function useRealtimeSubscription(userRole?: 'admin' | 'driver', isOnline?
     const channels = subscribeToRealtimeChannels(client, channelConfigs, queue, setRealtimeStatus);
 
     return () => {
-      cleanup();
-      channels.forEach((ch) => client.removeChannel(ch));
+      // ✅ 问题 7 修复：改进订阅清理逻辑
+      // 1. 显式调用 unsubscribe() 卸载每个订阅的事件监听器
+      // 2. 调用 removeChannel() 以释放 Channel 对象持有的资源
+      // 3. 清理 realtime invalidation 的待处理队列
+      // 
+      // 这确保了：
+      // - 事件监听器不会继续监听（即使 channel 被移除）
+      // - Supabase 客户端内部的 channel 注册表被清空
+      // - 缓冲的 invalidation 回调不会在卸载后触发
+      // - 用户切换角色或登出时，不会泄露来自旧订阅的数据更新
+      
+      channels.forEach((ch) => {
+        ch.unsubscribe();  // ← 显式卸载订阅
+        client.removeChannel(ch);  // ← 释放 channel 资源
+      });
+      cleanup();  // ← 清理 invalidation 队列的待处理计时器
     };
   }, [queryClient, userRole]);
 

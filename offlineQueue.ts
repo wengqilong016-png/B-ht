@@ -416,6 +416,12 @@ export async function flushQueue(
   if (_isFlushing) return 0;
   _isFlushing = true;
 
+  // ✅ 问题 6 修复：添加整体超时保护，防止 flushQueue 无限卡顿
+  // 如果单个 submitCollection 超时，后续所有项都会被阻塞
+  // 120s 是合理的超时阈值，足以处理慢速网络，但防止无限等待
+  const QUEUE_FLUSH_TIMEOUT_MS = 120_000;
+  const startTime = Date.now();
+
   try {
   const pending = await getPendingTransactions();
   if (pending.length === 0) return 0;
@@ -424,6 +430,16 @@ export async function flushQueue(
   let flushed = 0;
 
   for (const tx of pending) {
+    // ✅ 检查整体超时：如果已经超过 120s，停止处理新项
+    if (Date.now() - startTime > QUEUE_FLUSH_TIMEOUT_MS) {
+      console.warn(
+        `[OfflineQueue] flushQueue timeout after ${QUEUE_FLUSH_TIMEOUT_MS}ms. ` +
+        `Processed ${flushed}/${pending.length} items. ` +
+        'Stopping to prevent indefinite blocking. Remaining items will retry later.'
+      );
+      break; // ← 强制停止，留在队列中待下次重试
+    }
+
     const entry = tx as Transaction & Partial<QueueMeta>;
 
     // Skip items whose backoff period hasn't elapsed yet
