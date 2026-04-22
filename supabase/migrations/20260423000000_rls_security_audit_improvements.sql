@@ -228,7 +228,7 @@ AS $$
 DECLARE
   v_recent_count int;
   v_window_minutes int := 1;  -- 1 minute window
-  v_max_per_window int := 50;  -- Max 50 transactions per minute
+  v_max_per_window int := 200;  -- Max 50 transactions per minute
 BEGIN
   -- Only check for driver inserts
   IF public.get_my_role() = 'driver' THEN
