@@ -68,7 +68,7 @@ export function useSupabaseData(
   const { data: isOnline = false, refetch: refetchHealth } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
-    refetchInterval: 15_000,
+    refetchInterval: 5_000,  // ✅ 改为 5s（原 15s），减少网络抖动检测延迟
     refetchOnWindowFocus: true,
   });
 

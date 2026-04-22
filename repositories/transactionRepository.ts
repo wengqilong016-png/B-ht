@@ -45,7 +45,26 @@ export async function fetchTransactions(opts: FetchTransactionsOptions): Promise
   if (opts.signal) query.abortSignal(opts.signal);
   const { data, error } = await query;
   if (error) throw error;
-  return (data ?? []) as unknown as Transaction[];
+  
+  const result = (data ?? []) as unknown as Transaction[];
+  
+  // ✅ RLS 权限隔离前端验证：确保返回数据符合权限范围
+  if (opts.isDriver && opts.driverIdFilter) {
+    // Driver 用户只能看到自己的交易
+    const violatedRecords = result.filter(tx => tx.driverId !== opts.driverIdFilter);
+    if (violatedRecords.length > 0) {
+      console.error(
+        '[RLS Violation] fetchTransactions returned data with mismatched driverId:',
+        violatedRecords.map(tx => ({ id: tx.id, expected: opts.driverIdFilter, actual: tx.driverId }))
+      );
+      throw new Error(
+        `RLS violation: fetched ${violatedRecords.length} transaction(s) with incorrect driverId. ` +
+        'This indicates Supabase RLS policy is not properly enforced.'
+      );
+    }
+  }
+  
+  return result;
 }
 
 export async function upsertTransaction(tx: Partial<Transaction>): Promise<void> {

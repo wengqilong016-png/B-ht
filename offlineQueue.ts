@@ -268,6 +268,42 @@ export async function getAllQueuedTransactions(): Promise<Transaction[]> {
  * server-authoritative values before the entry is marked synced.
  */
 export async function markSynced(id: string, authoritativeData?: Partial<Transaction>): Promise<void> {
+  // ✅ 数据验证：确保 authoritativeData 的关键字段有效
+  if (authoritativeData) {
+    // id 必须是字符串
+    if (authoritativeData.id && typeof authoritativeData.id !== 'string') {
+      throw new Error('Invalid authoritativeData: id must be string');
+    }
+    
+    // currentScore 必须是有限数字
+    if (authoritativeData.currentScore !== undefined) {
+      if (typeof authoritativeData.currentScore !== 'number' || !isFinite(authoritativeData.currentScore)) {
+        throw new Error(`Invalid authoritativeData: currentScore must be finite number, got ${authoritativeData.currentScore}`);
+      }
+    }
+    
+    // previousScore 必须是有限数字
+    if (authoritativeData.previousScore !== undefined) {
+      if (typeof authoritativeData.previousScore !== 'number' || !isFinite(authoritativeData.previousScore)) {
+        throw new Error(`Invalid authoritativeData: previousScore must be finite number, got ${authoritativeData.previousScore}`);
+      }
+    }
+    
+    // timestamp 必须是有效日期
+    if (authoritativeData.timestamp !== undefined) {
+      if (typeof authoritativeData.timestamp !== 'string' || isNaN(Date.parse(authoritativeData.timestamp))) {
+        throw new Error(`Invalid authoritativeData: timestamp must be valid ISO string, got ${authoritativeData.timestamp}`);
+      }
+    }
+    
+    // photoUrl 可选但不能是非字符串的真值
+    if (authoritativeData.photoUrl !== undefined && authoritativeData.photoUrl !== null) {
+      if (typeof authoritativeData.photoUrl !== 'string') {
+        throw new Error(`Invalid authoritativeData: photoUrl must be string or null, got ${typeof authoritativeData.photoUrl}`);
+      }
+    }
+  }
+  
   const update = { ...authoritativeData, isSynced: true };
   try {
     const db    = await openDB();
