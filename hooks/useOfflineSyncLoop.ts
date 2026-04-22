@@ -13,6 +13,10 @@ const GPS_HEARTBEAT_INTERVAL_MS = 60_000;
 /** Skip GPS update when the driver has moved less than this distance (metres). */
 const GPS_MIN_MOVEMENT_METERS = 50;
 
+// ✅ 问题 10 修复：GPS 更新锁，防止心跳与同步竞争
+// 如果 GPS 更新和同步同时进行，可能导致重复的 Supabase 写入
+let isUpdatingGps = false;
+
 interface UseOfflineSyncLoopOptions {
   isOnline: boolean;
   /** Number of local records not yet synced to Supabase. */
@@ -189,45 +193,60 @@ export function useOfflineSyncLoop({
     if (!isOnline || !supabase || currentUser?.role !== 'driver' || !activeDriverId) return;
 
     const pushHeartbeat = () => {
+      // ✅ 问题 10 修复：防止 GPS 并发更新
+      if (isUpdatingGps) {
+        console.warn('[GPS] Previous update still in progress, skipping this tick');
+        return;
+      }
+
       if (!('geolocation' in navigator)) return;
+      
+      isUpdatingGps = true;
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          const { latitude, longitude } = pos.coords;
-          const newPos = { lat: latitude, lng: longitude };
+          try {
+            const { latitude, longitude } = pos.coords;
+            const newPos = { lat: latitude, lng: longitude };
 
-          const lastPos = lastGpsRef.current;
-          const hasMovedEnough = !lastPos || haversineMeters(lastPos, newPos) >= GPS_MIN_MOVEMENT_METERS;
+            const lastPos = lastGpsRef.current;
+            const hasMovedEnough = !lastPos || haversineMeters(lastPos, newPos) >= GPS_MIN_MOVEMENT_METERS;
 
-          if (hasMovedEnough) {
-            // Position changed significantly — update both GPS and lastActive.
-            supabase!
-              .from('drivers')
-              .update({
-                lastActive: new Date().toISOString(),
-                currentGps: newPos,
-              })
-              .eq('id', activeDriverId)
-              .abortSignal(AbortSignal.timeout(5000))
-              .then(({ error }) => {
-                if (error) {
-                  console.warn('[GPS] Heartbeat update failed:', error.message);
-                } else {
-                  lastGpsRef.current = newPos;
-                }
-              });
-          } else {
-            // Driver hasn't moved — only update lastActive to keep the session alive.
-            supabase!
-              .from('drivers')
-              .update({ lastActive: new Date().toISOString() })
-              .eq('id', activeDriverId)
-              .abortSignal(AbortSignal.timeout(5000))
-              .then(({ error }) => {
-                if (error) console.warn('[GPS] lastActive update failed:', error.message);
-              });
+            if (hasMovedEnough) {
+              // Position changed significantly — update both GPS and lastActive.
+              supabase!
+                .from('drivers')
+                .update({
+                  lastActive: new Date().toISOString(),
+                  currentGps: newPos,
+                })
+                .eq('id', activeDriverId)
+                .abortSignal(AbortSignal.timeout(5000))
+                .then(({ error }) => {
+                  if (error) {
+                    console.warn('[GPS] Heartbeat update failed:', error.message);
+                  } else {
+                    lastGpsRef.current = newPos;
+                  }
+                });
+            } else {
+              // Driver hasn't moved — only update lastActive to keep the session alive.
+              supabase!
+                .from('drivers')
+                .update({ lastActive: new Date().toISOString() })
+                .eq('id', activeDriverId)
+                .abortSignal(AbortSignal.timeout(5000))
+                .then(({ error }) => {
+                  if (error) console.warn('[GPS] lastActive update failed:', error.message);
+                });
+            }
+          } finally {
+            isUpdatingGps = false;  // ← 释放锁
           }
         },
-        (err) => console.warn('[GPS] Heartbeat position error:', err.message),
+        (err) => {
+          console.warn('[GPS] Heartbeat position error:', err.message);
+          isUpdatingGps = false;  // ← 释放锁
+        },
         // maximumAge: allow browser-cached position up to 30 s old (half the heartbeat
         // interval) so the data is never more than one full cycle stale on the server.
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 },

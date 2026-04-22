@@ -41,6 +41,26 @@ function isValidHttpUrl(value: string | null | undefined): boolean {
 }
 const BASE_BACKOFF_MS = 2_000; // 2 s → 4 s → 8 s → 16 s → 32 s
 
+// ✅ 问题 8 修复：localStorage 可用性检查 + 内存缓存降级
+// 某些浏览器（隐私模式、cross-origin iframe）会禁用或限制 localStorage
+// 但直接 typeof 检查不足以检测实际的写入失败
+
+function isLocalStorageAvailable(): boolean {
+  if (typeof window === 'undefined') return false;  // Node.js 环境
+  if (typeof window.localStorage === 'undefined') return false;
+
+  try {
+    const test = '__storage_test__';
+    window.localStorage.setItem(test, test);
+    window.localStorage.removeItem(test);
+    return true;  // ✓ 完全可用
+  } catch {
+    return false;  // ❌ 禁用或配额满
+  }
+}
+
+const memoryQueueCache = new Map<string, Array<Transaction & Partial<QueueMeta>>>();
+
 function captureQueueMessage(message: string, extras: Record<string, unknown> = {}): void {
   try {
     Sentry.withScope((scope) => {
@@ -105,6 +125,10 @@ export interface QueueMeta {
 }
 
 function readLocalQueue(): Array<Transaction & Partial<QueueMeta>> {
+  if (!isLocalStorageAvailable()) {
+    return memoryQueueCache.get(QUEUE_STORAGE_KEY) ?? [];
+  }
+
   try {
     const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
     if (!raw) return [];
@@ -112,6 +136,21 @@ function readLocalQueue(): Array<Transaction & Partial<QueueMeta>> {
     return Array.isArray(parsed) ? parsed as Array<Transaction & Partial<QueueMeta>> : [];
   } catch {
     return [];
+  }
+}
+
+// 改进的 localStorage 写入，with fallback to memory cache
+function writeLocalQueue(queue: Array<Transaction & Partial<QueueMeta>>): void {
+  if (!isLocalStorageAvailable()) {
+    memoryQueueCache.set(QUEUE_STORAGE_KEY, queue);
+    return;
+  }
+
+  try {
+    localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(queue));
+  } catch (err) {
+    console.warn('[OfflineQueue] localStorage write failed, using memory cache', err);
+    memoryQueueCache.set(QUEUE_STORAGE_KEY, queue);
   }
 }
 
@@ -221,16 +260,11 @@ export async function enqueueTransaction(tx: Transaction, rawInput?: CollectionS
     });
     db.close();
   } catch (err) {
-    // Fallback: localStorage
-    console.warn('[OfflineQueue] IDB unavailable, falling back to localStorage', err);
+    // Fallback: use writeLocalQueue which handles unavailable localStorage
+    console.warn('[OfflineQueue] IDB unavailable, falling back to localStorage/memory cache', err);
     const list = readLocalQueue();
     const updated = [...list.filter(t => t.id !== tx.id), { ...tx, isSynced: false, ...meta }];
-    try {
-      localStorage.setItem(QUEUE_STORAGE_KEY, JSON.stringify(updated));
-    } catch (lsErr) {
-      console.error('[OfflineQueue] Both IDB and localStorage failed:', lsErr);
-      throw new Error('Failed to queue transaction: all storage backends unavailable');
-    }
+    writeLocalQueue(updated);
   }
 }
 
@@ -606,9 +640,33 @@ export async function flushQueue(
  * Permanent errors will never succeed on retry (auth failure, not-found,
  * validation).  The entry is dead-lettered immediately.
  * Transient errors may succeed once connectivity or the server recovers.
+ *
+ * ✅ 问题 9 修复：完善分类逻辑，新增常见错误模式
  */
 export function classifyError(msg: string): 'transient' | 'permanent' {
   const lower = msg.toLowerCase();
+  
+  // ✅ 新增：transient 错误信号（网络/服务器问题，可重试）
+  const transientSignals = [
+    'timeout',
+    'network error',
+    'fetch failed',
+    'connection reset',
+    'econnrefused',
+    'econnreset',
+    'etimedout',
+    'dns',
+    'socket hang up',
+    '500 internal server error',
+    '502 bad gateway',
+    '503 service unavailable',
+    '504 gateway timeout',
+    'request aborted',
+    'offline',
+  ];
+  if (transientSignals.some(s => lower.includes(s))) return 'transient';
+
+  // ✅ 新增：permanent 错误信号（不可重试，立即 dead-letter）
   const permanentSignals = [
     'forbidden',
     // 'authentication required' is intentionally excluded: an expired JWT is
@@ -618,8 +676,14 @@ export function classifyError(msg: string): 'transient' | 'permanent' {
     'permission denied',
     'unauthorized',
     'violates',        // DB constraint violations (foreign key, check, etc.)
+    'bad request',     // 400 errors - client sent malformed data
+    'validation error',
+    'schema mismatch',
+    'duplicate key',   // already exists, retry won't help
+    'constraint',
   ];
   if (permanentSignals.some(s => lower.includes(s))) return 'permanent';
+  
   return 'transient';
 }
 
@@ -1136,10 +1200,22 @@ async function _updateDeadLetterError(
 const DEVICE_ID_KEY = 'bahati_device_id';
 
 /**
- * Returns a stable per-device identifier persisted in localStorage.
+ * Returns a stable per-device identifier persisted in localStorage or memory cache.
  * A new UUID is generated on first call and reused on subsequent visits.
+ * 
+ * ✅ 问题 8 修复：支持无 localStorage 环境（隐私模式等）
  */
 export function getOrCreateDeviceId(): string {
+  if (!isLocalStorageAvailable()) {
+    // Fallback: use memory cache
+    const MEMORY_DEVICE_ID_KEY = '__device_id__';
+    if (!memoryQueueCache.has(MEMORY_DEVICE_ID_KEY)) {
+      memoryQueueCache.set(MEMORY_DEVICE_ID_KEY, [{ id: safeRandomUUID() } as any]);
+    }
+    const cached = memoryQueueCache.get(MEMORY_DEVICE_ID_KEY);
+    return (cached?.[0]?.id) ?? safeRandomUUID();
+  }
+
   try {
     let id = localStorage.getItem(DEVICE_ID_KEY);
     if (!id) {
@@ -1147,10 +1223,15 @@ export function getOrCreateDeviceId(): string {
       localStorage.setItem(DEVICE_ID_KEY, id);
     }
     return id;
-  } catch {
-    // In environments without localStorage (e.g. tests with no storage) fall back
-    // to a session-scoped value.
-    return `ephemeral-${Math.random().toString(36).slice(2)}`;
+  } catch (err) {
+    // localStorage 写入失败，使用内存存储
+    console.warn('[OfflineQueue] localStorage unavailable for deviceId, using memory cache', err);
+    const MEMORY_DEVICE_ID_KEY = '__device_id__';
+    if (!memoryQueueCache.has(MEMORY_DEVICE_ID_KEY)) {
+      memoryQueueCache.set(MEMORY_DEVICE_ID_KEY, [{ id: safeRandomUUID() } as any]);
+    }
+    const cached = memoryQueueCache.get(MEMORY_DEVICE_ID_KEY);
+    return (cached?.[0]?.id) ?? `ephemeral-${Math.random().toString(36).slice(2)}`;
   }
 }
 
