@@ -28,6 +28,17 @@ const STORE_TX   = 'pending_transactions';
 const QUEUE_STORAGE_KEY = 'bahati_offline_queue';
 const MS_PER_DAY = 86_400_000;
 export const MAX_RETRIES = 5;
+
+// ── Utility: Validate photoUrl is a proper HTTP(S) URL ───────────────────────
+function isValidHttpUrl(value: string | null | undefined): boolean {
+  if (!value || typeof value !== 'string') return false;
+  try {
+    const url = new URL(value);
+    return url.protocol === 'http:' || url.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
 const BASE_BACKOFF_MS = 2_000; // 2 s → 4 s → 8 s → 16 s → 32 s
 
 function captureQueueMessage(message: string, extras: Record<string, unknown> = {}): void {
@@ -451,6 +462,23 @@ export async function flushQueue(
           ...entry.rawInput,
           photoUrl: entry.rawInput.photoUrl ?? (entry.photoUrl ?? null),
         };
+        
+        // ✅ 问题 3 修复：硬性要求 photoUrl，失败时重试
+        // 如果 entry 有 photoData，必须确保 photoUrl 被正确上传到 Storage
+        // 否则审计证据会丢失
+        if (entry.photoUrl && !isValidHttpUrl(replayInput.photoUrl)) {
+          // photoUrl 应该已经是公共 URL，如果不是表示上传失败
+          console.warn(
+            `[PhotoUrl Missing] Transaction ${tx.id} has photoData but no valid URL after replay. ` +
+            'Storage upload may have failed. Marking for retry.'
+          );
+          await recordRetryFailure(
+            tx.id,
+            'photo_upload_failed: Storage unavailable or upload incomplete',
+            'transient',
+          );
+          continue;  // ← 不标记为同步，留在队列中待重试
+        }
 
         const result = await options.submitCollection(replayInput);
         if (result.success) {

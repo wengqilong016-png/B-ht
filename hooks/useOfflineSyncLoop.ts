@@ -131,62 +131,19 @@ export function useOfflineSyncLoop({
     })();
   }, [isOnline, triggerSync, unsyncedCount]);
 
-  // Browser-level recovery can arrive before the dbHealth query has propagated
-  // through React state. Listen to the native event as a direct recovery trigger
-  // so queued driver work is flushed promptly after connectivity returns.
-  useEffect(() => {
-    const handleOnline = () => {
-      window.setTimeout(() => {
-        if (isSyncingRef.current) return;
-        void (async () => {
-          try {
-            const { pending, retryWaiting } = await getQueueHealthSummary();
-            const freshPendingCount = pending + retryWaiting;
-            setIdbPendingCount(freshPendingCount);
-
-            if (unsyncedCount > 0 || freshPendingCount > 0) {
-              triggerSync();
-            }
-          } catch {
-            if (unsyncedCount > 0) {
-              triggerSync();
-            }
-          }
-        })();
-      }, 1000);
-    };
-
-    window.addEventListener('online', handleOnline);
-    return () => window.removeEventListener('online', handleOnline);
-  }, [triggerSync, unsyncedCount]);
-
-  // Fallback for mobile browsers where the native online event or dbHealth
-  // state propagation can be missed. This only attempts sync when the browser
-  // reports online and IndexedDB confirms queued work exists.
-  useEffect(() => {
-    const id = window.setInterval(() => {
-      if (isSyncingRef.current) return;
-      if (typeof navigator !== 'undefined' && !navigator.onLine) return;
-
-      void (async () => {
-        try {
-          const { pending, retryWaiting } = await getQueueHealthSummary();
-          const freshPendingCount = pending + retryWaiting;
-          setIdbPendingCount(freshPendingCount);
-
-          if (unsyncedCount > 0 || freshPendingCount > 0) {
-            triggerSync();
-          }
-        } catch {
-          if (unsyncedCount > 0) {
-            triggerSync();
-          }
-        }
-      })();
-    }, 5_000);
-
-    return () => window.clearInterval(id);
-  }, [triggerSync, unsyncedCount]);
+  // ✅ 问题 4 修复：删除重复的同步触发点
+  // 原来有三个 effect 都可能调用 triggerSync()，导致离线恢复时重复触发：
+  // 1. ✓ 保留：主 effect（line 109）— 监听 isOnline React state 变化
+  // 2. ✗ 删除：window.online 事件监听（line 137-161）
+  // 3. ✗ 删除：定时器 fallback（line 166-189）
+  //
+  // 理由：
+  // - 第一个 effect 已经正确捕获 offline→online 状态转移
+  // - window.online 事件会被 useSupabaseData.ts 中的事件处理器捕获，进而更新 React state
+  // - 定时器 fallback 不必要，且会导致多次重复调用
+  //
+  // 新流程：
+  // window.online 事件 → useSupabaseData refetchHealth() → React state 更新 → 第一个 effect 触发
 
   // ─── Auto-sync: retry every 60 s while online with pending records ────────
   useEffect(() => {
