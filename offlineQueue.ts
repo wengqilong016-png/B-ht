@@ -957,6 +957,34 @@ export async function getDeadLetterItems(): Promise<Transaction[]> {
   }
 }
 
+/** Permanently remove one dead-letter item after an operator decides it cannot be replayed. */
+export async function discardDeadLetterItem(id: string): Promise<boolean> {
+  const all = await getAllQueuedTransactions();
+  const entry = all.find(tx => tx.id === id) as (Transaction & Partial<QueueMeta>) | undefined;
+  if (!entry || entry.isSynced || (entry.retryCount ?? 0) < MAX_RETRIES) {
+    return false;
+  }
+
+  try {
+    const db = await openDB();
+    await new Promise<void>((resolve, reject) => {
+      const txDb = db.transaction(STORE_TX, 'readwrite');
+      const store = txDb.objectStore(STORE_TX);
+      const req = store.delete(id);
+      req.onsuccess = () => resolve();
+      req.onerror = () => reject(req.error);
+    });
+    db.close();
+    return true;
+  } catch {
+    const list = readLocalQueue();
+    const updated = list.filter(tx => tx.id !== id);
+    if (updated.length === list.length) return false;
+    writeLocalQueue(updated);
+    return true;
+  }
+}
+
 /**
  * Reset all dead-letter items back to a retryable state.
  *

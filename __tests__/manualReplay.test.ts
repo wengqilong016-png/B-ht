@@ -207,6 +207,31 @@ describe('replayDeadLetterItem — eligibility guards', () => {
   });
 });
 
+describe('discardDeadLetterItem', () => {
+  it('removes a dead-letter entry from the queue', async () => {
+    const { enqueueTransaction, discardDeadLetterItem, getAllQueuedTransactions } = await import('../offlineQueue');
+    const tx = makeTx();
+    await enqueueTransaction(tx, makeRawInput(tx.id));
+    deadLetterEntry(tx.id);
+
+    await expect(discardDeadLetterItem(tx.id)).resolves.toBe(true);
+
+    const all = await getAllQueuedTransactions();
+    expect(all.some(entry => entry.id === tx.id)).toBe(false);
+  });
+
+  it('does not remove a pending entry', async () => {
+    const { enqueueTransaction, discardDeadLetterItem, getAllQueuedTransactions } = await import('../offlineQueue');
+    const tx = makeTx();
+    await enqueueTransaction(tx, makeRawInput(tx.id));
+
+    await expect(discardDeadLetterItem(tx.id)).resolves.toBe(false);
+
+    const all = await getAllQueuedTransactions();
+    expect(all.some(entry => entry.id === tx.id)).toBe(true);
+  });
+});
+
 // ── replayDeadLetterItem — collection replay path ─────────────────────────────
 
 describe('replayDeadLetterItem — collection replay (rawInput present)', () => {

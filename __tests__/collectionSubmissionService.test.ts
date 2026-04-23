@@ -196,12 +196,12 @@ describe('submitCollectionV2', () => {
     expect(mockRpc).not.toHaveBeenCalled();
   });
 
-  it('returns failure without RPC when persistence does not produce an HTTP photo URL', async () => {
+  it('returns failure without RPC when photoUrl is not dataURL or HTTP(S)', async () => {
     const result = await submitCollectionV2({ ...baseInput, photoUrl: 'not-a-url' });
 
     expect(result.success).toBe(false);
     if (result.success === false) {
-      expect(result.error).toBe('Evidence photo persistence failed for required collection photoUrl');
+      expect(result.error).toBe('Invalid collection evidence photoUrl');
       expect(result.kind).toBe('evidence');
     }
     expect(mockUpload).not.toHaveBeenCalled();

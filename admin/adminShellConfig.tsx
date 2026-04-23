@@ -2,6 +2,7 @@ import {
   BarChart2,
   CheckSquare,
   CreditCard,
+  DatabaseBackup,
   Gauge,
   History,
   LayoutDashboard,
@@ -22,7 +23,8 @@ export type AdminView =
   | 'debt'
   | 'history'
   | 'monthly'
-  | 'driver-flow';
+  | 'driver-flow'
+  | 'dead-letter';
 
 export interface AdminNavItem {
   id: AdminView;
@@ -46,6 +48,7 @@ export const ADMIN_SECONDARY_NAV: AdminNavItem[] = [
   { id: 'collect', icon: <PlusCircle size={18} />, label: '采集录入', labelEn: 'Collection Entry' },
   { id: 'debt', icon: <CreditCard size={18} />, label: '债务管理', labelEn: 'Debt Management' },
   { id: 'driver-flow', icon: <Gauge size={18} />, label: '司机卡点', labelEn: 'Driver Flow' },
+  { id: 'dead-letter', icon: <DatabaseBackup size={18} />, label: '同步故障', labelEn: 'Sync Failures' },
   { id: 'monthly', icon: <BarChart2 size={18} />, label: '月度报表', labelEn: 'Monthly Report' },
   { id: 'history', icon: <History size={18} />, label: '操作记录', labelEn: 'Activity Log' },
 ];
@@ -61,6 +64,7 @@ export const ADMIN_PAGE_TITLES: Record<AdminView, string> = {
   history: '操作记录',
   monthly: '月度报表',
   'driver-flow': '司机卡点',
+  'dead-letter': '同步故障',
 };
 
 export function mapAdminViewToDashboardTab(v: AdminView): 'overview' | 'locations' | 'settlement' | 'team' | 'arrears' | 'tracking' {

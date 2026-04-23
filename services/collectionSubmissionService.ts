@@ -19,6 +19,7 @@ import { Transaction } from '../types';
 import { persistEvidencePhotoUrl } from './evidenceStorage';
 
 const MISSING_COLLECTION_PHOTO_ERROR = 'Missing required collection evidence photoUrl';
+const INVALID_COLLECTION_PHOTO_ERROR = 'Invalid collection evidence photoUrl';
 const FAILED_COLLECTION_PHOTO_PERSISTENCE_ERROR = 'Evidence photo persistence failed for required collection photoUrl';
 
 function isValidHttpUrl(value: string | null | undefined): value is string {
@@ -29,6 +30,10 @@ function isValidHttpUrl(value: string | null | undefined): value is string {
   } catch {
     return false;
   }
+}
+
+function isDataImageUrl(value: string | null | undefined): value is string {
+  return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
 }
 
 /**
@@ -107,6 +112,10 @@ export async function submitCollectionV2(
 
   if (!input.photoUrl?.trim()) {
     return { success: false, error: MISSING_COLLECTION_PHOTO_ERROR, kind: 'evidence' };
+  }
+
+  if (!isDataImageUrl(input.photoUrl) && !isValidHttpUrl(input.photoUrl)) {
+    return { success: false, error: INVALID_COLLECTION_PHOTO_ERROR, kind: 'evidence' };
   }
 
   let persistedPhotoUrl: string | null;

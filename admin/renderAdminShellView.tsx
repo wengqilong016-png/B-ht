@@ -15,6 +15,7 @@ const DebtManager = lazy(() => import('../components/DebtManager'));
 const DriverManagement = lazy(() => import('../components/driver-management'));
 const MonthlyReportPage = lazy(() => import('./MonthlyReportPage'));
 const DriverFlowDiagnosticsPage = lazy(() => import('./DriverFlowDiagnosticsPage'));
+const AdminDeadLetterPage = lazy(() => import('./AdminDeadLetterPage'));
 
 interface AdminShellViewRendererProps {
   view: AdminView;
@@ -58,6 +59,8 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
       return <MonthlyReportPage />;
     case 'driver-flow':
       return <DriverFlowDiagnosticsPage />;
+    case 'dead-letter':
+      return <AdminDeadLetterPage />;
     default:
       return null;
   }
