@@ -11,9 +11,23 @@ import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 const mockInvoke = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockUpdate = jest.fn<(fields: Record<string, unknown>) => { eq: typeof mockEq }>();
 const mockEq = jest.fn<(field: string, value: unknown) => Promise<unknown>>();
+let mockSupabase: unknown;
 
 jest.mock('../supabaseClient', () => ({
-  supabase: {
+  get supabase() {
+    return mockSupabase;
+  },
+}));
+
+import {
+  createDriverAccount,
+  deleteDriverAccount,
+  persistDriverBusinessFields,
+} from '../services/driverManagementService';
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockSupabase = {
     functions: {
       invoke: (...args: unknown[]) => mockInvoke(...args),
     },
@@ -23,16 +37,7 @@ jest.mock('../supabaseClient', () => ({
         return { eq: mockEq };
       },
     }),
-  },
-}));
-
-import {
-  createDriverAccount,
-  persistDriverBusinessFields,
-} from '../services/driverManagementService';
-
-beforeEach(() => {
-  jest.clearAllMocks();
+  };
 });
 
 // ══ createDriverAccount ════════════════════════════════════════════════════
@@ -116,6 +121,65 @@ describe('createDriverAccount()', () => {
     const fail = result as { success: false; code: string; message: string };
     expect(fail.code).toBe('UNKNOWN');
   });
+
+  it('returns CLIENT_UNAVAILABLE when Supabase client is missing', async () => {
+    mockSupabase = null;
+
+    const result = await createDriverAccount(params);
+
+    expect(result).toEqual({
+      success: false,
+      code: 'CLIENT_UNAVAILABLE',
+      message: 'Supabase client unavailable',
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
+});
+
+// ══ deleteDriverAccount ════════════════════════════════════════════════════
+
+describe('deleteDriverAccount()', () => {
+  it('returns success and driverId when delete edge function succeeds', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { success: true, driver_id: 'uuid-drv-001' },
+      error: null,
+    });
+
+    const result = await deleteDriverAccount('drv-001');
+
+    expect(result).toEqual({ success: true, driverId: 'uuid-drv-001' });
+    expect(mockInvoke).toHaveBeenCalledWith('delete-driver', {
+      body: { driver_id: 'drv-001' },
+    });
+  });
+
+  it('returns failure when delete edge function reports an error payload', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { success: false, error: 'Driver not found', code: 'NOT_FOUND' },
+      error: null,
+    });
+
+    const result = await deleteDriverAccount('drv-404');
+
+    expect(result).toEqual({
+      success: false,
+      code: 'NOT_FOUND',
+      message: 'Driver not found',
+    });
+  });
+
+  it('returns CLIENT_UNAVAILABLE when Supabase client is missing', async () => {
+    mockSupabase = null;
+
+    const result = await deleteDriverAccount('drv-001');
+
+    expect(result).toEqual({
+      success: false,
+      code: 'CLIENT_UNAVAILABLE',
+      message: 'Supabase client unavailable',
+    });
+    expect(mockInvoke).not.toHaveBeenCalled();
+  });
 });
 
 // ══ persistDriverBusinessFields ═══════════════════════════════════════════
@@ -177,5 +241,11 @@ describe('persistDriverBusinessFields()', () => {
     mockEq.mockResolvedValue({ error: dbError });
 
     await expect(persistDriverBusinessFields('drv-001', fields)).rejects.toThrow('Permission denied');
+  });
+
+  it('throws when Supabase client is unavailable', async () => {
+    mockSupabase = null;
+
+    await expect(persistDriverBusinessFields('drv-001', fields)).rejects.toThrow('Supabase client unavailable');
   });
 });
