@@ -5,6 +5,7 @@ import {
   Loader2, CheckCircle2, AlertCircle,
   CreditCard, PieChart, Check, Pencil, Save
 } from 'lucide-react';
+import { useAriaButton } from '../src/hooks/useAriaButton'
 import React, { useState, useMemo } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';

@@ -1,5 +1,6 @@
 import { History, ChevronDown, ChevronUp } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
+import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { fetchFinanceAuditLog } from '../../services/financeAuditService';
 import { TRANSLATIONS, FinanceAuditLog, FinanceAuditEventType } from '../../types';

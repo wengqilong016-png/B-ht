@@ -1,5 +1,6 @@
 
 import { X, Lock, Mail, AlertCircle, Loader2, KeyRound, Clock, WifiOff, ShieldBan } from 'lucide-react';
+import { useAriaButton } from '../src/hooks/useAriaButton'
 import React, { useState } from 'react';
 
 import { useFormStatus } from '../hooks/useFormStatus';
@@ -101,7 +102,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
               <p className="text-caption font-bold text-slate-400 uppercase">{currentUser.username} • {t.accountSettings}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-2 bg-white/50 shadow-silicone-sm rounded-xl text-slate-400 hover:text-amber-600 transition-all border border-white/80">
+          <button {...useAriaButton({ label: t.close })} type="button" onClick={onClose} className="p-2 bg-white/50 shadow-silicone-sm rounded-xl text-slate-400 hover:text-amber-600 transition-all border border-white/80">
             <X size={16} />
           </button>
         </div>
@@ -168,7 +169,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                       <span>{pwdForm.message}</span>
                     </div>
                   )}
-                  <button type="submit" disabled={pwdForm.isLoading || !isOnline} className={submitClass}>
+                  <button type="submit" {...useAriaButton({ label: t.submit_changes, disabled: pwdForm.isLoading || !isOnline })} disabled={pwdForm.isLoading || !isOnline} className={submitClass}>
                     {pwdForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Lock size={14} /> {t.saveChanges}</>}
                   </button>
                 </form>
@@ -234,7 +235,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ currentUser, lang, is
                         <span>{emailForm.message}</span>
                       </div>
                     )}
-                    <button type="submit" disabled={emailForm.isLoading || !isOnline} className={submitClass}>
+                    <button type="submit" {...useAriaButton({ label: t.submit_changes, disabled: emailForm.isLoading || !isOnline })} disabled={emailForm.isLoading || !isOnline} className={submitClass}>
                       {emailForm.isLoading ? <Loader2 size={16} className="animate-spin" /> : <><Mail size={14} /> {t.saveChanges}</>}
                     </button>
                   </form>

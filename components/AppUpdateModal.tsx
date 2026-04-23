@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core';
 import { CheckCircle2, Download, ExternalLink, ShieldCheck, Sparkles, X } from 'lucide-react';
+import { useAriaButton } from '../src/hooks/useAriaButton'
 import React, { useState } from 'react';
 
 import { useToast } from '../contexts/ToastContext';

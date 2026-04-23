@@ -1,5 +1,6 @@
 import { Search, ImageIcon, FileText, LayoutList, BrainCircuit } from 'lucide-react';
 import React, { useState } from 'react';
+import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { AILog, TRANSLATIONS } from '../../types';
 
@@ -56,8 +57,8 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
         </div>
         {/* View mode */}
         <div className="flex bg-slate-100 p-1 rounded-xl">
-          <button onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-caption font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}>LIST</button>
-          <button onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-caption font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}>GRID</button>
+          <button {...useAriaButton({ label: "list_view" })} onClick={() => setAiLogViewMode('list')} className={`px-4 py-2 rounded-lg text-caption font-black uppercase ${aiLogViewMode === 'list' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}>LIST</button>
+          <button {...useAriaButton({ label: "grid_view" })} onClick={() => setAiLogViewMode('grid')} className={`px-4 py-2 rounded-lg text-caption font-black uppercase ${aiLogViewMode === 'grid' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}>GRID</button>
         </div>
       </div>
 
@@ -72,7 +73,7 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
 
       <div className={aiLogViewMode === 'grid' ? 'grid grid-cols-2 md:grid-cols-4 gap-4' : 'space-y-4'}>
         {filteredAiLogs.map(log => (
-          <button key={log.id} className="bg-white p-3 rounded-card border border-slate-200 cursor-pointer hover:shadow-md transition-shadow text-left w-full" onClick={() => setViewingLog(log)}>
+          <button key={log.id} {...useAriaButton({ label: t.view_details })} className="bg-white p-3 rounded-card border border-slate-200 cursor-pointer hover:shadow-md transition-shadow text-left w-full" onClick={() => setViewingLog(log)}>
             {log.imageUrl && <img src={log.imageUrl} className="w-full aspect-square object-cover rounded-2xl mb-2" alt="Log" />}
             <p className="text-caption font-black text-slate-900 truncate">{log.driverName}</p>
             <p className="text-caption font-bold text-slate-400 uppercase">{new Date(log.timestamp).toLocaleDateString()}</p>
@@ -102,7 +103,7 @@ const AiLogsTab: React.FC<AiLogsTabProps> = ({
               </div>
             </div>
             <div className="p-4 border-t border-slate-100 bg-slate-50">
-              <button onClick={() => setViewingLog(null)} className="w-full py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase">{t.close}</button>
+              <button {...useAriaButton({ label: t.close })} onClick={() => setViewingLog(null)} className="w-full py-3 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase">{t.close}</button>
             </div>
           </div>
         </div>

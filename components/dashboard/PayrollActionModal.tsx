@@ -1,5 +1,6 @@
 import { X, Receipt, Wallet, Ban } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
+import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { useToast } from '../../contexts/ToastContext';
 import { persistEvidencePhotoUrl } from '../../services/evidenceStorage';
@@ -186,7 +187,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
     <div className="fixed inset-0 z-[80] bg-slate-900/80 backdrop-blur-md flex items-center justify-center p-6 animate-in fade-in">
       <div className="bg-white w-full max-w-lg rounded-card overflow-hidden shadow-2xl relative">
         <div className="bg-slate-900 p-6 text-white relative">
-          <button onClick={onClose} disabled={isSubmitting || isUploading} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 disabled:opacity-40">
+          <button type="button" {...useAriaButton({ label: t.close })} disabled={isSubmitting || isUploading} onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/10 rounded-full hover:bg-white/20 disabled:opacity-40">
             <X size={18} />
           </button>
           <div className="flex items-center gap-3 mb-2">

@@ -1,4 +1,5 @@
 import React from 'react';
+import { useAriaButton } from '../src/hooks/useAriaButton'
 
 interface PageErrorBoundaryState {
   hasError: boolean;

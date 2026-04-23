@@ -1,5 +1,6 @@
 import { Calculator, CheckCircle2, AlertTriangle, ShieldAlert, RefreshCw, Wallet, ChevronDown, ChevronUp, ScanEye, Loader2 } from 'lucide-react';
 import React from 'react';
+import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { DailySettlement, Location, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';

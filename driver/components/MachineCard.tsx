@@ -356,7 +356,7 @@ const MachineCard: React.FC<MachineCardProps> = ({
           <button
             type="button"
             disabled={isSubmittingOfficeLoan}
-            onClick={handleSubmitOfficeLoan}
+            {...useAriaButton({ label: t.submit_loan })} onClick={handleSubmitOfficeLoan}
             className="flex w-full items-center justify-center gap-2 rounded-btn bg-amber-600 px-3 py-2 text-caption font-black uppercase text-white disabled:opacity-50"
           >
             {isSubmittingOfficeLoan ? <Loader2 size={12} className="animate-spin" /> : <Banknote size={12} />}
