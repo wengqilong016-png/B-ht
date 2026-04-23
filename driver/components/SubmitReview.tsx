@@ -523,7 +523,12 @@ const SubmitReview: React.FC<SubmitReviewProps> = ({
           </p>
         </div>
         {!gpsCoords && gpsPermission !== 'denied' && (
-          <button aria-label="action button" onClick={onRequestGps} className="p-1.5 bg-white rounded-xl border border-slate-200 text-amber-600 flex-shrink-0">
+          <button
+            type="button"
+            onClick={onRequestGps}
+            aria-label={t.gpsAcquiring}
+            className="p-1.5 bg-white rounded-xl border border-slate-200 text-amber-600 flex-shrink-0"
+          >
             <RotateCcw size={12} />
           </button>
         )}
