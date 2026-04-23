@@ -103,6 +103,10 @@ jest.mock('../../services/collectionSubmissionAudit', () => ({
   appendCollectionSubmissionAudit: jest.fn(),
 }));
 
+jest.mock('../../services/evidenceStorage', () => ({
+  persistEvidencePhotoUrl: jest.fn<() => Promise<string>>().mockResolvedValue('https://example.com/evidence/offline-sync.jpg'),
+}));
+
 import { makeTransaction, resetFixtureCounter } from '../helpers/fixtures';
 
 beforeEach(() => {
@@ -216,8 +220,8 @@ describe('Offline Sync Flow (Integration)', () => {
 
       const putArg = mockObjectStore.put.mock.calls[0][0] as Record<string, unknown>;
       const rawInput = putArg.rawInput as Record<string, unknown> | undefined;
-      // rawInput.photoUrl should be null (stripped to save space)
-      expect(rawInput?.photoUrl).toBeNull();
+      expect(rawInput?.photoUrl).toBe('https://example.com/evidence/offline-sync.jpg');
+      expect(putArg.photoUrl).toBe('https://example.com/evidence/offline-sync.jpg');
     });
   });
 
@@ -225,9 +229,11 @@ describe('Offline Sync Flow (Integration)', () => {
     it('flushes an offline collection exactly once, clears pending work, and leaves no dead-letter residue', async () => {
       const { enqueueTransaction, flushQueue, getAllQueuedTransactions, getDeadLetterItems } = await import('../../offlineQueue');
 
+      const photoUrl = 'data:image/jpeg;base64,offline-sync';
       const tx = makeTransaction({
         id: 'offline-sync-tx-1',
         isSynced: false,
+        photoUrl,
       });
       const rawInput = {
         txId: tx.id,
@@ -241,7 +247,7 @@ describe('Offline Sync Flow (Integration)', () => {
         ownerRetention: null,
         coinExchange: 0,
         gps: tx.gps,
-        photoUrl: null,
+        photoUrl,
         aiScore: null,
         anomalyFlag: false,
         notes: null,

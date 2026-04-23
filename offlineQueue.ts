@@ -16,10 +16,11 @@ import * as Sentry from '@sentry/react';
 import { SupabaseClient } from '@supabase/supabase-js';
 
 import { appendCollectionSubmissionAudit } from './services/collectionSubmissionAudit';
+import { isFailure } from './services/collectionSubmissionService';
 import { persistEvidencePhotoUrl } from './services/evidenceStorage';
 import { Transaction, safeRandomUUID } from './types';
 
-import { isFailure, type CollectionSubmissionInput, type CollectionSubmissionResult } from './services/collectionSubmissionService';
+import type { CollectionSubmissionInput, CollectionSubmissionResult } from './services/collectionSubmissionService';
 
 
 

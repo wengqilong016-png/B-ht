@@ -67,7 +67,7 @@ function makeOrchestratorInput(
     currentDriver: drv,
     isOnline: true,
     currentScore: '1200',
-    photoData: null,
+    photoData: 'data:image/jpeg;base64,abc',
     aiReviewData: null,
     expenses: '0',
     expenseType: 'public',
