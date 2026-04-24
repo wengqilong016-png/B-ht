@@ -153,7 +153,9 @@ const MachineCard: React.FC<MachineCardProps> = ({
   return (
     <div className="overflow-hidden rounded-card border border-slate-200 bg-white shadow-field">
       <button
-                aria-label={isLocked ? `Machine ${loc.machineId || ""} is locked` : `Navigate to machine ${loc.machineId || ""}`}
+        onClick={() => onSelect(loc.id)}
+        disabled={isLocked}
+        aria-label={isLocked ? `Machine ${loc.machineId || ""} is locked` : `Navigate to machine ${loc.machineId || ""}`}
         data-testid={`driver-machine-select-${loc.id}`}
       >
         <div className="flex items-start gap-3 px-4 py-3">
