@@ -1,6 +1,5 @@
 import { ArrowRight, Store, BrainCircuit, ChevronDown } from 'lucide-react';
 import React from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { Transaction, Driver, Location, DailySettlement, MonthlyPayroll, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
@@ -239,7 +238,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
       ) : revDrilldown === 'drivers' ? (
         <div className="space-y-3 animate-in fade-in">
           <div className="flex items-center gap-3 mb-1">
-            <button type="button" {...useAriaButton({ label: t.back })} onClick={() => setRevDrilldown('none')} className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
+            <button type="button" aria-label={t.back} onClick={() => setRevDrilldown('none')} className="p-1.5 bg-white border border-slate-200 rounded-xl text-slate-600 hover:bg-slate-50"><ArrowRight size={16} className="rotate-180" /></button>
             <div>
               <h3 className="text-sm font-black text-slate-900 uppercase">{t.revenue} — {t.byDriver}</h3>
               <p className="text-[10px] text-slate-400 font-bold">{t.todayRevenueByDriver}</p>

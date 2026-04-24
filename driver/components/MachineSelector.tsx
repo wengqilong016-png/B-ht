@@ -1,6 +1,5 @@
 import { Layers, Coins, ScanLine, AlertTriangle, WifiOff, DatabaseBackup } from 'lucide-react';
 import React, { useMemo, useState, useEffect, useDeferredValue } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { getPendingTransactions } from '../../offlineQueue';
 import { Location, Driver, Transaction, CONSTANTS, TRANSLATIONS, getDistance } from '../../types';

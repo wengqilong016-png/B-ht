@@ -1,5 +1,4 @@
 import React from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { TRANSLATIONS } from '../../types';
 

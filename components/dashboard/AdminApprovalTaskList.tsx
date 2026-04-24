@@ -1,6 +1,5 @@
 import { Calculator, CheckCircle2, AlertTriangle, ShieldAlert, RefreshCw, Wallet, ChevronDown, ChevronUp, ScanEye, Loader2 } from 'lucide-react';
 import React from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { DailySettlement, Location, Transaction, TRANSLATIONS } from '../../types';
 import { getOptimizedImageUrl } from '../../utils/imageUtils';
@@ -209,8 +208,8 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                             <img src={(s as unknown as { transferProofUrl: string }).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                           )}
                           <div className="flex gap-2">
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
+                            <button aria-label={t.rejectBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                           <p className="text-caption font-bold leading-relaxed text-slate-500">
                             {lang === 'zh'
@@ -236,8 +235,8 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                            <button aria-label={t.rejectBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveExpenseRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                           <p className="text-caption font-bold leading-relaxed text-slate-500">
                             {tx.expenseType === 'private'
@@ -299,8 +298,8 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                               : <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-24 object-cover rounded-xl border border-slate-200" />
                           )}
                           <div className="flex gap-2">
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                            <button aria-label={t.rejectBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewAnomalyTransaction(task.id, false))} className="flex-1 py-2.5 bg-rose-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                         </>
                       );
@@ -320,8 +319,8 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                             <img src={getOptimizedImageUrl(tx.photoUrl, 400, 300)} alt={t.paymentProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                           )}
                           <div className="flex gap-2">
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
+                            <button aria-label={t.approveAndReset} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveAndReset}</button>
+                            <button aria-label={t.rejectBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApproveResetRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                         </>
                       );
@@ -360,7 +359,7 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                               : 'Dividend balance is stored per location; approving payout deducts this location balance, while rejecting leaves it unchanged.'}
                           </p>
                           <div className="flex gap-2">
-                            <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
+                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, true))} className="flex-1 py-2.5 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase disabled:opacity-50">✓ {t.approveBtn}</button>
                             <button disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onApprovePayoutRequest(task.id, false))} className="flex-1 py-2.5 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                         </>

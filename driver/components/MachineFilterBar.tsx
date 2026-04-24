@@ -1,6 +1,5 @@
 import { Search, Plus } from 'lucide-react';
 import React from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton';
 
 type QuickFilter = 'all' | 'pending' | 'urgent' | 'nearby';
 
@@ -53,16 +52,14 @@ const MachineFilterBar: React.FC<MachineFilterBarProps> = ({
         ] as const).map(([key, label, count]) => (
           <button
             key={key}
-            {...useAriaButton({
-              onClick: () => onFilterChange(key),
-              label: label + ' (' + count + ')',
-              pressed: locationFilter === key,
-              className: `shrink-0 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase transition-all border ${
-                locationFilter === key
-                  ? 'bg-slate-900 text-white border-slate-900 shadow-field'
-                  : 'bg-white text-slate-500 border-slate-200 hover:border-amber-200 hover:text-amber-600'
-              }`,
-            })}
+            aria-label={label + ' (' + count + ')'}
+            aria-pressed={locationFilter === key}
+            onClick={() => onFilterChange(key)}
+            className={`shrink-0 px-3 py-1.5 rounded-2xl text-[10px] font-black uppercase transition-all border ${
+              locationFilter === key
+                ? 'bg-slate-900 text-white border-slate-900 shadow-field'
+                : 'bg-white text-slate-500 border-slate-200 hover:border-amber-200 hover:text-amber-600'
+            }`}
           >
             {label} <span className="ml-1 opacity-60">{count}</span>
           </button>
@@ -83,11 +80,10 @@ const MachineFilterBar: React.FC<MachineFilterBarProps> = ({
     {/* Register new machine */}
     {showRegisterButton && (
       <button
-        {...useAriaButton({
-          onClick: onStartRegister,
-          label: t.registerNewMachine,
-          className: 'w-full py-3 bg-amber-50 border border-amber-100 text-amber-600 rounded-2xl font-black uppercase text-[11px] hover:bg-amber-100 transition-colors flex items-center justify-center gap-2',
-        })}
+        type="button"
+        aria-label={t.registerNewMachine}
+        onClick={onStartRegister}
+        className="w-full py-3 bg-amber-50 border border-amber-100 text-amber-600 rounded-2xl font-black uppercase text-[11px] hover:bg-amber-100 transition-colors flex items-center justify-center gap-2"
       >
         <Plus size={15} />
         {t.registerNewMachine}

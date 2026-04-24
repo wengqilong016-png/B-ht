@@ -1,7 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Receipt } from 'lucide-react';
 import React, { useMemo, useState, useEffect } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
@@ -450,7 +449,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                             </div>
                           )}
                           <div className="flex gap-2 flex-wrap">
-                            <button {...useAriaButton({ label: t.print_payroll })} onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-caption font-black uppercase">PDF</button>
+                            <button aria-label={t.print_payroll} type="button" onClick={() => window.print()} className="flex-1 py-2 bg-slate-900 text-white rounded-lg text-caption font-black uppercase">PDF</button>
                             <button
                               onClick={() => {
                                 const msg = `*PAYROLL ${m.month}*\nDriver: ${driver.name}\nBase: TZS ${summary.baseSalary.toLocaleString()}\nComm: TZS ${summary.commission.toLocaleString()}\nLoans: TZS ${summary.loans.toLocaleString()}\nShortage: TZS ${summary.shortage.toLocaleString()}\nNet: TZS ${summary.netPayable.toLocaleString()}`;

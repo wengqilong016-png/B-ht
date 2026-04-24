@@ -6,7 +6,6 @@ import React, { useState, useRef, useEffect } from 'react';
 
 import { useAppData } from '../../contexts/DataContext';
 import { useAdminAI, type AdminAIAlert } from '../../hooks/useAdminAI';
-import { useAriaButton } from '../../src/hooks/useAriaButton';
 
 const QUICK_PROMPTS = [
   '🔍 代理审核分析：今日所有未结算点位 + 异常交易汇总，并建议下一步行动',
@@ -114,6 +113,7 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
     <>
       <button
         onClick={() => setIsOpen(v => !v)}
+                type="button"
         aria-label={lang === 'zh' ? 'AI助手' : 'AI Assistant'}
         className="fixed bottom-20 right-4 z-40 w-12 h-12 rounded-full bg-amber-600 text-white shadow-lg shadow-amber-200 flex items-center justify-center hover:bg-amber-700 active:scale-95 transition-all md:bottom-6"
       >
@@ -145,36 +145,35 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
                 </div>
                 <div className="flex items-center gap-1.5">
                   {tab === 'chat' && messages.length > 0 && (
-                    <button onClick={clearHistory} className="p-1.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 transition-colors" title="清空对话">
+                    <button type="button"
+                      aria-label="Clear chat"
+                      className="p-1.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 transition-colors"
+                    >
                       <Trash2 size={13} />
                     </button>
                   )}
-                  <button onClick={() => setIsOpen(false)} className="p-1.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 transition-colors">
+                  <button type="button" onClick={() => setIsOpen(false)} className="p-1.5 rounded-xl bg-white/10 text-white/80 hover:bg-white/20 transition-colors">
                     <X size={15} />
                   </button>
                 </div>
               </div>
               <div className="flex gap-1.5 bg-white/10 rounded-xl p-1">
-                <button
-              {...useAriaButton({
-                onClick: () => setTab('alerts'),
-                pressed: tab === 'alerts',
-                label: 'Alert reminders',
-                className: `flex-1 py-1.5 rounded-lg text-[11px] font-black uppercase transition-colors ${tab === 'alerts' ? 'bg-white text-amber-600 shadow-sm' : 'text-white/80 hover:bg-white/10'}`,
-              })}
-            >
+                <button type="button"
+                        aria-label='Alert reminders'
+                        aria-pressed={tab === 'alerts'}
+                        onClick={() => setTab('alerts')}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-black uppercase transition-colors ${tab === 'alerts' ? 'bg-white text-amber-600 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
+                      >
                   {alertCount > 0 ? `⚠️ 提醒 (${alertCount})` : '✓ 状态监控'}
-                </button>
-                <button
-              {...useAriaButton({
-                onClick: () => setTab('chat'),
-                pressed: tab === 'chat',
-                label: 'Chat with AI',
-                className: `flex-1 py-1.5 rounded-lg text-[11px] font-black uppercase transition-colors ${tab === 'chat' ? 'bg-white text-amber-600 shadow-sm' : 'text-white/80 hover:bg-white/10'}`,
-              })}
-            >
+                      </button>
+                <button type="button"
+                        aria-label='Chat with AI'
+                        aria-pressed={tab === 'chat'}
+                        onClick={() => setTab('chat')}
+                        className={`flex-1 py-1.5 rounded-lg text-[11px] font-black uppercase transition-colors ${tab === 'chat' ? 'bg-white text-amber-600 shadow-sm' : 'text-white/80 hover:bg-white/10'}`}
+                      >
                   💬 {messages.length > 0 ? `对话 (${messages.filter(m => m.role === 'assistant').length})` : 'AI 提问'}
-                </button>
+                      </button>
               </div>
             </div>
 
@@ -217,7 +216,7 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
                   <p className="text-caption font-black text-slate-400 uppercase mb-2 flex items-center gap-1"><Sparkles size={10} /> 快捷提问</p>
                   <div className="grid grid-cols-2 gap-1.5">
                     {QUICK_PROMPTS.map(q => (
-                      <button key={q} onClick={() => handleQuickPrompt(q)}
+                      <button key={q} type="button" onClick={() => handleQuickPrompt(q)}
                         className="bg-white border border-slate-200 rounded-xl px-2.5 py-2 text-[10px] font-bold text-slate-600 hover:border-amber-300 hover:text-amber-600 hover:bg-amber-50 transition-colors text-left leading-snug">
                         {q}
                       </button>
@@ -273,16 +272,13 @@ const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
                       onKeyDown={handleKey}
                       placeholder="输入问题…"
                       disabled={isLoading}
-                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all disabled:opacity-60"
-                    />
-                    <button
-              {...useAriaButton({
-                onClick: () => { void handleSend(); },
-                label: 'Send message',
-                disabled: !input.trim() || isLoading,
-                className: 'flex-shrink-0 w-9 h-9 rounded-xl bg-amber-600 text-white flex items-center justify-center disabled:opacity-40 hover:bg-amber-700 active:scale-95 transition-all',
-              })}
-            >
+                      className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:border-amber-300 focus:ring-2 focus:ring-amber-100 transition-all disabled:opacity-60" />
+                    <button type="button"
+                      aria-label="Send message"
+                      aria-disabled={!input.trim() || isLoading}
+                      onClick={() => { handleSend() }}
+                      className="p-2 rounded-xl bg-amber-500 text-slate-900 hover:bg-amber-400 disabled:opacity-50 disabled:bg-slate-600 disabled:text-slate-400 transition-colors"
+                    >
                       {isLoading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
                     </button>
                   </div>

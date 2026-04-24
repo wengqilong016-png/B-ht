@@ -1,6 +1,6 @@
 import { MapPin, AlertTriangle } from 'lucide-react';
-import { useAriaButton } from '../src/hooks/useAriaButton'
 import React from 'react';
+
 
 interface State {
   hasError: boolean;

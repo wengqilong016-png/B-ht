@@ -2,7 +2,6 @@ import { ArrowRight, RefreshCw, Camera, CheckCircle2 } from 'lucide-react';
 import React, { useRef, useState } from 'react';
 
 import { useToast } from '../../contexts/ToastContext';
-import { useAriaButton } from '../../src/hooks/useAriaButton';
 import { Location, Driver, Transaction, TRANSLATIONS } from '../../types';
 import { compressAndResizeImage } from '../../utils/imageUtils';
 import { createResetRequestTransaction } from '../../utils/transactionBuilder';

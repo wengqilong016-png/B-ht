@@ -1,6 +1,5 @@
 import { Send, Loader2, CheckCircle2, ArrowRight, AlertTriangle, Satellite, RotateCcw } from 'lucide-react';
 import React, { useState, useEffect } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useToast } from '../../contexts/ToastContext';

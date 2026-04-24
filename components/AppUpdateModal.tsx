@@ -1,6 +1,5 @@
 import { Capacitor } from '@capacitor/core';
 import { CheckCircle2, Download, ExternalLink, ShieldCheck, Sparkles, X } from 'lucide-react';
-import { useAriaButton } from '../src/hooks/useAriaButton'
 import React, { useState } from 'react';
 
 import { useToast } from '../contexts/ToastContext';
@@ -119,10 +118,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
       <div className="w-full max-w-sm rounded-lg bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 px-5 pt-6 pb-5">
-          <button
-            onClick={handleDismiss}
-            className="absolute right-4 top-4 text-slate-500 hover:text-white"
-          >
+          <button aria-label="Close" type="button">
             <X size={16} />
           </button>
           <div className="flex items-center gap-3 mb-2">
@@ -218,29 +214,19 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
             </div>
           )}
 
-          <button
-            onClick={handleDownload}
-            disabled={downloading}
-            className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-400 py-3.5 text-sm font-black text-slate-900 shadow-lg shadow-amber-200 active:scale-95 transition-transform disabled:opacity-70"
-            >
+          <button aria-label="Download and Install" type="button" aria-disabled={downloading}>
               <Download size={16} />
               {downloading
                 ? (lang === 'zh' ? '正在下载并准备安装…' : 'Downloading and preparing…')
                 : (lang === 'zh' ? '立即下载安装' : 'Download & Install')}
             </button>
 
-          <button
-            onClick={openBrowserDownload}
-            className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700"
-          >
+          <button aria-label="Alternative browser download" type="button">
             <ExternalLink size={13} />
             {lang === 'zh' ? '如果系统安装器没有弹出，改用浏览器下载 APK' : 'If the installer does not open, download the APK in your browser'}
           </button>
 
-          <button
-            onClick={handleDismiss}
-            className="w-full py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600"
-          >
+          <button aria-label="Remind me later" type="button">
             {lang === 'zh' ? '稍后提醒' : 'Remind me later'}
           </button>
         </div>

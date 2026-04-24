@@ -1,5 +1,4 @@
 import { User, Lock, ArrowRight, AlertCircle, Loader2, Languages, Crown, Settings, CheckCircle2, Wifi, WifiOff, RefreshCw } from 'lucide-react';
-import { useAriaButton } from '../src/hooks/useAriaButton'
 import React, { useState, useEffect } from 'react';
 
 import { fetchCurrentUserProfile, signInWithEmailPassword, signOutCurrentUser } from '../services/authService';
@@ -215,7 +214,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               </div>
             )}
 
-            <button {...useAriaButton({ type: 'submit', label: isLoading ? t.logging_in : t.login, disabled: isLoading })} disabled={isLoading || envVarsMissing} className="w-full bg-silicone-gradient text-amber-600 font-black py-3 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
+            <button type="submit" aria-label={isLoading ? t.logging_in : t.login} aria-disabled={isLoading} disabled={isLoading} disabled={isLoading || envVarsMissing} className="w-full bg-silicone-gradient text-amber-600 font-black py-3 rounded-2xl shadow-silicone hover:shadow-silicone-sm active:shadow-silicone-pressed border border-white/80 flex items-center justify-center gap-2 transition-all disabled:opacity-60 disabled:cursor-not-allowed">
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 size={20} className="animate-spin text-amber-600" />

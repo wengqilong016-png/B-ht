@@ -1,0 +1,25 @@
+
+with open('components/AppUpdateModal.tsx', 'r') as f:
+    lines = f.readlines()
+
+for i in range(len(lines)):
+    if '<button' in lines[i] and 'onClick={handleDismiss}' in lines[i] and 'text-slate-500' in lines[i]:
+        indent = '          '
+        lines[i] = f'{indent}<button {{...useAriaButton({{ type: "button", label: "Close" }})}} onClick={{handleDismiss}} className="absolute right-4 top-4 text-slate-500 hover:text-white">\n'
+
+    if '<button' in lines[i] and 'onClick={handleDownload}' in lines[i]:
+        indent = '          '
+        lines[i] = f'{indent}<button {{...useAriaButton({{ type: "button", label: "Download & Install", disabled: downloading }})}} onClick={{handleDownload}} disabled={{downloading}} className="w-full flex items-center justify-center gap-2 rounded-lg bg-amber-400 py-3.5 text-sm font-black text-slate-900 shadow-lg shadow-amber-200 active:scale-95 transition-transform disabled:opacity-70"\n'
+
+    if '<button' in lines[i] and 'onClick={openBrowserDownload}' in lines[i]:
+        indent = '          '
+        lines[i] = f'{indent}<button {{...useAriaButton({{ type: "button", label: "Alternative browser download" }})}} onClick={{openBrowserDownload}} className="w-full flex items-center justify-center gap-2 py-2.5 text-xs font-bold text-slate-500 hover:text-slate-700"\n'
+
+    if '<button' in lines[i] and 'py-2.5 text-xs font-bold text-slate-400' in lines[i]:
+        indent = '          '
+        lines[i] = f'{indent}<button {{...useAriaButton({{ type: "button", label: "Remind me later" }})}} onClick={{handleDismiss}} className="w-full py-2.5 text-xs font-bold text-slate-400 hover:text-slate-600"\n'
+
+with open('components/AppUpdateModal.tsx', 'w') as f:
+    f.writelines(lines)
+
+print('updated')

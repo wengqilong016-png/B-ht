@@ -1,6 +1,5 @@
 import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { useConfirm } from '../../contexts/ConfirmContext';
 import { useToast } from '../../contexts/ToastContext';
@@ -432,7 +431,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 </div>
                 {/* View photo button */}
                 {sitePhotoUrl && (
-                  <button type="button" {...useAriaButton({ label: "View photo location" })} onClick={() => setViewingPhotoLoc(loc)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-xl bg-slate-950/70 px-2.5 py-1.5 text-caption font-black uppercase text-white backdrop-blur-sm">
+                  <button type="button" aria-label="View photo location" onClick={() => setViewingPhotoLoc(loc)} className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-xl bg-slate-950/70 px-2.5 py-1.5 text-caption font-black uppercase text-white backdrop-blur-sm">
                     <ImageIcon size={10} />
                     {lang === 'zh' ? '查看' : 'View'}
                   </button>
@@ -454,7 +453,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     )}
                   </div>
                   {/* Edit button only in top-right; delete is in footer */}
-                  <button type="button" {...useAriaButton({ label: "Edit site" })} onClick={() => handleEditLocation(loc)} className="flex-shrink-0 p-2.5 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors">
+                  <button type="button" aria-label="Edit site" onClick={() => handleEditLocation(loc)} className="flex-shrink-0 p-2.5 text-slate-400 hover:text-amber-700 hover:bg-amber-50 rounded-xl transition-colors">
                     <Pencil size={15} />
                   </button>
                 </div>
@@ -671,10 +670,10 @@ const SitesTab: React.FC<SitesTabProps> = ({
               >
                 <Trash2 size={16} />
               </button>
-              <button type="button" {...useAriaButton({ label: "Cancel" })} onClick={() => setEditingLoc(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl text-xs font-black uppercase hover:bg-slate-50 transition-colors">
+              <button type="button" aria-label="Cancel" onClick={() => setEditingLoc(null)} className="flex-1 py-3 bg-white border border-slate-200 text-slate-500 rounded-2xl text-xs font-black uppercase hover:bg-slate-50 transition-colors">
                 Cancel
               </button>
-              <button type="button" {...useAriaButton({ label: "Save changes" })} onClick={handleSaveLocation} disabled={isSavingLoc} className="flex-1 py-3 bg-amber-600 text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-amber-100 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all">
+              <button type="button" aria-label="Save changes" onClick={handleSaveLocation} disabled={isSavingLoc} className="flex-1 py-3 bg-amber-600 text-white rounded-2xl text-xs font-black uppercase shadow-lg shadow-amber-100 flex items-center justify-center gap-2 disabled:opacity-50 active:scale-95 transition-all">
                 {isSavingLoc ? <Loader2 size={14} className="animate-spin" /> : <Save size={14} />}
                 Save Changes
               </button>
@@ -691,7 +690,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
                 <h3 className="text-sm font-black text-slate-900 uppercase">{viewingPhotoLoc.name}</h3>
                 <p className="text-caption font-bold text-slate-400 uppercase">{viewingPhotoLoc.machineId}</p>
               </div>
-              <button type="button" {...useAriaButton({ label: "Close" })} onClick={() => setViewingPhotoLoc(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">
+              <button type="button" aria-label="Close" onClick={() => setViewingPhotoLoc(null)} className="p-2 bg-slate-50 rounded-full text-slate-400 hover:text-rose-500 transition-colors">
                 <X size={18} />
               </button>
             </div>

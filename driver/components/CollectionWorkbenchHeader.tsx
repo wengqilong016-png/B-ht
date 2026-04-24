@@ -1,6 +1,5 @@
 import { ArrowRight } from 'lucide-react';
 import React from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton';
 
 import { Location, TRANSLATIONS } from '../../types';
 
@@ -27,11 +26,7 @@ const CollectionWorkbenchHeader: React.FC<CollectionWorkbenchHeaderProps> = ({
     <div className="space-y-2">
       <div className="flex items-center gap-3">
         <button
-          {...useAriaButton({
-            onClick: onBack,
-            label: t.backButton || 'Back',
-            className: 'p-2.5 bg-white border border-slate-200 rounded-2xl text-slate-500 hover:text-amber-600 transition-colors flex-shrink-0',
-          })}
+          aria-label={t.backButton || 'Back'} onClick={onBack}
         >
           <ArrowRight size={18} className="rotate-180" />
         </button>
@@ -47,11 +42,7 @@ const CollectionWorkbenchHeader: React.FC<CollectionWorkbenchHeaderProps> = ({
             <div className="flex shrink-0 items-center gap-1.5">
               {onSwitchMachine && (
                 <button
-                  {...useAriaButton({
-                    onClick: onSwitchMachine,
-                    label: t.switchMachine,
-                    className: "rounded-full border border-slate-200 bg-white px-2 py-1 text-caption font-black uppercase text-amber-600 transition-colors hover:border-amber-200 hover:bg-amber-50",
-                  })}
+                  aria-label={t.switchMachine} onClick={onSwitchMachine}
                 >
                   {t.switchMachine}
                 </button>

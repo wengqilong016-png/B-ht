@@ -1,6 +1,5 @@
 import { CheckCircle2, Banknote, ThumbsUp, AlertTriangle } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { useToast } from '../../contexts/ToastContext';
 import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';

@@ -1,6 +1,5 @@
 import { Camera, CheckCircle2, RotateCcw, Satellite, ChevronRight, WifiOff } from 'lucide-react';
 import React, { useRef } from 'react';
-import { useAriaButton } from '../../src/hooks/useAriaButton'
 
 import { Location, TRANSLATIONS } from '../../types';
 
