@@ -2266,9 +2266,12 @@ DROP POLICY IF EXISTS transactions_update ON public.transactions;
 CREATE POLICY transactions_update ON public.transactions FOR UPDATE TO authenticated
     USING (public.is_admin()) WITH CHECK (public.is_admin());
 
-DROP POLICY IF EXISTS transactions_delete ON public.transactions;
-CREATE POLICY transactions_delete ON public.transactions FOR DELETE TO authenticated
-    USING (public.is_admin());
+-- Transactions cannot be physically deleted. This is a financial ledger — records
+-- must be immutable. Use approvalStatus/expenseStatus updates to mark records
+-- as void/cancelled/declined, or add a soft-delete column in a future migration.
+-- DROP POLICY IF EXISTS transactions_delete ON public.transactions;
+-- CREATE POLICY transactions_delete ON public.transactions FOR DELETE TO authenticated
+--     USING (public.is_admin());
 
 -- ── daily_settlements ────────────────────────────────────────────────────────
 
