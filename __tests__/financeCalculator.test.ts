@@ -184,6 +184,13 @@ describe('calculateCollectionFinanceLocal', () => {
     expect(result.diff).toBe(0);
     expect(result.revenue).toBe(0);
   });
+
+  it('applies Math.abs to expenses and tip (aligns with server ABS)', () => {
+    // negative tip must be treated as positive deduction, same as server
+    // diff=200, revenue=40000, commission=6000, tip=-1000 should be treated as 1000 deduction
+    const result = calculateCollectionFinanceLocal(makeInput({ tip: '-1000' }));
+    expect(result.netPayable).toBe(40000 - 6000 - 1000); // 33000, not 35000
+  });
 });
 
 // ── calculateCollectionFinancePreview ─────────────────────────────────────────

@@ -111,7 +111,7 @@ export function calculateCollectionFinanceLocal(input: CollectionFinanceInput): 
   const finalRetention = normalized.ownerRetention ?? commission;
 
   const remainingStartupDebt = Math.max(0, selectedLocation.remainingStartupDebt || 0);
-  const availableAfterCoreDeductions = Math.max(0, revenue - finalRetention - normalized.expenses - normalized.tip);
+  const availableAfterCoreDeductions = Math.max(0, revenue - finalRetention - Math.abs(normalized.expenses) - Math.abs(normalized.tip));
   const startupDebtDeduction = Math.min(
     normalized.startupDebtDeductionRequest,
     remainingStartupDebt,

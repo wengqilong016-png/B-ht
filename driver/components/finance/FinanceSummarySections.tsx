@@ -245,6 +245,7 @@ export function TipPaymentSection({
         <span className="text-xs font-black text-sky-300">TZS</span>
         <input
           type="number"
+          min="0"
           value={tip}
           onChange={e => onUpdateTip(e.target.value)}
           className="w-full bg-transparent text-2xl font-black text-sky-900 outline-none placeholder:text-sky-200"
