@@ -147,16 +147,26 @@ export interface QueueMeta {
   lastEvidenceError?: string;
 }
 
-function readLocalQueue(): Array<Transaction & Partial<QueueMeta>> {
+function normalizeQueueMeta(item: Transaction & Partial<QueueMeta>): Transaction & QueueMeta {
+  return {
+    ...item,
+    operationId: item.operationId ?? item.id,
+    entityVersion: item.entityVersion ?? 1,
+    _queuedAt: item._queuedAt ?? new Date().toISOString(),
+    retryCount: item.retryCount ?? 0,
+  };
+}
+
+function readLocalQueue(): Array<Transaction & QueueMeta> {
   if (!isLocalStorageAvailable()) {
-    return memoryQueueCache.get(QUEUE_STORAGE_KEY) ?? [];
+    return (memoryQueueCache.get(QUEUE_STORAGE_KEY) ?? []).map(normalizeQueueMeta);
   }
 
   try {
     const raw = localStorage.getItem(QUEUE_STORAGE_KEY);
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed as Array<Transaction & Partial<QueueMeta>> : [];
+    return Array.isArray(parsed) ? (parsed as Array<Transaction & Partial<QueueMeta>>).map(normalizeQueueMeta) : [];
   } catch {
     return [];
   }
