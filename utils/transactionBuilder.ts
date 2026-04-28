@@ -15,7 +15,13 @@ interface BaseTransactionFields {
 }
 
 /**
- * Creates base transaction fields from location and driver data
+ * Creates base transaction fields from location and driver data.
+ *
+ * NOTE: currentScore defaults to location.lastScore. Collection-type
+ * callers MUST override it with the actual meter reading. Non-collection
+ * types (payout, reset, expense) intentionally keep currentScore equal
+ * to previousScore/ lastScore — there is no new meter reading for those
+ * transaction types, and server functions apply the same convention.
  */
 function createBaseTransaction(
   location: Location,
@@ -71,6 +77,8 @@ export function createPayoutRequestTransaction(
     approvalStatus: 'pending',
     payoutAmount,
     notes,
+    // currentScore is intentionally lastScore (inherited from createBaseTransaction):
+    // payout requests do not carry a new meter reading.
   };
 }
 
@@ -94,6 +102,8 @@ export function createResetRequestTransaction(
     type: 'reset_request',
     approvalStatus: 'pending',
     notes,
+    // currentScore is intentionally lastScore (inherited from createBaseTransaction):
+    // reset requests do not carry a new meter reading.
   };
 }
 
@@ -176,5 +186,7 @@ export function createExpenseTransaction(
     expenseCategory: options.expenseCategory,
     expenseDescription: options.expenseDescription,
     notes: options.notes,
+    // currentScore is intentionally lastScore (inherited from createBaseTransaction):
+    // expense transactions do not carry a new meter reading.
   };
 }
