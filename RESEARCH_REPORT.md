@@ -381,32 +381,23 @@ const EXIFLib = (window as any).EXIF;
 
 ---
 
-### 问题 13: 日结 settlement 的 expectedTotal 公式未考虑 startupDebtDeduction
+### 问题 13: ~~日结 expectedTotal 公式未考虑 startupDebtDeduction~~ → 已确认：KNOWLEDGE_BASE 文档有误 ✅
 
-**文件**: `KNOWLEDGE_BASE.md` 第 341-342 行
+**文件**: `KNOWLEDGE_BASE.md` 第 341-342 行（已修正）；实际代码在 `SettlementTab.tsx` line 123
 
-**严重级别**: 🟢 低危
+**严重级别**: ~~🟢 低危~~ → 🟢 已修复（文档错误）
 
-**问题描述**:
+**调查结论** (2026-04-28):
+KNOWLEDGE_BASE.md 中的文档公式 `expectedTotal = totalNetPayable + totalExpenses` 是**错误的**。
 
-日结核对公式：
+实际代码（SettlementTab.tsx）：
 ```
-expectedTotal = totalNetPayable + totalExpenses
-```
-
-但 `netPayable = revenue - commission - expenses - tip + startupDebtDeduction`
-
-展开：
-```
-expectedTotal = (totalRevenue - totalCommission - totalExpenses - totalTip + totalStartupDebtDeduction) + totalExpenses
-              = totalRevenue - totalCommission - totalTip + totalStartupDebtDeduction
+totalNet = sum(netPayable)
+expectedTotal = max(0, totalNet - settlementExpenseAmount)
 ```
 
-这意味着司机需要上交的金额包含了 startup debt deduction（因为这是司机代扣的债务还款，应上交公司）。但如果司机没有实际收到这部分钱（因为 debt 是从 revenue 中直接扣除的），实际现金可能少于 expectedTotal。
-
-**影响范围**:
-- 如果 startupDebtDeduction 较大，会导致日结时 appear shortage 较大
-- 这实际上是业务逻辑问题，需要确认 startupDebtDeduction 的现金流向
+`netPayable` 已包含 `startupDebtDeduction`（见 6.1 公式），所以 `expectedTotal` 正确反映了
+司机应上交的总额。文档已修正。
 
 ---
 

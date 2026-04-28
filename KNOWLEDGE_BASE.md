@@ -338,12 +338,18 @@ isCoinStockNegative = remainingCoins < 0
 ### 6.3 日结账目核对
 
 ```
-expectedTotal = totalNetPayable + totalExpenses
+// Client-side (SettlementTab.tsx):
+totalNet = sum(all collection transactions' netPayable for driver+date)
+expectedTotal = max(0, totalNet - settlementExpenseAmount)
 shortage = expectedTotal - (actualCash + actualCoins)
 ```
 
+- `netPayable` already includes `startupDebtDeduction` (see 6.1), so it correctly reflects
+  the full amount the driver should hand in
+- `settlementExpenseAmount`: admin-entered expense specific to this settlement
+  (deducted from expectedTotal — company covers it, not the driver)
 - `actualCash`: 实际现金金额
-- `actualCoins`: 实际硬币数量 (会按 COIN_VALUE_TZS 换算)
+- `actualCoins`: 实际硬币数量
 - `shortage > 0`: 缺款, 会计入月末 shortageDeduction
 - `shortage < 0`: 溢款 (多出钱)
 
