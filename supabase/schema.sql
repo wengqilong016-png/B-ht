@@ -836,6 +836,10 @@ BEGIN
         RAISE EXCEPTION 'Transaction not found: %', p_tx_id USING ERRCODE = 'P0002';
     END IF;
 
+    IF v_tx.type IS DISTINCT FROM 'expense' THEN
+        RAISE EXCEPTION 'Transaction % is not an expense request', p_tx_id USING ERRCODE = '22023';
+    END IF;
+
     IF COALESCE(v_tx.expenses, 0) <= 0 THEN
         RAISE EXCEPTION 'Transaction is not an expense request: %', p_tx_id USING ERRCODE = '22023';
     END IF;
