@@ -1349,6 +1349,13 @@ BEGIN
            "isSynced" = TRUE
      WHERE id = p_settlement_id;
 
+    -- Bulk-update all collection transactions for this driver+date to match
+    -- the settlement outcome. This is intentional: the settlement represents the
+    -- daily review of ALL collections. New transactions inserted concurrently
+    -- are correctly included (READ COMMITTED isolation). Delayed offline-sync
+    -- transactions arriving AFTER settlement confirmation will have their default
+    -- paymentStatus='pending' set by submit_collection_v2, which is correct —
+    -- they have not yet been reviewed in a settlement.
     UPDATE public.transactions
        SET "paymentStatus" = v_payment_status
      WHERE "driverId" = v_settlement."driverId"

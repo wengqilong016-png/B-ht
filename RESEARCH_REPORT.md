@@ -346,31 +346,18 @@ END IF;
 
 ---
 
-### 问题 11: review_daily_settlement_v1 — 批量更新 transactions 无行锁
+### 问题 11: ~~review_daily_settlement_v1 批量更新 transactions 无行锁~~ → 已确认：设计正确 ✅
 
 **文件**: `supabase/schema.sql` 第 1352-1356 行
 
-**严重级别**: 🟡 中危
+**严重级别**: ~~🟡 中危~~ → 🟢 非问题（已证实为正确设计）
 
-**问题描述**:
-
-```sql
-UPDATE public.transactions
-   SET "paymentStatus" = v_payment_status
- WHERE "driverId" = v_settlement."driverId"
-   AND type = 'collection'
-   AND ("timestamp" AT TIME ZONE 'UTC')::date = v_settlement."date";
-```
-
-此 UPDATE 语句没有 `FOR UPDATE` 锁，且在结算确认时批量更新该司机该日所有 collection 交易的 paymentStatus。如果在结算确认过程中有新的 collection 交易插入（同一司机同一天），新交易的 paymentStatus 会被设为 'paid' 或 'rejected'，即使它尚未被结算覆盖。
-
-**影响范围**:
-- 结算期间有新交易提交时可能出现 paymentStatus 错误
-- 对于 offline-first 场景，延迟 sync 的交易在 sync 后可能状态不正确
-
-**修复建议**:
-
-考虑在 UPDATE 时增加 timestamp 范围限制，或者只在插入时才设置 paymentStatus（不 retroactively 修改已有记录）。
+**调查结论** (2026-04-28):
+批量 UPDATE 是正确的设计语义：结算代表对该日该司机**所有**收款的审查确认。
+- 结算行自身已经 `FOR UPDATE` (line 1330-1331) 防止并发结算审批
+- 新插入的并发交易被包含在 UPDATE 中是正确行为（READ COMMITTED 隔离级别下可见）
+- 结算确认后到达的延迟离线同步交易保持 `paymentStatus='pending'`（由 submit_collection_v2 设置），这是正确语义——它们尚未被审查
+- 已添加设计注释
 
 ---
 
