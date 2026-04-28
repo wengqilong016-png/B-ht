@@ -192,6 +192,10 @@ export function useOfflineSyncLoop({
   useEffect(() => {
     if (!isOnline || !supabase || currentUser?.role !== 'driver' || !activeDriverId) return;
 
+    // Track consecutive GPS heartbeat failures for Sentry alerting.
+    const gpsFailureCountRef = { current: 0 };
+    const GPS_SENTRY_THRESHOLD = 3;
+
     const pushHeartbeat = () => {
       // ✅ 问题 10 修复：防止 GPS 并发更新
       if (isUpdatingGps) {
@@ -213,7 +217,7 @@ export function useOfflineSyncLoop({
 
             if (hasMovedEnough) {
               // Position changed significantly — update both GPS and lastActive.
-              supabase!
+              void supabase!
                 .from('drivers')
                 .update({
                   lastActive: new Date().toISOString(),
@@ -221,36 +225,83 @@ export function useOfflineSyncLoop({
                 })
                 .eq('id', activeDriverId)
                 .abortSignal(AbortSignal.timeout(5000))
-                .then(({ error }) => {
-                  if (error) {
-                    console.warn('[GPS] Heartbeat update failed:', error.message);
-                  } else {
-                    lastGpsRef.current = newPos;
-                  }
-                });
+                .then(
+                  ({ error }) => {
+                    if (error) {
+                      console.warn('[GPS] Heartbeat update failed:', error.message);
+                      recordGpsFailure();
+                    } else {
+                      lastGpsRef.current = newPos;
+                      gpsFailureCountRef.current = 0;
+                    }
+                    isUpdatingGps = false;
+                  },
+                  (err: unknown) => {
+                    console.warn('[GPS] Heartbeat update rejected:', (err as Error)?.message ?? err);
+                    recordGpsFailure();
+                    isUpdatingGps = false;
+                  },
+                );
             } else {
               // Driver hasn't moved — only update lastActive to keep the session alive.
-              supabase!
+              void supabase!
                 .from('drivers')
                 .update({ lastActive: new Date().toISOString() })
                 .eq('id', activeDriverId)
                 .abortSignal(AbortSignal.timeout(5000))
-                .then(({ error }) => {
-                  if (error) console.warn('[GPS] lastActive update failed:', error.message);
-                });
+                .then(
+                  ({ error }) => {
+                    if (error) {
+                      console.warn('[GPS] lastActive update failed:', error.message);
+                      recordGpsFailure();
+                    } else {
+                      gpsFailureCountRef.current = 0;
+                    }
+                    isUpdatingGps = false;
+                  },
+                  (err: unknown) => {
+                    console.warn('[GPS] lastActive update rejected:', (err as Error)?.message ?? err);
+                    recordGpsFailure();
+                    isUpdatingGps = false;
+                  },
+                );
             }
-          } finally {
-            isUpdatingGps = false;  // ← 释放锁
+          } catch (syncErr) {
+            // Defensive: release lock if synchronous error in callback
+            console.warn('[GPS] Unexpected error in position callback:', syncErr);
+            isUpdatingGps = false;
           }
         },
         (err) => {
           console.warn('[GPS] Heartbeat position error:', err.message);
-          isUpdatingGps = false;  // ← 释放锁
+          // Don't count geolocation errors toward Sentry threshold — these are
+          // usually transient (user indoors, etc.) and expected on mobile.
+          isUpdatingGps = false;
         },
         // maximumAge: allow browser-cached position up to 30 s old (half the heartbeat
         // interval) so the data is never more than one full cycle stale on the server.
         { enableHighAccuracy: false, timeout: 8000, maximumAge: 30000 },
       );
+
+      function recordGpsFailure() {
+        gpsFailureCountRef.current++;
+        if (gpsFailureCountRef.current >= GPS_SENTRY_THRESHOLD) {
+          try {
+            // Dynamic import — Sentry is only loaded when DSN is configured
+            import('@sentry/react').then((Sentry) => {
+              Sentry.captureMessage('gps_heartbeat_persistent_failure', {
+                level: 'warning',
+                extra: {
+                  driverId: activeDriverId,
+                  consecutiveFailures: gpsFailureCountRef.current,
+                },
+              });
+            }).catch(() => {});
+          } catch {
+            // Sentry not available — silently ignore
+          }
+        }
+      }
     };
 
     // Fire once immediately so the admin sees the driver online right away
