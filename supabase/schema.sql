@@ -1751,7 +1751,8 @@ BEGIN
     END IF;
 
     SELECT id, name, "lastScore", "commissionRate", "machineId", "remainingStartupDebt" INTO v_location
-    FROM public.locations WHERE id = p_location_id;
+    FROM public.locations WHERE id = p_location_id
+    FOR UPDATE;
 
     IF NOT FOUND THEN
         RAISE EXCEPTION 'Location not found: %', p_location_id USING ERRCODE = 'P0002';
