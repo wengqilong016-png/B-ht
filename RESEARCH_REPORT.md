@@ -143,36 +143,21 @@ currentScore: undefined as unknown as number,  // 由调用方提供
 
 ## 🟡 中危问题
 
-### 问题 4: buildCollectionSubmissionInput 强行置零 expenses
+### 问题 4: ~~buildCollectionSubmissionInput 强行置零 expenses~~ → 已确认：设计正确 ✅
 
-**文件**: `services/collectionSubmissionOrchestrator.ts` 第 180、216 行
+**文件**: `services/collectionSubmissionOrchestrator.ts` 第 180 行
 
-**严重级别**: 🟡 中危
+**严重级别**: ~~🟡 中危~~ → 🟢 非问题（已证实为设计特性）
 
-**问题描述**:
+**调查结论** (2026-04-28):
+expenses=0 是**有意设计**，不是 bug。费用通过独立 `type='expense'` 交易记录
+（`createExpenseTransaction()` 在 `DriverCollectionFlow.tsx` line 298 被调用）。
+这种设计优势：
+- 收款交易财务计算干净，不受费用干扰
+- 费用通过独立交易记录可追踪（有 expenseStatus/approvalStatus）
+- 日结/月薪报表分别处理两类交易
 
-```typescript
-function buildCollectionSubmissionInput(input): CollectionSubmissionInput {
-  const expenseValue = 0;  // ← 硬编码为 0, 忽略用户输入
-  // ...
-  return {
-    // ...
-    expenses: expenseValue,  // ← 永远是 0
-    // ...
-  };
-}
-```
-
-虽然这是有意设计（服务器会从 `rawInput` 重新计算），但 `calculateCollectionFinanceLocal` (financeCalculator.ts) 会从 `input.expenses` 读取用户输入的值来做本地预览。而提交到服务器的 `rawInput.expenses` 被硬编码为 0，如果服务器端 `submit_collection_v2` 也完全忽略传进来的 expenses 并直接取 `ABS(COALESCE(p_expenses, 0))`（确实是 0），那实际 expenses 在数据库里永远是 0。
-
-进一步检查：server RPC `submit_collection_v2` 使用传入的 `p_expenses` 参数。但 orchestrator 传 `expenses: expenseValue` 即 `0`。所以**所有收款交易的 expenses 都被清零**。
-
-**影响范围**:
-- 所有收款交易记录的 expenses 在数据库中恒为 0
-- 日结 `expectedTotal = totalNetPayable + totalExpenses` 不受影响（因为 expenses=0）
-- 但财务审计报告会丢失费用数据
-
-**确认方式**: 检查 UI 层（CollectionPage）是否通过单独的 expense 交易类型来记录费用，如果是，则此设计正确。
+已在 `buildCollectionSubmissionInput` 添加设计说明注释。
 
 ---
 

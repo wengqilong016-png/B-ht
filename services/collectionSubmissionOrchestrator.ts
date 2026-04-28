@@ -177,6 +177,12 @@ async function enqueueOfflineTransaction(
 export function buildCollectionSubmissionInput(
   input: OrchestrateCollectionSubmissionInput,
 ): CollectionSubmissionInput {
+  // Expenses are intentionally 0 for collection transactions.
+  // Expenses incurred during collections (office loans, private loans, etc.)
+  // are recorded as separate type='expense' transactions via
+  // createExpenseTransaction(). This keeps the collection transaction's
+  // financial calculation clean and expense tracking auditable via
+  // independent transaction records with expenseStatus/approvalStatus.
   const expenseValue = 0;
   const tipValue = parseAmount(input.tip);
   const trimmedScore = input.currentScore.trim();
