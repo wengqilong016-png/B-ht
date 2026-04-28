@@ -68,7 +68,7 @@ export function createPayoutRequestTransaction(
   notes: string
 ): Transaction {
   return {
-    id: `PAY-${Date.now()}`,
+    id: `PAY-${safeRandomUUID()}`,
     timestamp: new Date().toISOString(),
     ...createBaseTransaction(location, driver, gpsCoords),
     ...createDefaultFinancials(),
@@ -93,7 +93,7 @@ export function createResetRequestTransaction(
   notes: string
 ): Transaction {
   return {
-    id: `RST-${Date.now()}`,
+    id: `RST-${safeRandomUUID()}`,
     timestamp: new Date().toISOString(),
     ...createBaseTransaction(location, driver, gpsCoords),
     ...createDefaultFinancials(),
@@ -137,7 +137,7 @@ export function createCollectionTransaction(
   const financials = createDefaultFinancials();
 
   return {
-    id: options.txId || `TX-${Date.now()}`,
+    id: options.txId || `TX-${safeRandomUUID()}`,
     timestamp: new Date().toISOString(),
     ...base,
     currentScore,

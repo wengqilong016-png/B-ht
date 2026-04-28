@@ -197,7 +197,7 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     photoMissingReportedRef.current = null;
     updateDraft({
       selectedLocId: locId,
-      draftTxId: `TX-${Date.now()}`,
+      draftTxId: `TX-${safeRandomUUID()}`,
       currentScore: '',
       photoData: null,
       aiReviewData: null,
