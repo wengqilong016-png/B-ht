@@ -1554,7 +1554,9 @@ export function extractGpsFromExif(
       const img = new Image();
       img.onload = () => {
         try {
-          // Resolve EXIF once to avoid repeated (window as any) casts
+          // Resolve EXIF once to avoid repeated (window as any) casts.
+          // Depends on global window.EXIF (exif-js loaded via <script> tag in index.html).
+          // Gracefully returns null if the library is unavailable (ad-blockers, slow networks).
           const EXIFLib = (window as any).EXIF;
           if (!EXIFLib) { resolve(null); return; }
           EXIFLib.getData(img, function(this: HTMLImageElement) {

@@ -1999,7 +1999,13 @@ DECLARE
     v_now   TIMESTAMPTZ := NOW();
     v_count INTEGER := 0;
 BEGIN
-    FOR r IN SELECT * FROM public.queue_health_reports LOOP
+    -- Only scan reports from the last 3 hours to avoid unbounded growth.
+    -- health_reports do not accumulate historically — each device overwrites
+    -- its own row, so stale rows represent disconnected devices whose alerts
+    -- have already been raised in previous invocations.
+    FOR r IN SELECT * FROM public.queue_health_reports
+             WHERE reported_at > v_now - INTERVAL '3 hours'
+    LOOP
 
         -- dead_letter_items
         IF r.dead_letter_count >= 1 THEN
@@ -2233,6 +2239,11 @@ CREATE POLICY drivers_update ON public.drivers FOR UPDATE TO authenticated
         OR (public.get_my_role() = 'driver' AND id = public.get_my_driver_id())
     );
 
+-- Column-level permissions protect sensitive driver fields from direct UPDATE
+-- by non-admin users. SECURITY DEFINER functions run with owner (postgres)
+-- privileges and thus bypass column-level REVOKE — any future SECURITY DEFINER
+-- functions that modify these fields MUST include explicit authorization checks
+-- and should write to finance_audit_log for traceability.
 REVOKE UPDATE ("baseSalary", "commissionRate", "initialDebt", "remainingDebt")
     ON public.drivers FROM authenticated;
 
