@@ -708,7 +708,16 @@ export async function flushQueue(
           photoUrl: replayPhoto.photoUrl,
         };
 
-        const result = await options.submitCollection(replayInput);
+        // Individual submission timeout — prevents a single hung request
+        // from blocking the entire flushQueue beyond the global timeout.
+        const SUBMIT_TIMEOUT_MS = 90_000;
+        const submitPromise = options.submitCollection(replayInput);
+        let timerId: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timerId = setTimeout(() => reject(new Error(`Collection replay timed out after ${SUBMIT_TIMEOUT_MS}ms`)), SUBMIT_TIMEOUT_MS);
+        });
+        const result = await Promise.race([submitPromise, timeoutPromise]);
+        if (timerId !== undefined) clearTimeout(timerId);
         if (result.success) {
           appendCollectionSubmissionAudit({
             timestamp: new Date().toISOString(),
