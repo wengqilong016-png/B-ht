@@ -53,7 +53,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
     }
   };
 
-  const handleDismiss = () => {
+  const _handleDismiss = () => {
     setLocalDismissed(true);
     try {
       if (updateIdentity && typeof sessionStorage !== 'undefined') {
@@ -64,7 +64,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
 
   if (!update?.hasUpdate || localDismissed || isSessionDismissed) return null;
 
-  const handleDownload = async () => {
+  const _handleDownload = async () => {
     setDownloading(true);
     setInstallerHandedOff(false);
     try {

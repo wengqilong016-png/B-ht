@@ -1,7 +1,7 @@
 import {
   LogOut, Globe
 } from 'lucide-react';
-import React, { Suspense, lazy, useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useState } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';

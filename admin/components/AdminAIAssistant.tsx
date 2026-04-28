@@ -76,7 +76,7 @@ interface AdminAIAssistantProps {
 
 const AdminAIAssistant: React.FC<AdminAIAssistantProps> = ({ lang }) => {
   const { locations, drivers, transactions, dailySettlements } = useAppData();
-  const { alerts, alertCount, messages, isLoading, sendMessage, clearHistory, snapshot } =
+  const { alerts, alertCount, messages, isLoading, sendMessage, clearHistory: _clearHistory, snapshot } =
     useAdminAI(locations, drivers, transactions, dailySettlements);
 
   const [isOpen, setIsOpen] = useState(false);

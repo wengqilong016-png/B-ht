@@ -40,6 +40,9 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
     setPhoneDraft(driver?.phone ?? '');
     setBackgroundPhotoDraft(driver?.backgroundPhotoUrl ?? null);
     profileForm.reset();
+    // profileForm.reset() is intentionally excluded — it only needs to run when
+    // driver data changes, and including profileForm in deps risks loops.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [driver?.backgroundPhotoUrl, driver?.phone]);
 
   if (!driver) {
