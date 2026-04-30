@@ -8,10 +8,12 @@ jest.mock('../services/driverFlowTelemetry', () => ({ recordDriverFlowEvent: jes
  */
 import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
+
 import { AuthProvider } from '../contexts/AuthContext';
 import { DataProvider } from '../contexts/DataContext';
 import { ToastProvider } from '../contexts/ToastContext';
 import QuickCollect from '../driver/components/QuickCollect';
+
 import { makeDriver, makeLocation } from './helpers/fixtures';
 
 const mach1 = makeLocation({ id: 'loc-1', name: 'Machine A', lastScore: 1000, assignedDriverId: 'drv-1' });

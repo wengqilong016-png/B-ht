@@ -426,9 +426,6 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
 
   // Step 2: Reading Capture
   if (step === 'capture') {
-    const parsedCaptureScore = parseInt(draft.currentScore, 10);
-    const hasValidCaptureScore = draft.currentScore.trim() !== '' && !Number.isNaN(parsedCaptureScore);
-    const isCaptureScoreBelowLastReading = hasValidCaptureScore && parsedCaptureScore < (selectedLocation?.lastScore ?? 0);
     return (
       <div data-testid="driver-flow-step-capture">
         <ReadingCapture

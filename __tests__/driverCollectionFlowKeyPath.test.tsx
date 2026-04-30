@@ -7,13 +7,14 @@ jest.mock('../services/driverFlowTelemetry', () => ({
 /**
  * DriverCollectionFlow — minimal render test.
  */
-import { render } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render } from '@testing-library/react';
 import React from 'react';
+
 import { AuthProvider } from '../contexts/AuthContext';
+import { ConfirmProvider } from '../contexts/ConfirmContext';
 import { DataProvider } from '../contexts/DataContext';
 import { MutationProvider } from '../contexts/MutationContext';
-import { ConfirmProvider } from '../contexts/ConfirmContext';
 import { ToastProvider } from '../contexts/ToastContext';
 import DriverCollectionFlow from '../driver/pages/DriverCollectionFlow';
 
