@@ -74,7 +74,7 @@ describe('AppUpdateModal', () => {
   it('starts Android APK installation and confirms handoff', async () => {
     render(<AppUpdateModal lang="zh" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /立即下载安装/ }));
+    fireEvent.click(screen.getByText('立即下载安装'));
 
     await waitFor(() => {
       expect(mockDownloadAndInstall).toHaveBeenCalledWith({
@@ -100,7 +100,7 @@ describe('AppUpdateModal', () => {
 
     render(<AppUpdateModal lang="zh" />);
 
-    fireEvent.click(screen.getByRole('button', { name: /立即下载安装/ }));
+    fireEvent.click(screen.getByText('立即下载安装'));
 
     await waitFor(() => {
       expect(mockOpenUnknownSourcesSettings).toHaveBeenCalledTimes(1);

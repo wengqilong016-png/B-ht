@@ -1,8 +1,16 @@
 require('@testing-library/jest-dom');
 
 // Fix React 19 + @testing-library/react compatibility
-// React 19 removed React.act export; @testing-library/react checks for it
+// React 19 removed React.act export; @testing-library/react and react-dom/test-utils check for it
 globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+// Polyfill React.act for react-dom/test-utils (used by jsdom test environment)
+try {
+  const React = require('react');
+  if (!React.act) {
+    React.act = function (fn) { return fn(); };
+  }
+} catch (_) { /* ignore */ }
 
 // Mock @vercel/analytics
 jest.mock('@vercel/analytics/react', () => ({
