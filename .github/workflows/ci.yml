@@ -105,3 +105,33 @@ jobs:
           # PRs from forks do not receive repo secrets; fall back to harmless values.
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'http://localhost:54321' }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'test-anon-key' }}
+      - name: Generate version.json for update manifest
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_REF_NAME: ${{ github.ref_name }}
+        run: |
+          node - <<'NODE'
+          const fs = require('fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json','utf-8'));
+          const { execSync } = require('child_process');
+          let commitCount = 0;
+          try { commitCount = Number(execSync('git rev-list --count HEAD', {cwd: process.cwd()}).toString().trim()); } catch(e) { commitCount = 0; }
+          const versionCode = commitCount + 1; // matches gradle tweak
+          const data = {
+            version: pkg.version,
+            versionCode,
+            gitSha: process.env.GITHUB_SHA || '',
+            tag: process.env.GITHUB_REF_NAME || '',
+            releasedAt: new Date().toISOString(),
+            apkUrl: `https://github.com/${process.env.GITHUB_REPOSITORY}/releases/download/${process.env.GITHUB_REF_NAME}/bahati-${process.env.GITHUB_REF_NAME}.apk`,
+            releaseNotes: `Release ${process.env.GITHUB_REF_NAME}`
+          };
+          fs.writeFileSync('public/version.json', JSON.stringify(data, null, 2));
+          console.log('Generated version.json');
+          NODE
+      - name: Upload version.json artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: version-json
+          path: public/version.json

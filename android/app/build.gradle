@@ -4,6 +4,11 @@ apply plugin: 'com.android.application'
 def packageJson = new groovy.json.JsonSlurper().parseText(file('../../package.json').text)
 def appVersionName = packageJson.version ?: "1.0.0"
 def gitCommitCount = 1
+        try {
+            def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, file('../..'))
+            proc.waitFor()
+            gitCommitCount = proc.text.trim().toInteger() + 1 // ensure monotonic increment even when tag alone
+        } catch (ignored) {}
 try {
     def proc = ['git', 'rev-list', '--count', 'HEAD'].execute(null, file('../..'))
     proc.waitFor()

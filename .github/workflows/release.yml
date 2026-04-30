@@ -236,8 +236,10 @@ jobs:
             --title "$TAG" \
             --notes "v${VERSION} — 正式发布" \
             android/app/build/outputs/apk/bahati-*.apk \
+            public/version.json \
             || gh release upload "$TAG" \
                  android/app/build/outputs/apk/bahati-*.apk \
+                 public/version.json \
                  --clobber
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
