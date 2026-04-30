@@ -14,7 +14,7 @@ import {
 import { Location, CONSTANTS, safeRandomUUID } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
 import { createExpenseTransaction } from '../../utils/transactionBuilder';
-import FinanceSummary, { FinanceSummaryContent } from '../components/FinanceSummary';
+import FinanceSummary from '../components/FinanceSummary';
 import MachineSelector from '../components/MachineSelector';
 import PayoutRequest from '../components/PayoutRequest';
 import ReadingCapture from '../components/ReadingCapture';
@@ -429,13 +429,6 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
     const parsedCaptureScore = parseInt(draft.currentScore, 10);
     const hasValidCaptureScore = draft.currentScore.trim() !== '' && !Number.isNaN(parsedCaptureScore);
     const isCaptureScoreBelowLastReading = hasValidCaptureScore && parsedCaptureScore < (selectedLocation?.lastScore ?? 0);
-    const submitBlockers = [
-      !hasValidCaptureScore ? (lang === 'zh' ? '缺读数' : 'Missing reading') : null,
-      !draft.photoData ? (lang === 'zh' ? '缺照片' : 'Missing photo') : null,
-      !draft.gpsCoords ? (lang === 'zh' ? '缺 GPS' : 'Missing GPS') : null,
-      isCaptureScoreBelowLastReading ? (lang === 'zh' ? '金额异常' : 'Amount issue') : null,
-    ].filter((item): item is string => Boolean(item));
-
     return (
       <div data-testid="driver-flow-step-capture">
         <ReadingCapture
@@ -461,80 +454,14 @@ const DriverCollectionFlow: React.FC<DriverCollectionFlowProps> = ({
           onUpdateAiReview={(data) => updateDraft({ aiReviewData: data })}
           onRequestGps={requestGpsWithTelemetry}
           onTelemetryEvent={(eventName, options) => recordFlowEvent(eventName, options)}
-          onNext={() => setStep('confirm')}
+          onNext={() => setStep('amounts')}
           onBack={handleBackToSelection}
           onSwitchMachine={handleSwitchMachine}
           nextMachine={nextQueuedMachine}
           pendingCount={remainingPendingStops}
           revenue={financeResult.revenue}
           diff={financeResult.diff}
-          hideStepBar
-          hideNextButton
-        >
-          <FinanceSummaryContent
-            selectedLocation={selectedLocation}
-            lang={lang}
-            currentScore={draft.currentScore}
-            coinExchange={draft.coinExchange}
-            ownerRetention={draft.ownerRetention}
-            isOwnerRetaining={draft.isOwnerRetaining}
-            tip={draft.tip}
-            startupDebtDeduction={draft.startupDebtDeduction}
-            calculations={financeResult}
-            previewSource={financeResult.source}
-            showRevenueSummary={false}
-            showMetricGrid={false}
-            onUpdateCoinExchange={(v) => updateDraft({ coinExchange: v })}
-            onUpdateOwnerRetention={(v) => updateDraft({ ownerRetention: v })}
-            onUpdateIsOwnerRetaining={(v) => updateDraft({ isOwnerRetaining: v })}
-            onUpdateTip={(v) => updateDraft({ tip: v })}
-            onUpdateStartupDebtDeduction={(v) => updateDraft({ startupDebtDeduction: v })}
-          />
-          <SubmitReview
-            selectedLocation={selectedLocation}
-            currentDriver={currentDriver}
-            lang={lang}
-            isOnline={isOnline}
-            currentScore={draft.currentScore}
-            photoData={draft.photoData}
-            aiReviewData={draft.aiReviewData}
-            coinExchange={draft.coinExchange}
-            tip={draft.tip}
-            startupDebtDeduction={draft.startupDebtDeduction}
-            draftTxId={draft.draftTxId}
-            gpsCoords={draft.gpsCoords}
-            gpsPermission={draft.gpsPermission}
-            isOwnerRetaining={draft.isOwnerRetaining}
-            ownerRetention={draft.ownerRetention}
-            calculations={financeResult}
-            embedded
-            submissionBlockers={submitBlockers}
-            onSubmit={async (result) => {
-              recordFlowEvent(
-                result.source === 'server' ? 'submit_success' : 'submit_offline_queued',
-                {
-                  step: 'complete',
-                  locationId: result.transaction.locationId,
-                  payload: { source: result.source },
-                },
-              );
-              await onSubmit(result);
-            }}
-            onBack={handleBackToSelection}
-            onSwitchMachine={handleSwitchMachine}
-            onReset={handleFullReset}
-            onReturnHome={() => {
-              recordFlowEvent('return_home', { step: 'complete' });
-              handleFullReset();
-            }}
-            onRequestGps={requestGpsWithTelemetry}
-            onTelemetryEvent={(eventName, options) => recordFlowEvent(eventName, options)}
-            nextMachine={nextQueuedMachine}
-            pendingCount={remainingPendingStops}
-            allTransactions={allTransactions}
-            todayStr={todayStr}
-          />
-        </ReadingCapture>
+        />
       </div>
     );
   }
