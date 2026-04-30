@@ -214,7 +214,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
             </div>
           )}
 
-          <button aria-label="Download and Install" type="button" aria-disabled={downloading}>
+          <button aria-label="Download and Install" type="button" aria-disabled={downloading} onClick={_handleDownload}>
               <Download size={16} />
               {downloading
                 ? (lang === 'zh' ? '正在下载并准备安装…' : 'Downloading and preparing…')

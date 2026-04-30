@@ -518,7 +518,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                     <button
                       type="button"
                       onClick={() => handleSubmit(machine.id)}
-                      disabled={!entry.score || entry.submitting || entry.submitted}
+                      disabled={!entry.score || entry.submitting || entry.submitted || !currentDriver}
                       aria-label={lang === 'zh' ? '提交' : 'Submit'}
                       className="flex-1 py-3 bg-amber-600 text-white rounded-subcard font-black uppercase text-sm disabled:bg-slate-300 disabled:cursor-not-allowed active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
