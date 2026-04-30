@@ -1,5 +1,9 @@
 require('@testing-library/jest-dom');
 
+// Fix React 19 + @testing-library/react compatibility
+// React 19 removed React.act export; @testing-library/react checks for it
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
 // Mock @vercel/analytics
 jest.mock('@vercel/analytics/react', () => ({
   Analytics: () => null,
