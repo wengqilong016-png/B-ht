@@ -74,7 +74,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
 
     const lastScore = entry.location.lastScore || 0;
     const diff = parsedScore - lastScore;
-    const revenue = diff * CONSTANTS.RATE_PER_POINT;
+    const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
 
     try {
       await submitTransaction.mutateAsync({
@@ -165,7 +165,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
             const lastScore = machine.lastScore || 0;
             const parsedScore = parseInt(entry.score, 10);
             const diff = !isNaN(parsedScore) ? parsedScore - lastScore : 0;
-            const revenue = diff * CONSTANTS.RATE_PER_POINT;
+            const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
 
             return (
               <div
