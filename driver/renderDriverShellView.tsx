@@ -8,6 +8,7 @@ import type { Location } from '../types';
 
 const Dashboard = lazy(() => import('../components/dashboard/DashboardPage'));
 const DriverCollectionFlow = lazy(() => import('../driver/pages/DriverCollectionFlow'));
+const QuickCollect = lazy(() => import('../driver/components/QuickCollect'));
 const TransactionHistory = lazy(() => import('../components/TransactionHistory'));
 const DebtManager = lazy(() => import('../components/DebtManager'));
 const DriverStatusPanel = lazy(() => import('../driver/components/DriverStatusPanel'));
@@ -25,6 +26,8 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
   const { registerLocation } = useMutations();
 
   switch (view) {
+    case 'quick':
+      return <QuickCollect gpsCoords={null} />;
     case 'collect':
       return (
         <DriverCollectionFlow

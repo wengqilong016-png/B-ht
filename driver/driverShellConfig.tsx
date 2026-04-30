@@ -1,7 +1,7 @@
 import { Banknote, CreditCard, History, PlusCircle, UserCircle } from 'lucide-react';
 import React from 'react';
 
-export type DriverView = 'collect' | 'settlement' | 'debt' | 'history' | 'status';
+export type DriverView = 'quick' | 'collect' | 'settlement' | 'debt' | 'history' | 'status';
 
 export interface DriverNavItem {
   id: DriverView;
@@ -13,6 +13,7 @@ export interface DriverNavItem {
 }
 
 export const DRIVER_NAV_ITEMS: DriverNavItem[] = [
+  { id: 'quick', icon: <PlusCircle size={16} />, getLabel: (_lang, t) => t.quickCollect || 'Quick' },
   { id: 'collect', icon: <PlusCircle size={16} />, getLabel: (_lang, t) => t.collect },
   { id: 'settlement', icon: <Banknote size={16} />, getLabel: (_lang, t) => t.dailySettlement },
   { id: 'debt', icon: <CreditCard size={16} />, getLabel: (_lang, t) => t.debt },

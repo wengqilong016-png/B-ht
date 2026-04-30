@@ -88,8 +88,69 @@ html[data-perf="medium"] [class*="shadow-2xl"] {
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08) !important;
 }
 
-html[data-perf="medium"] [class*="backdrop-blur-xl"],
 html[data-perf="medium"] [class*="backdrop-blur-2xl"] {
   backdrop-filter: blur(4px) !important;
   -webkit-backdrop-filter: blur(4px) !important;
+}
+
+/* ─── Accessibility: Minimum Touch Targets (WCAG 2.1 — 48×48px) ──────
+   Ensures all interactive elements meet the 48 CSS px minimum for
+   AAA touch target size. Uses min-height to avoid breaking inline
+   layouts while still providing enough vertical hit area. */
+@layer base {
+  button:not([class*="min-h-"]),
+  [role="button"]:not([class*="min-h-"]),
+  a[href]:not([class*="min-h-"]),
+  input:not([type="hidden"]):not([class*="min-h-"]),
+  select:not([class*="min-h-"]),
+  textarea:not([class*="min-h-"]) {
+    min-height: 48px;
+  }
+
+  /* Override for compact contexts — 44px minimum (WCAG AA) */
+  .compact-touch button:not([class*="min-h-"]),
+  .compact-touch [role="button"]:not([class*="min-h-"]),
+  .compact-touch a[href]:not([class*="min-h-"]),
+  .compact-touch input:not([type="hidden"]):not([class*="min-h-"]),
+  .compact-touch select:not([class*="min-h-"]),
+  .compact-touch textarea:not([class*="min-h-"]) {
+    min-height: 44px;
+  }
+}
+
+/* ─── Accessibility: Font Size Scaling ─────────────────────────────
+   Drive all font sizes through CSS custom properties so a single
+   data-font-size attribute on <html> scales the entire UI.
+
+   Usage:
+     <html data-font-size="normal">   (1.0x — default)
+     <html data-font-size="large">    (1.25x)
+     <html data-font-size="xlarge">   (1.5x)
+*/
+@layer base {
+  html {
+    --font-scale: 1.0;
+  }
+  html[data-font-size="large"] {
+    --font-scale: 1.25;
+  }
+  html[data-font-size="xlarge"] {
+    --font-scale: 1.5;
+  }
+
+  /* Apply scale to body — child elements using rem/em inherit naturally */
+  body {
+    font-size: calc(1rem * var(--font-scale));
+  }
+
+  /* Scale text-caption and body-sm explicitly since they're set in px */
+  .text-caption {
+    font-size: calc(10px * var(--font-scale)) !important;
+    line-height: calc(14px * var(--font-scale)) !important;
+  }
+  .text-body-sm,
+  .body-sm {
+    font-size: calc(12px * var(--font-scale)) !important;
+    line-height: calc(16px * var(--font-scale)) !important;
+  }
 }

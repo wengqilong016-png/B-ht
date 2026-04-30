@@ -102,7 +102,7 @@ export function useAuthBootstrap() {
   const [state, dispatch] = useReducer(authReducer, {
     currentUser: null,
     userRole: null,
-    lang: 'zh',
+    lang: 'sw',
     isInitializing: true,
   });
   const restoreAttemptRef = useRef(0);

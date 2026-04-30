@@ -1,7 +1,7 @@
 import {
-  LogOut, Globe
+  LogOut, Globe, Type
 } from 'lucide-react';
-import React, { Suspense, useMemo, useState } from 'react';
+import React, { Suspense, useMemo, useState, useEffect } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
@@ -36,6 +36,19 @@ const AppDriverShell: React.FC = () => {
   } = useMutations();
   const t = TRANSLATIONS[lang];
   const [view, setView] = useState<DriverView>('collect');
+  const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>(() => {
+    return (localStorage.getItem('bahati-font-size') as 'normal' | 'large' | 'xlarge') || 'normal';
+  });
+
+  // Apply font-size to document root
+  useEffect(() => {
+    document.documentElement.setAttribute('data-font-size', fontSize);
+    localStorage.setItem('bahati-font-size', fontSize);
+  }, [fontSize]);
+
+  const cycleFontSize = () => {
+    setFontSize(prev => prev === 'normal' ? 'large' : prev === 'large' ? 'xlarge' : 'normal');
+  };
 
   const isDriverView = (candidate: string): candidate is DriverView =>
     DRIVER_NAV_ITEMS.some((item) => item.id === candidate);
@@ -118,6 +131,9 @@ const AppDriverShell: React.FC = () => {
           showMobileBrand={false}
           actions={
             <>
+              <button onClick={cycleFontSize} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900" title={fontSize}>
+                <Type size={15} />
+              </button>
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="rounded-xl border border-slate-200 bg-white p-2 text-slate-500 hover:text-slate-900"><Globe size={15}/></button>
               <button onClick={handleLogout} className="p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </>

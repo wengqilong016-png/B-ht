@@ -17,6 +17,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [emailError, setEmailError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [dbStatus, setDbStatus] = useState<'checking' | 'online' | 'offline'>('checking');
 
@@ -26,6 +27,18 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
   const [settingsKey, setSettingsKey] = useState('');
   const [settingsSaved, setSettingsSaved] = useState(false);
   const [settingsError, setSettingsError] = useState('');
+
+  const handleEmailBlur = () => {
+    const val = email.trim();
+    if (!val) { setEmailError(''); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val)) {
+      setEmailError(lang === 'zh' 
+        ? '邮箱格式不正确 — 请输入 xxx@example.com'
+        : 'Invalid email — enter xxx@example.com');
+    } else {
+      setEmailError('');
+    }
+  };
 
   const t = TRANSLATIONS[lang];
 
@@ -189,7 +202,10 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
               <label htmlFor="email-input" className="text-caption font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">
                  <User size={12} className="text-amber-500" /> {t.username}
               </label>
-              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`} placeholder="email@example.com" required />
+              <input id="email-input" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError(''); }} onBlur={handleEmailBlur} disabled={isLoading} className={`w-full bg-[#f0f2f5] border-none rounded-2xl py-3 px-4 font-bold text-slate-700 shadow-silicone-pressed outline-none transition-all placeholder:text-slate-400 ${isLoading ? 'opacity-50 cursor-not-allowed' : ''} ${emailError ? 'ring-2 ring-rose-300' : ''}`} placeholder="email@example.com" required />
+              {emailError && (
+                <p className="text-rose-500 text-[11px] font-bold pl-1 flex items-center gap-1"><AlertCircle size={11} /> {emailError}</p>
+              )}
             </div>
             <div className="space-y-2">
               <label htmlFor="password-input" className="text-caption font-black text-slate-500 uppercase tracking-widest flex items-center gap-2 px-1">

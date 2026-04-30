@@ -212,6 +212,12 @@ const ReadingCapture: React.FC<ReadingCaptureProps> = ({
             </div>
             <div className="flex-1 min-w-0">
               <p className={`text-caption font-black uppercase ${textCls}`}>{label}</p>
+              {isGpsError && gpsStatus === 'denied' && (
+                <p className="text-[12px] leading-tight text-slate-400 mt-0.5">{t.gpsDeniedFix || 'Go to Settings to enable location.'}</p>
+              )}
+              {isGpsTimeout && (
+                <p className="text-[12px] leading-tight text-slate-400 mt-0.5">{t.gpsTimedOutFix || 'Move to open area and retry.'}</p>
+              )}
             </div>
             {!isGpsGranted && (
               <button type="button" onClick={onRequestGps} aria-label={t.gpsAcquiring} className="p-1.5 bg-white rounded-subcard border border-slate-200 text-amber-600 flex-shrink-0">
