@@ -31,6 +31,23 @@ These changes bring the project to WCAG‑AA compliance for button interactions,
 
 ---
 
+## Driver UX Improvements (v1.0.13)
+
+Shipping 5 adversarial UX test fixes targeting the primary user base — Tanzanian route drivers:
+
+- **Default language Swahili** — login screen now starts in Swahili for TZ deployment (was Chinese). Admin users switch to Chinese after login via role detection.
+- **Email validation** — real-time format check on blur with inline Swahili/Chinese error messages. Prevents silent failures when drivers type phone numbers in the email field.
+- **Swahili GPS recovery** — GPS error states (`denied`, `timeout`, `unavailable`) now show actionable Swahili guidance: "Nenda Mipangilio > Ruhusa > Washa Eneo" instead of "GPS Denied".
+- **Quick Collect mode** — new `Haraka` tab reduces machine collection from 7+ clicks to 3: tap machine → enter score → submit. Features background GPS, offline queue, and progress bar.
+- **WCAG touch targets** — all interactive elements enforce 48×48px minimum hit area. Font-size scaling (normal/large/xlarge) persisted to localStorage and toggled from the driver header.
+
+### New files
+| File | Purpose |
+|------|---------|
+| `driver/components/QuickCollect.tsx` | Flat-list machine collection with 2‑3 tap flow per machine |
+
+---
+
 ## UI Accessibility Enhancements
 
 ```

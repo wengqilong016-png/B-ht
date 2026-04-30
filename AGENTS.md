@@ -172,6 +172,18 @@
 
 ---
 
+## 项目文件结构（速查）
+
+| 路径 | 用途 |
+|------|------|
+| `driver/components/QuickCollect.tsx` | 快速收模式 — 3 次点击完成收款（列表展开 + 输入 + 提交）|
+| `driver/pages/DriverCollectionFlow.tsx` | 完整收款向导模式（4 步骤）|
+| `i18n/sw.ts` | Swahili 翻译（司机界面）|
+| `i18n/zh.ts` | 中文翻译（管理员界面）|
+| `styles.css` | 全局样式 + 触控目标 + 字号缩放变量 |
+
+---
+
 ## 质量红线
 - 不得假装验证
 - 不得隐瞒失败
