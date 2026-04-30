@@ -1,10 +1,11 @@
-import React, { lazy } from 'react';
+import React, { lazy, useEffect } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 
 import { resolveCurrentDriver } from './driverShellViewState';
+import { useGpsCapture } from './hooks/useGpsCapture';
 
 import type { DriverView } from './driverShellConfig';
 import type { Location } from '../types';
@@ -29,10 +30,18 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
   const { drivers } = useAppData();
   const { registerLocation } = useMutations();
   const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
+  const { coords: gpsCoords, request: requestGps } = useGpsCapture();
+
+  // Auto-acquire GPS when QuickCollect view is active
+  useEffect(() => {
+    if (view === 'quick' && !gpsCoords) {
+      requestGps();
+    }
+  }, [view, gpsCoords, requestGps]);
 
   switch (view) {
     case 'quick':
-      return <QuickCollect gpsCoords={null} currentDriver={currentDriver} />;
+      return <QuickCollect gpsCoords={gpsCoords} currentDriver={currentDriver} />;
     case 'collect':
       return (
         <DriverCollectionFlow
