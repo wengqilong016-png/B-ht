@@ -1,12 +1,14 @@
-import { CheckCircle2, Loader2, Camera, ChevronRight, WifiOff } from 'lucide-react';
+import { CheckCircle2, Loader2, Camera, ChevronRight, WifiOff, MapPin } from 'lucide-react';
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useToast } from '../../contexts/ToastContext';
 import { orchestrateCollectionSubmission } from '../../services/collectionSubmissionOrchestrator';
+import { recordDriverFlowEvent } from '../../services/driverFlowTelemetry';
 import { calculateCollectionFinanceLocal } from '../../services/financeCalculator';
 import { TRANSLATIONS, Location, CONSTANTS, safeRandomUUID } from '../../types';
+import { haversineM, formatDistance } from '../../utils/haversine';
 
 import type { Driver } from '../../types';
 
@@ -53,6 +55,37 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
     () => filteredLocations.filter(l => l.assignedDriverId === activeDriverId),
     [filteredLocations, activeDriverId]
   );
+
+  // GPS-proximity sort: nearest-first when coords available, alphabetical fallback.
+  // Retains last sort order if GPS drops mid-session to avoid jarring list reorder.
+  const lastSortRef = useRef<string[] | null>(null);
+  const sortedMachines = useMemo(() => {
+    if (!gpsCoords) {
+      // On first mount with no GPS, use alphabetical
+      if (!lastSortRef.current) {
+        const alphabetical = [...assignedMachines]
+          .sort((a, b) => a.name.localeCompare(b.name))
+          .map(m => m.id);
+        lastSortRef.current = alphabetical;
+        return [...assignedMachines].sort((a, b) => a.name.localeCompare(b.name));
+      }
+      // GPS dropped mid-session — retain last known order
+      const orderMap = new Map(lastSortRef.current.map((id, i) => [id, i]));
+      return [...assignedMachines].sort((a, b) => {
+        const ai = orderMap.get(a.id) ?? Infinity;
+        const bi = orderMap.get(b.id) ?? Infinity;
+        return ai - bi;
+      });
+    }
+    // GPS available — sort nearest-first
+    const sorted = [...assignedMachines].sort((a, b) => {
+      const da = a.coords ? haversineM(gpsCoords, a.coords) : Infinity;
+      const db = b.coords ? haversineM(gpsCoords, b.coords) : Infinity;
+      return da - db;
+    });
+    lastSortRef.current = sorted.map(m => m.id);
+    return sorted;
+  }, [assignedMachines, gpsCoords]);
 
   const getEntry = useCallback((id: string): MachineEntry => {
     const loc = assignedMachines.find(m => m.id === id);
@@ -119,6 +152,18 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
       updateEntry(id, { submitted: true });
       showToast(sourceLabel, 'success');
 
+      if (currentDriver) {
+        recordDriverFlowEvent({
+          driverId: currentDriver.id,
+          flowId: `qc_${entry.location.id}_${Date.now()}`,
+          locationId: entry.location.id,
+          step: 'complete',
+          eventName: 'quick_collect_submitted',
+          onlineStatus: isOnline,
+          hasPhoto: !!entry.photo,
+        });
+      }
+
       // Auto-collapse after 1.5s
       setTimeout(() => {
         setExpandedId(null);
@@ -150,32 +195,32 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
     e.target.value = '';
   };
 
-  const completedCount = assignedMachines.filter(m => entries[m.id]?.submitted).length;
+  const completedCount = sortedMachines.filter(m => entries[m.id]?.submitted).length;
 
   return (
     <div className="animate-in fade-in space-y-3">
       {/* Progress bar */}
-      {assignedMachines.length > 0 && (
+      {sortedMachines.length > 0 && (
         <div className="px-1">
           <div className="flex items-center justify-between mb-1.5">
             <span className="text-caption font-black uppercase text-slate-400">
-              {lang === 'zh' ? `已收 ${completedCount}/${assignedMachines.length}` : `Done ${completedCount}/${assignedMachines.length}`}
+              {lang === 'zh' ? `已收 ${completedCount}/${sortedMachines.length}` : `Done ${completedCount}/${sortedMachines.length}`}
             </span>
             <span className="text-caption font-black uppercase text-amber-600">
-              {completedCount === assignedMachines.length ? (lang === 'zh' ? '全部完成 ✓' : 'All done ✓') : ''}
+              {completedCount === sortedMachines.length ? (lang === 'zh' ? '全部完成 ✓' : 'All done ✓') : ''}
             </span>
           </div>
           <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div
               className="h-full bg-amber-500 rounded-full transition-all duration-500"
-              style={{ width: `${(completedCount / assignedMachines.length) * 100}%` }}
+              style={{ width: `${(completedCount / sortedMachines.length) * 100}%` }}
             />
           </div>
         </div>
       )}
 
       {/* Machine list */}
-      {assignedMachines.length === 0 ? (
+      {sortedMachines.length === 0 ? (
         <div className="text-center py-12">
           <p className="text-slate-400 font-bold text-sm">
             {lang === 'zh' ? '未分配机器' : 'No assigned machines'}
@@ -183,13 +228,16 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         </div>
       ) : (
         <div className="space-y-2">
-          {assignedMachines.map(machine => {
+          {sortedMachines.map(machine => {
             const entry = getEntry(machine.id);
             const isExpanded = expandedId === machine.id;
             const lastScore = machine.lastScore || 0;
             const parsedScore = parseInt(entry.score, 10);
             const diff = !isNaN(parsedScore) ? parsedScore - lastScore : 0;
             const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
+            const dist = gpsCoords && machine.coords
+              ? haversineM(gpsCoords, machine.coords)
+              : null;
 
             return (
               <div
@@ -205,7 +253,20 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                 {/* Machine row — tap to expand */}
                 <button
                   type="button"
-                  onClick={() => setExpandedId(isExpanded ? null : machine.id)}
+                  onClick={() => {
+                    const willExpand = !isExpanded;
+                    setExpandedId(willExpand ? machine.id : null);
+                    if (willExpand && currentDriver) {
+                      recordDriverFlowEvent({
+                        driverId: currentDriver.id,
+                        flowId: `qc_${machine.id}_${Date.now()}`,
+                        locationId: machine.id,
+                        step: 'selection',
+                        eventName: 'quick_collect_machine_selected',
+                        onlineStatus: isOnline,
+                      });
+                    }
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-3.5 text-left"
                   aria-expanded={isExpanded}
                   aria-label={machine.name}
@@ -214,6 +275,11 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                     <p className="text-body-sm font-black text-slate-800 truncate">{machine.name}</p>
                     <p className="text-caption text-slate-400">
                       {lang === 'zh' ? `上次读数: ${lastScore.toLocaleString()}` : `Last: ${lastScore.toLocaleString()}`}
+                      {dist !== null && (
+                        <span className="ml-2 text-emerald-600 inline-flex items-center gap-0.5">
+                          <MapPin size={10} /> {formatDistance(dist)}
+                        </span>
+                      )}
                       {entry.submitted && (
                         <span className="ml-2 text-emerald-500 inline-flex items-center gap-0.5">
                           <CheckCircle2 size={10} /> {lang === 'zh' ? '已提交' : 'Done'}

@@ -284,7 +284,9 @@ export type DriverFlowEventName =
   | 'office_loan_submitted'
   | 'site_info_opened'
   | 'site_info_saved'
-  | 'site_info_failed';
+  | 'site_info_failed'
+  | 'quick_collect_machine_selected'
+  | 'quick_collect_submitted';
 
 export interface DriverFlowEvent {
   id: string;
