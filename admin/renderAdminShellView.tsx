@@ -46,7 +46,9 @@ const AdminShellViewRenderer: React.FC<AdminShellViewRendererProps> = ({
         <DriverCollectionFlow
           registrationDoneLabel="返回管理录入"
           onRegisterMachine={async (location) => {
-            const newLocation: Location = { ...location, isSynced: false, assignedDriverId: undefined };
+            // Keep assignedDriverId set by MachineRegistrationForm — admin
+            // is intentionally registering FOR a specific driver.
+            const newLocation: Location = { ...location, isSynced: false };
             await registerLocation.mutateAsync(newLocation);
           }}
         />
