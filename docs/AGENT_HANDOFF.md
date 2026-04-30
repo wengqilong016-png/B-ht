@@ -23,10 +23,8 @@
 | Perf 1 | Perf | `driver/pages/DriverCollectionFlow.tsx` | Finance 预览 RPC 增加 400ms 防抖，避免每次按键触发服务端请求 |
 | Perf 2 | Perf | `components/dashboard/{OverviewTab,SettlementTab,SitesTab,TrackingTab}.tsx` | 添加 `React.memo` 防止管理端 Realtime 更新引起不相关标签页重渲染 |
 | Icon | Branding | `public/icons/`, `manifest.json` | 替换 Flaticon 外链图标为本地品牌 SVG/PNG（192+512 maskable）；manifest theme_color 改为品牌琥珀色 `#d97706` |
-| Contact Panel | Feature | `admin/components/AdminContactSummaryPanel.tsx` | 联系人汇总浮动面板：按司机分组展示店主电话、一键复制、导出 txt、内嵌 SMS 群发 UI |
+| Contact Panel | Feature | `admin/components/AdminContactSummaryPanel.tsx` | 联系人汇总浮动面板：按司机分组展示店主电话、一键复制、导出 txt |
 | AI Review | Feature | `admin/components/AdminAIAssistant.tsx`、`api/admin-ai.ts` | 新增"代理审核分析"快捷 prompt；系统 prompt 增加结构化审核报告模板；max_tokens 自动扩容至 1500 |
-| SMS API | Feature | `api/send-sms.ts` | Africa's Talking SMS Vercel Edge Function；支持批量发送、去重、错误上报 |
-| Env vars | Docs | `.env.example` | 新增 `AT_API_KEY`、`AT_USERNAME`、`AT_SENDER_ID` 注释说明 |
 
 ### 明确取消的功能
 
