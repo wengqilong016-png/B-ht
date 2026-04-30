@@ -1,7 +1,10 @@
 import React, { lazy } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
+import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
+
+import { resolveCurrentDriver } from './driverShellViewState';
 
 import type { DriverView } from './driverShellConfig';
 import type { Location } from '../types';
@@ -23,11 +26,13 @@ const DriverShellViewRenderer: React.FC<DriverShellViewRendererProps> = ({
   onSetView,
 }) => {
   const { activeDriverId } = useAuth();
+  const { drivers } = useAppData();
   const { registerLocation } = useMutations();
+  const currentDriver = resolveCurrentDriver(drivers, activeDriverId);
 
   switch (view) {
     case 'quick':
-      return <QuickCollect gpsCoords={null} />;
+      return <QuickCollect gpsCoords={null} currentDriver={currentDriver} />;
     case 'collect':
       return (
         <DriverCollectionFlow

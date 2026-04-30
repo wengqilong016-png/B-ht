@@ -3,17 +3,20 @@ import React, { useCallback, useMemo, useRef, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
-import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
-import { TRANSLATIONS, Location, CONSTANTS } from '../../types';
+import { orchestrateCollectionSubmission } from '../../services/collectionSubmissionOrchestrator';
+import { calculateCollectionFinanceLocal } from '../../services/financeCalculator';
+import { TRANSLATIONS, Location, CONSTANTS, safeRandomUUID } from '../../types';
+
+import type { Driver } from '../../types';
 
 /**
- * QuickCollect — Reduced-tap collection flow.
+ * QuickCollect — Reduced-tap collection flow using the server-authoritative
+ * orchestrator pipeline (same as DriverCollectionFlow).
  *
  * Shows assigned machines as a tappable list. Tapping a machine
  * expands an inline score-entry panel. Enter the meter reading,
- * optionally attach a photo, and submit. Background GPS is captured
- * silently via the parent's GPS hook.
+ * optionally attach a photo, and submit through the orchestrator.
  *
  * Target: 2–3 taps per machine:
  *   1. Tap machine
@@ -24,6 +27,8 @@ import { TRANSLATIONS, Location, CONSTANTS } from '../../types';
 interface QuickCollectProps {
   /** GPS coordinates captured silently by parent hook. */
   gpsCoords: { lat: number; lng: number } | null;
+  /** Current driver record (required for orchestrator). */
+  currentDriver: Driver | undefined;
 }
 
 interface MachineEntry {
@@ -34,10 +39,9 @@ interface MachineEntry {
   submitted: boolean;
 }
 
-const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
+const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver }) => {
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, isOnline } = useAppData();
-  const { submitTransaction } = useMutations();
   const { showToast } = useToast();
   const t = TRANSLATIONS[lang];
 
@@ -61,7 +65,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
 
   const handleSubmit = async (id: string) => {
     const entry = getEntry(id);
-    if (!entry.score || entry.submitting) return;
+    if (!entry.score || entry.submitting || !currentDriver) return;
 
     updateEntry(id, { submitting: true });
 
@@ -72,29 +76,48 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
       return;
     }
 
-    const lastScore = entry.location.lastScore || 0;
-    const diff = parsedScore - lastScore;
-    const revenue = diff * CONSTANTS.COIN_VALUE_TZS;
+    const draftTxId = safeRandomUUID();
+
+    // Pre-calculate locally for the orchestrator (server will be authority)
+    const calculations = calculateCollectionFinanceLocal({
+      selectedLocation: entry.location,
+      currentScore: entry.score,
+      expenses: '0',
+      coinExchange: '0',
+      ownerRetention: '',
+      isOwnerRetaining: true,
+      tip: '0',
+      startupDebtDeduction: '0',
+      initialFloat: currentDriver.dailyFloatingCoins || 0,
+    });
 
     try {
-      await submitTransaction.mutateAsync({
-        id: `qc-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        driverId: activeDriverId!,
-        locationId: id,
-        locationName: entry.location.name,
-        score: parsedScore,
-        lastScore,
-        diff,
-        revenue,
+      const result = await orchestrateCollectionSubmission({
+        selectedLocation: entry.location,
+        currentDriver,
+        isOnline,
+        currentScore: entry.score,
         photoData: entry.photo,
-        gpsCoords,
-        timestamp: new Date().toISOString(),
-        type: 'collection',
-        isSynced: isOnline,
-      } as any);
+        aiReviewData: null,
+        expenses: '0',
+        expenseType: 'public',
+        expenseCategory: undefined,
+        coinExchange: '0',
+        tip: '0',
+        draftTxId,
+        isOwnerRetaining: true,
+        ownerRetention: '',
+        calculations,
+        resolvedGps: gpsCoords ?? { lat: 0, lng: 0 },
+        gpsSourceType: gpsCoords ? 'live' : 'none',
+      });
+
+      const sourceLabel = result.source === 'server'
+        ? (lang === 'zh' ? '已提交 ✓' : 'Done ✓')
+        : (lang === 'zh' ? '已缓存 ✓' : 'Queued ✓');
 
       updateEntry(id, { submitted: true });
-      showToast(t.submitSuccess || 'Submitted ✓', 'success');
+      showToast(sourceLabel, 'success');
 
       // Auto-collapse after 1.5s
       setTimeout(() => {
@@ -102,7 +125,8 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords }) => {
         updateEntry(id, { score: '', photo: null, submitting: false, submitted: false });
       }, 1500);
     } catch (_err) {
-      showToast(t.submitError || 'Submit failed', 'error');
+      const msg = _err instanceof Error ? _err.message : String(_err);
+      showToast(msg || t.submitError || 'Submit failed', 'error');
       updateEntry(id, { submitting: false });
     }
   };
