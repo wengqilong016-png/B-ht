@@ -9,8 +9,9 @@ import React from 'react';
 import { AuthProvider } from '../contexts/AuthContext';
 import { DataProvider } from '../contexts/DataContext';
 import { ToastProvider } from '../contexts/ToastContext';
-import { makeDriver, makeLocation } from './helpers/fixtures';
 import QuickCollect from '../driver/components/QuickCollect';
+
+import { makeDriver, makeLocation } from './helpers/fixtures';
 
 jest.mock('../services/collectionSubmissionOrchestrator', () => ({
   orchestrateCollectionSubmission: jest.fn(),
