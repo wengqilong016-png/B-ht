@@ -224,7 +224,7 @@ export function buildCollectionSubmissionInput(
     startupDebtDeduction: input.calculations.startupDebtDeduction,
     isOwnerRetaining: input.isOwnerRetaining,
     ownerRetention:  input.ownerRetention !== ''
-      ? ((value) => (Number.isFinite(value) ? value : null))(parseAmount(input.ownerRetention))
+      ? parseAmount(input.ownerRetention)
       : null,
     coinExchange:    parseInteger(input.coinExchange),
     gps:             input.resolvedGps.lat === 0 && input.resolvedGps.lng === 0 ? null : input.resolvedGps,
@@ -237,6 +237,17 @@ export function buildCollectionSubmissionInput(
     expenseDescription: undefined,
     reportedStatus,
   };
+}
+
+async function fallbackToOffline(
+  input: OrchestrateCollectionSubmissionInput,
+  rawInput: CollectionSubmissionInput,
+  deps: CollectionSubmissionOrchestratorDeps,
+  reason: string | null,
+): Promise<OrchestratedCollectionSubmissionResult> {
+  const offlineTransaction = buildOfflineTransaction(input, rawInput, deps);
+  await enqueueOfflineTransaction(offlineTransaction, rawInput, input, reason ?? 'Offline fallback', deps);
+  return { source: 'offline', transaction: offlineTransaction, fallbackReason: reason };
 }
 
 export async function orchestrateCollectionSubmission(
@@ -316,24 +327,8 @@ export async function orchestrateCollectionSubmission(
       throw new Error(fallbackError);
     }
 
-    const offlineTransaction = buildOfflineTransaction(input, rawInput, deps);
-    await enqueueOfflineTransaction(offlineTransaction, rawInput, input, fallbackError, deps);
-
-    return {
-      source: 'offline',
-      transaction: offlineTransaction,
-      // Cast to narrow the union: TypeScript's control flow narrowing is not
-      // reliably applied to discriminated unions in this project's tsconfig.
-      fallbackReason: fallbackError,
-    };
+    return await fallbackToOffline(input, rawInput, deps, fallbackError);
   }
 
-  const offlineTransaction = buildOfflineTransaction(input, rawInput, deps);
-  await enqueueOfflineTransaction(offlineTransaction, rawInput, input, 'Offline mode at submit time', deps);
-
-  return {
-    source: 'offline',
-    transaction: offlineTransaction,
-    fallbackReason: null,
-  };
+  return await fallbackToOffline(input, rawInput, deps, null);
 }

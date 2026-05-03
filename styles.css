@@ -3,21 +3,20 @@
 @import 'tailwindcss';
 @config './tailwind.config.js';
 
-/* ─── Design System Tokens ─────────────────────────────────────────── */
+/* ─── Root Variables ────────────────────────────────────────────────── */
 @layer base {
   :root {
-    /* Admin Soft Console palette */
-    --console-bg: #f3f5f8;
-    --console-surface: #f3f5f8;
-    --console-border: rgba(255, 255, 255, 0.7);
-    --console-shadow: 2px 2px 8px rgba(15, 23, 42, 0.08),
-      -2px -2px 8px rgba(255, 255, 255, 0.9);
+    /* Warm sand base — Bahati Field Tool palette */
+    --console-bg: var(--bg-app);
+    --console-surface: var(--bg-card);
+    --console-border: rgba(140, 126, 109, 0.18);
+    --console-shadow: var(--shadow-soft);
 
-    /* Driver Field Mode palette */
-    --field-bg: #f8fafc;
-    --field-btn-radius: 14px;
-    --field-card-radius: 16px;
-    --mobile-nav-height: 4.75rem;
+    /* Driver field tokens */
+    --field-bg: var(--bg-app);
+    --field-btn-radius: var(--radius-button);
+    --field-card-radius: var(--radius-panel);
+    --mobile-nav-height: 4.5rem;
   }
 }
 

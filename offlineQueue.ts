@@ -80,6 +80,9 @@ function isLocalStorageAvailable(): boolean {
 
 const memoryQueueCache = new Map<string, Array<Transaction & Partial<QueueMeta>>>();
 
+// In-memory fallback device ID for environments without localStorage.
+let _memoryDeviceId: string | undefined;
+
 function captureQueueMessage(message: string, extras: Record<string, unknown> = {}): void {
   try {
     Sentry.withScope((scope) => {
@@ -398,6 +401,36 @@ export async function getAllQueuedTransactions(): Promise<Transaction[]> {
   }
 }
 
+/**
+ * Validate authoritativeData fields before merging into stored queue entries.
+ * Throws on invalid data so callers can catch and handle malformed server responses.
+ */
+function validateAuthoritativeData(data: Partial<Transaction>): void {
+  if (data.id && typeof data.id !== 'string') {
+    throw new Error(`Invalid authoritativeData: id must be string, got ${typeof data.id}`);
+  }
+  if (data.currentScore !== undefined) {
+    if (typeof data.currentScore !== 'number' || !isFinite(data.currentScore)) {
+      throw new Error(`Invalid authoritativeData: currentScore must be finite number, got ${data.currentScore}`);
+    }
+  }
+  if (data.previousScore !== undefined) {
+    if (typeof data.previousScore !== 'number' || !isFinite(data.previousScore)) {
+      throw new Error(`Invalid authoritativeData: previousScore must be finite number, got ${data.previousScore}`);
+    }
+  }
+  if (data.timestamp !== undefined) {
+    if (typeof data.timestamp !== 'string' || isNaN(Date.parse(data.timestamp))) {
+      throw new Error(`Invalid authoritativeData: timestamp must be valid ISO string, got ${data.timestamp}`);
+    }
+  }
+  if (data.photoUrl !== undefined && data.photoUrl !== null) {
+    if (typeof data.photoUrl !== 'string') {
+      throw new Error(`Invalid authoritativeData: photoUrl must be string or null, got ${typeof data.photoUrl}`);
+    }
+  }
+}
+
 // ── Mark as synced ────────────────────────────────────────────────────────────
 /**
  * Mark a queued entry as synced.
@@ -408,40 +441,8 @@ export async function getAllQueuedTransactions(): Promise<Transaction[]> {
  * server-authoritative values before the entry is marked synced.
  */
 export async function markSynced(id: string, authoritativeData?: Partial<Transaction>): Promise<void> {
-  // ✅ 数据验证：确保 authoritativeData 的关键字段有效
   if (authoritativeData) {
-    // id 必须是字符串
-    if (authoritativeData.id && typeof authoritativeData.id !== 'string') {
-      throw new Error('Invalid authoritativeData: id must be string');
-    }
-    
-    // currentScore 必须是有限数字
-    if (authoritativeData.currentScore !== undefined) {
-      if (typeof authoritativeData.currentScore !== 'number' || !isFinite(authoritativeData.currentScore)) {
-        throw new Error(`Invalid authoritativeData: currentScore must be finite number, got ${authoritativeData.currentScore}`);
-      }
-    }
-    
-    // previousScore 必须是有限数字
-    if (authoritativeData.previousScore !== undefined) {
-      if (typeof authoritativeData.previousScore !== 'number' || !isFinite(authoritativeData.previousScore)) {
-        throw new Error(`Invalid authoritativeData: previousScore must be finite number, got ${authoritativeData.previousScore}`);
-      }
-    }
-    
-    // timestamp 必须是有效日期
-    if (authoritativeData.timestamp !== undefined) {
-      if (typeof authoritativeData.timestamp !== 'string' || isNaN(Date.parse(authoritativeData.timestamp))) {
-        throw new Error(`Invalid authoritativeData: timestamp must be valid ISO string, got ${authoritativeData.timestamp}`);
-      }
-    }
-    
-    // photoUrl 可选但不能是非字符串的真值
-    if (authoritativeData.photoUrl !== undefined && authoritativeData.photoUrl !== null) {
-      if (typeof authoritativeData.photoUrl !== 'string') {
-        throw new Error(`Invalid authoritativeData: photoUrl must be string or null, got ${typeof authoritativeData.photoUrl}`);
-      }
-    }
+    validateAuthoritativeData(authoritativeData);
   }
   
   const update = { ...authoritativeData, isSynced: true };
@@ -604,6 +605,141 @@ export async function pruneOldSynced(daysOld = 7): Promise<void> {
 let _isFlushing = false;
 
 /**
+ * Attempt to flush a single queued entry to the server.
+ *
+ * Returns 'flushed' when the entry was synced, 'skipped' when the entry is
+ * in backoff or dead-lettered, and 'failed' when the server rejected it.
+ * Audit logging and retry metadata are handled internally.
+ */
+async function flushSingleItem(
+  entry: Transaction & Partial<QueueMeta>,
+  supabaseClient: SupabaseClient,
+  options: FlushOptions | undefined,
+): Promise<'flushed' | 'skipped' | 'failed'> {
+  try {
+    // ── Collection replay path ───────────────────────────────────────────
+    if (entry.rawInput) {
+      if (!options?.submitCollection) {
+        await recordRetryFailure(
+          entry.id,
+          'submitCollection callback unavailable for collection replay',
+          'permanent',
+        );
+        return 'failed';
+      }
+
+      const replayPhoto = await persistQueuedEvidencePhoto(entry);
+      if (!replayPhoto.success) {
+        await recordRetryFailure(entry.id, replayPhoto.error, replayPhoto.category);
+        return 'failed';
+      }
+
+      const replayInput: CollectionSubmissionInput = {
+        ...entry.rawInput,
+        photoUrl: replayPhoto.photoUrl,
+      };
+
+      // Individual submission timeout — prevents a single hung request
+      // from blocking the entire flushQueue beyond the global timeout.
+      const SUBMIT_TIMEOUT_MS = 90_000;
+      const submitPromise = options.submitCollection(replayInput);
+      let timerId: ReturnType<typeof setTimeout> | undefined;
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        timerId = setTimeout(
+          () => reject(new Error(`Collection replay timed out after ${SUBMIT_TIMEOUT_MS}ms`)),
+          SUBMIT_TIMEOUT_MS,
+        );
+      });
+      const result = await Promise.race([submitPromise, timeoutPromise]);
+      if (timerId !== undefined) clearTimeout(timerId);
+
+      if (result.success) {
+        appendCollectionSubmissionAudit({
+          timestamp: new Date().toISOString(),
+          event: 'queue_flush_success',
+          txId: result.transaction.id,
+          locationId: result.transaction.locationId,
+          locationName: result.transaction.locationName,
+          driverId: result.transaction.driverId,
+          resolvedScore: result.transaction.currentScore,
+          previousScore: result.transaction.previousScore,
+          source: 'server',
+          metadata: {
+            paymentStatus: result.transaction.paymentStatus,
+            approvalStatus: result.transaction.approvalStatus,
+          },
+        });
+        await markSynced(entry.id, result.transaction);
+        return 'flushed';
+      }
+
+      const failResult = isFailure(result)
+        ? result
+        : { success: false as const, error: 'Unknown collection replay failure' };
+      appendCollectionSubmissionAudit({
+        timestamp: new Date().toISOString(),
+        event: 'queue_flush_failure',
+        txId: entry.id,
+        locationId: entry.locationId,
+        locationName: entry.locationName,
+        driverId: entry.driverId,
+        resolvedScore: entry.currentScore,
+        previousScore: entry.previousScore,
+        source: 'offline',
+        reason: failResult.error,
+      });
+      const category = failResult.kind === 'config' ? 'permanent' : classifyError(failResult.error);
+      await recordRetryFailure(entry.id, failResult.error, category);
+      return 'failed';
+    }
+
+    if (entry.type === 'reset_request') {
+      if (!options?.submitResetRequest) {
+        await recordRetryFailure(
+          entry.id,
+          'submitResetRequest callback unavailable for reset request replay',
+          'permanent',
+        );
+        return 'failed';
+      }
+      const result = await options.submitResetRequest(entry);
+      await markSynced(entry.id, result);
+      return 'flushed';
+    }
+
+    if (entry.type === 'payout_request') {
+      if (!options?.submitPayoutRequest) {
+        await recordRetryFailure(
+          entry.id,
+          'submitPayoutRequest callback unavailable for payout request replay',
+          'permanent',
+        );
+        return 'failed';
+      }
+      const result = await options.submitPayoutRequest(entry);
+      await markSynced(entry.id, result);
+      return 'flushed';
+    }
+
+    // ── Generic upsert fallback (legacy entries without authoritative callbacks) ──
+    const { error } = await supabaseClient
+      .from('transactions')
+      .upsert(toTransactionUpsertPayload(entry));
+    if (!error) {
+      await markSynced(entry.id);
+      return 'flushed';
+    }
+    const category = classifyError(error.message);
+    await recordRetryFailure(entry.id, error.message, category);
+    return 'failed';
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    await recordRetryFailure(entry.id, msg, classifyError(msg));
+    return 'failed';
+  }
+}
+
+/**
  * Replay all pending offline entries against the server.
  *
  * Collection entries that carry `rawInput` are replayed through the
@@ -649,173 +785,44 @@ export async function flushQueue(
   const startTime = Date.now();
 
   try {
-  const pending = await getPendingTransactions();
-  if (pending.length === 0) return 0;
+    const pending = await getPendingTransactions();
+    if (pending.length === 0) return 0;
 
-  const now = Date.now();
-  let flushed = 0;
+    const now = Date.now();
+    let flushed = 0;
 
-  for (const tx of pending) {
-    // ✅ 检查整体超时：如果已经超过 120s，停止处理新项
-    if (Date.now() - startTime > QUEUE_FLUSH_TIMEOUT_MS) {
-      console.warn(
-        `[OfflineQueue] flushQueue timeout after ${QUEUE_FLUSH_TIMEOUT_MS}ms. ` +
-        `Processed ${flushed}/${pending.length} items. ` +
-        'Stopping to prevent indefinite blocking. Remaining items will retry later.'
-      );
-      break; // ← 强制停止，留在队列中待下次重试
-    }
+    for (const tx of pending) {
+      // Check global timeout
+      if (Date.now() - startTime > QUEUE_FLUSH_TIMEOUT_MS) {
+        console.warn(
+          `[OfflineQueue] flushQueue timeout after ${QUEUE_FLUSH_TIMEOUT_MS}ms. ` +
+          `Processed ${flushed}/${pending.length} items. ` +
+          'Stopping to prevent indefinite blocking. Remaining items will retry later.',
+        );
+        break;
+      }
 
-    const entry = tx as Transaction & Partial<QueueMeta>;
+      const entry = tx as Transaction & Partial<QueueMeta>;
 
-    // Skip items whose backoff period hasn't elapsed yet
-    if (entry.nextRetryAt && new Date(entry.nextRetryAt).getTime() > now) {
-      continue;
-    }
-
-    // Skip dead-letter items (exceeded max retries) — they remain visible to admins
-    const retryCount = entry.retryCount ?? 0;
-    if (retryCount >= MAX_RETRIES) {
-      continue;
-    }
-
-    try {
-      // ── Collection replay path ───────────────────────────────────────────
-      // When the entry has rawInput, it MUST be replayed through the
-      // server-authoritative submitCollection callback so finance is
-      // recomputed on the server.  If the callback is not provided, this is
-      // treated as a permanent replay-path misconfiguration — dead-letter the
-      // entry immediately instead of silently falling back to a direct upsert
-      // of locally-computed finance values.
-      if (entry.rawInput) {
-        if (!options?.submitCollection) {
-          await recordRetryFailure(
-            tx.id,
-            'submitCollection callback unavailable for collection replay',
-            'permanent',
-          );
-          continue;
-        }
-
-        const replayPhoto = await persistQueuedEvidencePhoto(entry);
-        if (!replayPhoto.success) {
-          await recordRetryFailure(tx.id, replayPhoto.error, replayPhoto.category);
-          continue;
-        }
-
-        const replayInput: CollectionSubmissionInput = {
-          ...entry.rawInput,
-          photoUrl: replayPhoto.photoUrl,
-        };
-
-        // Individual submission timeout — prevents a single hung request
-        // from blocking the entire flushQueue beyond the global timeout.
-        const SUBMIT_TIMEOUT_MS = 90_000;
-        const submitPromise = options.submitCollection(replayInput);
-        let timerId: ReturnType<typeof setTimeout> | undefined;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timerId = setTimeout(() => reject(new Error(`Collection replay timed out after ${SUBMIT_TIMEOUT_MS}ms`)), SUBMIT_TIMEOUT_MS);
-        });
-        const result = await Promise.race([submitPromise, timeoutPromise]);
-        if (timerId !== undefined) clearTimeout(timerId);
-        if (result.success) {
-          appendCollectionSubmissionAudit({
-            timestamp: new Date().toISOString(),
-            event: 'queue_flush_success',
-            txId: result.transaction.id,
-            locationId: result.transaction.locationId,
-            locationName: result.transaction.locationName,
-            driverId: result.transaction.driverId,
-            resolvedScore: result.transaction.currentScore,
-            previousScore: result.transaction.previousScore,
-            source: 'server',
-            metadata: {
-              paymentStatus: result.transaction.paymentStatus,
-              approvalStatus: result.transaction.approvalStatus,
-            },
-          });
-          // Write the server-authoritative transaction back into the queued
-          // entry so locally-computed finance values are replaced by the
-          // persisted row before marking synced.  This also handles duplicate
-          // txId replay: the server returns the already-persisted row and we
-          // treat that as a success.
-          await markSynced(tx.id, result.transaction);
-          flushed++;
-          options.onProgress?.(flushed, pending.length);
-        } else {
-          const failResult = isFailure(result)
-            ? result
-            : { success: false as const, error: 'Unknown collection replay failure' };
-          appendCollectionSubmissionAudit({
-            timestamp: new Date().toISOString(),
-            event: 'queue_flush_failure',
-            txId: tx.id,
-            locationId: tx.locationId,
-            locationName: tx.locationName,
-            driverId: tx.driverId,
-            resolvedScore: tx.currentScore,
-            previousScore: tx.previousScore,
-            source: 'offline',
-            reason: failResult.error,
-          });
-          const category = failResult.kind === 'config' ? 'permanent' : classifyError(failResult.error);
-          await recordRetryFailure(tx.id, failResult.error, category);
-        }
+      // Skip items whose backoff period hasn't elapsed yet
+      if (entry.nextRetryAt && new Date(entry.nextRetryAt).getTime() > now) {
         continue;
       }
 
-      if (entry.type === 'reset_request') {
-        if (!options?.submitResetRequest) {
-          await recordRetryFailure(
-            tx.id,
-            'submitResetRequest callback unavailable for reset request replay',
-            'permanent',
-          );
-          continue;
-        }
-
-        const result = await options.submitResetRequest(entry);
-        await markSynced(tx.id, result);
-        flushed++;
-        options.onProgress?.(flushed, pending.length);
+      // Skip dead-letter items
+      const retryCount = entry.retryCount ?? 0;
+      if (retryCount >= MAX_RETRIES) {
         continue;
       }
 
-      if (entry.type === 'payout_request') {
-        if (!options?.submitPayoutRequest) {
-          await recordRetryFailure(
-            tx.id,
-            'submitPayoutRequest callback unavailable for payout request replay',
-            'permanent',
-          );
-          continue;
-        }
-
-        const result = await options.submitPayoutRequest(entry);
-        await markSynced(tx.id, result);
-        flushed++;
-        options.onProgress?.(flushed, pending.length);
-        continue;
-      }
-
-      // ── Generic upsert fallback (legacy entries without authoritative callbacks) ──
-      const { error } = await supabaseClient
-        .from('transactions')
-        .upsert(toTransactionUpsertPayload(entry));
-      if (!error) {
-        await markSynced(tx.id);
+      const outcome = await flushSingleItem(entry, supabaseClient, options);
+      if (outcome === 'flushed') {
         flushed++;
         options?.onProgress?.(flushed, pending.length);
-      } else {
-        const category = classifyError(error.message);
-        await recordRetryFailure(tx.id, error.message, category);
       }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      await recordRetryFailure(tx.id, msg, classifyError(msg));
+      // 'skipped' and 'failed' don't increment flushed
     }
-  }
-  return flushed;
+    return flushed;
   } finally {
     _isFlushing = false;
   }
@@ -879,6 +886,20 @@ export function classifyError(msg: string): 'transient' | 'permanent' {
   return 'transient';
 }
 
+/** Compute the next retry count and backoff duration for a failed flush attempt. */
+function computeRetryState(
+  currentRetryCount: number,
+  category: 'transient' | 'permanent',
+): { newRetry: number; backoffMs: number } {
+  const newRetry = category === 'permanent'
+    ? MAX_RETRIES
+    : currentRetryCount + 1;
+  const backoffMs = category === 'permanent'
+    ? 0
+    : BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+  return { newRetry, backoffMs };
+}
+
 /** Update retry metadata with exponential backoff after a flush failure. */
 async function recordRetryFailure(
   id: string,
@@ -897,12 +918,7 @@ async function recordRetryFailure(
     if (item) {
       // Permanent errors skip to MAX_RETRIES so the entry is dead-lettered
       // on the next flush pass and stops consuming retry budget.
-      const newRetry = category === 'permanent'
-        ? MAX_RETRIES
-        : (item.retryCount ?? 0) + 1;
-      const backoffMs = category === 'permanent'
-        ? 0
-        : BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+      const { newRetry, backoffMs } = computeRetryState(item.retryCount ?? 0, category);
       await new Promise<void>((res, rej) => {
         const r = store.put({
           ...item,
@@ -932,12 +948,7 @@ async function recordRetryFailure(
       const list = readLocalQueue();
       const updated = list.map(t => {
         if (t.id !== id) return t;
-        const newRetry = category === 'permanent'
-          ? MAX_RETRIES
-          : (t.retryCount ?? 0) + 1;
-        const backoffMs = category === 'permanent'
-          ? 0
-          : BASE_BACKOFF_MS * Math.pow(2, Math.min(newRetry - 1, 4));
+        const { newRetry, backoffMs } = computeRetryState(t.retryCount ?? 0, category);
         return {
           ...t,
           retryCount: newRetry,
@@ -1424,39 +1435,28 @@ async function _updateDeadLetterError(
 const DEVICE_ID_KEY = 'bahati_device_id';
 
 /**
- * Returns a stable per-device identifier persisted in localStorage or memory cache.
+ * Returns a stable per-device identifier persisted in localStorage or memory.
  * A new UUID is generated on first call and reused on subsequent visits.
- * 
- * ✅ 问题 8 修复：支持无 localStorage 环境（隐私模式等）
  */
 export function getOrCreateDeviceId(): string {
-  if (!isLocalStorageAvailable()) {
-    // Fallback: use memory cache
-    const MEMORY_DEVICE_ID_KEY = '__device_id__';
-    if (!memoryQueueCache.has(MEMORY_DEVICE_ID_KEY)) {
-      memoryQueueCache.set(MEMORY_DEVICE_ID_KEY, [{ id: safeRandomUUID() } as any]);
+  if (isLocalStorageAvailable()) {
+    try {
+      let id = localStorage.getItem(DEVICE_ID_KEY);
+      if (!id) {
+        id = safeRandomUUID();
+        localStorage.setItem(DEVICE_ID_KEY, id);
+      }
+      return id;
+    } catch (err) {
+      console.warn('[OfflineQueue] localStorage write failed for deviceId, using memory fallback', err);
     }
-    const cached = memoryQueueCache.get(MEMORY_DEVICE_ID_KEY);
-    return (cached?.[0]?.id) ?? safeRandomUUID();
   }
 
-  try {
-    let id = localStorage.getItem(DEVICE_ID_KEY);
-    if (!id) {
-      id = safeRandomUUID();
-      localStorage.setItem(DEVICE_ID_KEY, id);
-    }
-    return id;
-  } catch (err) {
-    // localStorage 写入失败，使用内存存储
-    console.warn('[OfflineQueue] localStorage unavailable for deviceId, using memory cache', err);
-    const MEMORY_DEVICE_ID_KEY = '__device_id__';
-    if (!memoryQueueCache.has(MEMORY_DEVICE_ID_KEY)) {
-      memoryQueueCache.set(MEMORY_DEVICE_ID_KEY, [{ id: safeRandomUUID() } as any]);
-    }
-    const cached = memoryQueueCache.get(MEMORY_DEVICE_ID_KEY);
-    return (cached?.[0]?.id) ?? `ephemeral-${Math.random().toString(36).slice(2)}`;
+  // Memory-only fallback for environments without localStorage
+  if (!_memoryDeviceId) {
+    _memoryDeviceId = safeRandomUUID();
   }
+  return _memoryDeviceId;
 }
 
 /**

@@ -1,26 +1,28 @@
 /* ─── Design System Tokens ─────────────────────────────────────────── */
+/* Bahati Field Tool palette — warm earth tones for Tanzanian outdoor use */
 :root {
-  --bg-app: #f5f7fa;
-  --bg-card: #ffffff;
-  --bg-card-soft: #f0f2f5;
-  --text-main: #1e293b;
-  --text-muted: #64748b;
-  --primary: #4f46e5;
-  --success: #059669;
-  --warning: #d97706;
-  --danger: #dc2626;
+  --bg-app: #faf7f2;
+  --bg-card: #fffefb;
+  --bg-card-soft: #f3efe8;
+  --text-main: #1a1816;
+  --text-muted: #8c7e6d;
+  --primary: #c45d3a;
+  --primary-hover: #a84f30;
+  --success: #4a7c59;
+  --warning: #c4963a;
+  --danger: #b8453a;
 
   --radius-card: 20px;
   --radius-panel: 16px;
   --radius-button: 14px;
   --radius-chip: 10px;
 
-  --shadow-soft: 0 2px 8px rgba(15, 23, 42, 0.08);
-  --shadow-raised: 0 4px 12px rgba(15, 23, 42, 0.10);
-  --shadow-inset: inset 2px 2px 6px rgba(15, 23, 42, 0.08);
+  --shadow-soft: 0 1px 3px rgba(26, 24, 22, 0.08);
+  --shadow-raised: 0 2px 8px rgba(26, 24, 22, 0.12);
+  --shadow-inset: inset 1px 2px 4px rgba(26, 24, 22, 0.06);
 
-  --motion-fast: 120ms;
-  --motion-normal: 180ms;
+  --motion-fast: 100ms;
+  --motion-normal: 150ms;
 
   /* Layout */
   --sidebar-width: 240px;

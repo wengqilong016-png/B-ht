@@ -12,20 +12,25 @@ export default {
   theme: {
     extend: {
       boxShadow: {
-        // Soft Console 2.0 — lighter neumorphism for admin UI
-        'silicone': '2px 2px 8px rgba(15,23,42,.08), -2px -2px 8px rgba(255,255,255,.9)',
-        'silicone-sm': '1px 1px 4px rgba(15,23,42,.06), -1px -1px 4px rgba(255,255,255,.85)',
-        'silicone-pressed': 'inset 2px 2px 6px rgba(15,23,42,.10), inset -2px -2px 6px rgba(255,255,255,.85)',
-        'silicone-dark': '3px 3px 8px rgba(0,0,0,.40), -2px -2px 6px rgba(255,255,255,.04)',
-        // Field Mode — simple elevation for driver UI
-        'field': '0 1px 3px rgba(15,23,42,.10)',
-        'field-md': '0 2px 6px rgba(15,23,42,.12)',
-        'field-inset': 'inset 0 2px 4px rgba(15,23,42,.12)',
+        // Bahati Field Tool — subtle card lift
+        'card': '0 1px 3px rgba(26, 24, 22, 0.08)',
+        'card-raised': '0 2px 8px rgba(26, 24, 22, 0.12)',
+        'card-inset': 'inset 1px 2px 4px rgba(26, 24, 22, 0.06)',
+        // Legacy aliases — keep components working
+        'silicone': '0 1px 3px rgba(26, 24, 22, 0.08)',
+        'silicone-sm': '0 1px 3px rgba(26, 24, 22, 0.08)',
+        'silicone-pressed': 'inset 1px 2px 4px rgba(26, 24, 22, 0.06)',
+        'field': '0 1px 3px rgba(26, 24, 22, 0.08)',
+        'field-md': '0 2px 8px rgba(26, 24, 22, 0.12)',
+        'field-inset': 'inset 1px 2px 4px rgba(26, 24, 22, 0.06)',
       },
       backgroundImage: {
-        'silicone-gradient': 'linear-gradient(135deg, #e8eaed 0%, #f3f5f8 100%)',
-        'silicone-dark-gradient': 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-        'console-gradient': 'linear-gradient(135deg, #e8eaed 0%, #f3f5f8 100%)',
+        'warm-gradient': 'linear-gradient(135deg, #f3efe8 0%, #faf7f2 100%)',
+        'dark-gradient': 'linear-gradient(135deg, #292522 0%, #1a1816 100%)',
+        // Legacy aliases
+        'silicone-gradient': 'linear-gradient(135deg, #f3efe8 0%, #faf7f2 100%)',
+        'console-gradient': 'linear-gradient(135deg, #f3efe8 0%, #faf7f2 100%)',
+        'silicone-dark-gradient': 'linear-gradient(135deg, #292522 0%, #1a1816 100%)',
       },
       borderRadius: {
         // System-wide corner radius tokens

@@ -1,18 +1,18 @@
 /* ─── Theme Variants ──────────────────────────────────────────────── */
-/* Admin Soft Console theme */
+/* Admin — warm sand palette */
 .theme-admin {
-  --theme-bg: #f3f5f8;
-  --theme-surface: #ffffff;
-  --theme-border: rgba(226, 232, 240, 1);
-  --theme-text: #1e293b;
-  --theme-accent: #4f46e5;
+  --theme-bg: #faf7f2;
+  --theme-surface: #fffefb;
+  --theme-border: rgba(140, 126, 109, 0.18);
+  --theme-text: #1a1816;
+  --theme-accent: #c45d3a;
 }
 
-/* Driver Field Mode theme */
+/* Driver Field Mode — dark earth, outdoor-readable */
 .theme-driver {
-  --theme-bg: #0f172a;
-  --theme-surface: #1e293b;
-  --theme-border: rgba(255, 255, 255, 0.1);
-  --theme-text: #f8fafc;
-  --theme-accent: #f59e0b;
+  --theme-bg: #1a1816;
+  --theme-surface: #292522;
+  --theme-border: rgba(255, 255, 255, 0.08);
+  --theme-text: #f0ede6;
+  --theme-accent: #d4835a;
 }
