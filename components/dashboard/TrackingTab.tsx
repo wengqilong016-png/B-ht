@@ -56,6 +56,20 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
   const [trackingEditLocId, setTrackingEditLocId] = useState<string | null>(null);
   const [trackingLocForm, setTrackingLocForm] = useState({ commissionRate: '', status: 'active' as Location['status'] });
 
+  const formatRelativeTime = (minutes: number | null): string => {
+    if (minutes === null || minutes === undefined) return '--';
+    if (minutes < 1) return lang === 'zh' ? '刚刚' : 'Just now';
+    if (minutes < 60) return lang === 'zh' ? `${minutes}分钟前` : `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24) return lang === 'zh' ? `${hours}小时前` : `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return lang === 'zh' ? `${days}天前` : `${days}d ago`;
+  };
+
+  const openNavigation = (lat: number, lng: number) => {
+    window.open(`https://www.google.com/maps?q=${lat},${lng}`, '_blank');
+  };
+
   return (
     <div className="space-y-3 animate-in fade-in">
       <div className="bg-white p-4 rounded-2xl border border-slate-200 space-y-3 shadow-sm">
@@ -145,7 +159,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     <p className="text-sm font-black text-slate-900">{driver.name}</p>
                     <p className="text-caption font-bold text-slate-400 uppercase">
                       {driverLocs.length} locations • {driver.status === 'active'
-                        ? (driver.lastActive ? `${lastActiveMinutes} min ago` : t.liveNow)
+                        ? (driver.lastActive ? formatRelativeTime(lastActiveMinutes) : t.liveNow)
                         : t.driverOffline}
                     </p>
                   </div>
@@ -185,7 +199,7 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     </div>
                     <div className="bg-amber-50 rounded-2xl px-4 py-3 border border-amber-100">
                       <p className="text-caption font-black text-amber-400 uppercase">{t.staleGps}</p>
-                      <p className="text-sm font-black text-amber-700 mt-1">{hasStaleGps ? `${lastActiveMinutes ?? 0} min` : t.liveNow}</p>
+                      <p className="text-sm font-black text-amber-700 mt-1">{hasStaleGps ? formatRelativeTime(lastActiveMinutes) : t.liveNow}</p>
                     </div>
                     <div className="bg-rose-50 rounded-2xl px-4 py-3 border border-rose-100">
                       <p className="text-caption font-black text-rose-400 uppercase">{t.attentionSites}</p>
@@ -291,10 +305,14 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                     })
                   )}
                   {driver.currentGps && (
-                    <div className="flex items-center gap-2 text-caption font-bold text-slate-400 uppercase pt-1">
-                      <Navigation size={10} className="text-amber-500 animate-pulse" />
+                    <button
+                      onClick={() => openNavigation(driver.currentGps!.lat, driver.currentGps!.lng)}
+                      className="flex items-center gap-1.5 text-caption font-bold text-amber-600 hover:text-amber-800 hover:underline transition-colors pt-1"
+                      title={lang === 'zh' ? '在 Google Maps 中打开' : 'Open in Google Maps'}
+                    >
+                      <Navigation size={12} />
                       GPS: {driver.currentGps.lat.toFixed(4)}, {driver.currentGps.lng.toFixed(4)}
-                    </div>
+                    </button>
                   )}
                 </div>
               )}
