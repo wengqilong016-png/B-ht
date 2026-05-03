@@ -72,7 +72,7 @@ export function useSupabaseMutations(
       // 1. Flush offline queue (IndexedDB).
       // Re-throw on failure so syncMutation.isError becomes true and the
       // SyncStatusPill can show "Failed · Will Retry" instead of spinning forever.
-      await flushQueue(supabase, {
+      const flushed = await flushQueue(supabase, {
         submitCollection: submitCollectionV2,
         submitResetRequest: createResetRequest,
         submitPayoutRequest: createPayoutRequest,
@@ -82,6 +82,14 @@ export function useSupabaseMutations(
       // Intentionally fire-and-forget — a diagnostics failure must not fail the sync.
       if (currentUser?.role === 'driver' && currentUser.driverId) {
         reportQueueHealthToServer(supabase, currentUser.driverId, currentUser.name).catch(() => {});
+      }
+
+      // If items were flushed, wait briefly so Supabase can propagate writes
+      // before refetching. Otherwise refetchQueries may return stale data and
+      // overwrite locally-visible records that were just synced, causing them
+      // to "disappear" from the UI.
+      if (flushed > 0) {
+        await new Promise(r => setTimeout(r, 2_000));
       }
 
       // 2. Sync local fallback data (from queryClient cache or localDB)
