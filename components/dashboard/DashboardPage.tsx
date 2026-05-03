@@ -19,6 +19,7 @@ import PageErrorBoundary from '../PageErrorBoundary';
 
 import AiLogsTab from './AiLogsTab';
 import DashboardTabs from './DashboardTabs';
+import BahatiAssistant from './BahatiAssistant';
 import { useDashboardData } from './hooks/useDashboardData';
 import OverviewTab from './OverviewTab';
 import PayrollActionModal from './PayrollActionModal';
@@ -295,7 +296,9 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
 
       {activeTab === 'overview' && isAdmin && (
         <PageErrorBoundary name="总览">
-        <OverviewTab
+        <div className="space-y-4">
+          <BahatiAssistant lang={lang} />
+          <OverviewTab
           bossStats={bossStats}
           todayDriverStats={todayDriverStats}
           locationMap={locationMap}
@@ -308,6 +311,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           lang={lang}
           onOpenTab={(tab) => setActiveTab(tab)}
         />
+        </div>
         </PageErrorBoundary>
       )}
 
