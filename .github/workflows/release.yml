@@ -169,9 +169,7 @@ jobs:
       - name: Rename APK
         run: |
           APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
-          DEST="android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk"
-          # Also create a stable "latest" filename for the update URL
-          cp "$APK_PATH" "android/app/build/outputs/apk/bahati-latest-release.apk" 2>/dev/null || true
+          DEST="android/app/build/outputs/apk/bahati-latest-release.apk"
           if [ -f "$APK_PATH" ]; then
             cp "$APK_PATH" "$DEST"
           fi
@@ -231,14 +229,15 @@ jobs:
         run: |
           TAG="${{ inputs.tag || github.ref_name }}"
           VERSION="${{ steps.version.outputs.version }}"
-          # Create release with APKs attached in one atomic call (draft→publish)
+          APK_PATH="android/app/build/outputs/apk/bahati-latest-release.apk"
+          # Release only the latest APK to avoid multi-APK ambiguity
           gh release create "$TAG" \
             --title "$TAG" \
             --notes "v${VERSION} — 正式发布" \
-            android/app/build/outputs/apk/bahati-*.apk \
+            "$APK_PATH" \
             public/version.json \
             || gh release upload "$TAG" \
-                 android/app/build/outputs/apk/bahati-*.apk \
+                 "$APK_PATH" \
                  public/version.json \
                  --clobber
         env:
@@ -248,6 +247,6 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: bahati-release-apk
-          path: android/app/build/outputs/apk/bahati-*.apk
+          path: android/app/build/outputs/apk/bahati-latest-release.apk
           retention-days: 90
           if-no-files-found: error

@@ -235,8 +235,7 @@ jobs:
           BUILD_TYPE="${{ steps.resolve_build_type.outputs.build_type }}"
           if [[ "$BUILD_TYPE" == "release" ]]; then
             APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
-            DEST="android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-release.apk"
-            cp "$APK_PATH" "android/app/build/outputs/apk/bahati-latest-release.apk"
+            DEST="android/app/build/outputs/apk/bahati-latest-release.apk"
           else
             APK_PATH="android/app/build/outputs/apk/debug/app-debug.apk"
             DEST="android/app/build/outputs/apk/bahati-v${{ steps.version.outputs.version }}-debug.apk"
