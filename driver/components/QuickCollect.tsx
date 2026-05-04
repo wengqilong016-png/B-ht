@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   CheckCircle2, Loader2, Camera, ChevronRight, WifiOff, MapPin,
   Banknote, AlertTriangle, Calendar, Coins,
@@ -17,7 +18,7 @@ import { TRANSLATIONS, Location, safeRandomUUID } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
 import { haversineM, formatDistance } from '../../utils/haversine';
 
-import type { Driver } from '../../types';
+import type { Driver, Transaction } from '../../types';
 
 /**
  * QuickCollect — Full-featured fast-collection flow.
@@ -76,6 +77,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
   const { lang, activeDriverId } = useAuth();
   const { filteredLocations, isOnline } = useAppData();
   const { showToast } = useToast();
+  const queryClient = useQueryClient();
   const t = TRANSLATIONS[lang];
   const todayStr = useMemo(() => getTodayLocalDate(), []);
 
@@ -189,23 +191,51 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         gpsSourceType: gpsCoords ? 'live' : 'none',
       });
 
+      if (result.source === 'server') {
+        queryClient.setQueriesData<Transaction[]>({ queryKey: ['transactions'] }, (old = []) => [
+          result.transaction,
+          ...old.filter(tx => tx.id !== result.transaction.id),
+        ]);
+      }
+      void queryClient.invalidateQueries({ queryKey: ['transactions'] });
+      void queryClient.invalidateQueries({ queryKey: ['locations'] });
+      void queryClient.invalidateQueries({ queryKey: ['drivers'] });
+
       updateEntry(id, { submitted: true });
       showToast(
         result.source === 'server'
           ? (lang === 'zh' ? '已提交 ✓' : 'Done ✓')
-          : (lang === 'zh' ? '已缓存 ✓' : 'Queued ✓'),
+          : (lang === 'zh' ? '已缓存，联网同步后管理端可见 ✓' : 'Queued — admin sees it after sync ✓'),
         'success',
       );
 
       if (currentDriver) {
+        const flowId = `qc_${entry.location.id}_${Date.now()}`;
+        const telemetryPayload = {
+          source: result.source,
+          txId: result.transaction.id,
+          revenue: result.transaction.revenue,
+          netPayable: result.transaction.netPayable,
+        };
         recordDriverFlowEvent({
           driverId: currentDriver.id,
-          flowId: `qc_${entry.location.id}_${Date.now()}`,
+          flowId,
           locationId: entry.location.id,
           step: 'complete',
           eventName: 'quick_collect_submitted',
           onlineStatus: isOnline,
           hasPhoto: !!entry.photo,
+          payload: telemetryPayload,
+        });
+        recordDriverFlowEvent({
+          driverId: currentDriver.id,
+          flowId,
+          locationId: entry.location.id,
+          step: 'complete',
+          eventName: result.source === 'server' ? 'submit_success' : 'submit_offline_queued',
+          onlineStatus: isOnline,
+          hasPhoto: !!entry.photo,
+          payload: telemetryPayload,
         });
       }
 
@@ -217,6 +247,18 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         });
       }, 1500);
     } catch (err) {
+      if (currentDriver) {
+        recordDriverFlowEvent({
+          driverId: currentDriver.id,
+          flowId: `qc_${entry.location.id}_${Date.now()}`,
+          locationId: entry.location.id,
+          step: 'complete',
+          eventName: 'submit_failed',
+          onlineStatus: isOnline,
+          hasPhoto: !!entry.photo,
+          errorCategory: err instanceof Error ? err.message : String(err),
+        });
+      }
       showToast(err instanceof Error ? err.message : String(err) || t.submitError || 'Submit failed', 'error');
       updateEntry(id, { submitting: false });
     }
@@ -379,6 +421,29 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                     />
                   </div>
 
+                  <div>
+                    <button
+                      type="button"
+                      onClick={() => photoInputRefs.current[machine.id]?.click()}
+                      disabled={entry.submitting || entry.submitted}
+                      className={`flex w-full items-center justify-center gap-2 rounded-subcard border px-4 py-3 text-caption font-black uppercase transition-all ${
+                        entry.photo
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
+                          : 'border-amber-200 bg-amber-50 text-amber-700'
+                      } disabled:opacity-50`}
+                    >
+                      <Camera size={15} />
+                      {entry.photo
+                        ? (lang === 'zh' ? '拍照凭证已添加 ✓' : 'Evidence Photo ✓')
+                        : (lang === 'zh' ? '拍照凭证' : 'Evidence Photo')}
+                    </button>
+                    <input
+                      ref={el => { photoInputRefs.current[machine.id] = el; }}
+                      type="file" accept="image/*" capture="environment" className="hidden"
+                      onChange={e => handlePhotoSelected(machine.id, e)}
+                    />
+                  </div>
+
                   {/* ── Full finance preview ────────────────────────── */}
                   {fin && parsedScore > 0 && (
                     <div className="space-y-2">
@@ -497,24 +562,6 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
 
                   {/* ── Action row ──────────────────────────────────── */}
                   <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => photoInputRefs.current[machine.id]?.click()}
-                      disabled={entry.submitting || entry.submitted}
-                      className={`flex items-center gap-1.5 px-4 py-3 rounded-subcard border font-bold text-caption uppercase transition-all ${
-                        entry.photo
-                          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
-                          : 'bg-white border-slate-200 text-slate-500'
-                      } disabled:opacity-50`}
-                    >
-                      <Camera size={14} />
-                      {entry.photo ? (lang === 'zh' ? '已拍' : 'Photo ✓') : (lang === 'zh' ? '拍照' : 'Photo')}
-                    </button>
-                    <input
-                      ref={el => { photoInputRefs.current[machine.id] = el; }}
-                      type="file" accept="image/*" capture="environment" className="hidden"
-                      onChange={e => handlePhotoSelected(machine.id, e)}
-                    />
                     <button
                       type="button"
                       onClick={() => handleSubmit(machine.id)}

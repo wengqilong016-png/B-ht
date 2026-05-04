@@ -25,6 +25,18 @@ export async function upsertDrivers(drivers: Partial<Driver>[]): Promise<void> {
   if (error) throw error;
 }
 
+export async function updateDriverProfile(
+  driverId: string,
+  updates: Pick<Partial<Driver>, 'phone' | 'backgroundPhotoUrl'>,
+): Promise<void> {
+  if (!supabase) throw new Error('Supabase client unavailable');
+  const { error } = await supabase
+    .from('drivers')
+    .update(updates)
+    .eq('id', driverId);
+  if (error) throw error;
+}
+
 export async function deleteDrivers(ids: string[]): Promise<void> {
   if (!supabase) throw new Error('Supabase client unavailable');
   const { error } = await supabase.from('drivers').delete().in('id', ids);

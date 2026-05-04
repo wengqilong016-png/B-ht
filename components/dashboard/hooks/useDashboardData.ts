@@ -199,17 +199,22 @@ export function useDashboardData({
     });
   }, [drivers, transactions, dailySettlements]);
 
-  const allAreas = useMemo(() => Array.from(new Set(locations.map(l => l.area))).sort(), [locations]);
+  const allAreas = useMemo(
+    () => Array.from(new Set(locations.map(l => l.area).filter(Boolean))).sort(),
+    [locations],
+  );
 
   const managedLocations = useMemo(() => {
+    const normalizedSearch = siteSearch.trim().toLowerCase();
     return locations.filter(l => {
-      const matchSearch = l.name.toLowerCase().includes(siteSearch.toLowerCase()) || l.machineId.toLowerCase().includes(siteSearch.toLowerCase());
-      const matchArea = siteFilterArea === 'all' || l.area === siteFilterArea;
+      const searchable = `${l.name ?? ''} ${l.machineId ?? ''} ${l.area ?? ''}`.toLowerCase();
+      const matchSearch = !normalizedSearch || searchable.includes(normalizedSearch);
+      const matchArea = siteFilterArea === 'all' || (l.area ?? '') === siteFilterArea;
       return matchSearch && matchArea;
     }).sort((a, b) => {
       const dir = siteSort.direction === 'asc' ? 1 : -1;
-      const valA = a[siteSort.key as keyof Location] as string | number;
-      const valB = b[siteSort.key as keyof Location] as string | number;
+      const valA = a[siteSort.key as keyof Location] ?? '';
+      const valB = b[siteSort.key as keyof Location] ?? '';
       if (valA < valB) return -1 * dir;
       if (valA > valB) return 1 * dir;
       return 0;

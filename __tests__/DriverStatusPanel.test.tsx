@@ -4,7 +4,9 @@ import React from 'react';
 
 import DriverStatusPanel from '../driver/components/DriverStatusPanel';
 
-const mockMutateAsync = jest.fn<(drivers: unknown[]) => Promise<void>>();
+const mockSetQueryData = jest.fn();
+const mockInvalidateQueries = jest.fn();
+const mockUpdateDriverProfile = jest.fn<(driverId: string, updates: unknown) => Promise<void>>();
 const mockPersistEvidencePhotoUrl = jest.fn<(
   photoUrl: string | null | undefined,
   options: { category: string; entityId: string; driverId?: string | null }
@@ -60,13 +62,15 @@ jest.mock('../contexts/DataContext', () => ({
   useAppData: () => mockAppData,
 }));
 
-jest.mock('../contexts/MutationContext', () => ({
-  useMutations: () => ({
-    updateDrivers: {
-      mutateAsync: mockMutateAsync,
-      isPending: false,
-    },
+jest.mock('@tanstack/react-query', () => ({
+  useQueryClient: () => ({
+    setQueryData: mockSetQueryData,
+    invalidateQueries: mockInvalidateQueries,
   }),
+}));
+
+jest.mock('../repositories/driverRepository', () => ({
+  updateDriverProfile: (driverId: string, updates: unknown) => mockUpdateDriverProfile(driverId, updates),
 }));
 
 jest.mock('../services/evidenceStorage', () => ({
@@ -86,10 +90,12 @@ jest.mock('../types', () => {
 
 describe('DriverStatusPanel', () => {
   beforeEach(() => {
-    mockMutateAsync.mockReset();
+    mockSetQueryData.mockReset();
+    mockInvalidateQueries.mockReset();
+    mockUpdateDriverProfile.mockReset();
     mockPersistEvidencePhotoUrl.mockReset();
     mockResizeImage.mockReset();
-    mockMutateAsync.mockResolvedValue(undefined);
+    mockUpdateDriverProfile.mockResolvedValue(undefined);
     mockPersistEvidencePhotoUrl.mockImplementation(async (photoUrl) => {
       if (!photoUrl) return null;
       return photoUrl.startsWith('data:') ? 'https://cdn.example.com/driver-background.jpg' : photoUrl;
@@ -100,7 +106,7 @@ describe('DriverStatusPanel', () => {
   it('saves driver phone and background photo from the status panel', async () => {
     const { container } = render(<DriverStatusPanel />);
 
-    fireEvent.change(screen.getByPlaceholderText('+255 6xx xxx xxxx'), {
+    fireEvent.change(await screen.findByPlaceholderText('+255 6xx xxx xxxx'), {
       target: { value: '+255700123456' },
     });
 
@@ -122,14 +128,14 @@ describe('DriverStatusPanel', () => {
     fireEvent.click(screen.getByText('保存资料'));
 
     await waitFor(() => {
-      expect(mockMutateAsync).toHaveBeenCalledWith([
-        expect.objectContaining({
-          id: 'RAJABU',
-          phone: '+255700123456',
-          backgroundPhotoUrl: 'https://cdn.example.com/driver-background.jpg',
-        }),
-      ]);
+      expect(mockUpdateDriverProfile).toHaveBeenCalledWith('RAJABU', {
+        phone: '+255700123456',
+        backgroundPhotoUrl: 'https://cdn.example.com/driver-background.jpg',
+      });
     });
+
+    expect(mockSetQueryData).toHaveBeenCalledWith(['drivers'], expect.any(Function));
+    expect(mockInvalidateQueries).toHaveBeenCalledWith({ queryKey: ['drivers'] });
 
     expect(mockPersistEvidencePhotoUrl).toHaveBeenCalledWith(
       'data:image/jpeg;base64,photo',

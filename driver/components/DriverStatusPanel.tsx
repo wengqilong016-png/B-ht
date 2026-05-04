@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import {
   AlertCircle,
   Banknote,
@@ -18,17 +19,19 @@ import React, { useEffect, useState } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
 import { useAppData } from '../../contexts/DataContext';
-import { useMutations } from '../../contexts/MutationContext';
 import { useFormStatus } from '../../hooks/useFormStatus';
+import { updateDriverProfile } from '../../repositories/driverRepository';
 import { persistEvidencePhotoUrl } from '../../services/evidenceStorage';
 import { TRANSLATIONS, resizeImage } from '../../types';
+
+import type { Driver } from '../../types';
 
 interface DriverStatusPanelProps {}
 
 const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
   const { lang, activeDriverId } = useAuth();
   const { drivers, locations, filteredTransactions: transactions, isOnline } = useAppData();
-  const { updateDrivers } = useMutations();
+  const queryClient = useQueryClient();
   const driver = drivers.find((item) => item.id === activeDriverId);
   const t = TRANSLATIONS[lang];
   const assignedMachines = locations.filter((location) => location.assignedDriverId === activeDriverId);
@@ -93,17 +96,24 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
         driverId: driver.id,
       });
 
-      const nextDriver = {
-        ...driver,
+      const updates: Pick<Partial<Driver>, 'phone' | 'backgroundPhotoUrl'> = {
         phone: phoneDraft.trim(),
-        backgroundPhotoUrl: backgroundPhotoUrl ?? undefined,
+        backgroundPhotoUrl: backgroundPhotoUrl ?? driver.backgroundPhotoUrl,
       };
 
-      await updateDrivers.mutateAsync(
-        drivers.map((item) => (item.id === driver.id ? nextDriver : item)),
-      );
+      await updateDriverProfile(driver.id, updates);
 
-      setBackgroundPhotoDraft(backgroundPhotoUrl);
+      const nextDriver: Driver = {
+        ...driver,
+        ...updates,
+      };
+
+      queryClient.setQueryData<Driver[]>(['drivers'], (old = drivers) =>
+        old.map((item) => (item.id === driver.id ? nextDriver : item)),
+      );
+      void queryClient.invalidateQueries({ queryKey: ['drivers'] });
+
+      setBackgroundPhotoDraft(nextDriver.backgroundPhotoUrl ?? null);
       profileForm.setSuccess(t.updateSuccess);
     } catch (error) {
       profileForm.setError(error instanceof Error ? error.message : t.updateError);
@@ -216,9 +226,12 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
           )}
 
           <button
-            aria-label={t.saveDriverProfile} type="submit" aria-disabled={profileForm.isLoading || updateDrivers.isPending || !isOnline}
+            aria-label={t.saveDriverProfile}
+            type="submit"
+            disabled={profileForm.isLoading || !isOnline}
+            className="inline-flex items-center justify-center gap-2 rounded-btn bg-emerald-600 px-4 py-2 text-caption font-black uppercase text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
-            {profileForm.isLoading || updateDrivers.isPending ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+            {profileForm.isLoading ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle size={14} />}
             {t.saveDriverProfile}
           </button>
         </form>
