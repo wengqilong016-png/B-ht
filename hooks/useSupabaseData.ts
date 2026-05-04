@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
 
 import { fetchAiLogs } from '../repositories/aiLogRepository';
 import { fetchDrivers } from '../repositories/driverRepository';
@@ -201,26 +201,6 @@ export function useSupabaseData(
     enabled: !isDriver && !!transactions.length,
     staleTime: 1000 * 60 * 10,
   });
-
-  const isDriverRef = useRef(isDriver);
-  const userRoleRef = useRef(userRole);
-  useEffect(() => { isDriverRef.current = isDriver; }, [isDriver]);
-  useEffect(() => { userRoleRef.current = userRole; }, [userRole]);
-
-  useEffect(() => {
-    if (!isOnline || !isAuthenticated) return;
-    // Force an immediate refetch (not just cache invalidation) so stale local
-    // data is replaced as soon as connectivity is restored.  invalidateQueries
-    // only marks entries stale and waits for the next consumer render, which can
-    // leave the UI showing old data for seconds after reconnect.
-    void queryClient.refetchQueries({ queryKey: ['locations'] });
-    void queryClient.refetchQueries({ queryKey: ['drivers'] });
-    void queryClient.refetchQueries({ queryKey: ['transactions'] });
-    void queryClient.refetchQueries({ queryKey: ['dailySettlements'] });
-    if (!isDriverRef.current) {
-      void queryClient.refetchQueries({ queryKey: ['aiLogs', userRoleRef.current ?? 'none'] });
-    }
-  }, [isOnline, isAuthenticated, queryClient]);
 
   useEffect(() => {
     const handleOnline = () => {
