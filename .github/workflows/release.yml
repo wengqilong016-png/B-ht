@@ -76,7 +76,9 @@ jobs:
           APP_GIT_SHA: ${{ steps.build_meta.outputs.git_sha }}
 
       - name: Sync Capacitor
-        run: npx cap sync android
+        run: |
+          node scripts/prune-android-web-assets.cjs
+          npx cap sync android
 
       - name: Validate release signing secrets
         run: |
@@ -159,6 +161,14 @@ jobs:
 
           "$APKSIGNER_PATH" verify --print-certs "$APK_PATH"
         shell: bash
+
+      - name: Verify APK does not contain update downloads
+        run: |
+          APK_PATH="android/app/build/outputs/apk/release/app-release.apk"
+          if unzip -l "$APK_PATH" | grep -E 'assets/public/downloads/.*\.apk'; then
+            echo "::error::Release APK contains embedded update APK."
+            exit 1
+          fi
 
       - name: Get version
         id: version

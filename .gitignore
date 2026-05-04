@@ -75,3 +75,6 @@ scripts/debug/
 .ralph/
 PROMPT.md
 IMPLEMENTATION_PLAN.md
+
+# Never ship APK binaries inside web assets
+public/downloads/*.apk

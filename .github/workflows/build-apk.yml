@@ -255,8 +255,6 @@ jobs:
           GIT_SHA="${{ steps.build_meta.outputs.git_sha }}"
           SHORT_SHA="${{ steps.build_meta.outputs.short_sha }}"
           RELEASED_AT="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
-          mkdir -p public/downloads
-          cp android/app/build/outputs/apk/bahati-latest-release.apk public/downloads/bahati-latest-release.apk
           REPO="${{ github.repository }}"
           APK_URL="https://github.com/${REPO}/releases/latest/download/bahati-latest-release.apk"
           node -e "
@@ -272,12 +270,12 @@ jobs:
             }, null, 2) + '\n');
           "
           node scripts/sync-pwa-cache-version.cjs
-          if git diff --quiet -- public/version.json public/sw.js public/downloads/bahati-latest-release.apk; then
+          if git diff --quiet -- public/version.json public/sw.js; then
             echo "manifest and apk already up to date"
             echo "changed=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
-          git add public/version.json public/sw.js public/downloads/bahati-latest-release.apk
+          git add public/version.json public/sw.js
           git commit -m "chore: refresh update manifest for ${SHORT_SHA}"
           git push origin HEAD:main
           echo "changed=true" >> "$GITHUB_OUTPUT"
