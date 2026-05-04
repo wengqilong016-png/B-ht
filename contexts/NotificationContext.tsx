@@ -40,7 +40,8 @@ export type NotificationEventType =
   | 'anomaly_detected'
   | 'driver_collection_success'
   | 'driver_collection_offline'
-  | 'driver_collection_failed';
+  | 'driver_collection_failed'
+  | 'driver_collection_zero_revenue';
 
 export interface NotificationItem {
   id: string;

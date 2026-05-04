@@ -277,6 +277,7 @@ export type DriverFlowEventName =
   | 'submit_success'
   | 'submit_offline_queued'
   | 'submit_failed'
+  | 'submit_zero_revenue'
   | 'return_home'
   | 'reset_request_opened'
   | 'payout_request_opened'

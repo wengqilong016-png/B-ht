@@ -7,6 +7,7 @@ const SUBMIT_EVENT_TYPES = new Set([
   'submit_success',
   'submit_offline_queued',
   'submit_failed',
+  'submit_zero_revenue',
 ]);
 
 function formatMoney(value: unknown): string {
@@ -52,6 +53,18 @@ export function buildSubmissionNotification(event: DriverFlowEvent): SubmissionN
       type: 'driver_collection_failed',
       title: `收款失败：${driverName}`,
       message: `${locationName}｜分数 ${scoreLine}｜原因：${reason}｜交易号 ${txId}`,
+      level: 'critical',
+      entityType: 'transaction',
+      entityId: txId,
+      metadata: { eventId: event.id, driverId: event.driverId, locationId: event.locationId, eventName: event.eventName },
+    };
+  }
+
+  if (event.eventName === 'submit_zero_revenue') {
+    return {
+      type: 'driver_collection_zero_revenue',
+      title: `零营业额异常：${driverName}`,
+      message: `${locationName}｜${revenueLine}｜分数 ${scoreLine}｜云端已记录但营业额为 0，请核查上次分数｜交易号 ${txId}`,
       level: 'critical',
       entityType: 'transaction',
       entityId: txId,

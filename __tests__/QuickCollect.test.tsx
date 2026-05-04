@@ -121,4 +121,18 @@ describe('QuickCollect', () => {
     expect(within(receipt).getByText(/交易号 tx-quick/)).toBeInTheDocument();
     expect(within(receipt).getByText(/管理端已可见/)).toBeInTheDocument();
   });
+
+  it('blocks submissions where the new score is not higher than last score', async () => {
+    renderQC({ auth: { lang: 'zh' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Machine A' }));
+    fireEvent.change(await screen.findByPlaceholderText('0000'), { target: { value: '1000' } });
+    fireEvent.click(screen.getByRole('button', { name: '提交' }));
+
+    expect(mockOrchestrate).not.toHaveBeenCalled();
+    expect(await screen.findByText(/已拦截零营业额提交/)).toBeInTheDocument();
+    expect(mockRecordFlow).toHaveBeenCalledWith(expect.objectContaining({
+      eventName: 'submit_validation_error',
+      errorCategory: 'current_score_not_higher_than_last_score',
+    }));
+  });
 });

@@ -190,11 +190,11 @@ const DriverFlowDiagnosticsPage: React.FC = () => {
   ), [summaries]);
 
   const recentFailures = todayEvents
-    .filter(event => event.eventName === 'submit_failed' || event.eventName === 'submit_validation_error')
+    .filter(event => event.eventName === 'submit_failed' || event.eventName === 'submit_validation_error' || event.eventName === 'submit_zero_revenue')
     .slice(0, 8);
 
   const recentSubmitEvents = todayEvents
-    .filter(event => event.eventName === 'submit_success' || event.eventName === 'submit_offline_queued' || event.eventName === 'submit_failed')
+    .filter(event => event.eventName === 'submit_success' || event.eventName === 'submit_offline_queued' || event.eventName === 'submit_failed' || event.eventName === 'submit_zero_revenue')
     .slice(0, 12);
 
   return (
@@ -307,7 +307,9 @@ const DriverFlowDiagnosticsPage: React.FC = () => {
                     ? '云端成功'
                     : event.eventName === 'submit_offline_queued'
                       ? '离线待同步'
-                      : '失败';
+                      : event.eventName === 'submit_zero_revenue'
+                        ? '零营业额异常'
+                        : '失败';
                   return (
                     <tr key={event.id} className="text-xs font-bold text-slate-600">
                       <td className="px-4 py-3">{new Date(event.createdAt).toLocaleTimeString()}</td>

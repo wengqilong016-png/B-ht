@@ -62,6 +62,30 @@ describe('buildSubmissionNotification', () => {
     expect(notification?.message).toContain('联网同步后');
   });
 
+  it('builds a critical notification for zero-revenue cloud submissions', () => {
+    const notification = buildSubmissionNotification({
+      ...baseEvent,
+      id: 'event-zero',
+      eventName: 'submit_zero_revenue',
+      payload: {
+        ...baseEvent.payload,
+        previousScore: 1300,
+        currentScore: 1300,
+        revenue: 0,
+        netPayable: 0,
+      },
+    });
+
+    expect(notification).toEqual(expect.objectContaining({
+      type: 'driver_collection_zero_revenue',
+      level: 'critical',
+      entityId: 'tx-quick',
+    }));
+    expect(notification?.title).toContain('零营业额异常');
+    expect(notification?.message).toContain('营业额为 0');
+    expect(notification?.message).toContain('1,300 → 1,300');
+  });
+
   it('returns null for unrelated driver flow events', () => {
     expect(buildSubmissionNotification({ ...baseEvent, eventName: 'machine_selected' })).toBeNull();
   });

@@ -170,6 +170,49 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
       updateEntry(id, { submitting: false }); return;
     }
 
+    const previousScore = Number(entry.location.lastScore ?? 0);
+    if (parsedScore <= previousScore) {
+      const message = lang === 'zh'
+        ? `新分数必须大于上次分数 ${previousScore}，否则营业额会是 0`
+        : `New score must be higher than last score ${previousScore}; otherwise revenue is 0`;
+      showToast(message, 'error');
+      updateEntry(id, {
+        submitting: false,
+        submitted: false,
+        receipt: {
+          status: 'failed',
+          txId: 'not-submitted',
+          previousScore,
+          currentScore: parsedScore,
+          revenue: 0,
+          netPayable: 0,
+          message: lang === 'zh' ? '已拦截零营业额提交' : 'Zero-revenue submit blocked',
+          detail: message,
+        },
+      });
+      if (currentDriver) {
+        recordDriverFlowEvent({
+          driverId: currentDriver.id,
+          flowId: `qc_${entry.location.id}_${Date.now()}`,
+          locationId: entry.location.id,
+          step: 'complete',
+          eventName: 'submit_validation_error',
+          onlineStatus: isOnline,
+          hasPhoto: !!entry.photo,
+          errorCategory: 'current_score_not_higher_than_last_score',
+          payload: {
+            driverName: currentDriver.name,
+            locationName: entry.location.name,
+            previousScore,
+            currentScore: parsedScore,
+            revenue: 0,
+            reason: message,
+          },
+        });
+      }
+      return;
+    }
+
     const draftTxId = safeRandomUUID();
     const calc = calculateCollectionFinanceLocal({
       selectedLocation: entry.location,
@@ -213,6 +256,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
       void queryClient.invalidateQueries({ queryKey: ['locations'] });
       void queryClient.invalidateQueries({ queryKey: ['drivers'] });
 
+      const zeroRevenueAnomaly = result.source === 'server' && Number(result.transaction.revenue ?? 0) <= 0;
       const receipt: SubmissionReceipt = {
         status: result.source,
         txId: result.transaction.id,
@@ -220,20 +264,26 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         currentScore: result.transaction.currentScore ?? parsedScore,
         revenue: result.transaction.revenue ?? calc.revenue,
         netPayable: result.transaction.netPayable ?? calc.netPayable,
-        message: result.source === 'server'
-          ? (lang === 'zh' ? '云端成功' : 'Cloud success')
-          : (lang === 'zh' ? '离线已缓存' : 'Offline queued'),
-        detail: result.source === 'server'
-          ? (lang === 'zh' ? '管理端已可见' : 'Admin can see it')
-          : (lang === 'zh' ? '联网同步后管理端可见' : 'Admin sees it after sync'),
+        message: zeroRevenueAnomaly
+          ? (lang === 'zh' ? '云端已记录但营业额为0' : 'Cloud recorded but revenue is 0')
+          : result.source === 'server'
+            ? (lang === 'zh' ? '云端成功' : 'Cloud success')
+            : (lang === 'zh' ? '离线已缓存' : 'Offline queued'),
+        detail: zeroRevenueAnomaly
+          ? (lang === 'zh' ? '请核查云端上次分数/是否重复提交' : 'Check cloud last score or duplicate submit')
+          : result.source === 'server'
+            ? (lang === 'zh' ? '管理端已可见' : 'Admin can see it')
+            : (lang === 'zh' ? '联网同步后管理端可见' : 'Admin sees it after sync'),
       };
 
       updateEntry(id, { submitted: true, receipt });
       showToast(
-        result.source === 'server'
-          ? (lang === 'zh' ? `云端成功，交易号 ${result.transaction.id}` : `Cloud success, tx ${result.transaction.id}`)
-          : (lang === 'zh' ? `已缓存，联网同步后管理端可见，交易号 ${result.transaction.id}` : `Queued — admin sees it after sync, tx ${result.transaction.id}`),
-        'success',
+        zeroRevenueAnomaly
+          ? (lang === 'zh' ? `云端已记录但营业额为0，交易号 ${result.transaction.id}` : `Cloud recorded but revenue is 0, tx ${result.transaction.id}`)
+          : result.source === 'server'
+            ? (lang === 'zh' ? `云端成功，交易号 ${result.transaction.id}` : `Cloud success, tx ${result.transaction.id}`)
+            : (lang === 'zh' ? `已缓存，联网同步后管理端可见，交易号 ${result.transaction.id}` : `Queued — admin sees it after sync, tx ${result.transaction.id}`),
+        zeroRevenueAnomaly ? 'error' : 'success',
       );
 
       if (currentDriver) {
@@ -266,7 +316,11 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
           draftTxId,
           locationId: entry.location.id,
           step: 'complete',
-          eventName: result.source === 'server' ? 'submit_success' : 'submit_offline_queued',
+          eventName: zeroRevenueAnomaly
+            ? 'submit_zero_revenue'
+            : result.source === 'server'
+              ? 'submit_success'
+              : 'submit_offline_queued',
           onlineStatus: isOnline,
           hasPhoto: !!entry.photo,
           payload: telemetryPayload,
