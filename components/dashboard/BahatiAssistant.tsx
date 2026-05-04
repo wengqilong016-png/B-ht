@@ -1,11 +1,10 @@
 import {
-  MessageCircle, Send, Phone, Users, MapPin,
-  AlertTriangle, TrendingUp, Search, Sparkles,
+  Send, Phone, TrendingUp, Sparkles,
 } from 'lucide-react';
 import React, { useRef, useEffect, useState } from 'react';
 
-import { useAdminAI } from '../../hooks/useAdminAI';
 import { useAppData } from '../../contexts/DataContext';
+import { useAdminAI } from '../../hooks/useAdminAI';
 
 interface BahatiAssistantProps {
   lang: 'zh' | 'sw';

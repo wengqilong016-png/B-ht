@@ -18,8 +18,8 @@ import DriverManagement from '../driver-management';
 import PageErrorBoundary from '../PageErrorBoundary';
 
 import AiLogsTab from './AiLogsTab';
-import DashboardTabs from './DashboardTabs';
 import BahatiAssistant from './BahatiAssistant';
+import DashboardTabs from './DashboardTabs';
 import { useDashboardData } from './hooks/useDashboardData';
 import OverviewTab from './OverviewTab';
 import PayrollActionModal from './PayrollActionModal';
