@@ -176,8 +176,18 @@ export async function submitCollectionV2(
     };
   }
 
-  // Normalize the server JSON payload to the Transaction shape used by the
-  // frontend. The server is the authority; we trust its computed values.
+  // Gate 2: RPC executed but returned an internal error payload
+  // (e.g. EXCEPTION block in the SQL function returns json_build_object('error', ...)).
+  const rpcData = data as Record<string, unknown>;
+  if (rpcData['error']) {
+    return {
+      success: false,
+      error: String(rpcData['error']),
+      kind: 'rpc',
+    };
+  }
+
+  // Normalize the server JSON payload
   const row = data as Record<string, unknown>;
   const transaction: Transaction = {
     id:                    String(row['id'] ?? input.txId),
