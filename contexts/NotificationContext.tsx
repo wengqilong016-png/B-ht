@@ -22,7 +22,11 @@ import React, {
   useState,
 } from 'react';
 
+import { buildSubmissionNotification } from '../services/adminSubmissionNotifications';
+import { fetchDriverFlowEvents } from '../services/driverFlowTelemetry';
 import { CONSTANTS, safeRandomUUID } from '../types';
+
+import type { User } from '../types';
 
 // ─── Types (inlined from shared/types/notifications.ts) ───────────────────────
 
@@ -33,7 +37,10 @@ export type NotificationEventType =
   | 'machine_stale'
   | 'machine_high_risk'
   | 'pending_approval'
-  | 'anomaly_detected';
+  | 'anomaly_detected'
+  | 'driver_collection_success'
+  | 'driver_collection_offline'
+  | 'driver_collection_failed';
 
 export interface NotificationItem {
   id: string;
@@ -132,9 +139,10 @@ function formatTime(iso: string): string {
 
 interface NotificationProviderProps {
   children: React.ReactNode;
+  currentUser?: User | null;
 }
 
-export function NotificationProvider({ children }: NotificationProviderProps) {
+export function NotificationProvider({ children, currentUser }: NotificationProviderProps) {
   const [notifications, setNotifications] = useState<NotificationItem[]>(loadFromStorage);
   const [panelOpen, setPanelOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -180,6 +188,43 @@ export function NotificationProvider({ children }: NotificationProviderProps) {
   }, []);
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
+
+  useEffect(() => {
+    if (currentUser?.role !== 'admin') return;
+    let cancelled = false;
+
+    const pullSubmissionNotifications = async () => {
+      const events = await fetchDriverFlowEvents(80);
+      if (cancelled) return;
+      const recentCutoff = Date.now() - 24 * 60 * 60 * 1000;
+      const built = events
+        .filter(event => new Date(event.createdAt).getTime() >= recentCutoff)
+        .map(buildSubmissionNotification)
+        .filter((item): item is Omit<NotificationItem, 'id' | 'isRead' | 'createdAt'> => item !== null)
+        .reverse();
+      if (built.length === 0) return;
+
+      setNotifications(prev => {
+        const seen = new Set(prev.map(item => String(item.metadata?.eventId ?? `${item.type}:${item.entityId ?? ''}`)));
+        const fresh = built
+          .filter(item => !seen.has(String(item.metadata?.eventId ?? `${item.type}:${item.entityId ?? ''}`)))
+          .map(item => ({
+            ...item,
+            id: safeRandomUUID(),
+            isRead: false,
+            createdAt: new Date().toISOString(),
+          }));
+        return fresh.length > 0 ? [...fresh, ...prev].slice(0, 200) : prev;
+      });
+    };
+
+    void pullSubmissionNotifications();
+    const intervalId = window.setInterval(() => { void pullSubmissionNotifications(); }, 60_000);
+    return () => {
+      cancelled = true;
+      window.clearInterval(intervalId);
+    };
+  }, [currentUser?.role]);
 
   return (
     <NotificationContext.Provider value={{ notifications, unreadCount, addNotification, markAllRead, clearAll }}>

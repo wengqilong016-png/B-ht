@@ -131,6 +131,28 @@ function formatDuration(ms: number | null): string {
   return `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }
 
+function payloadText(payload: Record<string, unknown>, key: string, fallback = '—'): string {
+  const value = payload[key];
+  return typeof value === 'string' && value.trim() ? value : fallback;
+}
+
+function payloadNumber(payload: Record<string, unknown>, key: string): number | null {
+  const value = payload[key];
+  const parsed = typeof value === 'number' ? value : Number(value ?? NaN);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function formatPayloadMoney(payload: Record<string, unknown>, key: string): string {
+  const value = payloadNumber(payload, key);
+  return value === null ? '—' : `TZS ${value.toLocaleString()}`;
+}
+
+function formatScoreLine(payload: Record<string, unknown>): string {
+  const previous = payloadNumber(payload, 'previousScore');
+  const current = payloadNumber(payload, 'currentScore');
+  return `${previous === null ? '—' : previous.toLocaleString()} → ${current === null ? '—' : current.toLocaleString()}`;
+}
+
 const DriverFlowDiagnosticsPage: React.FC = () => {
   const { drivers } = useAppData();
   const today = getTodayLocalDate();
@@ -170,6 +192,10 @@ const DriverFlowDiagnosticsPage: React.FC = () => {
   const recentFailures = todayEvents
     .filter(event => event.eventName === 'submit_failed' || event.eventName === 'submit_validation_error')
     .slice(0, 8);
+
+  const recentSubmitEvents = todayEvents
+    .filter(event => event.eventName === 'submit_success' || event.eventName === 'submit_offline_queued' || event.eventName === 'submit_failed')
+    .slice(0, 12);
 
   return (
     <div className="mx-auto max-w-6xl space-y-4 pb-10">
@@ -248,6 +274,61 @@ const DriverFlowDiagnosticsPage: React.FC = () => {
           </table>
         </div>
       </div>
+
+      {recentSubmitEvents.length > 0 && (
+        <div className="rounded-card border border-slate-200 bg-white">
+          <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <p className="text-sm font-black text-slate-900">最近提交明细</p>
+            <p className="text-caption font-black uppercase tracking-wide text-slate-400">success / offline / failed</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left">
+              <thead className="bg-slate-50 text-caption font-black uppercase tracking-wide text-slate-400">
+                <tr>
+                  <th className="px-4 py-3">时间</th>
+                  <th className="px-4 py-3">状态</th>
+                  <th className="px-4 py-3">司机</th>
+                  <th className="px-4 py-3">机器</th>
+                  <th className="px-4 py-3">分数</th>
+                  <th className="px-4 py-3">营业额</th>
+                  <th className="px-4 py-3">应付</th>
+                  <th className="px-4 py-3">交易号/原因</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recentSubmitEvents.map(event => {
+                  const payload = event.payload ?? {};
+                  const statusTone = event.eventName === 'submit_success'
+                    ? 'bg-emerald-50 text-emerald-700'
+                    : event.eventName === 'submit_offline_queued'
+                      ? 'bg-amber-50 text-amber-700'
+                      : 'bg-rose-50 text-rose-700';
+                  const statusLabel = event.eventName === 'submit_success'
+                    ? '云端成功'
+                    : event.eventName === 'submit_offline_queued'
+                      ? '离线待同步'
+                      : '失败';
+                  return (
+                    <tr key={event.id} className="text-xs font-bold text-slate-600">
+                      <td className="px-4 py-3">{new Date(event.createdAt).toLocaleTimeString()}</td>
+                      <td className="px-4 py-3"><span className={`rounded-full px-2 py-1 font-black ${statusTone}`}>{statusLabel}</span></td>
+                      <td className="px-4 py-3 font-black text-slate-900">{payloadText(payload, 'driverName', driverNameById.get(event.driverId) ?? event.driverId)}</td>
+                      <td className="px-4 py-3">{payloadText(payload, 'locationName', event.locationId ?? '—')}</td>
+                      <td className="px-4 py-3">{formatScoreLine(payload)}</td>
+                      <td className="px-4 py-3">{formatPayloadMoney(payload, 'revenue')}</td>
+                      <td className="px-4 py-3">{formatPayloadMoney(payload, 'netPayable')}</td>
+                      <td className="px-4 py-3 max-w-[240px] truncate">
+                        {payloadText(payload, 'txId', event.draftTxId ?? '—')}
+                        {event.errorCategory ? ` · ${event.errorCategory}` : ''}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {recentFailures.length > 0 && (
         <div className="rounded-card border border-rose-100 bg-rose-50 px-4 py-3">

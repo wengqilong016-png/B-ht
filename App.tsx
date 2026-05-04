@@ -201,7 +201,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   );
 
   return (
-    <NotificationProvider>
+    <NotificationProvider currentUser={currentUser}>
       <AuthProvider value={authValue}>
         <DataProvider value={dataValue}>
           <MutationProvider value={mutationValue}>

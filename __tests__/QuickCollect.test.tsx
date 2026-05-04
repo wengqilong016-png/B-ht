@@ -7,7 +7,7 @@ jest.mock('../services/driverFlowTelemetry', () => ({ recordDriverFlowEvent: jes
  * QuickCollect unit tests — v2 with expense fields + GPS sort.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import React from 'react';
 
 import { AuthProvider } from '../contexts/AuthContext';
@@ -101,14 +101,14 @@ describe('QuickCollect', () => {
     expect(await screen.findByText(/Offline|离线模式/)).toBeInTheDocument();
   });
 
-  it('caches server transaction and records generic submit success telemetry', async () => {
+  it('caches server transaction, records generic submit success telemetry, and shows a cloud receipt', async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     queryClient.setQueryData(['transactions', 'driver:drv-1'], []);
 
-    renderQC({ queryClient });
+    renderQC({ queryClient, auth: { lang: 'zh' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Machine A' }));
     fireEvent.change(await screen.findByPlaceholderText('0000'), { target: { value: '1200' } });
-    fireEvent.click(screen.getByRole('button', { name: 'Submit' }));
+    fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
     await waitFor(() => expect(mockOrchestrate).toHaveBeenCalled());
 
@@ -116,5 +116,9 @@ describe('QuickCollect', () => {
       expect.arrayContaining([expect.objectContaining({ id: 'tx-quick' })]),
     );
     expect(mockRecordFlow).toHaveBeenCalledWith(expect.objectContaining({ eventName: 'submit_success' }));
+    const receipt = await screen.findByRole('status');
+    expect(within(receipt).getByText(/云端成功/)).toBeInTheDocument();
+    expect(within(receipt).getByText(/交易号 tx-quick/)).toBeInTheDocument();
+    expect(within(receipt).getByText(/管理端已可见/)).toBeInTheDocument();
   });
 });

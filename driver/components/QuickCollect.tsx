@@ -42,12 +42,24 @@ interface MachineEntry {
   photo: string | null;
   submitting: boolean;
   submitted: boolean;
+  receipt: SubmissionReceipt | null;
   /** Expense / adjustment fields the driver can tweak inline. */
   coinExchange: string;
   tip: string;
   ownerRetention: string;
   isOwnerRetaining: boolean;
   expenses: string;
+}
+
+interface SubmissionReceipt {
+  status: 'server' | 'offline' | 'failed';
+  txId?: string;
+  previousScore: number;
+  currentScore: number;
+  revenue: number;
+  netPayable: number;
+  message: string;
+  detail: string;
 }
 
 /* ── Helpers ────────────────────────────────────────────────────────── */
@@ -115,7 +127,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
     (id: string): MachineEntry =>
       entries[id] ?? {
         location: assignedMachines.find(m => m.id === id)!,
-        score: '', photo: null, submitting: false, submitted: false,
+        score: '', photo: null, submitting: false, submitted: false, receipt: null,
         coinExchange: '', tip: '', ownerRetention: '', isOwnerRetaining: false, expenses: '',
       },
     [entries, assignedMachines],
@@ -201,11 +213,26 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
       void queryClient.invalidateQueries({ queryKey: ['locations'] });
       void queryClient.invalidateQueries({ queryKey: ['drivers'] });
 
-      updateEntry(id, { submitted: true });
+      const receipt: SubmissionReceipt = {
+        status: result.source,
+        txId: result.transaction.id,
+        previousScore: result.transaction.previousScore ?? entry.location.lastScore ?? 0,
+        currentScore: result.transaction.currentScore ?? parsedScore,
+        revenue: result.transaction.revenue ?? calc.revenue,
+        netPayable: result.transaction.netPayable ?? calc.netPayable,
+        message: result.source === 'server'
+          ? (lang === 'zh' ? '云端成功' : 'Cloud success')
+          : (lang === 'zh' ? '离线已缓存' : 'Offline queued'),
+        detail: result.source === 'server'
+          ? (lang === 'zh' ? '管理端已可见' : 'Admin can see it')
+          : (lang === 'zh' ? '联网同步后管理端可见' : 'Admin sees it after sync'),
+      };
+
+      updateEntry(id, { submitted: true, receipt });
       showToast(
         result.source === 'server'
-          ? (lang === 'zh' ? '已提交 ✓' : 'Done ✓')
-          : (lang === 'zh' ? '已缓存，联网同步后管理端可见 ✓' : 'Queued — admin sees it after sync ✓'),
+          ? (lang === 'zh' ? `云端成功，交易号 ${result.transaction.id}` : `Cloud success, tx ${result.transaction.id}`)
+          : (lang === 'zh' ? `已缓存，联网同步后管理端可见，交易号 ${result.transaction.id}` : `Queued — admin sees it after sync, tx ${result.transaction.id}`),
         'success',
       );
 
@@ -214,12 +241,18 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         const telemetryPayload = {
           source: result.source,
           txId: result.transaction.id,
-          revenue: result.transaction.revenue,
-          netPayable: result.transaction.netPayable,
+          driverName: currentDriver.name,
+          locationName: entry.location.name,
+          previousScore: receipt.previousScore,
+          currentScore: receipt.currentScore,
+          revenue: receipt.revenue,
+          netPayable: receipt.netPayable,
+          fallbackReason: result.fallbackReason,
         };
         recordDriverFlowEvent({
           driverId: currentDriver.id,
           flowId,
+          draftTxId,
           locationId: entry.location.id,
           step: 'complete',
           eventName: 'quick_collect_submitted',
@@ -230,6 +263,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         recordDriverFlowEvent({
           driverId: currentDriver.id,
           flowId,
+          draftTxId,
           locationId: entry.location.id,
           step: 'complete',
           eventName: result.source === 'server' ? 'submit_success' : 'submit_offline_queued',
@@ -242,25 +276,50 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
       setTimeout(() => {
         setExpandedId(null);
         updateEntry(id, {
-          score: '', photo: null, submitting: false, submitted: false,
+          score: '', photo: null, submitting: false, submitted: true, receipt,
           coinExchange: '', tip: '', ownerRetention: '', isOwnerRetaining: false, expenses: '',
         });
-      }, 1500);
+      }, 2500);
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       if (currentDriver) {
         recordDriverFlowEvent({
           driverId: currentDriver.id,
           flowId: `qc_${entry.location.id}_${Date.now()}`,
+          draftTxId,
           locationId: entry.location.id,
           step: 'complete',
           eventName: 'submit_failed',
           onlineStatus: isOnline,
           hasPhoto: !!entry.photo,
-          errorCategory: err instanceof Error ? err.message : String(err),
+          errorCategory: errorMessage,
+          payload: {
+            txId: draftTxId,
+            driverName: currentDriver.name,
+            locationName: entry.location.name,
+            previousScore: entry.location.lastScore ?? 0,
+            currentScore: parsedScore,
+            revenue: calc.revenue,
+            netPayable: calc.netPayable,
+            reason: errorMessage,
+          },
         });
       }
-      showToast(err instanceof Error ? err.message : String(err) || t.submitError || 'Submit failed', 'error');
-      updateEntry(id, { submitting: false });
+      showToast(errorMessage || t.submitError || 'Submit failed', 'error');
+      updateEntry(id, {
+        submitting: false,
+        submitted: false,
+        receipt: {
+          status: 'failed',
+          txId: draftTxId,
+          previousScore: entry.location.lastScore ?? 0,
+          currentScore: parsedScore,
+          revenue: calc.revenue,
+          netPayable: calc.netPayable,
+          message: lang === 'zh' ? '提交失败' : 'Submit failed',
+          detail: errorMessage || (lang === 'zh' ? '请截图联系管理员' : 'Screenshot and contact admin'),
+        },
+      });
     }
   };
 
@@ -578,6 +637,32 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                       )}
                     </button>
                   </div>
+
+                  {entry.receipt && (
+                    <div
+                      role="status"
+                      className={`rounded-subcard border px-3 py-2 text-xs font-bold ${
+                        entry.receipt.status === 'server'
+                          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                          : entry.receipt.status === 'offline'
+                            ? 'border-amber-200 bg-amber-50 text-amber-800'
+                            : 'border-rose-200 bg-rose-50 text-rose-700'
+                      }`}
+                    >
+                      <div className="flex items-center gap-1.5 font-black">
+                        {entry.receipt.status === 'failed' ? <AlertTriangle size={13} /> : <CheckCircle2 size={13} />}
+                        <span>{entry.receipt.message}</span>
+                      </div>
+                      <p className="mt-1">
+                        {lang === 'zh' ? '交易号' : 'Tx'} {entry.receipt.txId ?? '—'} · {entry.receipt.detail}
+                      </p>
+                      <p className="mt-1 text-[11px] opacity-80">
+                        {lang === 'zh' ? '分数' : 'Score'} {entry.receipt.previousScore.toLocaleString()} → {entry.receipt.currentScore.toLocaleString()}
+                        {' · '}TZS {entry.receipt.revenue.toLocaleString()}
+                        {' · '}{lang === 'zh' ? '应付' : 'Net'} TZS {entry.receipt.netPayable.toLocaleString()}
+                      </p>
+                    </div>
+                  )}
 
                   {/* Offline */}
                   {!isOnline && (
