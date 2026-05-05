@@ -1876,7 +1876,9 @@ BEGIN
         INTO v_existing_tx
         FROM public.transactions t
         WHERE t.id = p_tx_id;
-        RETURN row_to_json(v_existing_tx);
+        -- Signal idempotent replay: the frontend will reject this as a
+        -- duplicate submission rather than logging a phantom submit_success.
+        RETURN row_to_json(v_existing_tx)::jsonb || jsonb_build_object('tx_conflict', true);
     END IF;
 
     RETURN json_build_object(

@@ -187,6 +187,18 @@ export async function submitCollectionV2(
     };
   }
 
+  // Gate 3: Idempotent replay — ON CONFLICT (id) DO NOTHING returned an
+  // existing row. This signals a duplicate submission (same txId). The
+  // caller MUST NOT log submit_success for this; the transaction already
+  // exists and no new state was committed.
+  if (rpcData['tx_conflict']) {
+    return {
+      success: false,
+      error: `Transaction ${input.txId} already exists (duplicate submission prevented)`,
+      kind: 'rpc',
+    };
+  }
+
   // Normalize the server JSON payload
   const row = data as Record<string, unknown>;
   const transaction: Transaction = {
