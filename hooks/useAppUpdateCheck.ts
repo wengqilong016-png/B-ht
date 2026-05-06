@@ -31,7 +31,10 @@ function hasKnownVersionCode(value: number | undefined): value is number {
 function getUpdateManifestUrl(): string {
   // In the Android APK we run at `https://localhost` and `/version.json` points to the bundled asset,
   // which will always match the currently-installed version. For native builds we must read a remote
-  // manifest (served by Vercel) to detect updates.
+  // manifest to detect updates.
+  //
+  // GitHub raw is the fastest signal — it updates the instant a push lands, with zero deployment delay.
+  // Vercel serves `/version.json` for the web PWA, but native APK updates should not be gated on Vercel deploys.
   if (Capacitor.isNativePlatform()) {
     const configured =
       typeof __UPDATE_MANIFEST_URL__ !== 'undefined' ? (__UPDATE_MANIFEST_URL__ || '') : '';
