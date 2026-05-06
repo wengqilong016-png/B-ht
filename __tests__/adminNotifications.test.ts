@@ -100,4 +100,77 @@ describe('adminNotifications service', () => {
     expect(inFilter).toHaveBeenCalledWith('id', ['notif-1', 'notif-2']);
     expect(eq).toHaveBeenCalledWith('isRead', false);
   });
+
+  it('returns true when marking an empty id list read', async () => {
+    await expect(markAdminNotificationsRead([])).resolves.toBe(true);
+    await expect(markAdminNotificationsRead(['', null as unknown as string].filter(Boolean))).resolves.toBe(true);
+  });
+
+  it('returns false when mark-read encounters a Supabase error', async () => {
+    const eq = jest.fn().mockResolvedValue({ error: { message: 'permission denied' } });
+    const inFilter = jest.fn(() => ({ eq }));
+    const update = jest.fn(() => ({ in: inFilter }));
+    mockFrom.mockReturnValue({ update });
+
+    await expect(markAdminNotificationsRead(['notif-1'])).resolves.toBe(false);
+  });
+
+  it('returns null when fetch hits a Supabase error', async () => {
+    const limit = jest.fn().mockResolvedValue({ data: null, error: { message: 'timeout' } });
+    const order = jest.fn(() => ({ limit }));
+    const select = jest.fn(() => ({ order }));
+    mockFrom.mockReturnValue({ select });
+
+    await expect(fetchAdminNotifications()).resolves.toBeNull();
+  });
+
+  it('maps a minimal row with null fields to safe defaults', () => {
+    const minimal: AdminNotificationRow = {
+      id: 'min-1',
+      type: null,
+      title: null,
+      message: null,
+      timestamp: null,
+      isRead: null,
+      driverId: null,
+      relatedTransactionId: null,
+      relatedLocationId: null,
+    };
+
+    const notification = mapAdminNotificationRow(minimal);
+
+    expect(notification).toEqual(expect.objectContaining({
+      id: 'min-1',
+      type: 'admin_notification',
+      title: '通知',
+      message: '',
+      level: 'info',
+      isRead: false,
+      createdAt: '1970-01-01T00:00:00.000Z',
+      driverId: null,
+      relatedTransactionId: null,
+      relatedLocationId: null,
+      driverFlowEventId: null,
+    }));
+  });
+
+  it('infers location entity when only relatedLocationId is set', () => {
+    const row: AdminNotificationRow = {
+      ...baseRow,
+      driverId: null,
+      relatedTransactionId: null,
+    };
+    const notification = mapAdminNotificationRow(row);
+    expect(notification.entityType).toBe('location');
+  });
+
+  it('infers driver entity when only driverId is set', () => {
+    const row: AdminNotificationRow = {
+      ...baseRow,
+      relatedTransactionId: null,
+      relatedLocationId: null,
+    };
+    const notification = mapAdminNotificationRow(row);
+    expect(notification.entityType).toBe('driver');
+  });
 });
