@@ -22,6 +22,10 @@ import React, {
   useState,
 } from 'react';
 
+import {
+  fetchAdminNotifications,
+  markAdminNotificationsRead,
+} from '../services/adminNotifications';
 import { buildSubmissionNotification } from '../services/adminSubmissionNotifications';
 import { fetchDriverFlowEvents } from '../services/driverFlowTelemetry';
 import { CONSTANTS, safeRandomUUID } from '../types';
@@ -41,7 +45,14 @@ export type NotificationEventType =
   | 'driver_collection_success'
   | 'driver_collection_offline'
   | 'driver_collection_failed'
-  | 'driver_collection_zero_revenue';
+  | 'driver_collection_zero_revenue'
+  | 'anomaly'
+  | 'overflow'
+  | 'reset_locked'
+  | 'offline'
+  | 'failed'
+  | 'zero_revenue'
+  | 'admin_notification';
 
 export interface NotificationItem {
   id: string;
@@ -54,6 +65,10 @@ export interface NotificationItem {
   isRead: boolean;
   createdAt: string;
   readAt?: string | null;
+  driverId?: string | null;
+  relatedTransactionId?: string | null;
+  relatedLocationId?: string | null;
+  driverFlowEventId?: string | null;
   metadata?: Record<string, unknown>;
 }
 
@@ -101,6 +116,102 @@ function saveToStorage(items: NotificationItem[]) {
     );
   } catch {
     // localStorage may be full; silently ignore.
+  }
+}
+
+function stringifyMetadataValue(value: unknown): string | null {
+  if (typeof value === 'string' && value.trim()) return value;
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return null;
+}
+
+function notificationEventId(item: NotificationItem): string | null {
+  return item.driverFlowEventId
+    ?? stringifyMetadataValue(item.metadata?.driverFlowEventId)
+    ?? stringifyMetadataValue(item.metadata?.eventId);
+}
+
+function notificationEntityId(item: NotificationItem): string | null {
+  return item.relatedTransactionId
+    ?? item.relatedLocationId
+    ?? item.entityId
+    ?? item.driverId
+    ?? null;
+}
+
+function notificationDedupeKey(item: NotificationItem): string {
+  const eventId = notificationEventId(item);
+  if (eventId) return `event:${eventId}`;
+
+  const entityId = notificationEntityId(item);
+  if (entityId) return `${item.type}:${entityId}`;
+
+  return `id:${item.id}`;
+}
+
+function mergeDuplicateNotification(primary: NotificationItem, duplicate: NotificationItem): NotificationItem {
+  const isRead = primary.isRead || duplicate.isRead;
+  return {
+    ...primary,
+    isRead,
+    readAt: primary.readAt ?? duplicate.readAt ?? (isRead ? new Date().toISOString() : null),
+  };
+}
+
+function notificationTime(item: NotificationItem): number {
+  const time = new Date(item.createdAt).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeNotifications(primary: NotificationItem[], fallback: NotificationItem[]): NotificationItem[] {
+  const byKey = new Map<string, NotificationItem>();
+
+  for (const item of [...primary, ...fallback]) {
+    const key = notificationDedupeKey(item);
+    const existing = byKey.get(key);
+    byKey.set(key, existing ? mergeDuplicateNotification(existing, item) : item);
+  }
+
+  return Array.from(byKey.values())
+    .sort((a, b) => notificationTime(b) - notificationTime(a))
+    .slice(0, 200);
+}
+
+function buildBridgeNotificationItems(events: Awaited<ReturnType<typeof fetchDriverFlowEvents>>): NotificationItem[] {
+  const recentCutoff = Date.now() - 24 * 60 * 60 * 1000;
+
+  return events
+    .filter(event => new Date(event.createdAt).getTime() >= recentCutoff)
+    .map((event): NotificationItem | null => {
+      const payload = buildSubmissionNotification(event);
+      if (!payload) return null;
+      return {
+        ...payload,
+        id: safeRandomUUID(),
+        isRead: false,
+        createdAt: event.createdAt,
+        driverId: event.driverId,
+        relatedTransactionId: payload.relatedTransactionId ?? payload.entityId ?? event.draftTxId ?? event.id,
+        relatedLocationId: event.locationId,
+        driverFlowEventId: event.id,
+        metadata: {
+          ...payload.metadata,
+          eventId: event.id,
+          driverFlowEventId: event.id,
+          driverId: event.driverId,
+          locationId: event.locationId,
+        },
+      };
+    })
+    .filter((item): item is NotificationItem => item !== null);
+}
+
+async function fetchBridgeNotificationItems(limit = 80): Promise<NotificationItem[]> {
+  try {
+    return buildBridgeNotificationItems(await fetchDriverFlowEvents(limit));
+  } catch (error) {
+    console.warn('[NotificationContext] driver_flow_events notification fallback failed:', error);
+    return [];
   }
 }
 
@@ -179,10 +290,22 @@ export function NotificationProvider({ children, currentUser }: NotificationProv
   );
 
   const markAllRead = useCallback(() => {
+    const readAt = new Date().toISOString();
+    const unreadNotificationIds = notifications
+      .filter(n => !n.isRead)
+      .map(n => n.id)
+      .filter(Boolean);
+
     setNotifications(prev =>
-      prev.map(n => n.isRead ? n : { ...n, isRead: true, readAt: new Date().toISOString() })
+      prev.map(n => n.isRead ? n : { ...n, isRead: true, readAt })
     );
-  }, []);
+
+    if (currentUser?.role === 'admin' && unreadNotificationIds.length > 0) {
+      void markAdminNotificationsRead(unreadNotificationIds).catch((error) => {
+        console.warn('[NotificationContext] mark read failed:', error);
+      });
+    }
+  }, [currentUser?.role, notifications]);
 
   const clearAll = useCallback(() => {
     setNotifications([]);
@@ -194,33 +317,28 @@ export function NotificationProvider({ children, currentUser }: NotificationProv
     if (currentUser?.role !== 'admin') return;
     let cancelled = false;
 
-    const pullSubmissionNotifications = async () => {
-      const events = await fetchDriverFlowEvents(80);
+    const pullAdminNotifications = async () => {
+      const persistentNotifications = await fetchAdminNotifications();
       if (cancelled) return;
-      const recentCutoff = Date.now() - 24 * 60 * 60 * 1000;
-      const built = events
-        .filter(event => new Date(event.createdAt).getTime() >= recentCutoff)
-        .map(buildSubmissionNotification)
-        .filter((item): item is Omit<NotificationItem, 'id' | 'isRead' | 'createdAt'> => item !== null)
-        .reverse();
-      if (built.length === 0) return;
 
-      setNotifications(prev => {
-        const seen = new Set(prev.map(item => String(item.metadata?.eventId ?? `${item.type}:${item.entityId ?? ''}`)));
-        const fresh = built
-          .filter(item => !seen.has(String(item.metadata?.eventId ?? `${item.type}:${item.entityId ?? ''}`)))
-          .map(item => ({
-            ...item,
-            id: safeRandomUUID(),
-            isRead: false,
-            createdAt: new Date().toISOString(),
-          }));
-        return fresh.length > 0 ? [...fresh, ...prev].slice(0, 200) : prev;
-      });
+      const bridgeNotifications = await fetchBridgeNotificationItems(80);
+      if (cancelled) return;
+
+      if (persistentNotifications) {
+        setNotifications(prev => mergeNotifications(
+          mergeNotifications(persistentNotifications, bridgeNotifications),
+          prev
+        ));
+        return;
+      }
+
+      if (bridgeNotifications.length > 0) {
+        setNotifications(prev => mergeNotifications(bridgeNotifications, prev));
+      }
     };
 
-    void pullSubmissionNotifications();
-    const intervalId = window.setInterval(() => { void pullSubmissionNotifications(); }, 60_000);
+    void pullAdminNotifications();
+    const intervalId = window.setInterval(() => { void pullAdminNotifications(); }, 60_000);
     return () => {
       cancelled = true;
       window.clearInterval(intervalId);
