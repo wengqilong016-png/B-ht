@@ -111,4 +111,19 @@ describe('settlementRepository actions', () => {
 
     await expect(reviewSettlement('STL-1', 'rejected')).rejects.toThrow('review settlement failed');
   });
+
+  it('throws when confirming a zero-revenue settlement (RPC guard)', async () => {
+    mockRpc.mockResolvedValue({
+      data: null,
+      error: new Error('Cannot confirm zero-revenue settlement'),
+    });
+
+    await expect(reviewSettlement('STL-ZERO', 'confirmed')).rejects.toThrow('Cannot confirm zero-revenue settlement');
+
+    expect(mockRpc).toHaveBeenCalledWith('review_daily_settlement_v1', {
+      p_settlement_id: 'STL-ZERO',
+      p_status: 'confirmed',
+      p_note: null,
+    });
+  });
 });

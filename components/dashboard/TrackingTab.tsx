@@ -3,6 +3,7 @@ import React, { Suspense, lazy, useState } from 'react';
 
 import { Driver, Location, Transaction, TRANSLATIONS } from '../../types';
 import { MapErrorBoundary, MapLoadingFallback } from '../MapErrorBoundary';
+import { getDriverPresence } from '../../utils/driverPresence';
 
 const LiveMap = lazy(() => import('../LiveMap'));
 
@@ -145,6 +146,13 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
         )}
         {trackingDriverCards.map(({ driver, driverLocs, driverTxsToday, todayRevenue, attentionLocations, hasStaleGps, lastActiveMinutes }) => {
           const isExpanded = expandedDriverTracking === driver.id;
+          const presence = getDriverPresence(driver.lastActive);
+          const presenceBadge = {
+            online: { color: 'bg-emerald-50 text-emerald-600', iconBg: 'bg-amber-600', label: t.driverOnline },
+            away: { color: 'bg-amber-50 text-amber-600', iconBg: 'bg-amber-500', label: t.driverAway },
+            offline: { color: 'bg-slate-100 text-slate-400', iconBg: 'bg-slate-400', label: t.driverOffline },
+          } as const;
+          const badge = presenceBadge[presence.status];
           return (
             <div key={driver.id} className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
               <button
@@ -152,15 +160,17 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                 onClick={() => { setExpandedDriverTracking(isExpanded ? null : driver.id); setTrackingEditLocId(null); }}
               >
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-md ${driver.status === 'active' ? 'bg-amber-600' : 'bg-slate-400'}`}>
+                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center text-white font-black text-base shadow-md ${badge.iconBg}`}>
                     {driver.name.charAt(0)}
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-black text-slate-900">{driver.name}</p>
                     <p className="text-caption font-bold text-slate-400 uppercase">
-                      {driverLocs.length} locations • {driver.status === 'active'
+                      {driverLocs.length} locations • {presence.status === 'online'
                         ? (driver.lastActive ? formatRelativeTime(lastActiveMinutes) : t.liveNow)
-                        : t.driverOffline}
+                        : presence.status === 'away'
+                          ? t.driverAway
+                          : t.driverOffline}
                     </p>
                   </div>
                 </div>
@@ -179,8 +189,8 @@ const TrackingTab: React.FC<TrackingTabProps> = ({
                       <p className={`text-caption font-black mt-1 ${attentionLocations.length > 0 || hasStaleGps ? 'text-rose-700' : 'text-emerald-700'}`}>{attentionLocations.length + (hasStaleGps ? 1 : 0)}</p>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-lg text-caption font-black uppercase ${hasStaleGps ? 'bg-amber-50 text-amber-600' : driver.status === 'active' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-100 text-slate-400'}`}>
-                    {hasStaleGps ? t.staleGps : driver.status}
+                  <span className={`px-2.5 py-1 rounded-lg text-caption font-black uppercase ${hasStaleGps ? 'bg-amber-50 text-amber-600' : badge.color}`}>
+                    {hasStaleGps ? t.staleGps : badge.label}
                   </span>
                   <ChevronRight size={16} className={`text-slate-300 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
                 </div>

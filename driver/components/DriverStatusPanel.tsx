@@ -14,6 +14,7 @@ import {
   Truck,
   User,
   XCircle,
+  Wifi,
 } from 'lucide-react';
 import React, { useEffect, useState } from 'react';
 
@@ -23,6 +24,7 @@ import { useFormStatus } from '../../hooks/useFormStatus';
 import { updateDriverProfile } from '../../repositories/driverRepository';
 import { persistEvidencePhotoUrl } from '../../services/evidenceStorage';
 import { TRANSLATIONS, resizeImage } from '../../types';
+import { getDriverPresence } from '../../utils/driverPresence';
 
 import type { Driver } from '../../types';
 
@@ -139,7 +141,15 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
       })
     : t.neverActive;
 
-  const isActive = driver.status === 'active';
+  const presence = getDriverPresence(driver.lastActive);
+
+  const presenceStyles = {
+    online: { icon: <Wifi size={12} />, color: 'bg-emerald-50 text-emerald-600 border border-emerald-100', label: t.driverOnline },
+    away:   { icon: <Clock size={12} />, color: 'bg-amber-50 text-amber-600 border border-amber-100',     label: t.driverAway },
+    offline:{ icon: <XCircle size={12} />, color: 'bg-rose-50 text-rose-500 border border-rose-100',  label: t.driverOffline },
+  } as const;
+  const badge = presenceStyles[presence.status];
+
   const cardBackgroundStyle = driver.backgroundPhotoUrl
     ? { backgroundImage: `linear-gradient(rgba(15, 23, 42, 0.58), rgba(15, 23, 42, 0.58)), url(${driver.backgroundPhotoUrl})` }
     : undefined;
@@ -158,11 +168,9 @@ const DriverStatusPanel: React.FC<DriverStatusPanelProps> = () => {
               <p className={`text-caption font-bold mt-0.5 ${driver.backgroundPhotoUrl ? 'text-slate-100' : 'text-slate-400'}`}>{driver.phone}</p>
             )}
           </div>
-          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-caption font-black uppercase flex-shrink-0 ${
-            isActive ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' : 'bg-rose-50 text-rose-500 border border-rose-100'
-          }`}>
-            {isActive ? <CheckCircle size={12} /> : <XCircle size={12} />}
-            {isActive ? t.driverStatusActive : t.driverStatusInactive}
+          <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-caption font-black uppercase flex-shrink-0 ${badge.color}`}>
+            {badge.icon}
+            {badge.label}
           </div>
         </div>
         <div className="border-t border-slate-50 px-5 py-3 flex items-center gap-2 text-slate-400">

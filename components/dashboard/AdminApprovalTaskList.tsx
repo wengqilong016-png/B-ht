@@ -208,7 +208,7 @@ const AdminApprovalTaskList: React.FC<AdminApprovalTaskListProps> = ({
                             <img src={(s as unknown as { transferProofUrl: string }).transferProofUrl} alt={t.settlementProof} className="w-full h-28 object-cover rounded-xl border border-slate-200" />
                           )}
                           <div className="flex gap-2">
-                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
+                            <button aria-label={t.approveBtn} type="button" disabled={isPending || !isOnline || (s.totalRevenue ?? 0) <= 0} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'confirmed'))} className="flex-1 py-3 bg-emerald-500 text-white rounded-xl text-caption font-black uppercase shadow-lg shadow-emerald-100 disabled:opacity-50">✓ {t.approveBtn}</button>
                             <button aria-label={t.rejectBtn} type="button" disabled={isPending || !isOnline} onClick={() => runApprovalAction(task.key, () => onReviewSettlement(task.id, 'rejected'))} className="flex-1 py-3 bg-slate-100 text-slate-400 rounded-xl text-caption font-black uppercase disabled:opacity-50">✗ {t.rejectBtn}</button>
                           </div>
                           <p className="text-caption font-bold leading-relaxed text-slate-500">

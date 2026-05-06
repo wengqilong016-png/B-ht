@@ -1346,6 +1346,16 @@ BEGIN
         RAISE EXCEPTION 'Settlement is not pending: %', p_settlement_id USING ERRCODE = '22023';
     END IF;
 
+    -- ═══ P2: Zero-revenue guard ═══
+    IF p_status = 'confirmed' AND COALESCE(v_settlement."totalRevenue", 0) <= 0 THEN
+        RAISE EXCEPTION
+            'Cannot confirm zero-revenue settlement: % (driver=%, date=%s, revenue=0)',
+            p_settlement_id,
+            v_settlement."driverName",
+            v_settlement."date"::text
+            USING ERRCODE = '22023';
+    END IF;
+
     v_next_note := COALESCE(p_note, v_settlement.note);
     v_payment_status := CASE WHEN p_status = 'confirmed' THEN 'paid' ELSE 'rejected' END;
 

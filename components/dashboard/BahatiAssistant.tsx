@@ -5,6 +5,7 @@ import React, { useRef, useEffect, useState } from 'react';
 
 import { useAppData } from '../../contexts/DataContext';
 import { useAdminAI } from '../../hooks/useAdminAI';
+import { isDriverOnline } from '../../utils/driverPresence';
 
 interface BahatiAssistantProps {
   lang: 'zh' | 'sw';
@@ -56,7 +57,7 @@ const BahatiAssistant: React.FC<BahatiAssistantProps> = ({ lang }) => {
   const todayStr = new Date().toISOString().slice(0, 10);
   const todayTxs = transactions.filter(tx => tx.timestamp?.startsWith(todayStr));
   const todayRevenue = todayTxs.reduce((s, tx) => s + (tx.revenue ?? 0), 0);
-  const onlineDrivers = drivers.filter(d => d.status === 'active').length;
+  const onlineDrivers = drivers.filter(d => isDriverOnline(d.lastActive)).length;
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
