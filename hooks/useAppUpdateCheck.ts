@@ -35,7 +35,7 @@ function getUpdateManifestUrl(): string {
   if (Capacitor.isNativePlatform()) {
     const configured =
       typeof __UPDATE_MANIFEST_URL__ !== 'undefined' ? (__UPDATE_MANIFEST_URL__ || '') : '';
-    return configured || 'https://bahatiwin.space/version.json';
+    return configured || 'https://raw.githubusercontent.com/wengqilong016-png/bht/main/public/version.json';
   }
   return '/version.json';
 }

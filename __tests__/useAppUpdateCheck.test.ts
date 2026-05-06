@@ -132,7 +132,7 @@ describe('useAppUpdateCheck', () => {
     });
   });
 
-  it('polls for updates on native builds', async () => {
+  it('polls for updates on native builds from GitHub raw manifest', async () => {
     jest.useFakeTimers();
     const { Capacitor } = jest.requireMock('@capacitor/core') as {
       Capacitor: { isNativePlatform: jest.Mock };
@@ -150,6 +150,8 @@ describe('useAppUpdateCheck', () => {
 
     await waitFor(() => {
       expect(mockFetch).toHaveBeenCalledTimes(1);
+      const [url] = mockFetch.mock.calls[0] ?? [];
+      expect(String(url)).toContain('raw.githubusercontent.com/wengqilong016-png/bht/main/public/version.json');
     });
 
     jest.advanceTimersByTime(15 * 60 * 1000);
