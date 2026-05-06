@@ -32,6 +32,15 @@ function isValidHttpUrl(value: string | null | undefined): value is string {
   }
 }
 
+/** Runtime NaN guard — prevents server-returned NaN from polluting lat/lng
+ *  past the compile-time `as` assertion on line 224. */
+function isValidGps(value: unknown): value is { lat: number; lng: number } {
+  if (!value || typeof value !== 'object') return false;
+  const gps = value as { lat: number; lng: number };
+  return typeof gps.lat === 'number' && !Number.isNaN(gps.lat)
+      && typeof gps.lng === 'number' && !Number.isNaN(gps.lng);
+}
+
 function isDataImageUrl(value: string | null | undefined): value is string {
   return typeof value === 'string' && /^data:image\/[a-zA-Z0-9.+-]+;base64,/.test(value);
 }
@@ -136,7 +145,7 @@ export async function submitCollectionV2(
   }
 
   let data: unknown;
-  let error: { message: string } | null;
+  let error: { message?: string } | null;
   try {
     // Apply a 30-second hard timeout so a hung server response does not keep
     // the SyncStatusPill spinning in "Syncing…" state indefinitely.
@@ -162,7 +171,7 @@ export async function submitCollectionV2(
       p_expense_description: input.expenseDescription ?? null,
     }).abortSignal(AbortSignal.timeout(30_000));
     data = result.data;
-    error = result.error as { message: string } | null;
+    error = result.error as { message?: string } | null;
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'Unknown error calling submit_collection_v2';
     return { success: false, error: msg, kind: classifyRpcException(e) };
@@ -221,7 +230,7 @@ export async function submitCollectionV2(
     coinExchange:          Number(row['coinExchange'] ?? input.coinExchange),
     extraIncome:           Number(row['extraIncome'] ?? 0),
     netPayable:            Number(row['netPayable'] ?? 0),
-    gps:                   (row['gps'] as { lat: number; lng: number }) ?? input.gps ?? { lat: 0, lng: 0 },
+    gps:                   (isValidGps(row['gps']) ? (row['gps'] as { lat: number; lng: number }) : undefined) ?? input.gps ?? { lat: 0, lng: 0 },
     photoUrl:              isValidHttpUrl(row['photoUrl'] != null ? String(row['photoUrl']) : null)
                              ? String(row['photoUrl'])
                              : persistedPhotoUrl,

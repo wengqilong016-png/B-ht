@@ -386,4 +386,6 @@ export const sw: Record<string, string> = {
   forcePasswordChangeHint: 'For security, please set a new password before continuing',
   approveAndReset: 'Approve & Reset',
   settlementSubmitCta: 'Submit Today Settlement',
+  invalidScore: 'Invalid score',
+  submitError: 'Submission failed',
 };

@@ -126,7 +126,7 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
   const getEntry = useCallback(
     (id: string): MachineEntry =>
       entries[id] ?? {
-        location: assignedMachines.find(m => m.id === id)!,
+        location: assignedMachines.find(m => m.id === id) ?? ({} as Location),
         score: '', photo: null, submitting: false, submitted: false, receipt: null,
         coinExchange: '', tip: '', ownerRetention: '', isOwnerRetaining: false, expenses: '',
       },

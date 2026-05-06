@@ -59,24 +59,22 @@ const DriverForm: React.FC<DriverFormProps> = ({
 
         <div className="p-8 space-y-6 max-h-[70vh] overflow-y-auto custom-scrollbar">
           <div className="grid grid-cols-2 gap-4">
-            <InputField label="姓名 NAME" value={form.name} icon={<User size={16} />} onChange={v => onChange({ name: v })} placeholder="e.g. John Doe / 张三" />
+            <InputField label="姓名 NAME *" value={form.name} icon={<User size={16} />} onChange={v => {
+              // Auto-generate username from name when user hasn't set a custom one
+              const autoId = v.trim().toUpperCase().replace(/\s+/g, '_');
+              onChange({ name: v, username: form.username || autoId });
+            }} placeholder="e.g. Sudi / 张三" />
             <InputField label="电话 PHONE" value={form.phone} icon={<Phone size={16} />} onChange={v => onChange({ phone: v })} placeholder="+255 xxx xxx xxx" />
           </div>
           <div>
-            <InputField label="司机ID DRIVER ID (可选 / optional)" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} placeholder="留空则自动生成 / auto-generated if blank" />
+            <InputField label="司机ID DRIVER ID (自动生成 / auto)" value={form.username} icon={<ShieldCheck size={16} />} onChange={v => onChange({ username: v })} placeholder="留空则从姓名自动生成" />
           </div>
 
-          {/* Email + Password — new driver only */}
+          {/* Password — new driver only (email auto-generated from name) */}
           {!editingId && (
             <div className="p-5 bg-amber-50/50 rounded-card border border-amber-100 space-y-4">
               <p className="text-caption font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
-              <div>
-                <InputField label="邮箱 EMAIL *" value={form.email} icon={<ShieldCheck size={16} />} onChange={v => onChange({ email: v })} />
-                {form.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email) && (
-                  <p className="text-[10px] font-bold text-rose-500 mt-1 ml-1">请输入有效邮箱地址 / Invalid email format</p>
-                )}
-                <p className="text-[10px] font-bold text-amber-500 mt-1 ml-1">此邮箱用于司机登录系统 / This email is used for driver login</p>
-              </div>
+              <p className="text-[10px] font-bold text-slate-500 ml-1">登录邮箱将自动生成：姓名@bht.local（司机首次登录后可绑定真实邮箱）</p>
               <div className="space-y-1">
                 <label className="text-caption font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
                 <input

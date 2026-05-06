@@ -386,4 +386,6 @@ export const zh: Record<string, string> = {
   forcePasswordChangeHint: '为了安全，请设置新密码后继续使用',
   approveAndReset: '批准并清零',
   settlementSubmitCta: '提交今日结算',
+  invalidScore: '无效分数',
+  submitError: '提交失败',
 };

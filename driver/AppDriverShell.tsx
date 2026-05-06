@@ -40,6 +40,11 @@ const AppDriverShell: React.FC = () => {
     return (localStorage.getItem('bahati-font-size') as 'normal' | 'large' | 'xlarge') || 'normal';
   });
 
+  // Email bind reminder for auto-generated @bht.local emails
+  const [showEmailBindReminder, setShowEmailBindReminder] = useState(
+    () => currentUser.role === 'driver' && currentUser.username.endsWith('@bht.local')
+  );
+
   // Apply font-size to document root
   useEffect(() => {
     document.documentElement.setAttribute('data-font-size', fontSize);
@@ -139,6 +144,22 @@ const AppDriverShell: React.FC = () => {
             </>
           }
         />
+
+        {/* Email bind reminder for auto-generated @bht.local accounts */}
+        {showEmailBindReminder && (
+          <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
+            <p className="text-xs font-bold text-amber-700 flex-1">
+              {lang === 'zh'
+                ? '您使用的是自动生成的登录邮箱，建议绑定真实邮箱以免账号丢失。'
+                : 'You are using an auto-generated email. Bind a real email to secure your account.'}
+            </p>
+            <button
+              onClick={() => setShowEmailBindReminder(false)}
+              className="flex-shrink-0 text-amber-400 hover:text-amber-600 p-1"
+              aria-label={lang === 'zh' ? '关闭' : 'Dismiss'}
+            >✕</button>
+          </div>
+        )}
 
         <ShellMainContent hasBottomNav>
           <Suspense fallback={<ShellLoadingFallback />}>

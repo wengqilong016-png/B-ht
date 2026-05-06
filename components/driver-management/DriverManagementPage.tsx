@@ -28,6 +28,12 @@ const DEFAULT_FORM: DriverFormState = {
   status: 'active',
 };
 
+/** Auto-generate a login email from the driver's name */
+function deriveDriverEmail(name: string): string {
+  const sanitized = name.trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '');
+  return `${sanitized || 'driver'}@bht.local`;
+}
+
 const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { filteredDrivers: drivers, locations, filteredTransactions: transactions, filteredSettlements: dailySettlements, isOnline } = useAppData();
   const { updateDrivers, updateLocations, deleteDrivers } = useMutations();
@@ -208,11 +214,10 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
       }
     } else {
       // ── Create new driver via Edge Function ───────────────────────────
-      const email = form.email.trim();
       const password = form.password;
 
-      if (!email || !password) {
-        showToast('新建司机必须填写邮箱和初始密码\nEmail and password are required for new drivers', 'warning');
+      if (!password) {
+        showToast('新建司机必须填写初始密码\\nPassword is required for new drivers', 'warning');
         setIsSaving(false);
         return;
       }
@@ -224,7 +229,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
       try {
         const result = await createDriverAccount({
-          email,
+          email: deriveDriverEmail(form.name),
           password,
           username: resolvedUsername,
           name: form.name,
@@ -232,7 +237,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
         if (result.success === false) {
           if (result.code === 'EMAIL_CONFLICT') {
-            showToast(`邮箱已被注册 / Email already registered: ${email}`, 'error');
+            showToast(`邮箱已被注册 / Email already registered: ${deriveDriverEmail(form.name)}`, 'error');
           } else if (result.code === 'DRIVER_ID_CONFLICT') {
             showToast(`司机账号已存在 / Driver ID already exists: ${resolvedUsername}`, 'error');
           } else {

@@ -65,7 +65,11 @@ export function useSupabaseData(
   const isAuthenticated = !!userRole;
 
   // 1. Health check - High priority
-  const { data: isOnline = false, refetch: refetchHealth } = useQuery({
+  // Default to the browser's own connectivity knowledge so the UI never
+  // shows "offline" on cold start when the network is actually up. This
+  // prevents a 5-10s window where every quick submit silently falls back
+  // to the offline queue even though the server is reachable.
+  const { data: isOnline = (typeof navigator !== 'undefined' ? navigator.onLine : false), refetch: refetchHealth } = useQuery({
     queryKey: ['dbHealth'],
     queryFn: async () => await checkDbHealth(),
     refetchInterval: 5_000,  // ✅ 改为 5s（原 15s），减少网络抖动检测延迟
@@ -78,7 +82,12 @@ export function useSupabaseData(
     const handleOffline = () => {
       queryClient.setQueryData(['dbHealth'], false);
     };
-    const handleOnline = () => { void refetchHealth(); };
+    const handleOnline = () => {
+      // Optimistic: the browser says we're back — trust it immediately so
+      // the next submit hits the server instead of queuing offline.
+      queryClient.setQueryData(['dbHealth'], true);
+      void refetchHealth();
+    };
     window.addEventListener('offline', handleOffline);
     window.addEventListener('online', handleOnline);
     return () => {

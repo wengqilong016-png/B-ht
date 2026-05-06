@@ -202,7 +202,11 @@ export function buildCollectionSubmissionInput(
     throw new Error('Invalid current score');
   }
   const userScore = parsedScore;
-  const recognizedScore = input.aiReviewData?.score ? parseInt(input.aiReviewData.score, 10) : undefined;
+  const recognizedScore = (() => {
+    if (!input.aiReviewData?.score) return undefined;
+    const parsed = parseInt(input.aiReviewData.score, 10);
+    return Number.isNaN(parsed) ? undefined : parsed;
+  })();
   const isAnomaly = recognizedScore !== undefined ? Math.abs(userScore - recognizedScore) > CONSTANTS.ANOMALY_SCORE_DIFF_THRESHOLD : false;
   const reportedStatus = normalizeReportedStatus(
     input.aiReviewData?.condition,
