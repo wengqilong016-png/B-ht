@@ -2,8 +2,8 @@ import { MapPin, Radio, Search, Pencil, ChevronRight, Navigation } from 'lucide-
 import React, { Suspense, lazy, useState } from 'react';
 
 import { Driver, Location, Transaction, TRANSLATIONS } from '../../types';
-import { MapErrorBoundary, MapLoadingFallback } from '../MapErrorBoundary';
 import { getDriverPresence } from '../../utils/driverPresence';
+import { MapErrorBoundary, MapLoadingFallback } from '../MapErrorBoundary';
 
 const LiveMap = lazy(() => import('../LiveMap'));
 
