@@ -100,7 +100,13 @@ export function useSupabaseData(
   const { data: locations = [], isLoading: isLoadingLocs } = useQuery({
     queryKey: ['locations'],
     queryFn: async () => {
-      if (isOnline && isAuthenticated) {
+      // Always try Supabase first when authenticated — let the query's own
+      // 12s timeout and error handling decide when to fall back to localDB.
+      // Don't gate on isOnline: the health-check poll lags behind reality,
+      // and on slow networks (TZ) it can flip to false mid-flight, silently
+      // redirecting the query to an empty localDB when the server is actually
+      // reachable.  Supabase RPCs raise their own network errors naturally.
+      if (isAuthenticated) {
         try {
           const signal = AbortSignal.timeout(12_000);
           const data = await fetchLocations(signal);
@@ -118,7 +124,13 @@ export function useSupabaseData(
   const { data: drivers = [], isLoading: isLoadingDrivers } = useQuery({
     queryKey: ['drivers'],
     queryFn: async () => {
-      if (isOnline && isAuthenticated) {
+      // Always try Supabase first when authenticated — let the query's own
+      // 12s timeout and error handling decide when to fall back to localDB.
+      // Don't gate on isOnline: the health-check poll lags behind reality,
+      // and on slow networks (TZ) it can flip to false mid-flight, silently
+      // redirecting the query to an empty localDB when the server is actually
+      // reachable.  Supabase RPCs raise their own network errors naturally.
+      if (isAuthenticated) {
         try {
           const signal = AbortSignal.timeout(12_000);
           const data = await fetchDrivers(signal);
@@ -138,7 +150,7 @@ export function useSupabaseData(
   const { data: transactions = [], isLoading: isLoadingTxs } = useQuery({
     queryKey: ['transactions', transactionScope.cacheScope],
     queryFn: async () => {
-      if (isOnline && isAuthenticated && transactionScope.enabled) {
+      if (isAuthenticated && transactionScope.enabled) {
         try {
           const data = await fetchTransactions({
             isDriver,
@@ -167,7 +179,7 @@ export function useSupabaseData(
   const { data: dailySettlements = [], isLoading: isLoadingSettlements } = useQuery({
     queryKey: ['dailySettlements', settlementScope.cacheScope],
     queryFn: async () => {
-      if (isOnline && isAuthenticated && settlementScope.enabled) {
+      if (isAuthenticated && settlementScope.enabled) {
         try {
           const data = await fetchSettlements({
             driverIdFilter: settlementScope.driverIdFilter,
@@ -195,7 +207,13 @@ export function useSupabaseData(
   const { data: aiLogs = [] } = useQuery({
     queryKey: ['aiLogs', userRole ?? 'none'],
     queryFn: async () => {
-      if (isOnline && isAuthenticated) {
+      // Always try Supabase first when authenticated — let the query's own
+      // 12s timeout and error handling decide when to fall back to localDB.
+      // Don't gate on isOnline: the health-check poll lags behind reality,
+      // and on slow networks (TZ) it can flip to false mid-flight, silently
+      // redirecting the query to an empty localDB when the server is actually
+      // reachable.  Supabase RPCs raise their own network errors naturally.
+      if (isAuthenticated) {
         try {
           const data = await fetchAiLogs(AbortSignal.timeout(12_000));
           const mapped = data.map(l => ({ ...l, isSynced: true })) as AILog[];
