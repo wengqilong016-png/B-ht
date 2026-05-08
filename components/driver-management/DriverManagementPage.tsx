@@ -31,7 +31,7 @@ const DEFAULT_FORM: DriverFormState = {
 /** Auto-generate a login email from the driver's name */
 function deriveDriverEmail(name: string): string {
   const sanitized = name.trim().toLowerCase().replace(/\s+/g, '.').replace(/[^a-z0-9.]/g, '');
-  return `${sanitized || 'driver'}@bht.local`;
+  return `${sanitized || 'driver'}@bht.com`;
 }
 
 const DriverManagementPage: React.FC<DriverManagementProps> = () => {

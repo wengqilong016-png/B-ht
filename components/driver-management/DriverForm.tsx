@@ -74,7 +74,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
           {!editingId && (
             <div className="p-5 bg-amber-50/50 rounded-card border border-amber-100 space-y-4">
               <p className="text-caption font-black text-amber-500 uppercase tracking-widest">登录账号配置 Login Credentials</p>
-              <p className="text-[10px] font-bold text-slate-500 ml-1">登录邮箱将自动生成：姓名@bht.local（司机首次登录后可绑定真实邮箱）</p>
+              <p className="text-[10px] font-bold text-slate-500 ml-1">登录邮箱将自动生成：姓名@bht.com（司机首次登录后可绑定真实邮箱）</p>
               <div className="space-y-1">
                 <label className="text-caption font-black text-slate-400 uppercase ml-1">初始密码 PASSWORD *</label>
                 <input

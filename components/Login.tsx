@@ -118,7 +118,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, lang, onSetLang }) => {
         return;
       }
 
-      const resolvedEmail = email.includes('@') ? email.trim() : `${email.trim()}@bht.local`;
+      const resolvedEmail = email.includes('@') ? email.trim() : `${email.trim()}@bht.com`;
 
       const loginResult = await signInWithEmailPassword(resolvedEmail, password);
       if (!loginResult.success) {

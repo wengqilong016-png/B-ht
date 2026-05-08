@@ -40,9 +40,9 @@ const AppDriverShell: React.FC = () => {
     return (localStorage.getItem('bahati-font-size') as 'normal' | 'large' | 'xlarge') || 'normal';
   });
 
-  // Email bind reminder for auto-generated @bht.local emails
+  // Email bind reminder for auto-generated @bht.com emails
   const [showEmailBindReminder, setShowEmailBindReminder] = useState(
-    () => currentUser.role === 'driver' && currentUser.username.endsWith('@bht.local')
+    () => currentUser.role === 'driver' && currentUser.username.endsWith('@bht.com')
   );
 
   // Apply font-size to document root
@@ -145,7 +145,7 @@ const AppDriverShell: React.FC = () => {
           }
         />
 
-        {/* Email bind reminder for auto-generated @bht.local accounts */}
+        {/* Email bind reminder for auto-generated @bht.com accounts */}
         {showEmailBindReminder && (
           <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
             <p className="text-xs font-bold text-amber-700 flex-1">
