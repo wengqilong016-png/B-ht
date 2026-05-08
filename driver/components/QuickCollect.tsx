@@ -246,12 +246,9 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
         gpsSourceType: gpsCoords ? 'live' : 'none',
       });
 
-      if (result.source === 'server') {
-        queryClient.setQueriesData<Transaction[]>({ queryKey: ['transactions'] }, (old = []) => [
-          result.transaction,
-          ...old.filter(tx => tx.id !== result.transaction.id),
-        ]);
-      }
+      // NOTE: optimistic update removed — setQueriesData with fuzzy prefix match
+      // ['transactions'] would pollute other drivers' caches. invalidateQueries
+      // below triggers refetch within ~100ms, delivering the same UX without data leaks.
       void queryClient.invalidateQueries({ queryKey: ['transactions'] });
       void queryClient.invalidateQueries({ queryKey: ['locations'] });
       void queryClient.invalidateQueries({ queryKey: ['drivers'] });

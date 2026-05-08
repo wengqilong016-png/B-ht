@@ -60,6 +60,9 @@ playwright-report/
 # Supabase local dev temp files
 supabase/.temp/
 
+# Credential files — never commit
+supabase/.env
+
 # Firebase local cache
 .firebase/
 
