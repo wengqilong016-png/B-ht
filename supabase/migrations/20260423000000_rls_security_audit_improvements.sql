@@ -64,10 +64,10 @@ BEGIN
   -- Only audit driver updates
   IF v_user_role = 'driver' THEN
     -- Check if driver is trying to update sensitive columns
+    -- Note: resolvedScore was removed — column never existed in transactions table
     IF (
       NEW."paymentStatus" IS DISTINCT FROM OLD."paymentStatus" OR
-      NEW."approvalStatus" IS DISTINCT FROM OLD."approvalStatus" OR
-      NEW."resolvedScore" IS DISTINCT FROM OLD."resolvedScore"
+      NEW."approvalStatus" IS DISTINCT FROM OLD."approvalStatus"
     ) THEN
       -- Log suspicious update attempt
       INSERT INTO public.security_audit_log (
@@ -89,9 +89,7 @@ BEGIN
           'old_payment_status', OLD."paymentStatus",
           'new_payment_status', NEW."paymentStatus",
           'old_approval_status', OLD."approvalStatus",
-          'new_approval_status', NEW."approvalStatus",
-          'old_resolved_score', OLD."resolvedScore",
-          'new_resolved_score', NEW."resolvedScore"
+          'new_approval_status', NEW."approvalStatus"
         )
       );
       
