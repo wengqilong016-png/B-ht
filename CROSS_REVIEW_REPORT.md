@@ -276,7 +276,7 @@ npm run test:ci 是否能过: ⚠️ 不确定
 [CRITICAL] Supabase Access Token 硬编码在仓库中
 ```
 - **文件**: `/root/bht/supabase/.env`
-- **内容**: `SUPABASE_ACCESS_TOKEN=[REDACTED]`
+- **内容**: `SUPABASE_ACCESS_TOKEN=sbp_c3...a651` (已红化 — 请手动轮换)
 - **风险**: 这是一个 Supabase 管理令牌，拥有完整 API 访问权限 — 创建/删除项目、管理数据库、访问所有数据。任何人都可以从仓库读取此令牌。
 - **建议**: 
   1. [立即] 在 Supabase Dashboard 中撤销此令牌

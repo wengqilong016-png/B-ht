@@ -36,7 +36,7 @@
 #### C1. Supabase Access Token 硬编码泄露
 
 - **文件**: `supabase/.env`
-- **内容**: `SUPABASE_ACCESS_TOKEN=[REDACTED]`
+- **内容**: `SUPABASE_ACCESS_TOKEN=sbp_c3...a651` (已红化 — 请手动轮换)
 - **描述**: Supabase 管理令牌完整硬编码在仓库文件中，拥有完整 API 访问权限
 - **风险**: ⚠️ 任何接触到仓库的人可创建/删除项目、管理数据库、访问所有数据
 - **建议**: 
