@@ -388,4 +388,12 @@ export const sw: Record<string, string> = {
   settlementSubmitCta: 'Submit Today Settlement',
   invalidScore: 'Invalid score',
   submitError: 'Submission failed',
+  totalRevenueAllTime: 'Total Revenue (All Time)',
+  avgCollectionEfficiency: 'Avg Collection Rate',
+  totalDebtRisk: 'Total Debt at Risk',
+  driverLabel: 'Driver',
+  efficiency: 'Collection Rate',
+  statusLabel: 'Status',
+  actionsLabel: 'Actions',
+  noDriversFoundAnalytics: 'No drivers match current filters',
 };

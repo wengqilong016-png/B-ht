@@ -388,4 +388,12 @@ export const zh: Record<string, string> = {
   settlementSubmitCta: '提交今日结算',
   invalidScore: '无效分数',
   submitError: '提交失败',
+  totalRevenueAllTime: '累计总营收',
+  avgCollectionEfficiency: '平均采集率',
+  totalDebtRisk: '总欠款风险',
+  driverLabel: '司机',
+  efficiency: '采集率',
+  statusLabel: '状态',
+  actionsLabel: '操作',
+  noDriversFoundAnalytics: '没有符合条件的司机',
 };
