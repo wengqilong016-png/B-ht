@@ -18,7 +18,7 @@ import { TRANSLATIONS, Location, safeRandomUUID } from '../../types';
 import { getTodayLocalDate } from '../../utils/dateUtils';
 import { haversineM, formatDistance } from '../../utils/haversine';
 
-import type { Driver, Transaction } from '../../types';
+import type { Driver } from '../../types';
 
 /**
  * QuickCollect — Full-featured fast-collection flow.

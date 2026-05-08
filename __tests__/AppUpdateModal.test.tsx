@@ -112,4 +112,29 @@ describe('AppUpdateModal', () => {
       'error',
     );
   });
+
+  it('dismisses the current update when the user asks to be reminded later', () => {
+    render(<AppUpdateModal lang="zh" />);
+
+    fireEvent.click(screen.getByText('稍后提醒'));
+
+    expect(screen.queryByText('发现新版本')).toBeNull();
+    expect(sessionStorage.getItem('update-dismissed-version')).toBe('1.0.9:42:def987654321');
+  });
+
+  it('opens the APK URL when using the browser fallback', () => {
+    const openSpy = jest.spyOn(window, 'open').mockReturnValue({} as Window);
+
+    render(<AppUpdateModal lang="zh" />);
+
+    fireEvent.click(screen.getByText('如果系统安装器没有弹出，改用浏览器下载 APK'));
+
+    expect(openSpy).toHaveBeenCalledWith(
+      'https://b-ht.vercel.app/downloads/bahati-latest-release.apk',
+      '_blank',
+      'noopener,noreferrer',
+    );
+
+    openSpy.mockRestore();
+  });
 });

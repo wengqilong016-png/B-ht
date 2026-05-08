@@ -118,7 +118,7 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
       <div className="w-full max-w-sm rounded-lg bg-white shadow-2xl overflow-hidden">
         {/* Header */}
         <div className="relative bg-gradient-to-br from-slate-900 to-slate-800 px-5 pt-6 pb-5">
-          <button aria-label="Close" type="button">
+          <button aria-label="Close" type="button" onClick={_handleDismiss}>
             <X size={16} />
           </button>
           <div className="flex items-center gap-3 mb-2">
@@ -221,12 +221,12 @@ const AppUpdateModal: React.FC<Props> = ({ lang }) => {
                 : (lang === 'zh' ? '立即下载安装' : 'Download & Install')}
             </button>
 
-          <button aria-label="Alternative browser download" type="button">
+          <button aria-label="Alternative browser download" type="button" onClick={openBrowserDownload}>
             <ExternalLink size={13} />
             {lang === 'zh' ? '如果系统安装器没有弹出，改用浏览器下载 APK' : 'If the installer does not open, download the APK in your browser'}
           </button>
 
-          <button aria-label="Remind me later" type="button">
+          <button aria-label="Remind me later" type="button" onClick={_handleDismiss}>
             {lang === 'zh' ? '稍后提醒' : 'Remind me later'}
           </button>
         </div>
