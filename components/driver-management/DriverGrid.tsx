@@ -38,7 +38,7 @@ const DriverGrid: React.FC<DriverGridProps> = ({
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <div className={`w-1.5 h-1.5 rounded-full ${driver.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                     <span className={`text-caption font-black uppercase ${driver.status === 'active' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {driver.status}
+                      {driver.status === 'active' ? t.driving : t.stopped}
                     </span>
                   </div>
                 </div>

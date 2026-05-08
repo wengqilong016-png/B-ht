@@ -7,7 +7,7 @@ import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
 import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
-import { Driver, Location, safeRandomUUID } from '../../types';
+import { Driver, Location, safeRandomUUID, TRANSLATIONS } from '../../types';
 import { normalizeDriverId, normalizeDriverName } from '../../utils/identityNormalization';
 
 import DriverAnalytics from './DriverAnalytics';
@@ -40,6 +40,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { lang } = useAuth();
+  const t = TRANSLATIONS[lang];
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave).then(() => {});
@@ -296,7 +297,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   };
 
   const toggleStatus = async (id: string) => {
-    const ok = await confirm({ message: 'Confirm status change?' });
+    const ok = await confirm({ message: t.confirmStatusChange });
     if (ok) {
       onUpdateDrivers(drivers.map(d => d.id === id ? { ...d, status: d.status === 'active' ? 'inactive' : 'active' } : d));
     }

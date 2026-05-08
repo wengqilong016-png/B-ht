@@ -1,6 +1,9 @@
 import { LayoutGrid, BarChart3, Plus, Search, SlidersHorizontal, ArrowUp, ArrowDown } from 'lucide-react';
 import React from 'react';
 
+import { useAuth } from '../../contexts/AuthContext';
+import { TRANSLATIONS } from '../../types';
+
 export type SortField = 'name' | 'revenue' | 'debt' | 'status';
 
 interface DriverToolbarProps {
@@ -17,12 +20,16 @@ interface DriverToolbarProps {
 
 const DriverToolbar: React.FC<DriverToolbarProps> = ({
   viewMode, setViewMode, searchTerm, setSearchTerm, sortBy, setSortBy, sortDir, setSortDir, onAddNew
-}) => (
+}) => {
+  const { lang } = useAuth();
+  const t = TRANSLATIONS[lang];
+
+  return (
   <div className="space-y-4">
     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <div>
-        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">Fleet Management</h2>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Manage Drivers, Salaries, and Performance</p>
+        <h2 className="text-2xl font-black text-slate-900 uppercase tracking-tight">{t.fleetManagement}</h2>
+        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">{t.fleetSubtitle}</p>
       </div>
 
       <div className="flex gap-2 flex-shrink-0">
@@ -31,20 +38,20 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
             onClick={() => setViewMode('grid')}
             className={`px-3 py-2 rounded-xl text-caption font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'grid' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}
           >
-            <LayoutGrid size={12} /> Cards
+            <LayoutGrid size={12} /> {t.cardsViewLabel}
           </button>
           <button
             onClick={() => setViewMode('analytics')}
             className={`px-3 py-2 rounded-xl text-caption font-black uppercase transition-all flex items-center gap-1.5 whitespace-nowrap ${viewMode === 'analytics' ? 'bg-white text-amber-600 shadow-sm' : 'text-slate-400'}`}
           >
-            <BarChart3 size={12} /> Analytics
+            <BarChart3 size={12} /> {t.analyticsViewLabel}
           </button>
         </div>
         <button
           onClick={onAddNew}
           className="px-4 py-2 bg-amber-600 text-white rounded-2xl text-caption font-black uppercase flex items-center gap-2 shadow-lg active:scale-95 transition-all whitespace-nowrap hover:bg-amber-700"
         >
-          <Plus size={13} /> Add New Driver
+          <Plus size={13} /> {t.addNewDriver}
         </button>
       </div>
     </div>
@@ -54,7 +61,7 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
         <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
-          placeholder="Search Name / Phone..."
+          placeholder={t.searchDriver}
           value={searchTerm}
           onChange={e => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-slate-200 rounded-card py-3 pl-11 pr-4 text-xs font-bold text-slate-900 outline-none focus:border-amber-500 transition-all shadow-sm"
@@ -62,7 +69,7 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
       </div>
       <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-card px-4 py-2 shadow-sm min-w-[200px]">
         <SlidersHorizontal size={14} className="text-slate-400" />
-        <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">Sort By:</span>
+        <span className="text-[10px] font-bold text-slate-400 uppercase mr-2">{t.sortBy}:</span>
         <select
           value={sortBy}
           onChange={(e) => { setSortBy(e.target.value as SortField); setSortDir('desc'); }}
@@ -82,6 +89,7 @@ const DriverToolbar: React.FC<DriverToolbarProps> = ({
       </div>
     </div>
   </div>
-);
+  );
+};
 
 export default DriverToolbar;
