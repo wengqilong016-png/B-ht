@@ -9,18 +9,22 @@ interface FinanceAuditPanelProps {
 }
 
 const EVENT_LABEL: Record<FinanceAuditEventType, { zh: string; sw: string }> = {
-  startup_debt_recovery: { zh: '回收铺底资金', sw: 'Startup Debt Recovery' },
-  driver_debt_change:    { zh: '调整司机借款', sw: 'Driver Debt Adjustment' },
-  commission_rate_change:{ zh: '调整佣金比例', sw: 'Commission Rate Change' },
-  startup_debt_edit:     { zh: '编辑铺底债务', sw: 'Startup Debt Edit' },
-  floating_coins_change: { zh: '调整流动硬币', sw: 'Floating Coins Change' },
-  force_clear_blockers:  { zh: '强制清除阻塞', sw: 'Force Clear Blockers' },
-  location_delete:       { zh: '删除机器点位', sw: 'Location Deletion' },
+  startup_debt_recovery:     { zh: '回收铺底资金', sw: 'Startup Debt Recovery' },
+  driver_debt_change:        { zh: '调整司机借款', sw: 'Driver Debt Adjustment' },
+  commission_rate_change:    { zh: '调整佣金比例', sw: 'Commission Rate Change' },
+  startup_debt_edit:         { zh: '编辑铺底债务', sw: 'Startup Debt Edit' },
+  floating_coins_change:     { zh: '调整流动硬币', sw: 'Floating Coins Change' },
+  force_clear_blockers:      { zh: '强制清除阻塞', sw: 'Force Clear Blockers' },
+  location_delete:           { zh: '删除机器点位', sw: 'Location Deletion' },
+  driver_salary_change:      { zh: '调整司机底薪', sw: 'Driver Salary Change' },
+  driver_commission_change:  { zh: '调整司机佣金率', sw: 'Driver Commission Change' },
+  driver_debt_edit:          { zh: '编辑司机债务', sw: 'Driver Debt Edit' },
+  driver_status_change:      { zh: '变更司机状态', sw: 'Driver Status Change' },
 };
 
 function formatValue(eventType: FinanceAuditEventType, val: number | null): string {
   if (val == null) return '—';
-  if (eventType === 'commission_rate_change') return `${(val * 100).toFixed(1)}%`;
+  if (eventType === 'commission_rate_change' || eventType === 'driver_commission_change') return `${(val * 100).toFixed(1)}%`;
   return `TZS ${val.toLocaleString()}`;
 }
 

@@ -232,7 +232,11 @@ export type FinanceAuditEventType =
   | 'startup_debt_edit'
   | 'floating_coins_change'
   | 'force_clear_blockers'
-  | 'location_delete';
+  | 'location_delete'
+  | 'driver_salary_change'
+  | 'driver_commission_change'
+  | 'driver_debt_edit'
+  | 'driver_status_change';
 
 export interface FinanceAuditLog {
   id: string;
