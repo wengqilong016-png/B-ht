@@ -7,7 +7,7 @@ import type { Transaction } from '../types/models';
 const DRIVER_TX_FIELDS = [
   'id', 'timestamp', 'uploadTimestamp', 'locationId', 'locationName',
   'driverId', 'driverName', 'previousScore', 'currentScore', 'revenue',
-  'commission', 'ownerRetention', 'debtDeduction', 'startupDebtDeduction',
+  'commission', 'ownerRetention', 'isOwnerRetaining', 'debtDeduction', 'startupDebtDeduction',
   'expenses', 'coinExchange', 'extraIncome', 'netPayable', 'gps', 'gpsDeviation',
   'photoUrl', 'dataUsageKB', 'aiScore', 'isAnomaly', 'notes', 'isClearance',
   'isSynced', 'reportedStatus', 'paymentStatus', 'type', 'approvalStatus',
@@ -18,7 +18,7 @@ const DRIVER_TX_FIELDS = [
 const ADMIN_TX_FIELDS = [
   'id', 'timestamp', 'uploadTimestamp', 'locationId', 'locationName',
   'driverId', 'driverName', 'previousScore', 'currentScore', 'revenue',
-  'commission', 'ownerRetention', 'debtDeduction', 'startupDebtDeduction',
+  'commission', 'ownerRetention', 'isOwnerRetaining', 'debtDeduction', 'startupDebtDeduction',
   'expenses', 'coinExchange', 'extraIncome', 'netPayable', 'gps', 'gpsDeviation',
   'photoUrl', 'dataUsageKB', 'aiScore', 'isAnomaly', 'notes', 'isClearance',
   'isSynced', 'reportedStatus', 'paymentStatus', 'type', 'approvalStatus',

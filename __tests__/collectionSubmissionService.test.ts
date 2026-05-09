@@ -81,6 +81,7 @@ const serverRow = {
   revenue: 40000,
   commission: 6000,
   ownerRetention: 6000,
+  isOwnerRetaining: true,
   debtDeduction: 0,
   startupDebtDeduction: 0,
   expenses: 5000,
@@ -127,6 +128,7 @@ describe('submitCollectionV2', () => {
     expect(tx.revenue).toBe(40000);
     expect(tx.commission).toBe(6000);
     expect(tx.ownerRetention).toBe(6000);
+    expect((tx as typeof tx & { isOwnerRetaining?: boolean }).isOwnerRetaining).toBe(true);
     expect(tx.netPayable).toBe(29000);
     expect(tx.isSynced).toBe(true);
     expect(tx.type).toBe('collection');

@@ -318,6 +318,18 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({ onAnalyze: _onA
                       <div className="space-y-2">
                         <div className="flex justify-between text-[11px] font-bold text-slate-500"><span>总收入 (Coins Value)</span><span>TZS {tx.revenue.toLocaleString()}</span></div>
                         <div className="flex justify-between text-[11px] font-bold text-amber-600"><span>{lang === 'zh' ? '店主分红 (-)' : 'Owner Dividend (-)'}</span><span>- {tx.ownerRetention.toLocaleString()}</span></div>
+                        {tx.type === 'collection' && tx.ownerRetention > 0 && (
+                          <div className={`flex justify-between text-[10px] font-black ${tx.isOwnerRetaining === true ? 'text-amber-600' : tx.isOwnerRetaining === false ? 'text-emerald-600' : 'text-slate-400'}`}>
+                            <span>{lang === 'zh' ? '分红模式' : 'Dividend Mode'}</span>
+                            <span>
+                              {tx.isOwnerRetaining === true
+                                ? (lang === 'zh' ? '留存入余额' : 'Retained')
+                                : tx.isOwnerRetaining === false
+                                  ? (lang === 'zh' ? '现场已支付' : 'Paid on site')
+                                  : (lang === 'zh' ? '历史未标记' : 'Legacy unknown')}
+                            </span>
+                          </div>
+                        )}
                         <div className="flex justify-between text-[11px] font-bold text-rose-500"><span>日常支出 (-)</span><span>- {tx.expenses.toLocaleString()}</span></div>
                         <div className="flex justify-between text-[11px] font-bold text-amber-600"><span>欠款回收 (-)</span><span>- {(tx.debtDeduction + tx.startupDebtDeduction).toLocaleString()}</span></div>
                         <div className="h-px bg-slate-200 my-2"></div>

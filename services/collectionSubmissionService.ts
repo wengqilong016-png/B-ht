@@ -223,6 +223,7 @@ export async function submitCollectionV2(
     revenue:               Number(row['revenue'] ?? 0),
     commission:            Number(row['commission'] ?? 0),
     ownerRetention:        Number(row['ownerRetention'] ?? 0),
+    isOwnerRetaining:      row['isOwnerRetaining'] == null ? input.isOwnerRetaining : Boolean(row['isOwnerRetaining']),
     debtDeduction:         Number(row['debtDeduction'] ?? 0),
     startupDebtDeduction:  Number(row['startupDebtDeduction'] ?? 0),
     expenses:              Number(row['expenses'] ?? input.expenses),

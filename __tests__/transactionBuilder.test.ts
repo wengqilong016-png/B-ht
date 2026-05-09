@@ -248,6 +248,14 @@ describe('createCollectionTransaction()', () => {
     expect(tx.netPayable).toBe(0);
   });
 
+  it('sets isOwnerRetaining from collection options for offline audit parity', () => {
+    const tx = createCollectionTransaction(makeLocation(), makeDriver(), GPS, 600, {
+      isOwnerRetaining: true,
+    } as Parameters<typeof createCollectionTransaction>[4] & { isOwnerRetaining: boolean });
+
+    expect((tx as typeof tx & { isOwnerRetaining?: boolean }).isOwnerRetaining).toBe(true);
+  });
+
   it('sets photoUrl from options', () => {
     const tx = createCollectionTransaction(makeLocation(), makeDriver(), GPS, 600, { photoUrl: 'data:image/jpeg;base64,xyz' });
     expect(tx.photoUrl).toBe('data:image/jpeg;base64,xyz');

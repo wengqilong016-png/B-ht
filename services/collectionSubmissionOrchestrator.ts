@@ -121,6 +121,7 @@ function buildOfflineTransaction(
       revenue: input.calculations.revenue,
       commission: input.calculations.commission,
       ownerRetention: input.calculations.finalRetention,
+      isOwnerRetaining: input.isOwnerRetaining,
       startupDebtDeduction: input.calculations.startupDebtDeduction,
       expenses: rawInput.expenses,
       tip: rawInput.tip,
@@ -294,6 +295,7 @@ export async function orchestrateCollectionSubmission(
         metadata: {
           paymentStatus: result.transaction.paymentStatus,
           approvalStatus: result.transaction.approvalStatus,
+          isOwnerRetaining: result.transaction.isOwnerRetaining,
         },
       });
       return {

@@ -120,6 +120,7 @@ export function createCollectionTransaction(
     revenue?: number;
     commission?: number;
     ownerRetention?: number;
+    isOwnerRetaining?: boolean;
     debtDeduction?: number;
     startupDebtDeduction?: number;
     expenses?: number;
@@ -144,6 +145,7 @@ export function createCollectionTransaction(
     revenue: options.revenue ?? financials.revenue,
     commission: options.commission ?? financials.commission,
     ownerRetention: options.ownerRetention ?? financials.ownerRetention,
+    isOwnerRetaining: options.isOwnerRetaining,
     debtDeduction: options.debtDeduction ?? financials.debtDeduction,
     startupDebtDeduction: options.startupDebtDeduction ?? financials.startupDebtDeduction,
     expenses: options.expenses ?? financials.expenses,

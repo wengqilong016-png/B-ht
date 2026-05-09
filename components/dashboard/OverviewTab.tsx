@@ -51,25 +51,19 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
   const [retentionExpanded, setRetentionExpanded] = React.useState(false);
   const t = TRANSLATIONS[lang];
 
-  /** Owner retention summary: total + per-location, ordered by amount desc */
+  /** Live owner-retention balance: actual money still retained on each location ledger. */
   const retentionSummary = React.useMemo(() => {
     const byLocation = new Map<string, { loc: Location; total: number }>();
     let grandTotal = 0;
-    for (const tx of transactions) {
-      if (!tx.ownerRetention || tx.ownerRetention <= 0) continue;
-      grandTotal += tx.ownerRetention;
-      const loc = locationMap.get(tx.locationId);
-      const key = tx.locationId || tx.locationName || '__unknown__';
-      const existing = byLocation.get(key);
-      if (existing) {
-        existing.total += tx.ownerRetention;
-      } else {
-        byLocation.set(key, { loc: loc || { id: key, name: tx.locationName || key, machineId: '', lastScore: 0, area: '', initialStartupDebt: 0, remainingStartupDebt: 0, commissionRate: 0, status: 'active' } as Location, total: tx.ownerRetention });
-      }
+    for (const loc of locations) {
+      const balance = Number(loc.dividendBalance || 0);
+      if (balance <= 0) continue;
+      grandTotal += balance;
+      byLocation.set(loc.id, { loc, total: balance });
     }
     const sorted = [...byLocation.values()].sort((a, b) => b.total - a.total).slice(0, 10);
     return { grandTotal, byLocation: sorted };
-  }, [transactions, locationMap]);
+  }, [locations]);
   const todayActionItems = React.useMemo(() => {
     const pendingApprovals =
       dailySettlements.filter((settlement) => settlement.status === 'pending').length +
@@ -339,7 +333,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           <div className="flex items-center gap-2">
             <span className="text-sm">💰</span>
             <span className="text-caption font-black uppercase tracking-widest text-slate-600">
-              {lang === 'zh' ? '车主分润汇总' : 'Owner Retention'} — TZS {retentionSummary.grandTotal.toLocaleString()}
+              {lang === 'zh' ? '当前留存余额' : 'Current Retained Balance'} — TZS {retentionSummary.grandTotal.toLocaleString()}
             </span>
           </div>
           <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${retentionExpanded ? 'rotate-180' : ''}`} />

@@ -63,6 +63,8 @@ export interface Transaction {
   revenue: number;
   commission: number;
   ownerRetention: number;
+  /** True when ownerRetention was retained into the site dividend balance; false when paid on site. Older rows may be null/undefined. */
+  isOwnerRetaining?: boolean | null;
   debtDeduction: number;
   startupDebtDeduction: number;
   expenses: number;
