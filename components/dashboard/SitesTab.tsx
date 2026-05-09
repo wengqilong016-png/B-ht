@@ -180,7 +180,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
         ? { lat: parsedLat, lng: parsedLng }
         : editingLoc.coords,
       commissionRate: isNaN(rate) ? editingLoc.commissionRate : rate,
-      lastScore: parseInt(locEditForm.lastScore) || editingLoc.lastScore,
+      lastScore: (v => Number.isNaN(v) ? editingLoc.lastScore : v)(parseInt(locEditForm.lastScore, 10)),
       status: locEditForm.status,
       ownerName: locEditForm.ownerName,
       shopOwnerPhone: locEditForm.shopOwnerPhone,
