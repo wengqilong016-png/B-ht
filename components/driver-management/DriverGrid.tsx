@@ -1,4 +1,4 @@
-import { Phone, ShieldCheck, Calculator, Trash2, Percent } from 'lucide-react';
+import { Phone, Calculator, Trash2, Percent, Coins, MapPin, Car, Banknote } from 'lucide-react';
 import React from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -22,83 +22,142 @@ const DriverGrid: React.FC<DriverGridProps> = ({
   const t = TRANSLATIONS[lang];
   const revenueMax = Math.max(...driversWithStats.map(d => d.stats.totalRevenue), 1);
 
+  const zh = lang === 'zh';
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 animate-in slide-in-from-bottom-2">
       {paginatedDrivers.map(driver => {
         const revProgress = Math.min(100, (driver.stats.totalRevenue / revenueMax) * 100);
+        const commPct = ((driver.commissionRate ?? 0.05) * 100).toFixed(0);
+        const hasVehicle = driver.vehicleInfo?.model || driver.vehicleInfo?.plate;
+
         return (
-          <div key={driver.id} className="bg-white/95 rounded-card border border-slate-200 shadow-sm hover:shadow-md transition-all overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-5 pb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-btn bg-gradient-to-br from-slate-900 to-amber-700 text-white flex items-center justify-center font-black text-base shadow-md">
-                  {driver.name.charAt(0)}
-                </div>
-                <div>
-                  <h4 className="font-black text-slate-900 text-sm uppercase tracking-wide">{driver.name}</h4>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <div className={`w-1.5 h-1.5 rounded-full ${driver.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                    <span className={`text-caption font-black uppercase ${driver.status === 'active' ? 'text-emerald-600' : 'text-slate-400'}`}>
-                      {driver.status === 'active' ? t.driving : t.stopped}
-                    </span>
-                  </div>
-                </div>
-              </div>
+          <div key={driver.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg hover:border-slate-300 transition-all duration-200 overflow-hidden group">
+
+            {/* ── Header: avatar + identity ── */}
+            <div className="flex items-center gap-3 px-5 pt-5 pb-3">
+              {/* Avatar */}
               <button
                 onClick={() => onToggleStatus(driver.id)}
-                className="p-1.5 bg-slate-50 rounded-xl border border-slate-100 text-slate-400 hover:text-amber-600 hover:border-amber-200 hover:bg-amber-50 transition-all"
+                className="relative flex-shrink-0 w-12 h-12 rounded-2xl bg-gradient-to-br from-slate-800 to-amber-600 text-white flex items-center justify-center font-black text-lg shadow-md hover:shadow-lg hover:scale-105 transition-all"
+                title={zh ? '点击切换状态' : 'Click to toggle status'}
               >
-                <ShieldCheck size={14} />
+                {driver.name.charAt(0)}
+                <div className={`absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 rounded-full border-2 border-white ${driver.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300'}`} />
               </button>
+
+              <div className="min-w-0 flex-1">
+                <h4 className="font-black text-slate-900 text-sm uppercase tracking-wide truncate">{driver.name}</h4>
+                <p className="text-caption font-bold text-slate-400 truncate">{driver.username}</p>
+              </div>
+
+              {/* Status pill */}
+              <span className={`flex-shrink-0 px-2.5 py-1 rounded-full text-caption font-black uppercase ${
+                driver.status === 'active'
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  : 'bg-slate-100 text-slate-400 border border-slate-200'
+              }`}>
+                {driver.status === 'active' ? t.driving : t.stopped}
+              </span>
             </div>
 
-            <div className="grid grid-cols-2 gap-2.5 px-5 pb-4">
-              <div className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                <p className="text-caption font-black text-slate-400 uppercase flex items-center gap-1 mb-1">
-                  <span className="text-amber-500">$</span> {t.baseSalaryShort}
-                </p>
-                <p className="text-xs font-black text-slate-900">TZS {(driver.baseSalary ?? 300000).toLocaleString()}</p>
-              </div>
-              <div className="bg-amber-50 rounded-2xl p-3 border border-amber-100">
-                <p className="text-caption font-black text-amber-500 uppercase flex items-center gap-1 mb-1">
-                  <Percent size={8} /> {t.commissionShort}
-                </p>
-                <p className="text-xs font-black text-amber-700">{((driver.commissionRate ?? 0.05) * 100).toFixed(0)}%</p>
-              </div>
-            </div>
-
+            {/* ── Revenue bar ── */}
             <div className="px-5 pb-4">
               <div className="flex justify-between items-center mb-1.5">
                 <p className="text-caption font-black text-slate-400 uppercase tracking-wider">{t.totalRevenue}</p>
                 <p className="text-caption font-black text-slate-900">TZS {driver.stats.totalRevenue.toLocaleString()}</p>
               </div>
-              <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${revProgress}%` }} />
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-500 bg-gradient-to-r from-amber-500 to-amber-400"
+                  style={{ width: `${revProgress}%` }}
+                />
+              </div>
+              <p className="text-caption font-bold text-slate-400 mt-1">
+                {driver.stats.txCount} {zh ? '笔交易' : 'txns'}
+              </p>
+            </div>
+
+            {/* ── 3-column key metrics ── */}
+            <div className="grid grid-cols-3 gap-2 px-5 pb-4">
+              <div className="bg-slate-50 rounded-xl p-2.5 text-center border border-slate-100">
+                <Banknote size={12} className="text-amber-500 mx-auto mb-0.5" />
+                <p className="text-caption font-black text-slate-400 uppercase">{t.baseSalaryShort}</p>
+                <p className="text-xs font-black text-slate-800 mt-0.5">TZS {(driver.baseSalary ?? 300000).toLocaleString()}</p>
+              </div>
+              <div className="bg-amber-50 rounded-xl p-2.5 text-center border border-amber-100">
+                <Percent size={12} className="text-amber-500 mx-auto mb-0.5" />
+                <p className="text-caption font-black text-amber-600 uppercase">{t.commissionShort}</p>
+                <p className="text-xs font-black text-amber-700 mt-0.5">{commPct}%</p>
+              </div>
+              <div className="bg-amber-50/50 rounded-xl p-2.5 text-center border border-amber-100">
+                <Coins size={12} className="text-amber-500 mx-auto mb-0.5" />
+                <p className="text-caption font-black text-amber-600 uppercase">{zh ? '硬币' : 'Coins'}</p>
+                <p className="text-xs font-black text-amber-700 mt-0.5">{(driver.dailyFloatingCoins ?? 0).toLocaleString()}</p>
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-5 pb-5 pt-1 border-t border-slate-50">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Phone size={10} />
-                <span className="text-caption font-bold">{driver.phone}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => onDelete(driver.id)} className="p-1.5 bg-rose-50 border border-rose-100 text-rose-400 rounded-xl text-caption font-black uppercase hover:bg-rose-100 transition-all">
-                  <Trash2 size={10} />
-                </button>
-                <button onClick={() => onShowSalary(driver.id)} className="px-3 py-1.5 bg-slate-50 border border-slate-200 text-slate-600 rounded-xl text-caption font-black uppercase hover:bg-amber-50 hover:border-amber-200 hover:text-amber-700 transition-all flex items-center gap-1">
-                  <Calculator size={10} /> {t.payrollTitle}
-                </button>
-                <button onClick={() => onEdit(driver)} className="px-3 py-1.5 bg-amber-600 text-white rounded-xl text-caption font-black uppercase hover:bg-amber-700 transition-all">
-                  {t.settings}
-                </button>
-              </div>
+            {/* ── Info chips ── */}
+            <div className="flex flex-wrap items-center gap-1.5 px-5 pb-4">
+              {/* Debt */}
+              {driver.remainingDebt > 0 ? (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-rose-50 text-rose-600 text-caption font-bold">
+                  💸 TZS {driver.remainingDebt.toLocaleString()}
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-caption font-bold">
+                  ✓ {zh ? '无欠款' : 'No debt'}
+                </span>
+              )}
+
+              {/* Phone */}
+              {driver.phone && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-slate-50 text-slate-500 text-caption font-bold">
+                  <Phone size={10} /> {driver.phone}
+                </span>
+              )}
+
+              {/* Vehicle */}
+              {hasVehicle && (
+                <span className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-sky-50 text-sky-600 text-caption font-bold">
+                  <Car size={10} />
+                  {[driver.vehicleInfo?.model, driver.vehicleInfo?.plate].filter(Boolean).join(' · ')}
+                </span>
+              )}
+            </div>
+
+            {/* ── Actions footer ── */}
+            <div className="flex items-center gap-2 px-5 pb-5 pt-1 border-t border-slate-100">
+              <button
+                onClick={() => onShowSalary(driver.id)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-gradient-to-r from-amber-50 to-amber-100 border border-amber-200 text-amber-700 rounded-xl text-caption font-black uppercase hover:from-amber-100 hover:to-amber-200 transition-all"
+              >
+                <Calculator size={12} /> {t.payrollTitle}
+              </button>
+              <button
+                onClick={() => onEdit(driver)}
+                className="flex-1 flex items-center justify-center gap-1.5 py-2.5 bg-slate-900 text-white rounded-xl text-caption font-black uppercase hover:bg-slate-800 transition-all"
+              >
+                {t.settings}
+              </button>
+              <button
+                onClick={() => onDelete(driver.id)}
+                className="flex-shrink-0 p-2.5 bg-white border border-slate-200 text-slate-400 rounded-xl hover:text-rose-500 hover:border-rose-200 hover:bg-rose-50 transition-all"
+                title={zh ? '删除司机' : 'Delete driver'}
+              >
+                <Trash2 size={13} />
+              </button>
             </div>
           </div>
         );
       })}
       {paginatedDrivers.length === 0 && (
-        <div className="col-span-full py-12 text-center text-slate-400">
-          <p className="text-xs font-black uppercase">{t.noDriversFound}</p>
+        <div className="col-span-full py-16 text-center">
+          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <MapPin size={24} className="text-slate-300" />
+          </div>
+          <p className="text-sm font-black text-slate-300 uppercase tracking-widest">{t.noDriversFound}</p>
+          <p className="text-caption text-slate-400 mt-1">{zh ? '调整筛选条件试试' : 'Try adjusting your search filters'}</p>
         </div>
       )}
     </div>
