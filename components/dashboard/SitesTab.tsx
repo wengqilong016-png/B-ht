@@ -1,4 +1,4 @@
-import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon } from 'lucide-react';
+import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon, ToggleLeft, ToggleRight } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -67,6 +67,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
     assignedDriverId: '',
     initialStartupDebt: '',
     remainingStartupDebt: '',
+    isNewOffice: false,
+    lastRevenueDate: '',
   });
   const [isSavingLoc, setIsSavingLoc] = useState(false);
   const deletionDiagnosticsById = useMemo(() => {
@@ -100,6 +102,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
       assignedDriverId: loc.assignedDriverId || '',
       initialStartupDebt: loc.initialStartupDebt.toString(),
       remainingStartupDebt: loc.remainingStartupDebt.toString(),
+      isNewOffice: loc.isNewOffice || false,
+      lastRevenueDate: loc.lastRevenueDate || '',
     });
   };
 
@@ -157,6 +161,8 @@ const SitesTab: React.FC<SitesTabProps> = ({
       assignedDriverId: locEditForm.assignedDriverId || undefined,
       initialStartupDebt: parseInt(locEditForm.initialStartupDebt) || 0,
       remainingStartupDebt: parseInt(locEditForm.remainingStartupDebt) || 0,
+      isNewOffice: locEditForm.isNewOffice,
+      lastRevenueDate: locEditForm.lastRevenueDate.trim() || undefined,
       isSynced: false,
     };
     try {
@@ -499,6 +505,15 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.shopOwnerPhone ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📞 {loc.shopOwnerPhone || (lang === 'zh' ? '无' : 'None')}</span>
                   <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.ownerPhotoUrl ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📷 {loc.ownerPhotoUrl ? (lang === 'zh' ? '已上传' : 'Photo') : (lang === 'zh' ? '无' : 'None')}</span>
                   <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${loc.coords?.lat ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-300'}`}>📍 {loc.coords?.lat ? (lang === 'zh' ? '已定位' : 'GPS') : (lang === 'zh' ? '无' : 'None')}</span>
+                  {loc.resetLocked && (
+                    <span className="inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-600">🔒 {lang === 'zh' ? '已锁定' : 'Locked'}</span>
+                  )}
+                  {loc.isNewOffice && (
+                    <span className="inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full bg-sky-50 text-sky-600">🆕 {lang === 'zh' ? '新点位' : 'New'}</span>
+                  )}
+                  {loc.lastRevenueDate && (
+                    <span className="inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">📅 {loc.lastRevenueDate}</span>
+                  )}
                 </div>
 
                 {/* Owner name */}
@@ -626,6 +641,20 @@ const SitesTab: React.FC<SitesTabProps> = ({
                     <option value="broken">Broken 故障</option>
                   </select>
                 </div>
+              </div>
+              <div className="flex items-center gap-4 p-3 bg-slate-50 rounded-xl border border-slate-200">
+                <label className="text-caption font-black text-slate-400 uppercase">新点位 New Office</label>
+                <button
+                  type="button"
+                  onClick={() => setLocEditForm(f => ({ ...f, isNewOffice: !f.isNewOffice }))}
+                  className={`transition-colors ${locEditForm.isNewOffice ? 'text-sky-500' : 'text-slate-300'}`}
+                >
+                  {locEditForm.isNewOffice ? <ToggleRight size={32} /> : <ToggleLeft size={32} />}
+                </button>
+              </div>
+              <div className="space-y-1">
+                <label className="text-caption font-black text-slate-400 uppercase ml-1">最近营收日 Last Revenue Date</label>
+                <input value={locEditForm.lastRevenueDate} onChange={e => setLocEditForm(f => ({ ...f, lastRevenueDate: e.target.value }))} className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-bold outline-none focus:border-amber-400" placeholder="e.g. 2026-05-09" />
               </div>
               <div className="space-y-1">
                 <label className="text-caption font-black text-slate-400 uppercase ml-1">分配司机 Assigned Driver</label>

@@ -139,7 +139,7 @@ const DriverForm: React.FC<DriverFormProps> = ({
                 placeholder="例如 / e.g. 10000"
               />
               <p className="text-[10px] font-bold text-slate-400 ml-1">
-                创建司机时可直接录入，司机资料设置和财务页也可后续修改
+                司机随身携带的硬币数，每日结算确认后自动更新为该日实际硬币数。创建时预设初始值。
               </p>
             </div>
           </div>
