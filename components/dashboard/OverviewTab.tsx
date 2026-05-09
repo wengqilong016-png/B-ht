@@ -48,7 +48,28 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
 }) => {
   const [revDrilldown, setRevDrilldown] = React.useState<'none' | 'drivers' | string>('none');
   const [aiInsightsExpanded, setAiInsightsExpanded] = React.useState(false);
+  const [retentionExpanded, setRetentionExpanded] = React.useState(false);
   const t = TRANSLATIONS[lang];
+
+  /** Owner retention summary: total + per-location, ordered by amount desc */
+  const retentionSummary = React.useMemo(() => {
+    const byLocation = new Map<string, { loc: Location; total: number }>();
+    let grandTotal = 0;
+    for (const tx of transactions) {
+      if (!tx.ownerRetention || tx.ownerRetention <= 0) continue;
+      grandTotal += tx.ownerRetention;
+      const loc = locationMap.get(tx.locationId);
+      const key = tx.locationId || tx.locationName || '__unknown__';
+      const existing = byLocation.get(key);
+      if (existing) {
+        existing.total += tx.ownerRetention;
+      } else {
+        byLocation.set(key, { loc: loc || { id: key, name: tx.locationName || key, machineId: '', lastScore: 0, area: '', initialStartupDebt: 0, remainingStartupDebt: 0, commissionRate: 0, status: 'active' } as Location, total: tx.ownerRetention });
+      }
+    }
+    const sorted = [...byLocation.values()].sort((a, b) => b.total - a.total).slice(0, 10);
+    return { grandTotal, byLocation: sorted };
+  }, [transactions, locationMap]);
   const todayActionItems = React.useMemo(() => {
     const pendingApprovals =
       dailySettlements.filter((settlement) => settlement.status === 'pending').length +
@@ -306,7 +327,43 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
           ))}
         </div>
       ) : null}
-    </div>
+
+    {/* ── Owner Retention Summary (collapsible, overview only) ── */}
+    {revDrilldown === 'none' && retentionSummary.byLocation.length > 0 && (
+      <div className="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setRetentionExpanded(p => !p)}
+          className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-sm">💰</span>
+            <span className="text-caption font-black uppercase tracking-widest text-slate-600">
+              {lang === 'zh' ? '车主分润汇总' : 'Owner Retention'} — TZS {retentionSummary.grandTotal.toLocaleString()}
+            </span>
+          </div>
+          <ChevronDown size={14} className={`text-slate-400 transition-transform duration-200 ${retentionExpanded ? 'rotate-180' : ''}`} />
+        </button>
+        {retentionExpanded && (
+          <div className="px-4 pb-4 border-t border-slate-100">
+            <div className="space-y-1.5 mt-3">
+              {retentionSummary.byLocation.map(({ loc, total }) => (
+                <div key={loc.id} className="flex items-center justify-between bg-slate-50 rounded-xl px-3 py-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="text-caption font-black text-slate-900 truncate">{loc.name}</p>
+                    <p className="text-caption font-bold text-slate-400 uppercase">{loc.machineId || loc.area || '—'}</p>
+                  </div>
+                  <span className="text-caption font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full flex-shrink-0">
+                    TZS {total.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    )}
+  </div>
   );
 };
 

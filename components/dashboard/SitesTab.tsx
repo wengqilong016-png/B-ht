@@ -1,4 +1,4 @@
-import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Pencil, Trash2, Save, Loader2, Store, X, Image as ImageIcon, ToggleLeft, ToggleRight, AlertTriangle } from 'lucide-react';
 import React, { useMemo, useState } from 'react';
 
 import { useConfirm } from '../../contexts/ConfirmContext';
@@ -71,6 +71,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     lastRevenueDate: '',
   });
   const [isSavingLoc, setIsSavingLoc] = useState(false);
+  const [statusIssueFilter, setStatusIssueFilter] = useState<'all' | 'issue' | 'maintenance' | 'broken'>('all');
   const deletionDiagnosticsById = useMemo(() => {
     return new Map(
       managedLocations.map((loc) => [
@@ -85,6 +86,31 @@ const SitesTab: React.FC<SitesTabProps> = ({
       ]),
     );
   }, [managedLocations, pendingPayoutRequests, pendingResetRequests, transactions]);
+
+  /** Latest non-active reportedStatus per location, from recent transactions */
+  const locationReportMap = useMemo(() => {
+    const map = new Map<string, { status: string; timestamp: string }>();
+    // Walk transactions newest-first; first hit per locationId wins
+    const sorted = [...transactions].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    for (const tx of sorted) {
+      if (!tx.locationId || map.has(tx.locationId)) continue;
+      if (tx.reportedStatus && tx.reportedStatus !== 'active') {
+        map.set(tx.locationId, { status: tx.reportedStatus, timestamp: tx.timestamp });
+      }
+    }
+    return map;
+  }, [transactions]);
+
+  /** Filter managedLocations by status issue filter */
+  const filteredByStatusIssue = useMemo(() => {
+    if (statusIssueFilter === 'all') return managedLocations;
+    return managedLocations.filter((loc) => {
+      const report = locationReportMap.get(loc.id);
+      if (!report) return false;
+      if (statusIssueFilter === 'issue') return true; // any non-active
+      return report.status === statusIssueFilter;
+    });
+  }, [managedLocations, locationReportMap, statusIssueFilter]);
 
   const handleEditLocation = (loc: Location) => {
     setEditingLoc(loc);
@@ -410,9 +436,15 @@ const SitesTab: React.FC<SitesTabProps> = ({
             <option value="all">ALL AREAS</option>
             {allAreas.map(a => <option key={a} value={a}>{a}</option>)}
           </select>
+          <select value={statusIssueFilter} onChange={e => { setStatusIssueFilter(e.target.value as 'all' | 'issue' | 'maintenance' | 'broken'); setSiteSearch(''); }} className="bg-slate-50 border border-slate-200 rounded-xl py-2.5 px-4 text-xs font-black uppercase outline-none">
+            <option value="all">{lang === 'zh' ? '全部状态' : 'All Status'}</option>
+            <option value="issue">⚠️ {lang === 'zh' ? '有异常报告' : 'Has Issue'}</option>
+            <option value="maintenance">🔧 {lang === 'zh' ? '维护中' : 'Maintenance'}</option>
+            <option value="broken">💔 {lang === 'zh' ? '故障' : 'Broken'}</option>
+          </select>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {managedLocations.map(loc => {
+          {filteredByStatusIssue.map(loc => {
             const sitePhotoUrl = loc.machinePhotoUrl || loc.ownerPhotoUrl;
             const deletionDiagnostics = deletionDiagnosticsById.get(loc.id);
             const deleteBlocked = (deletionDiagnostics?.blockers.length ?? 0) > 0;
@@ -514,6 +546,15 @@ const SitesTab: React.FC<SitesTabProps> = ({
                   {loc.lastRevenueDate && (
                     <span className="inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full bg-violet-50 text-violet-600">📅 {loc.lastRevenueDate}</span>
                   )}
+                  {(() => {
+                    const report = locationReportMap.get(loc.id);
+                    if (!report) return null;
+                    return (
+                      <span className={`inline-flex items-center gap-1 text-caption font-bold px-2 py-0.5 rounded-full ${report.status === 'broken' ? 'bg-rose-50 text-rose-600' : 'bg-amber-50 text-amber-600'}`}>
+                        <AlertTriangle size={10} /> {lang === 'zh' ? '司机报' : 'Reported'}: {report.status === 'maintenance' ? (lang === 'zh' ? '维护' : 'Maint') : (lang === 'zh' ? '故障' : 'Broken')}
+                      </span>
+                    );
+                  })()}
                 </div>
 
                 {/* Owner name */}
