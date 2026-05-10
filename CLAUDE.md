@@ -35,12 +35,21 @@ supabase/        — Migrations, Edge Functions, schema
 - `driver/components/QuickCollect.tsx` — fast collection entry
 
 ## Deep Trace Docs
-Loaded from `docs/` directory:
-- `docs/offline-queue-sync-trace.md` — IDB schema, enqueue/flush/markSynced
-- `docs/collection-submit-trace.md` — QuickCollect→submit_collection_v2 SQL
-- `docs/admin-crud-trace.md` — admin CRUD + optimistic updates + cascade
-- `docs/realtime-gps-evidence-trace.md` — Realtime, GPS, evidence photos
-- `docs/finance-trace.md` — finance formulas, settlement, dividend, payout
+Loaded from `docs/traces/` directory:
+- `docs/traces/offline-queue-sync-trace.md` — IDB schema, enqueue/flush/markSynced
+- `docs/traces/collection-submit-trace.md` — QuickCollect→submit_collection_v2 SQL
+- `docs/traces/admin-crud-trace.md` — admin CRUD + optimistic updates + cascade
+- `docs/traces/realtime-gps-evidence-trace.md` — Realtime, GPS, evidence photos
+- `docs/traces/finance-trace.md` — finance formulas, settlement, dividend, payout
+
+## User Guides
+- `docs/guides/user-guide-collection.md` — driver collection flow
+- `docs/guides/user-guide-driver-management.md` — admin driver CRUD
+- `docs/guides/user-guide-locations.md` — admin machine management
+- `docs/guides/user-guide-approval-settlement.md` — approvals, settlements, debt
+- `docs/guides/user-guide-dashboard.md` — dashboard, maps, sync, reports
+- `docs/guides/RUNBOOK.md` — operational runbook
+- `docs/guides/QUICK-FIX-GUIDE.md` — quick fix reference
 
 ## Pitfalls
 - `supabase.functions.invoke` has NO default timeout → use Promise.race
