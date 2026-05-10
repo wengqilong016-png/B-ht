@@ -11,8 +11,6 @@
   body { font-family: 'Noto Sans SC', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
   .card { transition: transform 0.2s; }
   .card:hover { transform: translateY(-2px); }
-  .pulse-dot { animation: pulse 2s infinite; }
-  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
   .category-policy { border-left: 4px solid #3b82f6; }
   .category-business { border-left: 4px solid #22c55e; }
   .category-livelihood { border-left: 4px solid #eab308; }
@@ -21,7 +19,6 @@
 </head>
 <body class="min-h-screen">
   <div class="max-w-6xl mx-auto px-4 py-6">
-    <!-- Header -->
     <header class="mb-8 text-center">
       <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
         🇹🇿 TZ Pulse <span class="text-lg text-gray-400">坦桑脉搏</span>
@@ -30,20 +27,16 @@
       <p id="headline" class="text-gray-300 mt-3 max-w-2xl mx-auto italic"></p>
     </header>
 
-    <!-- Stats bar -->
     <div id="stats" class="flex justify-center gap-6 mb-8 text-sm text-gray-400"></div>
-
-    <!-- Category grid -->
     <div id="categories" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
 
-    <!-- Trend section -->
     <section class="mt-10">
       <h2 class="text-xl font-semibold mb-4 text-gray-300">📊 近7日热点趋势</h2>
       <div id="trend" class="bg-slate-800/50 rounded-xl p-6 min-h-[120px] text-gray-400 text-sm"></div>
     </section>
 
     <footer class="mt-12 text-center text-gray-600 text-xs">
-      TZ Pulse · 数据来源: The Citizen / Daily News / IPP Media / Mwananchi · 每日早8点更新
+      TZ Pulse · 数据来源: The Citizen / Daily News / IPP Media / Mwananchi · 每日早8点(坦桑时间)更新
     </footer>
   </div>
 
@@ -61,21 +54,17 @@ const CATS = {
 };
 
 async function load() {
-  // Today's snapshot
   const today = new Date().toISOString().slice(0,10);
-  const { data: snap } = await SB.from('daily_snapshots')
+  const { data: snap } = await SB.from('tz_pulse_snapshots')
     .select('*').eq('date', today).maybeSingle();
 
-  // Today's articles
-  const { data: articles } = await SB.from('articles')
+  const { data: articles } = await SB.from('tz_pulse_articles')
     .select('*').gte('created_at', today).order('created_at', { ascending: false });
 
-  // Week trend
   const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  const { data: week } = await SB.from('daily_snapshots')
+  const { data: week } = await SB.from('tz_pulse_snapshots')
     .select('date,highlights').gte('date', weekAgo).order('date', { ascending: false });
 
-  // Render
   document.getElementById('dateLine').textContent =
     new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
 
@@ -87,7 +76,6 @@ async function load() {
   document.getElementById('stats').innerHTML =
     `<span>📰 ${arts.length} 条新闻</span><span>📂 4 大分类</span><span>🕗 今日更新</span>`;
 
-  // Group by category
   const grouped = {};
   for (const c of Object.keys(CATS)) grouped[c] = [];
   for (const a of arts) {
@@ -113,14 +101,11 @@ async function load() {
   }
   document.getElementById('categories').innerHTML = catsHtml;
 
-  // Trend
   const weekData = week || [];
   if (weekData.length > 0) {
     let trendHtml = '<div class="flex gap-3 flex-wrap">';
     for (const d of weekData) {
       const h = d.highlights || [];
-      const cats = {};
-      for (const item of h) cats[item.category] = (cats[item.category]||0)+1;
       trendHtml += `<div class="bg-slate-700/50 rounded-lg px-4 py-3 text-center min-w-[90px]">
         <div class="text-xs text-gray-400">${d.date.slice(5)}</div>
         <div class="text-lg font-bold mt-1">${h.length}</div>
