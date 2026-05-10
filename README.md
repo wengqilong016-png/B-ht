@@ -1,276 +1,119 @@
-<
-
 # Bahati Jackpots
 
-路线收款管理系统 — A progressive web app for managing slot-machine collection routes in Tanzania.
+路线收款管理系统 — slot-machine collection route management for Tanzania.
 
-两个角色，一个网址 / Two roles, one URL — the app routes automatically to the Admin or Driver interface based on the signed-in account's role.
+**两个角色，一个网址** — auto-routes to Admin or Driver based on account role.
 
 | | 管理员 (Admin) | 司机 (Driver) |
 |---|---|---|
-| **账号** | `public.profiles.role = 'admin'` | `public.profiles.role = 'driver'` + `driver_id` |
+| **账号** | `profiles.role = 'admin'` | `profiles.role = 'driver'` + `driver_id` |
 | **语言** | 中文 | Swahili |
-| **主要功能** | 点位管理、交易总览、司机管理、结账审批 | 收款、提交交易、查看自己的路线 |
+| **功能** | 仪表盘、网点管理、司机管理、审批、报表 | HARAKA 快速收、向导收、日结、状态查看 |
+
+**测试：** 77 suites · 753 tests · ✅ 全绿
 
 ---
 
-## Architecture overview
+## 文档导航
+
+| 想找什么 | 看这里 |
+|----------|--------|
+| 管理员怎么用 | `docs/guides/user-guide-dashboard.md` · `user-guide-driver-management.md` · `user-guide-locations.md` · `user-guide-approval-settlement.md` |
+| 司机怎么收款 | `docs/guides/user-guide-collection.md` |
+| 系统架构全链路 | `docs/traces/` — 5 份深度追踪文档 |
+| 运维操作 | `docs/guides/RUNBOOK.md` |
+| 快速修复 | `docs/guides/QUICK-FIX-GUIDE.md` |
+| 部署指南 | `docs/guides/DEPLOYMENT.md` · `docs/guides/MOBILE_BUILD_GUIDE.md` |
+| 安全相关 | `docs/reports/SECURITY_AUDIT_REPORT.md` · `docs/guides/SECURITY_OPERATIONS.md` |
+| 数据模型 | `docs/reference/DATA_MODEL_AUDIT.md` |
 
 ---
 
-## UI Accessibility Enhancements
-
-- Added **`useAriaButton`** hook (`src/hooks/useAriaButton.ts`) that centralizes `type="button"`, `aria-label`, `aria-disabled`, optional `aria-pressed`/`aria-expanded`, and a Tailwind `focus-visible` style.
-- Replaced all hard‑coded `<button>` elements across the UI (MachineCard, CollectionWorkbenchHeader, DriverAIAssistPanel, DriverStatusPanel, MachineFilterBar, MachineSelector, ReadingCapture, PayoutRequest, SubmitReview, ResetRequest, FinanceSummarySections) with the new hook to guarantee consistent ARIA attributes.
-- Integrated **eslint-plugin-jsx-a11y** with strict rules in `.eslintrc.json` to enforce ARIA and button type compliance.
-- Added **jest‑axe** accessibility unit tests for every major UI component (total 11 tests) ensuring zero violations in CI.
-- Updated CI scripts to run `npm run lint && npm test` automatically; full build passes without accessibility warnings.
-- Documented usage guidelines and migration steps in the project docs (see `docs/ACCESSIBILITY.md`).
-
-These changes bring the project to WCAG‑AA compliance for button interactions, improve keyboard navigation, and prevent future regressions.
-
----
-
-## Driver UX Improvements (v1.0.13)
-
-Shipping 5 adversarial UX test fixes targeting the primary user base — Tanzanian route drivers:
-
-- **Default language Swahili** — login screen now starts in Swahili for TZ deployment (was Chinese). Admin users switch to Chinese after login via role detection.
-- **Email validation** — real-time format check on blur with inline Swahili/Chinese error messages. Prevents silent failures when drivers type phone numbers in the email field.
-- **Swahili GPS recovery** — GPS error states (`denied`, `timeout`, `unavailable`) now show actionable Swahili guidance: "Nenda Mipangilio > Ruhusa > Washa Eneo" instead of "GPS Denied".
-- **Quick Collect mode** — new `Haraka` tab reduces machine collection from 7+ clicks to 3: tap machine → enter score → submit. Features background GPS, offline queue, and progress bar.
-- **WCAG touch targets** — all interactive elements enforce 48×48px minimum hit area. Font-size scaling (normal/large/xlarge) persisted to localStorage and toggled from the driver header.
-
-### New files
-| File | Purpose |
-|------|---------|
-| `driver/components/QuickCollect.tsx` | Flat-list machine collection with 2‑3 tap flow per machine |
-
----
-
-## UI Accessibility Enhancements
+## 架构
 
 ```
 App.tsx  →  AuthContext / DataContext / MutationContext
               ↓
-           hooks/  (useAuthBootstrap, useSupabaseData, useSupabaseMutations, …)
+           hooks/  (useSupabaseData, useSupabaseMutations, …)
               ↓
            services/  (collectionSubmissionOrchestrator, financeCalculator, …)
               ↓
-           repositories/  (locationRepository, driverRepository, transactionRepository, …)
+           repositories/  (locationRepository, driverRepository, …)
               ↓
            Supabase (Auth + RLS + Realtime + Edge Functions)
 ```
 
-**Key directories**
+| 目录 | 用途 |
+|------|------|
+| `admin/` | 管理端页面和视图 |
+| `driver/` | 司机端页面、组件、hooks |
+| `components/` | 共享 UI（Login, DriverManagement, SitesTab, …） |
+| `contexts/` | React Context（Auth, Data, Mutation, Toast, Confirm） |
+| `hooks/` | 数据查询和认证 hooks |
+| `services/` | 业务逻辑（collection, finance, realtime, translate） |
+| `repositories/` | Supabase 查询封装 |
+| `types/` | TypeScript 类型、常量 |
+| `i18n/` | 中文 + Swahili 翻译 |
+| `supabase/` | 迁移、Edge Functions、schema |
+| `scripts/` | 构建和验证脚本 |
+| `offlineQueue.ts` | IndexedDB 离线队列（1625 行核心） |
 
-| Path | Purpose |
-|------|---------|
-| `admin/` | Admin shell, pages, and view config |
-| `driver/` | Driver shell, pages, components, and hooks |
-| `shared/` | Cross-role shell utilities (`AppRouterShell`, `SyncStatusPill`, …) |
-| `components/` | Shared UI components (`Login`, `LiveMap`, `TransactionHistory`, …) |
-| `contexts/` | React context providers (Auth, Data, Mutation, Toast, Confirm, Notification) |
-| `hooks/` | Data-fetching and auth hooks |
-| `services/` | Business-logic services (collection submit, finance, realtime, translate, …) |
-| `repositories/` | Supabase query helpers (one file per domain entity) |
-| `utils/` | Pure utility helpers (date, image, location workflow, settlement rules, …) |
-| `types/` | Shared TypeScript types, enums, constants, and utility functions |
-| `i18n/` | Translation maps — `zh.ts` (Chinese) and `sw.ts` (Swahili) |
-| `api/` | Vercel edge-function proxies (`scan-meter`, `translate`) |
-
-**Offline-first:** writes are queued in IndexedDB (`offlineQueue.ts`) with `isSynced: false` and flushed when connectivity is restored.
-
-**Mobile:** the app is packaged for Android and iOS with Capacitor (`capacitor.config.ts`). Android builds follow the CI-standard toolchain of Java 21 + Node.js 22; see [`docs/MOBILE_BUILD_GUIDE.md`](docs/MOBILE_BUILD_GUIDE.md) for local signing and push-configuration steps.
+**离线优先：** 写入先进 IndexedDB，联网后自动 flush。
 
 ---
 
-## 🚀 Supabase 数据库配置 / Database setup
+## 本地开发
 
-### 全新部署 / Fresh deployment
-
-`supabase/schema.sql` is a convenience snapshot of the full schema. You may run it in **Supabase Dashboard → SQL Editor** to bootstrap a blank project quickly — it is idempotent (safe to re-run).
-
-> **Source of truth:** the incremental migration files in `supabase/migrations/` are the authoritative schema history. Always apply new changes there.
-
----
-
-### 增量更新 / Incremental updates
-
-Apply only the migration files you have **not yet applied**, in chronological order:
-
-```
-supabase/migrations/
+```bash
+npm ci
+cp .env.example .env.local   # 填入 VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY
+npm run dev                   # http://localhost:3000
 ```
 
-> ⚠️ 只运行你尚未应用的文件，不要重复运行。  
-> ⚠️ Apply only files you have not yet applied. Do not re-run already-applied files.
+**测试：**
+```bash
+npx jest --no-coverage --passWithNoTests   # 753 tests
+./scripts/verify.sh                        # lint + test + build
+```
 
 ---
 
-### 创建账号 / Creating accounts
+## 数据库
 
-1. **司机账号 (Driver):** use the `create-driver` Edge Function (see below) or the Admin Console in the app UI.
-2. **管理员账号 (Admin):** create the user in Supabase Dashboard → **Authentication → Users**, then insert a matching `public.profiles` row with `role = 'admin'`.
+`supabase/schema.sql` — 完整 schema 快照（可在 SQL Editor 直接运行）。
+增量更新在 `supabase/migrations/` 按时间戳执行。
 
-**Troubleshooting — `Account exists but profile is not provisioned`:** manually insert the missing `public.profiles` row in SQL Editor.
+**推送迁移：**
+```bash
+SUPABASE_ACCESS_TOKEN=$(grep SUPABASE_ACCESS_TOKEN supabase/.env | cut -d= -f2) npx supabase db push
+```
 
 ---
 
 ## Edge Functions
 
-### `create-driver` — Provision a driver account
-
-Creates a Supabase Auth user and the matching `public.drivers` + `public.profiles` rows in a single call.
-
-```http
-POST /functions/v1/create-driver
-Authorization: Bearer <admin-jwt>
-Content-Type: application/json
-
-{ "email": "...", "password": "...", "driver_id": "D-XXXX", "display_name": "..." }
-```
-
-**Required:** `email`, `password`, `driver_id`. **Optional:** `display_name`, `username`.
-
-### `delete-driver` — Remove a driver account
-
-Deletes the Supabase Auth user and the associated `public.drivers` / `public.profiles` rows.
-
-```http
-POST /functions/v1/delete-driver
-Authorization: Bearer <admin-jwt>
-Content-Type: application/json
-
-{ "driver_id": "D-XXXX" }
-```
-
-### Deploy both functions
+| Function | 用途 |
+|----------|------|
+| `create-driver` | 一键创建 Auth 用户 + drivers + profiles |
+| `delete-driver` | 一键删除 Auth 用户 + 关联数据 |
 
 ```bash
 supabase functions deploy create-driver --no-verify-jwt
 supabase functions deploy delete-driver --no-verify-jwt
 ```
 
-> `--no-verify-jwt` is intentional — each function performs its own JWT validation and admin-role check internally.
+---
+
+## 环境变量
+
+| 变量 | 必须 | 说明 |
+|------|------|------|
+| `VITE_SUPABASE_URL` | ✅ | Supabase 项目 URL |
+| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase anon 公钥 |
+| `VITE_DISABLE_AUTH` | — | 本地跳过认证（生产环境忽略） |
 
 ---
 
-## Environment variables
+## CI
 
-Copy `.env.example` to `.env.local` and fill in the values:
-
-| Variable | Required | Purpose |
-|----------|----------|---------|
-| `VITE_SUPABASE_URL` | ✅ | Supabase project URL |
-| `VITE_SUPABASE_ANON_KEY` | ✅ | Supabase `anon` public key |
-| `OPENAI_API_KEY` | Recommended | Server-side OpenAI key used by Vercel API routes such as `api/admin-ai` and `api/scan-meter` |
-| `GEMINI_API_KEY` | Recommended | Server-side Gemini key used by Vercel API routes such as `api/scan-meter` |
-| `GOOGLE_TRANSLATE_API_KEY` | Recommended | Server-side Google Translate key used by `api/translate` |
-| `STATUS_API_BASE` | Optional | Server-side status proxy base URL (currently unused) |
-| `INTERNAL_API_KEY` | Optional | Server-side internal key for the status proxy (currently unused) |
-| `VITE_DISABLE_AUTH` | Optional | Local/test-only auth bypass flag; production builds ignore `true` and stay authenticated |
-| `VITE_VERCEL_ANALYTICS_ENABLED` | Optional | Set `true` only when Vercel Web Analytics is enabled for this project |
-
-> Only `VITE_*` variables are exposed to the browser bundle. Do **not** store secrets such as AI keys, service-role keys, or internal API keys in `VITE_*` variables.
----
-
-## 本地开发（安装 / 启动 / 测试 / 构建）
-
-### 1) 安装 / Install
-
-**Prerequisites:** Node.js 22+, npm 10+
-
-```bash
-npm ci
-cp .env.example .env.local
-```
-
-Then fill real values in `.env.local` (at minimum: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`).
-
-### 2) 启动 / Start
-
-```bash
-npm run dev
-```
-
-Vite default URL:
-
-```text
-http://localhost:3000
-```
-
-### 3) 测试 / Test
-
-Most common commands:
-
-```bash
-npm run test:ci            # Jest CI mode
-npm run test:coverage:ci   # Jest + coverage
-npm run test:e2e           # Playwright e2e
-```
-
-Quality checks:
-
-```bash
-npm run typecheck
-npm run lint
-npm run security:audit
-```
-
-One-command verifier (recommended):
-
-```bash
-./scripts/verify.sh             # quick: lint + test:ci + build
-./scripts/verify.sh --full      # quick + security:audit
-./scripts/verify.sh --full --android
-```
-
-`npm test` (without `:ci`) is the local-friendly alias that allows zero tests during ad hoc development.
-
-Coverage enforcement targets the repository's **core unit-testable code surface**: services, reusable hooks, utilities, repositories, shared types, `offlineQueue.ts`, `supabaseClient.ts`, and `i18n/index.ts`. The current gate is **80% lines/statements** on that core surface. Heavier integration-oriented modules (for example AI-heavy hooks, Supabase data/mutation hooks, offline sync loop, and GPS capture runtime hooks) are still exercised via targeted tests and CI, but are not yet part of the unit coverage threshold.
-
-### 4) 构建 / Build
-
-Web production build:
-
-```bash
-npm run build
-npm run preview
-```
-
-Android debug/release build:
-
-```bash
-npm run cap:build:android
-npm run cap:build:android:release
-```
-
-## CI / merge gate
-
-- `.github/workflows/ci.yml` runs **typecheck, lint, security audit, coverage-tested Jest, Playwright E2E, and production build** on pushes and pull requests to `main`.
-- GitHub Code Scanning default setup runs CodeQL analysis for JavaScript/TypeScript.
-- `.github/dependabot.yml` keeps npm and GitHub Actions dependencies up to date.
-- SonarCloud is an optional next-step for technical-debt tracking. Enable it only after provisioning a real SonarCloud organization, project key, and `SONAR_TOKEN` secret so CI does not gain a permanently failing placeholder workflow.
-
-To make these checks mandatory before merge, configure **Branch protection** for `main` in GitHub:
-
-1. Require a pull request before merging.
-2. Require status checks to pass before merging.
-3. Select the CI checks you want enforced once the workflows have run at least once.
-4. Optionally require branches to be up to date before merging.
-
----
-
-## Documentation
-
-| File | Contents |
-|------|---------|
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | Local setup, quality commands, branch-protection checklist, and PR expectations |
-| [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) | Environment variables, Vercel setup, Supabase migration deployment |
-| [`docs/RUNBOOK.md`](docs/RUNBOOK.md) | Operator & support procedures (daily ops, offline replay, fleet diagnostics) |
-| [`docs/MOBILE_BUILD_GUIDE.md`](docs/MOBILE_BUILD_GUIDE.md) | Android APK and iOS build steps via Capacitor |
-| [`docs/CODEX_PROMPT_TEMPLATES.md`](docs/CODEX_PROMPT_TEMPLATES.md) | Ready-to-use Codex prompt templates (BUG / FEATURE / CI / ANDROID) |
-| [`docs/SECURITY_OPERATIONS.md`](docs/SECURITY_OPERATIONS.md) | Credential rotation, secret management, RLS notes |
-| [`docs/DATA_MODEL_AUDIT.md`](docs/DATA_MODEL_AUDIT.md) | Database schema and table reference |
-| [`driver/README.md`](driver/README.md) | Driver sub-module architecture and performance notes |
+push 到 main 自动：typecheck → lint → security audit → 753 tests → build → Vercel 部署。
