@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="sw">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TZ Pulse · 坦桑脉搏</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
+  body { font-family: 'Noto Sans SC', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+  .card { transition: transform 0.2s; }
+  .card:hover { transform: translateY(-2px); }
+  .pulse-dot { animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .category-policy { border-left: 4px solid #3b82f6; }
+  .category-business { border-left: 4px solid #22c55e; }
+  .category-livelihood { border-left: 4px solid #eab308; }
+  .category-hot_news { border-left: 4px solid #ef4444; }
+</style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-6xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <header class="mb-8 text-center">
+      <h1 class="text-4xl font-bold bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
+        🇹🇿 TZ Pulse <span class="text-lg text-gray-400">坦桑脉搏</span>
+      </h1>
+      <p id="dateLine" class="text-gray-400 mt-2">Loading...</p>
+      <p id="headline" class="text-gray-300 mt-3 max-w-2xl mx-auto italic"></p>
+    </header>
+
+    <!-- Stats bar -->
+    <div id="stats" class="flex justify-center gap-6 mb-8 text-sm text-gray-400"></div>
+
+    <!-- Category grid -->
+    <div id="categories" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+
+    <!-- Trend section -->
+    <section class="mt-10">
+      <h2 class="text-xl font-semibold mb-4 text-gray-300">📊 近7日热点趋势</h2>
+      <div id="trend" class="bg-slate-800/50 rounded-xl p-6 min-h-[120px] text-gray-400 text-sm"></div>
+    </section>
+
+    <footer class="mt-12 text-center text-gray-600 text-xs">
+      TZ Pulse · 数据来源: The Citizen / Daily News / IPP Media / Mwananchi · 每日早8点更新
+    </footer>
+  </div>
+
+<script>
+const SB = supabase.createClient(
+  'https://edohkcvzaisrxunwnlvk.supabase.co',
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkb2hrY3Z6YWlzcnh1bndubHZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjIyNzIsImV4cCI6MjA5MDc5ODI3Mn0.xwPGMVKoUphiq8Y-uwU2a2du2usxFKi8pOl_QkU_p9k'
+);
+
+const CATS = {
+  policy:    { emoji:'🟦', label:'政策法规', color:'text-blue-400', cls:'category-policy' },
+  business:  { emoji:'🟢', label:'商业机会', color:'text-green-400', cls:'category-business' },
+  livelihood:{ emoji:'🟡', label:'民生物价', color:'text-yellow-400', cls:'category-livelihood' },
+  hot_news:  { emoji:'🔴', label:'社会热点', color:'text-red-400', cls:'category-hot_news' }
+};
+
+async function load() {
+  // Today's snapshot
+  const today = new Date().toISOString().slice(0,10);
+  const { data: snap } = await SB.from('daily_snapshots')
+    .select('*').eq('date', today).maybeSingle();
+
+  // Today's articles
+  const { data: articles } = await SB.from('articles')
+    .select('*').gte('created_at', today).order('created_at', { ascending: false });
+
+  // Week trend
+  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
+  const { data: week } = await SB.from('daily_snapshots')
+    .select('date,highlights').gte('date', weekAgo).order('date', { ascending: false });
+
+  // Render
+  document.getElementById('dateLine').textContent =
+    new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });
+
+  if (snap) {
+    document.getElementById('headline').textContent = snap.raw_summary || '';
+  }
+
+  const arts = articles || [];
+  document.getElementById('stats').innerHTML =
+    `<span>📰 ${arts.length} 条新闻</span><span>📂 4 大分类</span><span>🕗 今日更新</span>`;
+
+  // Group by category
+  const grouped = {};
+  for (const c of Object.keys(CATS)) grouped[c] = [];
+  for (const a of arts) {
+    if (grouped[a.category]) grouped[a.category].push(a);
+  }
+
+  let catsHtml = '';
+  for (const [key, meta] of Object.entries(CATS)) {
+    const items = grouped[key] || [];
+    catsHtml += `<div class="card bg-slate-800/60 rounded-xl p-5 ${meta.cls}">
+      <h3 class="text-lg font-bold mb-3 ${meta.color}">${meta.emoji} ${meta.label} <span class="text-sm font-normal text-gray-500">(${items.length})</span></h3>`;
+    if (items.length === 0) {
+      catsHtml += '<p class="text-gray-500 text-sm">暂无数据</p>';
+    } else {
+      for (const a of items.slice(0,5)) {
+        catsHtml += `<div class="mb-3 pb-3 border-b border-slate-700/50 last:border-0 last:mb-0 last:pb-0">
+          <a href="${a.url || '#'}" target="_blank" class="font-medium hover:underline text-gray-200 text-sm">${a.title}</a>
+          <p class="text-gray-400 text-xs mt-1 line-clamp-2">${a.summary || ''}</p>
+        </div>`;
+      }
+    }
+    catsHtml += '</div>';
+  }
+  document.getElementById('categories').innerHTML = catsHtml;
+
+  // Trend
+  const weekData = week || [];
+  if (weekData.length > 0) {
+    let trendHtml = '<div class="flex gap-3 flex-wrap">';
+    for (const d of weekData) {
+      const h = d.highlights || [];
+      const cats = {};
+      for (const item of h) cats[item.category] = (cats[item.category]||0)+1;
+      trendHtml += `<div class="bg-slate-700/50 rounded-lg px-4 py-3 text-center min-w-[90px]">
+        <div class="text-xs text-gray-400">${d.date.slice(5)}</div>
+        <div class="text-lg font-bold mt-1">${h.length}</div>
+        <div class="text-xs text-gray-500">条热点</div>
+      </div>`;
+    }
+    trendHtml += '</div>';
+    document.getElementById('trend').innerHTML = trendHtml;
+  } else {
+    document.getElementById('trend').innerHTML = '<p>数据积累中，明天起显示趋势...</p>';
+  }
+}
+
+load();
+</script>
+</body>
+</html>
