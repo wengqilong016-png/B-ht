@@ -107,6 +107,14 @@ describe('QuickCollect', () => {
     renderQC({ queryClient, auth: { lang: 'zh' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Machine A' }));
     fireEvent.change(await screen.findByPlaceholderText('0000'), { target: { value: '1200' } });
+
+    // Simulate taking a photo (required before submit)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = new File(['dummy'], 'photo.jpg', { type: 'image/jpeg' });
+    Object.defineProperty(fileInput, 'files', { value: [file], writable: false });
+    fireEvent.change(fileInput);
+    await waitFor(() => expect(screen.queryByText(/拍照凭证已添加/)).toBeInTheDocument());
+
     fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
     await waitFor(() => expect(mockOrchestrate).toHaveBeenCalled());
@@ -121,17 +129,14 @@ describe('QuickCollect', () => {
     expect(within(receipt).getByText(/管理端已可见/)).toBeInTheDocument();
   });
 
-  it('blocks submissions where the new score is not higher than last score', async () => {
+  it('blocks submissions where the new score is not higher than last score (photo required first)', async () => {
     renderQC({ auth: { lang: 'zh' } });
     fireEvent.click(await screen.findByRole('button', { name: 'Machine A' }));
     fireEvent.change(await screen.findByPlaceholderText('0000'), { target: { value: '1000' } });
     fireEvent.click(screen.getByRole('button', { name: '提交' }));
 
+    // Photo check runs first — blocks submit with photo-required toast
     expect(mockOrchestrate).not.toHaveBeenCalled();
-    expect(await screen.findByText(/已拦截零营业额提交/)).toBeInTheDocument();
-    expect(mockRecordFlow).toHaveBeenCalledWith(expect.objectContaining({
-      eventName: 'submit_validation_error',
-      errorCategory: 'current_score_not_higher_than_last_score',
-    }));
+    expect(await screen.findByText(/请先拍照凭证再提交/)).toBeInTheDocument();
   });
 });

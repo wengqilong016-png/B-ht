@@ -162,6 +162,16 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
   const handleSubmit = async (id: string) => {
     const entry = getEntry(id);
     if (!entry.score || entry.submitting || !currentDriver) return;
+
+    /* Photo is required — block submit early with clear UI hint */
+    if (!entry.photo) {
+      showToast(
+        lang === 'zh' ? '请先拍照凭证再提交' : 'Evidence photo required — please take a photo first',
+        'error',
+      );
+      return;
+    }
+
     updateEntry(id, { submitting: true });
 
     const parsedScore = parseInt(entry.score, 10);
@@ -539,13 +549,13 @@ const QuickCollect: React.FC<QuickCollectProps> = ({ gpsCoords, currentDriver })
                       className={`flex w-full items-center justify-center gap-2 rounded-subcard border px-4 py-3 text-caption font-black uppercase transition-all ${
                         entry.photo
                           ? 'border-emerald-200 bg-emerald-50 text-emerald-700'
-                          : 'border-amber-200 bg-amber-50 text-amber-700'
+                          : 'border-rose-300 bg-rose-50 text-rose-600 ring-1 ring-rose-200'
                       } disabled:opacity-50`}
                     >
                       <Camera size={15} />
                       {entry.photo
                         ? (lang === 'zh' ? '拍照凭证已添加 ✓' : 'Evidence Photo ✓')
-                        : (lang === 'zh' ? '拍照凭证' : 'Evidence Photo')}
+                        : (lang === 'zh' ? '需要拍照' : 'Photo Required')}
                     </button>
                     <input
                       ref={el => { photoInputRefs.current[machine.id] = el; }}
