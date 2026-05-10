@@ -86,6 +86,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
 
   const {
     isOnline,
+    isLoading,
     locations: cloudLocations,
     drivers: cloudDrivers,
     transactions: cloudTransactions,
@@ -153,6 +154,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
   const dataValue = useMemo(
     () => ({
       isOnline,
+      isLoadingLocations: isLoading,
       locations, drivers, transactions, dailySettlements, aiLogs,
       filteredLocations: filteredData.locations,
       filteredDrivers: filteredData.drivers,
@@ -160,7 +162,7 @@ const AuthenticatedApp: React.FC<AuthenticatedAppProps> = ({
       filteredSettlements: filteredData.dailySettlements,
       unsyncedCount,
     }),
-    [isOnline, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
+    [isOnline, isLoading, locations, drivers, transactions, dailySettlements, aiLogs, filteredData, unsyncedCount]
   );
 
   const mutationValue = useMemo(

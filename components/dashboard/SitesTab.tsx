@@ -25,6 +25,7 @@ interface SitesTabProps {
   pendingResetRequests: Transaction[];
   pendingPayoutRequests: Transaction[];
   isOnline: boolean;
+  isLoadingLocations?: boolean;
   lang: 'zh' | 'sw';
   actorId?: string;
 }
@@ -46,6 +47,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
   pendingResetRequests,
   pendingPayoutRequests,
   isOnline,
+  isLoadingLocations,
   lang,
   actorId,
 }) => {
@@ -443,6 +445,14 @@ const SitesTab: React.FC<SitesTabProps> = ({
             <option value="broken">💔 {lang === 'zh' ? '故障' : 'Broken'}</option>
           </select>
         </div>
+        {isLoadingLocations && managedLocations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16 gap-3 text-slate-400">
+            <Loader2 size={32} className="animate-spin" />
+            <span className="text-caption font-black uppercase tracking-widest">
+              {lang === 'zh' ? '加载网点数据...' : 'Loading machines...'}
+            </span>
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredByStatusIssue.map(loc => {
             const sitePhotoUrl = loc.machinePhotoUrl || loc.ownerPhotoUrl;
@@ -599,6 +609,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
           );
           })}
         </div>
+        )}
       </div>
 
       {/* Location Edit Modal */}

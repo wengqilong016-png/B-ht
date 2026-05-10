@@ -70,6 +70,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
     aiLogs,
     unsyncedCount,
     isOnline,
+    isLoadingLocations,
   } = useAppData();
   const {
     updateLocations,
@@ -352,6 +353,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
                   pendingResetRequests={pendingResetRequests}
                   pendingPayoutRequests={pendingPayoutRequests}
                   isOnline={isOnline}
+                  isLoadingLocations={isLoadingLocations}
                   lang={lang}
                   actorId={currentUser.driverId ?? currentUser.id}
                 />

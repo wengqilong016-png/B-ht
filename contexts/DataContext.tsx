@@ -4,6 +4,7 @@ import type { Location, Driver, Transaction, DailySettlement, AILog } from '../t
 
 interface DataContextValue {
   isOnline: boolean;
+  isLoadingLocations: boolean;
   locations: Location[];
   drivers: Driver[];
   transactions: Transaction[];

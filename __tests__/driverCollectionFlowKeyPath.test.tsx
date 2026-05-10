@@ -34,7 +34,7 @@ function renderFlow() {
         activeDriverId: 'drv-1', userRole: 'driver' as const,
       }}>
         <DataProvider value={{
-          isOnline: true, locations: [], drivers: [{ id: 'drv-1', name: 'T', username: 't', phone: '0711', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 100, vehicleInfo: { model: 'B', plate: 'T1' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 }] as any,
+          isOnline: true, isLoadingLocations: false, locations: [], drivers: [{ id: 'drv-1', name: 'T', username: 't', phone: '0711', initialDebt: 0, remainingDebt: 0, dailyFloatingCoins: 100, vehicleInfo: { model: 'B', plate: 'T1' }, status: 'active', baseSalary: 300000, commissionRate: 0.05 }] as any,
           transactions: [], dailySettlements: [], aiLogs: [],
           filteredLocations: [], filteredDrivers: [], filteredTransactions: [], filteredSettlements: [],
           unsyncedCount: 0,
