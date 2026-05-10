@@ -20,6 +20,8 @@ export type DeleteDriverResult =
  * Invoke the `create-driver` Edge Function to create a Supabase Auth user,
  * a `public.drivers` row, and a `public.profiles` row in a single call.
  */
+const INVOKE_TIMEOUT_MS = 30_000;
+
 export async function createDriverAccount(params: {
   email: string;
   password: string;
@@ -28,7 +30,7 @@ export async function createDriverAccount(params: {
 }): Promise<CreateDriverResult> {
   if (!supabase) return { success: false, code: 'CLIENT_UNAVAILABLE', message: 'Supabase client unavailable' };
 
-  const { data, error } = await supabase.functions.invoke('create-driver', {
+  const invokePromise = supabase.functions.invoke('create-driver', {
     body: {
       email: params.email,
       password: params.password,
@@ -37,6 +39,13 @@ export async function createDriverAccount(params: {
       username: params.username,
     },
   });
+
+  const { data, error } = await Promise.race([
+    invokePromise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Edge Function 超时，请检查网络后重试 / Timeout — check network and retry')), INVOKE_TIMEOUT_MS),
+    ),
+  ]) as Awaited<typeof invokePromise>;
 
   if (error || !data?.success) {
     const message = data?.error ?? error?.message ?? 'Unknown error';

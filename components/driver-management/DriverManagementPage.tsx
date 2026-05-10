@@ -266,6 +266,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
         };
         await onUpdateDrivers([...drivers, newDriver]);
 
+        showToast(`司机 ${form.name} 创建成功 ✓ / Driver created`, 'success');
         resetForm();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
