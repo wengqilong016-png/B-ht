@@ -143,7 +143,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     const hasManualCoords = locEditForm.latitude.trim() !== '' || locEditForm.longitude.trim() !== '';
 
     if (!normalizedMachineId) {
-      showToast('请输入有效机器编号。\nEnter a valid machine ID.', 'warning');
+      showToast(lang === 'zh' ? '请输入有效机器编号' : 'Weka nambari sahihi ya mashine', 'warning');
       return;
     }
 
@@ -166,7 +166,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
         Math.abs(parsedLng) <= 180;
 
       if (!coordsValid) {
-        showToast('请输入有效的 Latitude / Longitude 坐标。\nEnter valid latitude / longitude coordinates.', 'warning');
+        showToast(lang === 'zh' ? '请输入有效坐标' : 'Weka viwianishi sahihi', 'warning');
         return;
       }
     }
@@ -227,7 +227,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     } catch (error) {
       console.error('Failed to save location changes:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      showToast(`点位保存失败，未写入系统。\nFailed to save: ${message}`, 'error');
+      showToast(`${lang === 'zh' ? '点位保存失败' : 'Imeshindwa kuhifadhi eneo'}：${message}`, 'error');
     } finally {
       setIsSavingLoc(false);
     }
@@ -360,7 +360,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     } catch (error) {
       console.error('Failed to delete location:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      showToast(`删除失败，系统拒绝了本次操作。\nDelete failed: ${message}`, 'error');
+      showToast(`${lang === 'zh' ? '删除失败' : 'Imeshindwa kufuta'}：${message}`, 'error');
     }
   };
 
@@ -422,7 +422,7 @@ const SitesTab: React.FC<SitesTabProps> = ({
     } catch (error) {
       console.error('Failed to clear blockers:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
-      showToast(`清除失败：${message}`, 'error');
+      showToast(`${lang === 'zh' ? '清除失败' : 'Imeshindwa kusafisha'}：${message}`, 'error');
     }
   };
 

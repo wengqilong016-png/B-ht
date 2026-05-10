@@ -262,7 +262,7 @@ describe('machine workflow self-check', () => {
     fireEvent.click(confirmButton);
 
     await waitFor(() =>
-      expect(screen.getByText(/删除失败，系统拒绝了本次操作/)).toBeTruthy(),
+      expect(screen.getByText(/删除失败/)).toBeTruthy(),
     );
   });
 

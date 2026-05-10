@@ -164,7 +164,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
         paymentProofUrl = await uploadPayrollProof(proofPreview, record?.id, driver.id, month);
       } catch (error) {
         console.error('Failed to upload payroll proof.', error);
-        showToast(lang === 'zh' ? '工资凭证上传失败，请重试。' : 'Failed to upload payroll proof. Please retry.', 'error');
+        showToast(t.payrollActionFailed, 'error');
         return;
       } finally {
         setIsUploading(false);
@@ -175,10 +175,7 @@ const PayrollActionModal: React.FC<PayrollActionModalProps> = ({
       await onSubmit(buildPayrollSubmitPayload(note, isPayMode, paymentMethod, paymentProofUrl));
     } catch (error) {
       console.error('Failed to submit payroll action.', error);
-      showToast(
-        lang === 'zh' ? '工资操作提交失败，请重试。' : 'Failed to submit payroll action. Please retry.',
-        'error',
-      );
+      showToast(t.payrollActionFailed, 'error');
     }
   };
 

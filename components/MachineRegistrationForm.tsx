@@ -3,7 +3,7 @@ import { Camera, MapPinned, Loader2, CheckCircle2, Building2, Coins, Save, Image
 import React, { useState, useRef } from 'react';
 
 import { useToast } from '../contexts/ToastContext';
-import { Location, Driver, CONSTANTS, safeRandomUUID } from '../types';
+import { Location, Driver, CONSTANTS, safeRandomUUID, TRANSLATIONS } from '../types';
 import { compressAndResizeImage } from '../utils/imageUtils';
 import { normalizeMachineId } from '../utils/locationWorkflow';
 
@@ -27,6 +27,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
   successDoneLabel,
 }) => {
   const { showToast } = useToast();
+  const t = TRANSLATIONS[lang];
   const [machineId, setMachineId] = useState('');
   const [shopName, setShopName] = useState('');
   const [ownerName, setOwnerName] = useState('');
@@ -100,7 +101,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
   const applyManualGps = () => {
     const manualGps = resolveManualGps();
     if (!manualGps) {
-      showToast(lang === 'zh' ? '请输入有效的纬度/经度坐标。' : 'Weka latitude na longitude sahihi.', 'warning');
+      showToast(t.invalidCoordinates, 'warning');
       return;
     }
 
@@ -187,7 +188,7 @@ const MachineRegistrationForm: React.FC<MachineRegistrationFormProps> = ({
         ...newLocation,
         createdAt: new Date().toISOString(),
       });
-      showToast(lang === 'zh' ? '机器注册成功' : 'Machine registered successfully', 'success');
+      showToast(t.machineRegistered, 'success');
       setLastRegisteredMachine(newLocation);
       setIsSuccess(true);
     } catch (error) {

@@ -154,7 +154,7 @@ describe('PayrollActionModal', () => {
     fireEvent.click(screen.getByRole('button', { name: '确认支付' }));
 
     await waitFor(() => {
-      expect(screen.getByText('工资凭证上传失败，请重试。')).toBeTruthy();
+      expect(screen.getByText('工资操作失败')).toBeTruthy();
     });
     expect(onSubmit).not.toHaveBeenCalled();
   });

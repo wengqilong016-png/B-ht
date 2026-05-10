@@ -213,7 +213,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
       return true;
     } catch (error) {
       console.error('Payroll action failed.', error);
-      showToast(lang === 'zh' ? '工资操作失败，请重试。' : 'Payroll action failed. Please retry.', 'error');
+      showToast(t.payrollActionFailed, 'error');
       return false;
     } finally {
       setPendingPayrollAction(current => (current === actionKey ? null : current));

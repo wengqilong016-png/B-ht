@@ -141,7 +141,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
       await action();
     } catch (error) {
       console.error('Approval action failed.', error);
-      showToast(lang === 'zh' ? '审批失败，请重试。' : 'Approval failed. Please retry.', 'error');
+      showToast(t.approvalFailed, 'error');
     } finally {
       setPendingActionKey(current => (current === actionKey ? null : current));
     }
@@ -500,7 +500,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                   setSettlementExpenseNote('');
                 } catch (error) {
                   console.error('Settlement submission failed.', error);
-                  showToast(lang === 'zh' ? '结算提交失败，请重试。' : 'Settlement submission failed. Please retry.', 'error');
+                  showToast(t.settlementSubmitFailed, 'error');
                 } finally {
                   setPendingActionKey(current => (current === 'driver:settlement-submit' ? null : current));
                 }

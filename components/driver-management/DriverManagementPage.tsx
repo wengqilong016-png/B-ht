@@ -142,7 +142,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
   const handleSave = async () => {
     if (!form.name) {
-      showToast('请填写姓名 (Name is required)', 'warning');
+      showToast(t.driverNameRequired, 'warning');
       return;
     }
 
@@ -209,7 +209,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
       } catch (error) {
         console.error('Failed to save driver assignment changes.', error);
         const msg = error instanceof Error ? error.message : String(error);
-        showToast(`保存失败：${msg}`, 'error');
+        showToast(`${t.saveFailed}：${msg}`, 'error');
       } finally {
         setIsSaving(false);
       }
@@ -218,12 +218,12 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
       const password = form.password;
 
       if (!password) {
-        showToast('新建司机必须填写初始密码\\nPassword is required for new drivers', 'warning');
+        showToast(lang === 'zh' ? '新建司机必须填写初始密码' : 'Password is required for new drivers', 'warning');
         setIsSaving(false);
         return;
       }
       if (password.length < 8) {
-        showToast('密码至少 8 位 / Password must be at least 8 characters', 'warning');
+        showToast(t.passwordTooShort, 'warning');
         setIsSaving(false);
         return;
       }
@@ -238,11 +238,11 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
         if (result.success === false) {
           if (result.code === 'EMAIL_CONFLICT') {
-            showToast(`邮箱已被注册 / Email already registered: ${deriveDriverEmail(form.name)}`, 'error');
+            showToast(lang === 'zh' ? `邮箱已被注册：${deriveDriverEmail(form.name)}` : `Email already registered: ${deriveDriverEmail(form.name)}`, 'error');
           } else if (result.code === 'DRIVER_ID_CONFLICT') {
-            showToast(`司机账号已存在 / Driver ID already exists: ${resolvedUsername}`, 'error');
+            showToast(lang === 'zh' ? `司机账号已存在：${resolvedUsername}` : `Driver ID already exists: ${resolvedUsername}`, 'error');
           } else {
-            showToast(`创建司机失败 / Failed to create driver: ${result.message}`, 'error');
+            showToast(`${t.createDriverFailed}：${result.message}`, 'error');
           }
           setIsSaving(false);
           return;
@@ -255,7 +255,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           await persistDriverBusinessFields(createdDriverId, driverData);
         } catch (updateErr) {
           console.error('Failed to persist business fields for new driver:', updateErr);
-          showToast('司机账号已创建，但部分业务信息未能保存。请重新编辑司机资料。\nDriver account created, but some business fields could not be saved. Please re-edit the driver profile.', 'warning');
+          showToast(lang === 'zh' ? '司机账号已创建，但部分业务信息未能保存。请重新编辑司机资料。' : 'Driver account created, but some business fields could not be saved. Please re-edit the driver profile.', 'warning');
         }
 
         // Merge the new driver into local state so the UI updates immediately.
@@ -266,11 +266,11 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
         };
         await onUpdateDrivers([...drivers, newDriver]);
 
-        showToast(`司机 ${form.name} 创建成功 ✓ / Driver created`, 'success');
+        showToast(`${t.createDriverSuccess} ✓`, 'success');
         resetForm();
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
-        showToast(`创建司机失败 / Failed to create driver: ${msg}`, 'error');
+        showToast(`${t.createDriverFailed}：${msg}`, 'error');
       } finally {
         setIsSaving(false);
       }
@@ -279,7 +279,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
   const handleDeleteDriver = async (id: string) => {
     if (!isOnline) {
-      showToast('网络离线时无法删除司机账号。请联网后重试。\nCannot delete driver while offline. Please reconnect.', 'warning');
+      showToast(t.driverOfflineDelete, 'warning');
       return;
     }
     const ok = await confirm({
