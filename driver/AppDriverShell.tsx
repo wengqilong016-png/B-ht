@@ -40,10 +40,18 @@ const AppDriverShell: React.FC = () => {
     return (localStorage.getItem('bahati-font-size') as 'normal' | 'large' | 'xlarge') || 'normal';
   });
 
-  // Email bind reminder for auto-generated @bht.com emails
+  // Email bind reminder for auto-generated @bht.com emails — persisted dismissal
   const [showEmailBindReminder, setShowEmailBindReminder] = useState(
-    () => currentUser.role === 'driver' && currentUser.username.endsWith('@bht.com')
+    () => {
+      if (currentUser.role !== 'driver' || !currentUser.username?.endsWith('@bht.com')) return false;
+      try { return localStorage.getItem('bht-email-reminder-dismissed') !== '1'; } catch { return true; }
+    }
   );
+
+  const dismissEmailReminder = () => {
+    setShowEmailBindReminder(false);
+    try { localStorage.setItem('bht-email-reminder-dismissed', '1'); } catch { /* ignore */ }
+  };
 
   // Apply font-size to document root
   useEffect(() => {
@@ -154,7 +162,7 @@ const AppDriverShell: React.FC = () => {
                 : 'You are using an auto-generated email. Bind a real email to secure your account.'}
             </p>
             <button
-              onClick={() => setShowEmailBindReminder(false)}
+              onClick={dismissEmailReminder}
               className="flex-shrink-0 text-amber-400 hover:text-amber-600 p-1"
               aria-label={lang === 'zh' ? '关闭' : 'Dismiss'}
             >✕</button>
