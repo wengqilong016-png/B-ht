@@ -21,7 +21,7 @@ export const zh: Record<string, string> = {
   offline: '待传记录',
   score: '当前读数',
   lastScore: '上次读数',
-  revenue: '总营收',
+  revenue: '营收',
   expenses: '支出项目',
   net: '应缴现金',
   submit: '提交报告',
