@@ -330,6 +330,39 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
               </div>
             </div>
 
+            {/* ── 今日收款明细 ────────────────────── */}
+            {todayDriverTxs.length > 0 && (
+              <div className="rounded-2xl border border-slate-200 bg-white divide-y divide-slate-100 overflow-hidden">
+                <div className="px-4 py-2.5 bg-slate-50">
+                  <p className="text-caption font-black uppercase tracking-widest text-slate-400">
+                    {lang === 'zh' ? '今日收款明细' : "Today's Collections"}
+                  </p>
+                </div>
+                {todayDriverTxs.map((tx) => {
+                  const loc = locationMap.get(tx.locationId);
+                  const diff = tx.currentScore - tx.previousScore;
+                  return (
+                    <div key={tx.id} className="px-4 py-2.5 flex items-center justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-caption font-black text-slate-700 uppercase truncate">
+                          {loc?.name ?? tx.locationName ?? tx.locationId.slice(0, 8)}
+                        </p>
+                        <p className="text-caption font-bold text-slate-400">
+                          {tx.previousScore ?? '?'} → {tx.currentScore ?? '?'}
+                          {diff > 0 && (
+                            <span className="text-emerald-600 ml-1">+{diff}</span>
+                          )}
+                        </p>
+                      </div>
+                      <p className="text-sm font-black text-amber-700 flex-shrink-0">
+                        TZS {(tx.revenue ?? 0).toLocaleString()}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
               <p className="text-caption font-black uppercase tracking-[0.18em] text-slate-500">
                 {lang === 'zh' ? '日结提交后会发生什么' : 'What happens after settlement submit'}
