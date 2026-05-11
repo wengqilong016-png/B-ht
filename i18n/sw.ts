@@ -22,6 +22,7 @@ export const sw: Record<string, string> = {
   score: 'Current Reading (Counter)',
   lastScore: 'Last Reading',
   revenue: 'Revenue',
+  todayRevenue: 'Today Revenue',
   expenses: 'Expenses',
   net: 'Cash to Submit',
   submit: 'Submit Report',

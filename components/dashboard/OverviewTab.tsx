@@ -152,7 +152,7 @@ const OverviewTab: React.FC<OverviewTabProps> = ({
               onClick={() => setRevDrilldown('drivers')}
             className="col-span-2 lg:col-span-1 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-left shadow-sm transition-all hover:border-amber-200 hover:bg-amber-50/40 group"
             >
-              <p className="text-caption font-black uppercase text-slate-400 group-hover:text-amber-700 transition-colors">{t.revenue} ↗</p>
+              <p className="text-caption font-black uppercase text-slate-400 group-hover:text-amber-700 transition-colors">{t.todayRevenue} ↗</p>
               <p className="mt-0.5 text-xl font-black text-slate-900">TZS {bossStats.todayRev.toLocaleString()}</p>
             </button>
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">

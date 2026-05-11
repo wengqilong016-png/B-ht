@@ -22,6 +22,7 @@ export const zh: Record<string, string> = {
   score: '当前读数',
   lastScore: '上次读数',
   revenue: '营收',
+  todayRevenue: '今日营收',
   expenses: '支出项目',
   net: '应缴现金',
   submit: '提交报告',
