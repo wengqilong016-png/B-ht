@@ -70,15 +70,25 @@ const AppDriverShell: React.FC = () => {
   const todayStr = getTodayLocalDate();
   const assignedMachineCount = filteredLocations.length;
   const todayCollectionCount = filteredTransactions.filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection')).length;
+  const todayDriverRevenue = filteredTransactions
+    .filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection'))
+    .reduce((sum, tx) => sum + (tx.revenue || 0), 0);
   const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;
+  const todaySettlementSubmitted = filteredSettlements.some(
+    (s) => s.driverId === activeDriverId && s.date === todayStr && (s.status === 'pending' || s.status === 'confirmed')
+  );
   const navStatByView = useMemo<Partial<Record<DriverView, { value: number; label: string }>>>(
     () => ({
       collect: { value: todayCollectionCount, label: t.todaysCollections },
-      settlement: { value: pendingSettlementCount, label: t.pendingSettlementShort },
+      settlement: todaySettlementSubmitted
+        ? { value: 0, label: lang === 'zh' ? '已日结 ✓' : 'Settled ✓' }
+        : todayCollectionCount === 0
+          ? { value: 0, label: lang === 'zh' ? '今日未收' : 'No collections' }
+          : { value: todayDriverRevenue, label: 'TZS' },
       history: { value: unsyncedCount, label: t.unsyncedLabel },
       status: { value: assignedMachineCount, label: t.assignedMachines },
     }),
-    [assignedMachineCount, pendingSettlementCount, t, todayCollectionCount, unsyncedCount]
+    [assignedMachineCount, pendingSettlementCount, t, todayCollectionCount, todayDriverRevenue, todaySettlementSubmitted, unsyncedCount, lang]
   );
 
   // Build sidebar nav items
