@@ -51,6 +51,7 @@ interface SettlementTabProps {
   onApprovePayoutRequest: (txId: string, approve: boolean) => Promise<void>;
   isOnline: boolean;
   lang: 'zh' | 'sw';
+  onNavigate?: (view: string) => void;
 }
 
 const SettlementTab: React.FC<SettlementTabProps> = ({
@@ -79,6 +80,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
   onApprovePayoutRequest,
   isOnline,
   lang,
+  onNavigate,
 }) => {
   const t = TRANSLATIONS[lang];
   const { showToast } = useToast();
@@ -308,6 +310,29 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                 <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mt-2">
                   {lang === 'zh' ? '等待主管审批，今日不可重复提交。' : 'Awaiting supervisor approval. No duplicate submission allowed today.'}
                 </p>
+              </div>
+            ) : todayDriverTxs.length === 0 ? (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-4 border border-slate-200">
+                  <Banknote size={32} />
+                </div>
+                <h2 className="text-lg font-black text-slate-500 uppercase tracking-tight">
+                  {lang === 'zh' ? '今日暂无收款记录' : 'No Collections Today'}
+                </h2>
+                <p className="text-caption font-bold text-slate-400 mt-2 max-w-xs mx-auto">
+                  {lang === 'zh'
+                    ? '请先前往 HARAKA 或 COLLECT 完成机器收款，再回到此页进行日结。'
+                    : 'Go to HARAKA or COLLECT first to submit machine readings, then come back here for settlement.'}
+                </p>
+                <div className="mt-4 flex gap-3 justify-center">
+                  <button
+                    type="button"
+                    onClick={() => onNavigate?.('quick')}
+                    className="px-5 py-2.5 bg-amber-600 text-white rounded-xl text-xs font-black uppercase shadow-sm hover:bg-amber-700 transition-colors"
+                  >
+                    {lang === 'zh' ? '去 HARAKA 收款 →' : 'Go to HARAKA →'}
+                  </button>
+                </div>
               </div>
             ) : (
             <>

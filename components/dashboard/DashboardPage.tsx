@@ -563,6 +563,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
           onApproveResetRequest={onApproveResetRequest}
           onApprovePayoutRequest={onApprovePayoutRequest}
           isOnline={isOnline}
+          onNavigate={_onNavigate}
           lang={lang}
         />
         </PageErrorBoundary>
