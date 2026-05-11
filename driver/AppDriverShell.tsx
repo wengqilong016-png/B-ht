@@ -1,5 +1,5 @@
 import {
-  LogOut, Globe, Type
+  LogOut, Globe, Type, Mail,
 } from 'lucide-react';
 import React, { Suspense, useMemo, useState, useEffect } from 'react';
 
@@ -7,6 +7,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
+import { updateUserEmail } from '../services/authService';
+import { useToast } from '../contexts/ToastContext';
 import {
   AppShell,
   ShellSidebar,
@@ -26,6 +28,7 @@ import DriverShellViewRenderer from './renderDriverShellView';
 
 const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
+  const { showToast } = useToast();
   const {
     isOnline,
     filteredLocations, filteredTransactions, filteredSettlements,
@@ -33,29 +36,57 @@ const AppDriverShell: React.FC = () => {
   } = useAppData();
   const {
     syncOfflineData,
+    registerLocation,
   } = useMutations();
-  const t = TRANSLATIONS[lang];
-  const [view, setView] = useState<DriverView>('collect');
+
+  // Font-size toggle
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>(() => {
     return (localStorage.getItem('bahati-font-size') as 'normal' | 'large' | 'xlarge') || 'normal';
   });
 
-  // Email bind reminder for auto-generated @bht.com emails — persisted dismissal
+  // Email bind reminder for auto-generated @bht.com emails — persisted dismissal + real bind flow
   const [showEmailBindReminder, setShowEmailBindReminder] = useState(
     () => {
       if (currentUser.role !== 'driver' || !currentUser.username?.endsWith('@bht.com')) return false;
       try { return localStorage.getItem('bht-email-reminder-dismissed') !== '1'; } catch { return true; }
     }
   );
+  const [showEmailInput, setShowEmailInput] = useState(false);
+  const [newEmail, setNewEmail] = useState('');
+  const [isBindingEmail, setIsBindingEmail] = useState(false);
 
   const dismissEmailReminder = () => {
     setShowEmailBindReminder(false);
     try { localStorage.setItem('bht-email-reminder-dismissed', '1'); } catch { /* ignore */ }
   };
 
+  const handleBindEmail = async () => {
+    const email = newEmail.trim();
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showToast(lang === 'zh' ? '请输入有效邮箱地址' : 'Please enter a valid email', 'warning');
+      return;
+    }
+    setIsBindingEmail(true);
+    try {
+      const result = await updateUserEmail(email);
+      if (result.success) {
+        showToast(lang === 'zh' ? '邮箱已绑定，下次请用新邮箱登录' : 'Email bound — use new email to login next time', 'success');
+        dismissEmailReminder();
+        setShowEmailInput(false);
+      } else {
+        showToast(`${lang === 'zh' ? '绑定失败' : 'Bind failed'}: ${result.error}`, 'error');
+      }
+    } catch (e) {
+      showToast(lang === 'zh' ? '绑定失败，请重试' : 'Bind failed, retry', 'error');
+    } finally {
+      setIsBindingEmail(false);
+    }
+  };
+
   // Apply font-size to document root
   useEffect(() => {
-    document.documentElement.setAttribute('data-font-size', fontSize);
+    document.documentElement.style.fontSize =
+      fontSize === 'normal' ? '16px' : fontSize === 'large' ? '20px' : '24px';
     localStorage.setItem('bahati-font-size', fontSize);
   }, [fontSize]);
 
@@ -127,20 +158,22 @@ const AppDriverShell: React.FC = () => {
         brandTitle="Bahati Ops"
         brandSubtitle={currentUser.name}
         primaryNav={sidebarNav}
-        activeView={view}
-        onSelectView={handleSetView}
+        secondaryNav={undefined}
         syncStatus={syncStatus}
         lang={lang}
-        bottomContent={
-          <div className="space-y-1">
-            <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="flex w-full items-center gap-3 rounded-subcard px-3 py-2.5 text-left text-slate-400 hover:bg-white/5 hover:text-white">
-              <Globe size={15} />
-              <span className="text-caption uppercase">{t.language}</span>
-            </button>
-            <button onClick={handleLogout} className="flex w-full items-center gap-3 rounded-subcard px-3 py-2.5 text-left text-rose-300 hover:bg-rose-500/10 hover:text-rose-200">
-              <LogOut size={15} />
-              <span className="text-caption uppercase">{t.logout}</span>
-            </button>
+        footer={
+          <div className="flex items-center gap-3 p-3 border-t border-slate-800">
+            <div className="w-8 h-8 rounded-xl bg-white/10 text-white flex items-center justify-center font-black text-xs flex-shrink-0">
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-caption font-black text-white truncate">{currentUser.name}</p>
+              <p className="text-caption font-bold text-slate-500 uppercase">{t.driverUser}</p>
+            </div>
+            <div className="flex flex-col gap-1">
+              <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/5 rounded-lg text-slate-300 hover:text-white transition-colors"><Globe size={12}/></button>
+              <button onClick={handleLogout} className="p-1 bg-rose-500/10 rounded-lg border border-rose-500/20 text-rose-300 hover:text-rose-200 transition-colors"><LogOut size={12}/></button>
+            </div>
           </div>
         }
       />
@@ -165,17 +198,46 @@ const AppDriverShell: React.FC = () => {
 
         {/* Email bind reminder for auto-generated @bht.com accounts */}
         {showEmailBindReminder && (
-          <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between gap-3 shadow-sm">
-            <p className="text-xs font-bold text-amber-700 flex-1">
-              {lang === 'zh'
-                ? '您使用的是自动生成的登录邮箱，建议绑定真实邮箱以免账号丢失。'
-                : 'You are using an auto-generated email. Bind a real email to secure your account.'}
-            </p>
-            <button
-              onClick={dismissEmailReminder}
-              className="flex-shrink-0 text-amber-400 hover:text-amber-600 p-1"
-              aria-label={lang === 'zh' ? '关闭' : 'Dismiss'}
-            >✕</button>
+          <div className="mx-4 mt-3 p-3 bg-amber-50 border border-amber-200 rounded-2xl space-y-2 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-xs font-bold text-amber-700 flex-1">
+                {lang === 'zh'
+                  ? '您使用的是自动生成的登录邮箱，建议绑定真实邮箱以免账号丢失。'
+                  : 'You are using an auto-generated email. Bind a real email to secure your account.'}
+              </p>
+              <button
+                onClick={dismissEmailReminder}
+                className="flex-shrink-0 text-amber-400 hover:text-amber-600 p-1"
+                aria-label={lang === 'zh' ? '关闭' : 'Dismiss'}
+              >✕</button>
+            </div>
+            {!showEmailInput ? (
+              <button
+                onClick={() => setShowEmailInput(true)}
+                className="w-full flex items-center justify-center gap-2 py-2 bg-amber-600 text-white rounded-xl text-xs font-black uppercase hover:bg-amber-700 transition-colors"
+              >
+                <Mail size={12} />
+                {lang === 'zh' ? '绑定真实邮箱' : 'Bind Real Email'}
+              </button>
+            ) : (
+              <div className="flex gap-2">
+                <input
+                  type="email"
+                  value={newEmail}
+                  onChange={e => setNewEmail(e.target.value)}
+                  placeholder={lang === 'zh' ? '输入真实邮箱' : 'Enter real email'}
+                  className="flex-1 bg-white border border-amber-200 rounded-lg px-3 py-2 text-xs font-bold outline-none focus:border-amber-400"
+                  autoFocus
+                />
+                <button
+                  onClick={handleBindEmail}
+                  disabled={isBindingEmail || !newEmail.trim()}
+                  className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-xs font-black uppercase disabled:opacity-50 hover:bg-emerald-700 transition-colors"
+                >
+                  {isBindingEmail ? '...' : lang === 'zh' ? '确认' : 'OK'}
+                </button>
+              </div>
+            )}
           </div>
         )}
 
@@ -187,24 +249,18 @@ const AppDriverShell: React.FC = () => {
             />
           </Suspense>
         </ShellMainContent>
-
-        <ShellMobileNav
-          items={mobileNav}
-          activeView={view}
-          onSelectView={handleSetView}
-          position="bottom"
-          lang={lang}
-        />
       </div>
 
-      <DriverAIAssistPanel
+      {view === 'collect' && (
+        <DriverAIAssistPanel />
+      )}
+
+      <ShellMobileNav
+        items={mobileNav}
+        activeView={view}
+        onSelectView={handleSetView}
+        position="bottom"
         lang={lang}
-        isOnline={isOnline}
-        unsyncedCount={unsyncedCount}
-        filteredLocations={filteredLocations}
-        filteredTransactions={filteredTransactions}
-        filteredSettlements={filteredSettlements}
-        activeDriverId={activeDriverId ?? ''}
       />
     </AppShell>
   );
