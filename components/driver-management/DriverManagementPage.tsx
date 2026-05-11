@@ -266,8 +266,9 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
         };
         await onUpdateDrivers([...drivers, newDriver]);
 
-        showToast(`${t.createDriverSuccess} ✓`, 'success');
         resetForm();
+        // Delay toast to ensure form close animation doesn't swallow it
+        setTimeout(() => showToast(`${t.createDriverSuccess} ✓`, 'success'), 100);
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : String(e);
         showToast(`${t.createDriverFailed}：${msg}`, 'error');
