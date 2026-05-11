@@ -41,6 +41,7 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { confirm } = useConfirm();
   const { lang } = useAuth();
   const t = TRANSLATIONS[lang];
+  const todayStr = new Date().toISOString().slice(0, 10);
 
   const onUpdateDrivers = (driversToSave: Driver[]) => updateDrivers.mutateAsync(driversToSave).then(() => {});
   const onUpdateLocations = (locationsToSave: Location[]) => updateLocations.mutateAsync(locationsToSave).then(() => {});
@@ -379,6 +380,12 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           onDelete={handleDeleteDriver}
           onToggleStatus={toggleStatus}
           onShowSalary={setSalaryId}
+          hasCollectionsToday={(driverId: string) =>
+            transactions.some(tx => tx.driverId === driverId && tx.type === 'collection' && tx.timestamp.startsWith(todayStr))
+          }
+          isSettledToday={(driverId: string) =>
+            dailySettlements.some(s => s.driverId === driverId && s.date === todayStr && (s.status === 'pending' || s.status === 'confirmed'))
+          }
         />
       )}
 

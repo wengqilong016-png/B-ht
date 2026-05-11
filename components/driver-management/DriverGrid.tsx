@@ -1,4 +1,4 @@
-import { Phone, Calculator, Trash2, Percent, Coins, MapPin, Car, Banknote } from 'lucide-react';
+import { Phone, Calculator, Trash2, Percent, Coins, MapPin, Car, Banknote, CheckCircle2, AlertCircle } from 'lucide-react';
 import React from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -13,10 +13,13 @@ interface DriverGridProps {
   onDelete: (id: string) => void;
   onToggleStatus: (id: string) => void;
   onShowSalary: (id: string) => void;
+  isSettledToday?: (driverId: string) => boolean;
+  hasCollectionsToday?: (driverId: string) => boolean;
 }
 
 const DriverGrid: React.FC<DriverGridProps> = ({
-  paginatedDrivers, driversWithStats, onEdit, onDelete, onToggleStatus, onShowSalary
+  paginatedDrivers, driversWithStats, onEdit, onDelete, onToggleStatus, onShowSalary,
+  isSettledToday, hasCollectionsToday
 }) => {
   const { lang } = useAuth();
   const t = TRANSLATIONS[lang];
@@ -60,6 +63,20 @@ const DriverGrid: React.FC<DriverGridProps> = ({
                 {driver.status === 'active' ? t.driving : t.stopped}
               </span>
             </div>
+
+            {/* ── Settlement status ── */}
+            {hasCollectionsToday?.(driver.id) && (
+              <div className={`mx-5 mb-3 px-3 py-1.5 rounded-lg text-caption font-black uppercase flex items-center gap-2 ${
+                isSettledToday?.(driver.id)
+                  ? 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+              }`}>
+                {isSettledToday?.(driver.id)
+                  ? <><CheckCircle2 size={12} /> {zh ? '已日结' : 'Settled'}</>
+                  : <><AlertCircle size={12} /> {zh ? '待日结' : 'Settle Due'}</>
+                }
+              </div>
+            )}
 
             {/* ── Revenue bar ── */}
             <div className="px-5 pb-4">
