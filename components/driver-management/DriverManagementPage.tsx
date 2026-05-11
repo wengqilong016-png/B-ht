@@ -348,10 +348,15 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
   const salaryData = salaryId ? calculateSalary(salaryId) : null;
 
+  const handlePayFromSalary = () => {
+    setSalaryId(null);
+    showToast(lang === 'zh' ? '请前往月度报表完成支付操作' : 'Please go to Monthly Report to complete payment', 'info');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in">
       {salaryId && salaryData && (
-        <DriverSalaryModal salaryData={salaryData} onClose={() => setSalaryId(null)} />
+        <DriverSalaryModal salaryData={salaryData} onClose={() => setSalaryId(null)} onPay={handlePayFromSalary} />
       )}
 
       <DriverToolbar

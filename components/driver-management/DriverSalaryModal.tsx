@@ -1,4 +1,4 @@
-import { X, Calculator, AlertCircle } from 'lucide-react';
+import { X, Calculator, AlertCircle, CheckCircle } from 'lucide-react';
 import React from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -20,9 +20,11 @@ interface SalaryData {
 interface DriverSalaryModalProps {
   salaryData: SalaryData;
   onClose: () => void;
+  onPay?: () => void;
+  isPaying?: boolean;
 }
 
-const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClose }) => {
+const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClose, onPay, isPaying }) => {
   const { lang } = useAuth();
   const t = TRANSLATIONS[lang];
   return (
@@ -78,6 +80,16 @@ const DriverSalaryModal: React.FC<DriverSalaryModalProps> = ({ salaryData, onClo
           <p className="text-caption font-bold text-slate-400 leading-tight">{t.payrollNote}</p>
         </div>
 
+        {onPay && (
+          <button
+            onClick={onPay}
+            disabled={isPaying}
+            className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-black uppercase text-xs flex items-center justify-center gap-2 disabled:opacity-50"
+          >
+            <CheckCircle size={16} />
+            {isPaying ? (lang === 'zh' ? '处理中...' : 'Processing...') : (lang === 'zh' ? '标记已支付' : 'Mark as Paid')}
+          </button>
+        )}
         <button onClick={onClose} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-black uppercase text-xs">{t.confirmAndClose}</button>
       </div>
     </div>
