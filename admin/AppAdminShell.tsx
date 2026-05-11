@@ -1,10 +1,11 @@
 import {
   LogOut, Globe,
-  Settings,
+  Settings, ArrowLeftRight,
 } from 'lucide-react';
 import React, { Suspense, lazy, useMemo, useState } from 'react';
 
 import { useAuth } from '../contexts/AuthContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
@@ -32,6 +33,7 @@ const AccountSettings = lazy(() => import('../components/AccountSettings'));
 
 const AppAdminShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout } = useAuth();
+  const { confirm } = useConfirm();
   const {
     isOnline,
     locations,
@@ -129,6 +131,16 @@ const AppAdminShell: React.FC = () => {
 
   const handleSetView = (id: string) => setView(id as AdminView);
 
+  const handleSwitchAccount = async () => {
+    const ok = await confirm({
+      title: '切换账号 Switch Account',
+      message: '确定要退出当前管理员账号？切换后需重新登录。\nSwitch to a different account? You will need to log in again.',
+      confirmLabel: '切换 Switch',
+      cancelLabel: '取消 Cancel',
+    });
+    if (ok) handleLogout();
+  };
+
   return (
     <AppShell>
       <ShellSidebar
@@ -152,6 +164,7 @@ const AppAdminShell: React.FC = () => {
             <div className="flex flex-col gap-1">
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-1 bg-white/5 rounded-lg text-slate-300 hover:text-white transition-colors"><Globe size={12}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-1 bg-white/5 rounded-lg text-slate-300 hover:text-white transition-colors"><Settings size={12}/></button>
+              <button onClick={handleSwitchAccount} className="p-1 bg-white/5 rounded-lg text-slate-300 hover:text-white transition-colors" aria-label={lang === 'zh' ? '切换账号' : 'Switch Account'}><ArrowLeftRight size={12}/></button>
               <button onClick={handleLogout} className="p-1 bg-rose-500/10 rounded-lg border border-rose-500/20 text-rose-300 hover:text-rose-200 transition-colors"><LogOut size={12}/></button>
             </div>
           </div>
@@ -173,6 +186,7 @@ const AppAdminShell: React.FC = () => {
               </div>
               <button onClick={() => setLang(lang === 'zh' ? 'sw' : 'zh')} className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900"><Globe size={15}/></button>
               <button onClick={() => setShowAccountSettings(true)} className="p-2 rounded-xl border border-slate-200 bg-white text-slate-600 hover:text-slate-900"><Settings size={15}/></button>
+              <button onClick={handleSwitchAccount} className="p-2 rounded-xl border border-slate-200 bg-white text-amber-600 hover:text-amber-700 hover:border-amber-200" aria-label={lang === 'zh' ? '切换账号' : 'Switch Account'}><ArrowLeftRight size={15}/></button>
               <button onClick={handleLogout} className="p-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-500 hover:text-rose-700"><LogOut size={15}/></button>
             </>
           }
