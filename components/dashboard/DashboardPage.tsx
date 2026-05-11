@@ -365,7 +365,7 @@ const DashboardPage: React.FC<DashboardProps> = React.memo(({
         <div className="space-y-6 animate-in fade-in">
           <DriverManagement />
           {/* Payroll section merged into fleet tab */}
-          <div className="space-y-3 border-t border-slate-100 pt-5">
+          <div id="payroll-section" className="space-y-3 border-t border-slate-100 pt-5">
               <div className="bg-white p-4 rounded-2xl border border-slate-200 flex items-center gap-3">
                 <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Receipt size={18} /></div>
                 <div>

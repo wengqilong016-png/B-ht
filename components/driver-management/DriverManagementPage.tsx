@@ -351,7 +351,11 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
 
   const handlePayFromSalary = () => {
     setSalaryId(null);
-    showToast(lang === 'zh' ? '请前往月度报表完成支付操作' : 'Please go to Monthly Report to complete payment', 'info');
+    // Scroll down to payroll section on the same page
+    setTimeout(() => {
+      document.getElementById('payroll-section')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      showToast(lang === 'zh' ? '已滚动到工资发放区，选择月份后操作' : 'Scrolled to payroll section — pick a month to proceed', 'info');
+    }, 150);
   };
 
   return (
