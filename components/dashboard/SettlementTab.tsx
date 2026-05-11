@@ -2,6 +2,7 @@ import { CheckCircle2, Banknote, ThumbsUp, AlertTriangle } from 'lucide-react';
 import React, { useState, useMemo } from 'react';
 
 import { useToast } from '../../contexts/ToastContext';
+import { useConfirm } from '../../contexts/ConfirmContext';
 import { Transaction, Driver, Location, DailySettlement, User as UserType, TRANSLATIONS } from '../../types';
 
 import AdminApprovalTaskList from './AdminApprovalTaskList';
@@ -84,6 +85,7 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
 }) => {
   const t = TRANSLATIONS[lang];
   const { showToast } = useToast();
+  const { confirm } = useConfirm();
   const [actualCash, setActualCash] = useState<string>('');
   const [actualCoins, setActualCoins] = useState<string>('');
   const [settlementExpenseAmount, setSettlementExpenseAmount] = useState<string>('');
@@ -524,6 +526,15 @@ const SettlementTab: React.FC<SettlementTabProps> = ({
                   showToast(t.settlementExpenseRequiredNote, 'warning');
                   return;
                 }
+                const ok = await confirm({
+                  title: lang === 'zh' ? '确认提交日结' : 'Confirm Settlement',
+                  message: lang === 'zh'
+                    ? `今日营收 TZS ${totalRevenue.toLocaleString()}\n应缴现金 TZS ${totalNet.toLocaleString()}\n实收现金 TZS ${cashAmount.toLocaleString()}\n实收硬币 TZS ${coinAmount.toLocaleString()}\n\n差额 TZS ${varianceAmount.toLocaleString()}${varianceAmount < 0 ? ' (短款)' : varianceAmount > 0 ? ' (盈余)' : ''}\n\n提交后不可撤销，确认？`
+                    : `Revenue TZS ${totalRevenue.toLocaleString()}\nNet Payable TZS ${totalNet.toLocaleString()}\nActual Cash TZS ${cashAmount.toLocaleString()}\nActual Coins TZS ${coinAmount.toLocaleString()}\n\nVariance TZS ${varianceAmount.toLocaleString()}${varianceAmount < 0 ? ' (Short)' : varianceAmount > 0 ? ' (Surplus)' : ''}\n\nSubmit now? Cannot undo.`,
+                  confirmLabel: lang === 'zh' ? '确认提交' : 'Submit',
+                  cancelLabel: lang === 'zh' ? '取消' : 'Cancel',
+                });
+                if (!ok) return;
                 setPendingActionKey('driver:settlement-submit');
                 const actual = submittedTotal;
                 const settlement: DailySettlement = {
