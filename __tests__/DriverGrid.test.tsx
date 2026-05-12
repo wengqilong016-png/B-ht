@@ -29,6 +29,8 @@ const makeDriver = (overrides: Partial<DriverWithStats> = {}): DriverWithStats =
     totalNet: 0,
     collectionRate: 0,
     txCount: 0,
+    todayRevenue: 0,
+    todayTxCount: 0,
   },
   ...overrides,
 });
@@ -48,7 +50,7 @@ describe('DriverGrid', () => {
       />,
     );
 
-    expect(screen.getAllByText('TZS 0')).toHaveLength(2);
+    expect(screen.getAllByText('TZS 0')).toHaveLength(3);
     expect(screen.getByText('0%')).toBeTruthy();
     expect(screen.queryByText('TZS 300,000')).toBeNull();
   });

@@ -17,6 +17,18 @@ interface DriverGridProps {
   hasCollectionsToday?: (driverId: string) => boolean;
 }
 
+function formatRelativeTime(ts: string, zh: boolean): string {
+  const diff = Date.now() - new Date(ts).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return zh ? '刚刚' : 'just now';
+  if (mins < 60) return zh ? `${mins}分钟前` : `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return zh ? `${hrs}小时前` : `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return zh ? `${days}天前` : `${days}d ago`;
+  return new Date(ts).toLocaleDateString(zh ? 'zh-CN' : 'en-US', { month: 'short', day: 'numeric' });
+}
+
 const DriverGrid: React.FC<DriverGridProps> = ({
   paginatedDrivers, driversWithStats, onEdit, onDelete, onToggleStatus, onShowSalary,
   isSettledToday, hasCollectionsToday
@@ -93,6 +105,23 @@ const DriverGrid: React.FC<DriverGridProps> = ({
               <p className="text-caption font-bold text-slate-400 mt-1">
                 {driver.stats.txCount} {zh ? '笔交易' : 'txns'}
               </p>
+              {/* ── Today stats (3 columns) ── */}
+              <div className="grid grid-cols-3 gap-2 mt-2 pt-2 border-t border-slate-100">
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{t.todayCollectionCount}</p>
+                  <p className="text-sm font-black text-amber-600 mt-0.5">{driver.stats.todayTxCount}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{t.todayRevenueTotal}</p>
+                  <p className="text-sm font-black text-emerald-600 mt-0.5">TZS {driver.stats.todayRevenue.toLocaleString()}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">{t.lastActiveTime}</p>
+                  <p className="text-xs font-black text-slate-500 mt-0.5">
+                    {driver.lastActive ? formatRelativeTime(driver.lastActive, zh) : t.neverActive}
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* ── 3-column key metrics ── */}
