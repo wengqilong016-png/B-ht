@@ -1,14 +1,23 @@
+FROM node:22-slim AS build
 
-FROM node:20-slim
 WORKDIR /app
-# 复制硬盘数据和服务器代码
+
 COPY package*.json ./
-RUN npm install --production
-COPY dist ./dist
-COPY local_server.js ./
-COPY BAHATI_DATA_BACKUP.json ./
-# 环境变量
+RUN npm ci
+
+COPY . .
+RUN npm run build
+
+FROM node:22-slim
+
+WORKDIR /app
+
+ENV NODE_ENV=production
 ENV PORT=8080
+
+COPY --from=build /app/dist ./dist
+COPY scripts/docker-static-server.mjs ./scripts/docker-static-server.mjs
+
 EXPOSE 8080
-# 运行
-CMD [ "node", "local_server.js" ]
+
+CMD ["node", "scripts/docker-static-server.mjs"]

@@ -54,6 +54,7 @@ test-results/
 playwright-report/
 
 # Android keystore files — never commit signing keys
+*.apk
 *.keystore
 *.jks
 
