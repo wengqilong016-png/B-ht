@@ -224,7 +224,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     expenses               NUMERIC DEFAULT 0,
     "coinExchange"         NUMERIC DEFAULT 0,
     "netPayable"           NUMERIC,
-    "paymentStatus"        TEXT DEFAULT 'unpaid',
+    "paymentStatus"        TEXT NOT NULL DEFAULT 'unpaid',
     gps                    JSONB,
     "gpsDeviation"         NUMERIC,
     "photoUrl"             TEXT,
@@ -244,6 +244,9 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     "expenseDescription"   TEXT,
     "approvalStatus"       TEXT DEFAULT 'pending',
     "payoutAmount"         NUMERIC DEFAULT 0,
+    CONSTRAINT transactions_payment_status_check CHECK (
+        "paymentStatus" IN ('unpaid', 'pending', 'paid', 'rejected')
+    ),
     CONSTRAINT transactions_type_check CHECK (
         type IN (
             'collection',
