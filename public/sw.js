@@ -1,7 +1,7 @@
 
 // Bump version on every deployment to force cache refresh and prevent white screen
 // caused by stale index.html referencing old (gone) asset hashes.
-const CACHE_NAME = 'bahati-pro-1.0.15-4bd3a7a';
+const CACHE_NAME = 'bahati-pro-1.0.15-cd38be8';
 
 self.addEventListener('install', (event) => {
   // Take control immediately so the updated SW starts serving right away.
