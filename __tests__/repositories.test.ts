@@ -22,27 +22,79 @@ type QueryChain = {
   single: jest.Mock;
 };
 
+type QueryResult = { data?: unknown; error?: unknown };
+type QueryRow = Record<string, unknown>;
+type QueryFilter = (row: QueryRow) => boolean;
+
+function isQueryResult(value: unknown): value is QueryResult {
+  return typeof value === 'object' && value !== null && ('data' in value || 'error' in value);
+}
+
+function isQueryRow(value: unknown): value is QueryRow {
+  return typeof value === 'object' && value !== null;
+}
+
 function makeChain(resolvedValue: unknown): QueryChain {
+  const filters: QueryFilter[] = [];
+  let resultLimit: number | undefined;
+
+  const resolveValue = (): unknown => {
+    if (!isQueryResult(resolvedValue) || !Array.isArray(resolvedValue.data)) {
+      return resolvedValue;
+    }
+
+    let data = resolvedValue.data.filter((row): row is QueryRow => isQueryRow(row));
+    if (applyQueryFilters) {
+      for (const filter of filters) {
+        data = data.filter(filter);
+      }
+    }
+    if (typeof resultLimit === 'number') {
+      data = data.slice(0, resultLimit);
+    }
+
+    return { ...resolvedValue, data };
+  };
+
   const chain: QueryChain = {
     select: jest.fn<() => QueryChain>().mockReturnThis(),
     insert: jest.fn<() => QueryChain>().mockReturnThis(),
     upsert: jest.fn<() => QueryChain>().mockReturnThis(),
     update: jest.fn<() => QueryChain>().mockReturnThis(),
     delete: jest.fn<() => QueryChain>().mockReturnThis(),
-    eq: jest.fn<() => QueryChain>().mockReturnThis(),
-    in: jest.fn<() => QueryChain>().mockReturnThis(),
+    eq: jest.fn().mockImplementation((field: unknown, value: unknown) => {
+      const key = String(field);
+      filters.push((row) => row[key] === value);
+      return chain;
+    }),
+    in: jest.fn().mockImplementation((field: unknown, values: unknown) => {
+      const key = String(field);
+      const allowedValues = Array.isArray(values) ? values : [];
+      filters.push((row) => allowedValues.includes(row[key]));
+      return chain;
+    }),
     order: jest.fn<() => QueryChain>().mockReturnThis(),
-    limit: jest.fn<() => QueryChain>().mockReturnThis(),
+    limit: jest.fn().mockImplementation((count: unknown) => {
+      resultLimit = typeof count === 'number' ? count : undefined;
+      return chain;
+    }),
     abortSignal: jest.fn<() => QueryChain>().mockReturnThis(),
-    single: jest.fn<() => Promise<unknown>>().mockResolvedValue(resolvedValue),
+    single: jest.fn<() => Promise<unknown>>().mockImplementation(async () => {
+      const value = resolveValue();
+      if (isQueryResult(value) && Array.isArray(value.data)) {
+        return { ...value, data: value.data[0] ?? null };
+      }
+      return value;
+    }),
   };
   // Make the chain itself thenable (awaiting the chain resolves it)
-  (chain as any).then = (resolve: (v: unknown) => void) => resolve(resolvedValue);
+  (chain as any).then = (resolve: (v: unknown) => void) => resolve(resolveValue());
   return chain;
 }
 
 // The supabase mock uses a factory that returns a fresh chain per test
 let currentChainValue: unknown = { data: [], error: null };
+let applyQueryFilters = true;
 const mockFrom = jest.fn<(table: string) => QueryChain>(() => makeChain(currentChainValue));
 const mockUpdateAuth = jest.fn<() => Promise<unknown>>();
 const mockSignOutAuth = jest.fn<() => Promise<unknown>>();
@@ -67,6 +119,7 @@ import { fetchTransactions, upsertTransaction } from '../repositories/transactio
 
 beforeEach(() => {
   jest.clearAllMocks();
+  applyQueryFilters = true;
 });
 
 // ══ driverRepository ════════════════════════════════════════════════════════
@@ -229,6 +282,41 @@ describe('transactionRepository', () => {
       expect(chain?.eq).toHaveBeenCalledWith('driverId', 'drv-123');
     });
 
+    it('returns only matching driver rows when driverIdFilter is provided', async () => {
+      currentChainValue = {
+        data: [
+          { id: 'tx-1', driverId: 'drv-123' },
+          { id: 'tx-2', driverId: 'drv-other' },
+          { id: 'tx-3', driverId: 'drv-123' },
+        ],
+        error: null,
+      };
+
+      const result = await fetchTransactions({ isDriver: true, driverIdFilter: 'drv-123' });
+
+      expect(result.map(tx => tx.id)).toEqual(['tx-1', 'tx-3']);
+    });
+
+    it('throws when a driver-scoped response still contains another driver row', async () => {
+      currentChainValue = {
+        data: [
+          { id: 'tx-1', driverId: 'drv-123' },
+          { id: 'tx-2', driverId: 'drv-other' },
+        ],
+        error: null,
+      };
+      applyQueryFilters = false;
+      const consoleError = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+      try {
+        await expect(fetchTransactions({ isDriver: true, driverIdFilter: 'drv-123' }))
+          .rejects
+          .toThrow('RLS violation: fetched 1 transaction(s) with incorrect driverId');
+      } finally {
+        consoleError.mockRestore();
+      }
+    });
+
     it('applies limit when provided', async () => {
       currentChainValue = { data: [], error: null };
       await fetchTransactions({ isDriver: false, limit: 50 });
@@ -283,6 +371,21 @@ describe('settlementRepository', () => {
     it('throws on error', async () => {
       currentChainValue = { data: null, error: new Error('settle error') };
       await expect(fetchSettlements()).rejects.toThrow('settle error');
+    });
+
+    it('returns only matching driver rows when driverIdFilter is provided', async () => {
+      currentChainValue = {
+        data: [
+          { id: 'set-1', driverId: 'drv-1' },
+          { id: 'set-2', driverId: 'drv-2' },
+          { id: 'set-3', driverId: 'drv-1' },
+        ],
+        error: null,
+      };
+
+      const result = await fetchSettlements({ driverIdFilter: 'drv-1' });
+
+      expect(result.map(settlement => settlement.id)).toEqual(['set-1', 'set-3']);
     });
   });
 
