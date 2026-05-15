@@ -33,7 +33,6 @@ jobs:
     env:
       SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       SUPABASE_DB_PASSWORD: ${{ secrets.SUPABASE_DB_PASSWORD }}
-      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
       SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
 
     steps:
@@ -49,11 +48,9 @@ jobs:
         run: |
           errors=()
 
-          if [ -z "$SUPABASE_DB_URL" ]; then
-            [ -z "$SUPABASE_ACCESS_TOKEN" ] && errors+=("SUPABASE_ACCESS_TOKEN is not set")
-            [ -z "$SUPABASE_DB_PASSWORD"  ] && errors+=("SUPABASE_DB_PASSWORD is not set")
-            [ -z "$SUPABASE_PROJECT_ID"   ] && errors+=("SUPABASE_PROJECT_ID is not set")
-          fi
+          [ -z "$SUPABASE_ACCESS_TOKEN" ] && errors+=("SUPABASE_ACCESS_TOKEN is not set")
+          [ -z "$SUPABASE_DB_PASSWORD"  ] && errors+=("SUPABASE_DB_PASSWORD is not set")
+          [ -z "$SUPABASE_PROJECT_ID"   ] && errors+=("SUPABASE_PROJECT_ID is not set")
 
           if [ -n "$SUPABASE_ACCESS_TOKEN" ] && [[ ! "$SUPABASE_ACCESS_TOKEN" =~ ^sbp_ ]]; then
             errors+=("SUPABASE_ACCESS_TOKEN has invalid format – must start with 'sbp_'")
@@ -67,8 +64,17 @@ jobs:
             exit 1
           fi
 
+      - name: Allow GitHub runner IP for database validation
+        run: |
+          runner_ip="$(curl -fsS4 https://api.ipify.org)"
+          echo "Allowing GitHub runner database IP: ${runner_ip}/32"
+          supabase network-restrictions update \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --append \
+            --db-allow-cidr "${runner_ip}/32" \
+            --experimental
+
       - name: Link project
-        if: env.SUPABASE_DB_URL == ''
         run: |
           if ! supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee /tmp/link_output.txt; then
             if grep -q "Address not in tenant allow_list" /tmp/link_output.txt; then
@@ -79,17 +85,7 @@ jobs:
           fi
 
       - name: Lint linked database schema
-        if: env.SUPABASE_DB_URL == ''
         run: supabase db lint --linked --fail-on error
 
       - name: Dry run pending migrations against linked project
-        if: env.SUPABASE_DB_URL == ''
         run: supabase db push --dry-run --linked --yes
-
-      - name: Lint database schema via IPv4/pooler URL
-        if: env.SUPABASE_DB_URL != ''
-        run: supabase db lint --db-url "$SUPABASE_DB_URL" --fail-on error
-
-      - name: Dry run pending migrations via IPv4/pooler URL
-        if: env.SUPABASE_DB_URL != ''
-        run: supabase db push --dry-run --db-url "$SUPABASE_DB_URL" --yes
