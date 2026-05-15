@@ -1,5 +1,16 @@
 import { getDriverPresence, isDriverOnline } from '../utils/driverPresence';
 
+const FIXED_NOW = new Date('2026-05-15T12:00:00.000Z');
+
+beforeEach(() => {
+  jest.useFakeTimers();
+  jest.setSystemTime(FIXED_NOW);
+});
+
+afterEach(() => {
+  jest.useRealTimers();
+});
+
 describe('getDriverPresence', () => {
   it('returns offline when lastActive is null', () => {
     expect(getDriverPresence(null)).toEqual(expect.objectContaining({ status: 'offline', labelKey: 'driverOffline' }));

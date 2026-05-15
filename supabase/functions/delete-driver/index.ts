@@ -2,10 +2,11 @@
 // supabase/functions/delete-driver/index.ts
 // Edge Function: POST /functions/v1/delete-driver
 //
-// Fully removes a driver account in three steps:
+// Fully removes a driver account:
 //   1. Looks up the auth_user_id from public.profiles via driver_id.
 //   2. Deletes the Supabase Auth user.
-//   3. Deletes the public.drivers row.
+//   3. Unlinks historical/assigned records that must outlive the driver.
+//   4. Deletes any remaining public.profiles row and the public.drivers row.
 //
 // Security: only callers whose public.profiles.role = 'admin' may invoke this
 // endpoint.  The service_role key is used so RLS policies do not block writes.
@@ -54,6 +55,15 @@ async function unlinkDriverReferences(driverId: string): Promise<{ error: string
 
   if (settlementUnlinkError) {
     return { error: settlementUnlinkError.message, code: 'SETTLEMENT_UNLINK_FAILED' };
+  }
+
+  const { error: locationUnlinkError } = await supabaseAdmin
+    .from('locations')
+    .update({ assignedDriverId: null })
+    .eq('assignedDriverId', driverId);
+
+  if (locationUnlinkError) {
+    return { error: locationUnlinkError.message, code: 'LOCATION_UNLINK_FAILED' };
   }
 
   return null;
@@ -109,12 +119,22 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── 5. Unlink transactions and settlements, then delete drivers row ──────
-  // Transactions and daily_settlements have FK constraints on drivers.id, so
-  // we NULL out the driverId first to preserve historical financial records.
+  // ── 5. Unlink dependents, delete profile, then delete drivers row ────────
+  // Transactions and daily_settlements preserve historical financial records.
+  // Locations also need explicit unassignment so the UI does not show stale
+  // driver ownership after the account is gone.
   const unlinkError = await unlinkDriverReferences(driverId);
   if (unlinkError) {
     return errorJson(unlinkError.error, 500, unlinkError.code);
+  }
+
+  const { error: profileDeleteError } = await supabaseAdmin
+    .from('profiles')
+    .delete()
+    .eq('driver_id', driverId);
+
+  if (profileDeleteError) {
+    return errorJson(profileDeleteError.message, 500, 'PROFILE_DELETE_FAILED');
   }
 
   const { error: driverDeleteError } = await supabaseAdmin

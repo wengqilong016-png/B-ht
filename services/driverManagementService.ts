@@ -60,7 +60,8 @@ export async function createDriverAccount(params: {
 
 /**
  * Invoke the `delete-driver` Edge Function to fully remove a driver:
- * deletes the Supabase Auth user (cascading to profiles) + the drivers row.
+ * deletes auth/profile rows, unassigns driver-owned references, and removes
+ * the drivers row while preserving historical financial records.
  */
 export async function deleteDriverAccount(driverId: string): Promise<DeleteDriverResult> {
   if (!supabase) return { success: false, code: 'CLIENT_UNAVAILABLE', message: 'Supabase client unavailable' };

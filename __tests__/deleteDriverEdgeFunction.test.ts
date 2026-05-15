@@ -19,6 +19,9 @@ type ProfilesTableStub = {
       maybeSingle: () => Promise<ProfileLookupResult>;
     };
   };
+  delete: () => {
+    eq: (column: string, value: string) => Promise<MutationResult>;
+  };
 };
 
 type UpdateTableStub = {
@@ -42,6 +45,8 @@ const mockDeleteUser = jest.fn<(userId: string) => Promise<DeleteUserResult>>();
 const mockProfileMaybeSingle = jest.fn<() => Promise<ProfileLookupResult>>();
 const mockTransactionUpdateEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
 const mockSettlementUpdateEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
+const mockLocationUpdateEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
+const mockProfileDeleteEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
 const mockDriverDeleteEq = jest.fn<(column: string, value: string) => Promise<MutationResult>>();
 const mockFrom = jest.fn<(table: string) => DriversTableStub | ProfilesTableStub | UpdateTableStub>();
 const mockServe = jest.fn<(handler: (req: Request) => Promise<Response>) => void>();
@@ -123,6 +128,9 @@ function makeSupabaseTableStub(table: string) {
           maybeSingle: () => mockProfileMaybeSingle(),
         }),
       }),
+      delete: () => ({
+        eq: (column: string, value: string) => mockProfileDeleteEq(column, value),
+      }),
     };
   }
 
@@ -150,6 +158,14 @@ function makeSupabaseTableStub(table: string) {
     };
   }
 
+  if (table === 'locations') {
+    return {
+      update: () => ({
+        eq: (column: string, value: string) => mockLocationUpdateEq(column, value),
+      }),
+    };
+  }
+
   throw new Error(`Unexpected table access: ${table}`);
 }
 
@@ -160,6 +176,8 @@ beforeEach(() => {
   mockProfileMaybeSingle.mockResolvedValue({ data: { auth_user_id: 'auth-1' }, error: null });
   mockTransactionUpdateEq.mockResolvedValue({ error: null });
   mockSettlementUpdateEq.mockResolvedValue({ error: null });
+  mockLocationUpdateEq.mockResolvedValue({ error: null });
+  mockProfileDeleteEq.mockResolvedValue({ error: null });
   mockDriverDeleteEq.mockResolvedValue({ error: null });
   mockFrom.mockImplementation((table: string) => makeSupabaseTableStub(table));
 });
@@ -187,9 +205,12 @@ describe('delete-driver edge function', () => {
     expect(mockFrom).toHaveBeenCalledWith('drivers');
     expect(mockFrom).toHaveBeenCalledWith('transactions');
     expect(mockFrom).toHaveBeenCalledWith('daily_settlements');
+    expect(mockFrom).toHaveBeenCalledWith('locations');
     expect(mockDeleteUser).toHaveBeenCalledWith('auth-1');
     expect(mockTransactionUpdateEq).toHaveBeenCalledWith('driverId', 'drv-1');
     expect(mockSettlementUpdateEq).toHaveBeenCalledWith('driverId', 'drv-1');
+    expect(mockLocationUpdateEq).toHaveBeenCalledWith('assignedDriverId', 'drv-1');
+    expect(mockProfileDeleteEq).toHaveBeenCalledWith('driver_id', 'drv-1');
     expect(mockDriverDeleteEq).toHaveBeenCalledWith('id', 'drv-1');
   });
 
@@ -201,6 +222,7 @@ describe('delete-driver edge function', () => {
 
     expect(response.status).toBe(200);
     expect(mockDeleteUser).not.toHaveBeenCalled();
+    expect(mockProfileDeleteEq).toHaveBeenCalledWith('driver_id', 'drv-2');
     expect(mockDriverDeleteEq).toHaveBeenCalledWith('id', 'drv-2');
   });
 
@@ -215,6 +237,37 @@ describe('delete-driver edge function', () => {
       success: false,
       error: 'transactions locked',
       code: 'TRANSACTION_UNLINK_FAILED',
+    });
+    expect(mockDriverDeleteEq).not.toHaveBeenCalled();
+  });
+
+  it('returns a structured error when location unassignment fails', async () => {
+    mockLocationUpdateEq.mockResolvedValueOnce({ error: { message: 'locations locked' } });
+    const handler = await loadDeleteDriverHandler();
+
+    const response = await handler(makeRequest({ driver_id: 'drv-4' }));
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: 'locations locked',
+      code: 'LOCATION_UNLINK_FAILED',
+    });
+    expect(mockProfileDeleteEq).not.toHaveBeenCalled();
+    expect(mockDriverDeleteEq).not.toHaveBeenCalled();
+  });
+
+  it('returns a structured error when profile deletion fails', async () => {
+    mockProfileDeleteEq.mockResolvedValueOnce({ error: { message: 'profile locked' } });
+    const handler = await loadDeleteDriverHandler();
+
+    const response = await handler(makeRequest({ driver_id: 'drv-5' }));
+
+    expect(response.status).toBe(500);
+    await expect(response.json()).resolves.toEqual({
+      success: false,
+      error: 'profile locked',
+      code: 'PROFILE_DELETE_FAILED',
     });
     expect(mockDriverDeleteEq).not.toHaveBeenCalled();
   });
