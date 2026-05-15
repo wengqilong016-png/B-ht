@@ -77,6 +77,16 @@ jobs:
         with:
           version: latest
 
+      - name: Allow GitHub runner IP for database deploy
+        run: |
+          runner_ip="$(curl -fsS4 https://api.ipify.org)"
+          echo "Allowing GitHub runner database IP: ${runner_ip}/32"
+          supabase network-restrictions update \
+            --project-ref "$SUPABASE_PROJECT_ID" \
+            --append \
+            --db-allow-cidr "${runner_ip}/32" \
+            --experimental
+
       - name: Link project
         run: |
           if ! supabase link --project-ref "$SUPABASE_PROJECT_ID" 2>&1 | tee /tmp/link_output.txt; then
