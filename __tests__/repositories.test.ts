@@ -60,7 +60,7 @@ jest.mock('../supabaseClient', () => ({
 // Import repos after mock is in place
 import { insertAiLog, fetchAiLogs } from '../repositories/aiLogRepository';
 import { updatePassword, signOut } from '../repositories/authRepository';
-import { fetchDrivers, upsertDrivers, deleteDrivers, updateDriverPhone, updateDriverCoins } from '../repositories/driverRepository';
+import { fetchDrivers, updateDrivers, deleteDrivers, updateDriverPhone, updateDriverCoins } from '../repositories/driverRepository';
 import { fetchLocations, upsertLocations, deleteLocations } from '../repositories/locationRepository';
 import { fetchSettlements, upsertSettlement } from '../repositories/settlementRepository';
 import { fetchTransactions, upsertTransaction } from '../repositories/transactionRepository';
@@ -94,15 +94,15 @@ describe('driverRepository', () => {
     });
   });
 
-  describe('upsertDrivers()', () => {
-    it('resolves without error on successful upsert', async () => {
+  describe('updateDrivers()', () => {
+    it('resolves without error on successful update', async () => {
       currentChainValue = { error: null };
-      await expect(upsertDrivers([{ id: 'drv-1' }])).resolves.toBeUndefined();
+      await expect(updateDrivers([{ id: 'drv-1', name: 'Alice' }])).resolves.toBeUndefined();
     });
 
     it('throws when Supabase returns an error', async () => {
-      currentChainValue = { error: new Error('upsert failed') };
-      await expect(upsertDrivers([{ id: 'drv-1' }])).rejects.toThrow('upsert failed');
+      currentChainValue = { error: new Error('update failed') };
+      await expect(updateDrivers([{ id: 'drv-1', name: 'Alice' }])).rejects.toThrow('update failed');
     });
   });
 

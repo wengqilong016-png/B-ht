@@ -27,6 +27,7 @@ export async function createDriverAccount(params: {
   password: string;
   username: string;
   name: string;
+  businessFields?: Pick<Driver, 'phone' | 'vehicleInfo' | 'dailyFloatingCoins' | 'baseSalary' | 'commissionRate' | 'initialDebt'> & { remainingDebt?: number };
 }): Promise<CreateDriverResult> {
   if (!supabase) return { success: false, code: 'CLIENT_UNAVAILABLE', message: 'Supabase client unavailable' };
 
@@ -37,6 +38,7 @@ export async function createDriverAccount(params: {
       driver_id: params.username,
       display_name: params.name,
       username: params.username,
+      business_fields: params.businessFields,
     },
   });
 

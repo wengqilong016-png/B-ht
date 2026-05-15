@@ -1,4 +1,5 @@
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import React, { useState, useMemo, useEffect } from 'react';
 
 import { useAuth } from '../../contexts/AuthContext';
@@ -6,7 +7,7 @@ import { useConfirm } from '../../contexts/ConfirmContext';
 import { useAppData } from '../../contexts/DataContext';
 import { useMutations } from '../../contexts/MutationContext';
 import { useToast } from '../../contexts/ToastContext';
-import { createDriverAccount, persistDriverBusinessFields } from '../../services/driverManagementService';
+import { createDriverAccount } from '../../services/driverManagementService';
 import { Driver, Location, safeRandomUUID, TRANSLATIONS } from '../../types';
 import { normalizeDriverId, normalizeDriverName } from '../../utils/identityNormalization';
 
@@ -37,6 +38,7 @@ function deriveDriverEmail(name: string): string {
 const DriverManagementPage: React.FC<DriverManagementProps> = () => {
   const { filteredDrivers: drivers, locations, filteredTransactions: transactions, filteredSettlements: dailySettlements, isOnline } = useAppData();
   const { updateDrivers, updateLocations, deleteDrivers } = useMutations();
+  const queryClient = useQueryClient();
   const { showToast } = useToast();
   const { confirm } = useConfirm();
   const { lang } = useAuth();
@@ -235,6 +237,15 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           password,
           username: resolvedUsername,
           name: form.name,
+          businessFields: {
+            phone: driverData.phone,
+            vehicleInfo: driverData.vehicleInfo,
+            dailyFloatingCoins: driverData.dailyFloatingCoins,
+            baseSalary: driverData.baseSalary,
+            commissionRate: driverData.commissionRate,
+            initialDebt: driverData.initialDebt,
+            remainingDebt: driverData.initialDebt,
+          },
         });
 
         if (result.success === false) {
@@ -249,23 +260,9 @@ const DriverManagementPage: React.FC<DriverManagementProps> = () => {
           return;
         }
 
-        // Edge Function created Auth user + drivers row + profiles row.
-        // Persist business fields that the Edge Function doesn't handle.
-        const createdDriverId = result.driverId;
-        try {
-          await persistDriverBusinessFields(createdDriverId, driverData);
-        } catch (updateErr) {
-          console.error('Failed to persist business fields for new driver:', updateErr);
-          showToast(lang === 'zh' ? '司机账号已创建，但部分业务信息未能保存。请重新编辑司机资料。' : 'Driver account created, but some business fields could not be saved. Please re-edit the driver profile.', 'warning');
-        }
-
-        // Merge the new driver into local state so the UI updates immediately.
-        const newDriver: Driver = {
-          id: createdDriverId,
-          ...driverData,
-          remainingDebt: driverData.initialDebt,
-        };
-        await onUpdateDrivers([...drivers, newDriver]);
+        // Edge Function created Auth user, trigger-created profile/driver rows,
+        // and persisted business fields using service_role.
+        await queryClient.invalidateQueries({ queryKey: ['drivers'] });
 
         resetForm();
         // Delay toast to ensure form close animation doesn't swallow it

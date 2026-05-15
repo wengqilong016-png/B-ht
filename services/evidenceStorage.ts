@@ -1,6 +1,6 @@
 import { supabase } from '../supabaseClient';
 
-export const EVIDENCE_BUCKET = 'evidence';
+export const EVIDENCE_BUCKET = 'kiosk-photos';
 
 interface EvidenceUploadOptions {
   category: 'collection' | 'reset-request' | 'payroll' | 'driver-profile';

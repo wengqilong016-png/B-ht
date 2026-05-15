@@ -8,6 +8,8 @@ export interface DriverWithStats extends Driver {
     totalNet: number;
     collectionRate: number;
     txCount: number;
+    todayRevenue: number;
+    todayTxCount: number;
   };
 }
 
@@ -28,13 +30,23 @@ export function useDriverManagement(drivers: Driver[], transactions: Transaction
 
     return drivers.map(d => {
       const dTx = txByDriver.get(d.id) ?? [];
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const todayTx = dTx.filter(t => t.timestamp.startsWith(todayStr));
       const totalRevenue = dTx.reduce((sum, t) => sum + t.revenue, 0);
       const totalNet = dTx.reduce((sum, t) => sum + t.netPayable, 0);
+      const todayRevenue = todayTx.reduce((sum, t) => sum + t.revenue, 0);
       const collectionRate = totalRevenue > 0 ? (totalNet / totalRevenue) * 100 : 0;
 
       return {
         ...d,
-        stats: { totalRevenue, totalNet, collectionRate, txCount: dTx.length }
+        stats: {
+          totalRevenue,
+          totalNet,
+          collectionRate,
+          txCount: dTx.length,
+          todayRevenue,
+          todayTxCount: todayTx.length,
+        }
       };
     });
   }, [drivers, transactions]);

@@ -8,7 +8,7 @@ import {
   approveResetRequest as repoApproveResetRequest,
   reviewAnomalyTransaction as repoReviewAnomalyTransaction,
 } from '../repositories/approvalRepository';
-import { upsertDrivers, updateDriverCoins } from '../repositories/driverRepository';
+import { updateDrivers as updateDriverRows, updateDriverCoins } from '../repositories/driverRepository';
 import { upsertLocationsWithSignal, deleteLocations as repoDeleteLocations } from '../repositories/locationRepository';
 import { createPayoutRequest, createResetRequest } from '../repositories/requestRepository';
 import { createSettlement as repoCreateSettlement, reviewSettlement as repoReviewSettlement } from '../repositories/settlementRepository';
@@ -124,7 +124,9 @@ export function useSupabaseMutations(
       if (!isOnline) {
         throw new Error('当前处于离线状态，无法修改司机信息。请连接网络后重试。/ Offline — cannot update drivers. Please reconnect and try again.');
       }
-      await upsertDrivers(updatedDrivers.map(d => stripClientFields(d as unknown as Record<string, unknown>) as Partial<Driver>));
+      await updateDriverRows(
+        updatedDrivers.map(d => stripClientFields(d as unknown as Record<string, unknown>) as unknown as Driver),
+      );
     },
     onError: (error, _variables, context) => {
       if (context?.previousDrivers !== undefined) {

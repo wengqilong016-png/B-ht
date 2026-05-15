@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TZ Pulse · 坦桑脉搏</title>
 <script src="https://cdn.tailwindcss.com"></script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;700&display=swap');
   body { font-family: 'Noto Sans SC', system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
@@ -41,11 +40,6 @@
   </div>
 
 <script>
-const SB = supabase.createClient(
-  'https://edohkcvzaisrxunwnlvk.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVkb2hrY3Z6YWlzcnh1bndubHZrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUyMjIyNzIsImV4cCI6MjA5MDc5ODI3Mn0.xwPGMVKoUphiq8Y-uwU2a2du2usxFKi8pOl_QkU_p9k'
-);
-
 const CATS = {
   policy:    { emoji:'🟦', label:'政策法规', color:'text-blue-400', cls:'category-policy' },
   business:  { emoji:'🟢', label:'商业机会', color:'text-green-400', cls:'category-business' },
@@ -54,16 +48,9 @@ const CATS = {
 };
 
 async function load() {
-  const today = new Date().toISOString().slice(0,10);
-  const { data: snap } = await SB.from('tz_pulse_snapshots')
-    .select('*').eq('date', today).maybeSingle();
-
-  const { data: articles } = await SB.from('tz_pulse_articles')
-    .select('*').gte('created_at', today).order('created_at', { ascending: false });
-
-  const weekAgo = new Date(Date.now()-7*86400000).toISOString().slice(0,10);
-  const { data: week } = await SB.from('tz_pulse_snapshots')
-    .select('date,highlights').gte('date', weekAgo).order('date', { ascending: false });
+  const response = await fetch('/api/tz-pulse', { headers: { 'Accept': 'application/json' } });
+  if (!response.ok) throw new Error('Failed to load TZ Pulse data');
+  const { snap, articles, week } = await response.json();
 
   document.getElementById('dateLine').textContent =
     new Date().toLocaleDateString('zh-CN', { year:'numeric', month:'long', day:'numeric', weekday:'long' });

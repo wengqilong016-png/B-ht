@@ -11,7 +11,7 @@ const mockEnqueueTransaction = jest.fn<(...args: unknown[]) => Promise<unknown>>
 const mockFlushQueue = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockReportQueueHealthToServer = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockSubmitCollectionV2 = jest.fn<(...args: unknown[]) => Promise<unknown>>();
-const mockUpsertDrivers = jest.fn<(...args: unknown[]) => Promise<unknown>>();
+const mockUpdateDrivers = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockDeleteDrivers = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockUpdateDriverCoins = jest.fn<(...args: unknown[]) => Promise<unknown>>();
 const mockUpsertLocations = jest.fn<(...args: unknown[]) => Promise<unknown>>();
@@ -39,7 +39,7 @@ jest.mock('../services/collectionSubmissionService', () => ({
 }));
 
 jest.mock('../repositories/driverRepository', () => ({
-  upsertDrivers: (...args: unknown[]) => mockUpsertDrivers(...args),
+  updateDrivers: (...args: unknown[]) => mockUpdateDrivers(...args),
   deleteDrivers: (...args: unknown[]) => mockDeleteDrivers(...args),
   updateDriverCoins: (...args: unknown[]) => mockUpdateDriverCoins(...args),
 }));

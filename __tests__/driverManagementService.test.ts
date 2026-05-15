@@ -81,6 +81,35 @@ describe('createDriverAccount()', () => {
     expect(opts.body.username).toBe('drv001');
   });
 
+  it('passes optional business fields to the create-driver edge function', async () => {
+    mockInvoke.mockResolvedValue({
+      data: { success: true, driver_id: 'uuid-drv-003' },
+      error: null,
+    });
+
+    await createDriverAccount({
+      ...params,
+      businessFields: {
+        phone: '0711000001',
+        vehicleInfo: { model: 'Toyota', plate: 'TZ-001A' },
+        dailyFloatingCoins: 200,
+        baseSalary: 300000,
+        commissionRate: 0.05,
+        initialDebt: 50000,
+        remainingDebt: 50000,
+      },
+    });
+
+    const [, opts] = mockInvoke.mock.calls[0] as [string, { body: Record<string, unknown> }];
+    expect(opts.body.business_fields).toEqual(
+      expect.objectContaining({
+        phone: '0711000001',
+        baseSalary: 300000,
+        commissionRate: 0.05,
+      }),
+    );
+  });
+
   it('returns failure with code and message when Edge Function reports error', async () => {
     mockInvoke.mockResolvedValue({
       data: { success: false, error: 'Email already exists', code: 'EMAIL_CONFLICT' },

@@ -72,25 +72,6 @@ export default tseslint.config(
       ],
       '@typescript-eslint/triple-slash-reference': 'off',
       'import/no-duplicates': 'error',
-      'import/order': [
-        'error',
-        {
-          alphabetize: {
-            caseInsensitive: true,
-            order: 'asc',
-          },
-          groups: ['builtin', 'external', 'internal', 'parent', 'sibling', 'index', 'type'],
-          'newlines-between': 'always',
-          pathGroups: [
-            {
-              group: 'internal',
-              pattern: '@/**',
-              position: 'before',
-            },
-          ],
-          pathGroupsExcludedImportTypes: ['builtin'],
-        },
-      ],
       'react-hooks/exhaustive-deps': 'warn',
       'react-hooks/rules-of-hooks': 'error',
     },

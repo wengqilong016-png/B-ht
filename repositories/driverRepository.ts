@@ -19,10 +19,55 @@ export async function fetchDrivers(signal?: AbortSignal): Promise<Driver[]> {
   return (data ?? []) as unknown as Driver[];
 }
 
-export async function upsertDrivers(drivers: Partial<Driver>[]): Promise<void> {
+type DriverUpdate = Partial<Pick<
+  Driver,
+  | 'name'
+  | 'username'
+  | 'phone'
+  | 'backgroundPhotoUrl'
+  | 'initialDebt'
+  | 'remainingDebt'
+  | 'dailyFloatingCoins'
+  | 'vehicleInfo'
+  | 'currentGps'
+  | 'lastActive'
+  | 'status'
+  | 'baseSalary'
+  | 'commissionRate'
+>>;
+
+function toDriverUpdatePayload(driver: Partial<Driver>): DriverUpdate {
+  const payload: DriverUpdate = {};
+  const assign = <K extends keyof DriverUpdate>(key: K, value: DriverUpdate[K] | undefined) => {
+    if (value !== undefined) payload[key] = value;
+  };
+
+  assign('name', driver.name);
+  assign('username', driver.username);
+  assign('phone', driver.phone);
+  assign('backgroundPhotoUrl', driver.backgroundPhotoUrl);
+  assign('initialDebt', driver.initialDebt);
+  assign('remainingDebt', driver.remainingDebt);
+  assign('dailyFloatingCoins', driver.dailyFloatingCoins);
+  assign('vehicleInfo', driver.vehicleInfo);
+  assign('currentGps', driver.currentGps);
+  assign('lastActive', driver.lastActive);
+  assign('status', driver.status);
+  assign('baseSalary', driver.baseSalary);
+  assign('commissionRate', driver.commissionRate);
+
+  return payload;
+}
+
+export async function updateDrivers(drivers: Array<Partial<Driver> & { id: string }>): Promise<void> {
   if (!supabase) throw new Error('Supabase client unavailable');
-  const { error } = await supabase.from('drivers').upsert(drivers);
-  if (error) throw error;
+  for (const driver of drivers) {
+    const { error } = await supabase
+      .from('drivers')
+      .update(toDriverUpdatePayload(driver))
+      .eq('id', driver.id);
+    if (error) throw error;
+  }
 }
 
 export async function updateDriverProfile(

@@ -6,9 +6,9 @@ import React, { Suspense, useMemo, useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useAppData } from '../contexts/DataContext';
 import { useMutations } from '../contexts/MutationContext';
+import { useToast } from '../contexts/ToastContext';
 import { useSyncStatus } from '../hooks/useSyncStatus';
 import { updateUserEmail } from '../services/authService';
-import { useToast } from '../contexts/ToastContext';
 import {
   AppShell,
   ShellSidebar,
@@ -29,6 +29,7 @@ import DriverShellViewRenderer from './renderDriverShellView';
 const AppDriverShell: React.FC = () => {
   const { currentUser, lang, setLang, handleLogout, activeDriverId } = useAuth();
   const { showToast } = useToast();
+  const t = TRANSLATIONS[lang];
   const {
     isOnline,
     filteredLocations, filteredTransactions, filteredSettlements,
@@ -36,8 +37,8 @@ const AppDriverShell: React.FC = () => {
   } = useAppData();
   const {
     syncOfflineData,
-    registerLocation,
   } = useMutations();
+  const [view, setView] = useState<DriverView>('quick');
 
   // Font-size toggle
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>(() => {
@@ -76,7 +77,7 @@ const AppDriverShell: React.FC = () => {
       } else {
         showToast(`${lang === 'zh' ? '绑定失败' : 'Bind failed'}: ${result.error}`, 'error');
       }
-    } catch (e) {
+    } catch (_e) {
       showToast(lang === 'zh' ? '绑定失败，请重试' : 'Bind failed, retry', 'error');
     } finally {
       setIsBindingEmail(false);
@@ -104,7 +105,6 @@ const AppDriverShell: React.FC = () => {
   const todayDriverRevenue = filteredTransactions
     .filter((tx) => tx.driverId === activeDriverId && tx.timestamp.startsWith(todayStr) && (tx.type === undefined || tx.type === 'collection'))
     .reduce((sum, tx) => sum + (tx.revenue || 0), 0);
-  const pendingSettlementCount = filteredSettlements.filter((settlement) => settlement.driverId === activeDriverId && settlement.status === 'pending').length;
   const todaySettlementSubmitted = filteredSettlements.some(
     (s) => s.driverId === activeDriverId && s.date === todayStr && (s.status === 'pending' || s.status === 'confirmed')
   );
@@ -119,7 +119,7 @@ const AppDriverShell: React.FC = () => {
       history: { value: unsyncedCount, label: t.unsyncedLabel },
       status: { value: assignedMachineCount, label: t.assignedMachines },
     }),
-    [assignedMachineCount, pendingSettlementCount, t, todayCollectionCount, todayDriverRevenue, todaySettlementSubmitted, unsyncedCount, lang]
+    [assignedMachineCount, t, todayCollectionCount, todayDriverRevenue, todaySettlementSubmitted, unsyncedCount, lang]
   );
 
   // Build sidebar nav items
@@ -159,9 +159,11 @@ const AppDriverShell: React.FC = () => {
         brandSubtitle={currentUser.name}
         primaryNav={sidebarNav}
         secondaryNav={undefined}
+        activeView={view}
+        onSelectView={handleSetView}
         syncStatus={syncStatus}
         lang={lang}
-        footer={
+        bottomContent={
           <div className="flex items-center gap-3 p-3 border-t border-slate-800">
             <div className="w-8 h-8 rounded-xl bg-white/10 text-white flex items-center justify-center font-black text-xs flex-shrink-0">
               {currentUser.name.charAt(0).toUpperCase()}
@@ -252,7 +254,15 @@ const AppDriverShell: React.FC = () => {
       </div>
 
       {view === 'collect' && (
-        <DriverAIAssistPanel />
+        <DriverAIAssistPanel
+          lang={lang}
+          isOnline={isOnline}
+          unsyncedCount={unsyncedCount}
+          filteredLocations={filteredLocations}
+          filteredTransactions={filteredTransactions}
+          filteredSettlements={filteredSettlements}
+          activeDriverId={activeDriverId ?? currentUser.id}
+        />
       )}
 
       <ShellMobileNav

@@ -3,8 +3,9 @@
 //
 // Creates a complete driver account in one call:
 //   1. Creates a Supabase Auth user (email + password, email pre-confirmed).
-//   2. Upserts a record in public.drivers (insert if absent, update name/username only).
-//   3. Upserts a record in public.profiles (role='driver', driver_id, display_name).
+//   2. Stores driver metadata on the Auth user so the DB trigger creates
+//      public.drivers + public.profiles.
+//   3. Persists optional business fields with service_role.
 //
 // Security: only callers whose public.profiles.role = 'admin' may invoke this endpoint.
 // The function uses the service_role key so RLS policies do not block any writes.
@@ -28,6 +29,38 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Access-Control-Allow-Methods': 'POST, OPTIONS',
 };
+
+type BusinessFields = {
+  phone?: string;
+  vehicleInfo?: unknown;
+  dailyFloatingCoins?: number;
+  baseSalary?: number;
+  commissionRate?: number;
+  initialDebt?: number;
+  remainingDebt?: number;
+};
+
+function numberOrUndefined(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) ? value : undefined;
+}
+
+function parseBusinessFields(value: unknown): BusinessFields {
+  if (!value || typeof value !== 'object') return {};
+  const source = value as Record<string, unknown>;
+  return {
+    phone: typeof source.phone === 'string' ? source.phone.trim() : undefined,
+    vehicleInfo: source.vehicleInfo,
+    dailyFloatingCoins: numberOrUndefined(source.dailyFloatingCoins),
+    baseSalary: numberOrUndefined(source.baseSalary),
+    commissionRate: numberOrUndefined(source.commissionRate),
+    initialDebt: numberOrUndefined(source.initialDebt),
+    remainingDebt: numberOrUndefined(source.remainingDebt),
+  };
+}
+
+function compactRecord(record: Record<string, unknown>): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined));
+}
 
 Deno.serve(async (req: Request) => {
   // Handle CORS preflight
@@ -65,20 +98,15 @@ Deno.serve(async (req: Request) => {
     typeof body.username === 'string' && body.username.trim()
       ? body.username.trim()
       : driverId.toLowerCase();
+  const businessFields = parseBusinessFields(body.business_fields);
 
   if (!email) return json({ success: false, error: 'Missing required field: email' }, 400);
   if (!password) return json({ success: false, error: 'Missing required field: password' }, 400);
   if (!driverId) return json({ success: false, error: 'Missing required field: driver_id' }, 400);
 
-  // ── 3. Check for duplicate driver_id in public.drivers ──────────────────
-  const { data: existingDriver } = await supabaseAdmin
-    .from('drivers')
-    .select('id')
-    .eq('id', driverId)
-    .maybeSingle<{ id: string }>();
-
-  // We allow the driver record to pre-exist — we will upsert it below.
-  // But if a profile already references this driver_id that would be a conflict.
+  // ── 3. Check for duplicate driver binding ────────────────────────────────
+  // A driver skeleton may already exist, but a profile binding means the
+  // account has already been provisioned.
   const { data: existingProfile } = await supabaseAdmin
     .from('profiles')
     .select('auth_user_id, driver_id')
@@ -103,6 +131,12 @@ Deno.serve(async (req: Request) => {
     email,
     password,
     email_confirm: true,          // pre-confirm so the driver can log in immediately
+    user_metadata: {
+      role: 'driver',
+      driver_id: driverId,
+      display_name: displayName,
+      username,
+    },
   });
 
   if (authError || !authData.user) {
@@ -133,56 +167,62 @@ Deno.serve(async (req: Request) => {
   // Helper: roll back the just-created Auth user to avoid orphaned accounts.
   const rollbackAuthUser = () => supabaseAdmin.auth.admin.deleteUser(authUserId);
 
-  // ── 5. Upsert public.drivers ─────────────────────────────────────────────
-  // If the drivers record already exists (pre-created via SQL), we only update
-  // name and username to match what was supplied; business fields are left alone.
-  if (existingDriver) {
-    const { error: driverUpdateError } = await supabaseAdmin
-      .from('drivers')
-      .update({ name: displayName, username })
-      .eq('id', driverId);
+  // ── 5. Verify trigger-created public rows ────────────────────────────────
+  const { data: driverRow, error: driverFetchError } = await supabaseAdmin
+    .from('drivers')
+    .select('id')
+    .eq('id', driverId)
+    .maybeSingle<{ id: string }>();
 
-    if (driverUpdateError) {
-      await rollbackAuthUser();
-      return json(
-        { success: false, error: `drivers update failed: ${driverUpdateError.message}` },
-        500,
-      );
-    }
-  } else {
-    const { error: driverInsertError } = await supabaseAdmin
-      .from('drivers')
-      .insert({ id: driverId, name: displayName, username, status: 'active' });
-
-    if (driverInsertError) {
-      await rollbackAuthUser();
-      return json(
-        { success: false, error: `drivers insert failed: ${driverInsertError.message}` },
-        500,
-      );
-    }
-  }
-
-  // ── 6. Upsert public.profiles ────────────────────────────────────────────
-  const { error: profileError } = await supabaseAdmin.from('profiles').upsert(
-    {
-      auth_user_id: authUserId,
-      role: 'driver',
-      display_name: displayName,
-      driver_id: driverId,
-    },
-    { onConflict: 'auth_user_id' },
-  );
-
-  if (profileError) {
+  if (driverFetchError || !driverRow) {
     await rollbackAuthUser();
     return json(
-      { success: false, error: `profiles insert failed: ${profileError.message}` },
+      { success: false, error: `drivers trigger insert failed: ${driverFetchError?.message ?? 'row not found'}` },
       500,
     );
   }
 
-  // ── 7. Success ────────────────────────────────────────────────────────────
+  const { data: profileRow, error: profileFetchError } = await supabaseAdmin
+    .from('profiles')
+    .select('auth_user_id, driver_id')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle<{ auth_user_id: string; driver_id: string }>();
+
+  if (profileFetchError || profileRow?.driver_id !== driverId) {
+    await rollbackAuthUser();
+    return json(
+      { success: false, error: `profiles trigger insert failed: ${profileFetchError?.message ?? 'row not found'}` },
+      500,
+    );
+  }
+
+  // ── 6. Persist business fields with service_role ─────────────────────────
+  const driverBusinessPatch = compactRecord({
+    phone: businessFields.phone,
+    vehicleInfo: businessFields.vehicleInfo,
+    dailyFloatingCoins: businessFields.dailyFloatingCoins,
+    baseSalary: businessFields.baseSalary,
+    commissionRate: businessFields.commissionRate,
+    initialDebt: businessFields.initialDebt,
+    remainingDebt: businessFields.remainingDebt ?? businessFields.initialDebt,
+  });
+
+  if (Object.keys(driverBusinessPatch).length > 0) {
+    const { error: businessFieldsError } = await supabaseAdmin
+      .from('drivers')
+      .update(driverBusinessPatch)
+      .eq('id', driverId);
+
+    if (businessFieldsError) {
+      await rollbackAuthUser();
+      return json(
+        { success: false, error: `drivers business update failed: ${businessFieldsError.message}` },
+        500,
+      );
+    }
+  }
+
+  // ── 7. Success ───────────────────────────────────────────────────────────
   return json(
     {
       success: true,
