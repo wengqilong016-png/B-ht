@@ -38,7 +38,7 @@ const AppDriverShell: React.FC = () => {
   const {
     syncOfflineData,
   } = useMutations();
-  const [view, setView] = useState<DriverView>('quick');
+  const [view, setView] = useState<DriverView>('collect');
 
   // Font-size toggle
   const [fontSize, setFontSize] = useState<'normal' | 'large' | 'xlarge'>(() => {
