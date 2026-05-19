@@ -63,13 +63,13 @@ const EMPTY_RESULT: FinanceCalculationResult = {
 
 function normalizeFinanceInput(input: CollectionFinanceInput): NormalizedFinanceInput {
   return {
-    currentScore: parseInt(input.currentScore, 10) || 0,
-    expenses: parseInt(input.expenses, 10) || 0,
-    tip: parseInt(input.tip, 10) || 0,
-    startupDebtDeductionRequest: Math.max(0, parseInt(input.startupDebtDeduction, 10) || 0),
+    currentScore: Math.min(Math.floor(parseAmount(input.currentScore)), CONSTANTS.MAX_REASONABLE_SCORE),
+    expenses: Math.floor(parseAmount(input.expenses)),
+    tip: Math.floor(parseAmount(input.tip)),
+    startupDebtDeductionRequest: Math.max(0, Math.floor(parseAmount(input.startupDebtDeduction))),
     ownerRetention: input.ownerRetention !== '' ? parseAmount(input.ownerRetention) : null,
     initialFloat: input.initialFloat || 0,
-    coinExchange: parseInt(input.coinExchange, 10) || 0,
+    coinExchange: Math.floor(parseAmount(input.coinExchange)),
   };
 }
 
@@ -160,6 +160,7 @@ export async function calculateCollectionFinancePreview(
     }).abortSignal(AbortSignal.timeout(10_000));
 
     if (error || !data) {
+      console.warn('[FinancePreview] RPC version mismatch, falling back to local', error);
       return fallback;
     }
 
