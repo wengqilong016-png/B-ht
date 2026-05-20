@@ -1,6 +1,5 @@
 import { describe, expect, it, jest, beforeEach } from '@jest/globals';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 
 import DriverStatusPanel from '../driver/components/DriverStatusPanel';
 

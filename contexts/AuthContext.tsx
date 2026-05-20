@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 
 import type { User } from '../types';
 
-interface AuthContextValue {
+export interface AuthContextValue {
   currentUser: User;
   userRole: 'admin' | 'driver';
   lang: 'zh' | 'sw';

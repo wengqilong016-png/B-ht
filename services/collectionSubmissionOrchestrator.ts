@@ -187,8 +187,10 @@ export function buildCollectionSubmissionInput(
   const expenseValue = 0;
   const tipValue = parseAmount(input.tip);
   const trimmedScore = input.currentScore.trim();
-  const parsedScore = Number.parseInt(trimmedScore, 10);
-  if (trimmedScore === '' || Number.isNaN(parsedScore)) {
+  const parsedScore = Math.floor(parseAmount(trimmedScore));
+  const cleanScore = trimmedScore.replace(/,/g, "");
+  const isInvalidScore = trimmedScore === "" || Number.isNaN(Number(cleanScore)) || Number.isNaN(parsedScore);
+  if (isInvalidScore) {
     appendCollectionSubmissionAudit({
       timestamp: new Date().toISOString(),
       event: 'submit_invalid_score',
@@ -223,7 +225,7 @@ export function buildCollectionSubmissionInput(
     txId:            input.draftTxId,
     locationId:      input.selectedLocation.id,
     driverId:        input.currentDriver.id,
-    currentScore:    userScore,
+    currentScore:    Math.min(userScore, CONSTANTS.MAX_REASONABLE_SCORE),
     expenses:        expenseValue,
     tip:             tipValue,
     startupDebtDeduction: input.calculations.startupDebtDeduction,

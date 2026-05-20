@@ -788,6 +788,11 @@ export async function flushQueue(
     const pending = await getPendingTransactions();
     if (pending.length === 0) return 0;
 
+    // Sort by timestamp ascending so sequential collections at the same
+    // location replay in the correct chronological order.  IndexedDB
+    // returns rows by primary key (random UUID), not insertion order.
+    pending.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+
     const now = Date.now();
     let flushed = 0;
 

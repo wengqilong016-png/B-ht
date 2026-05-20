@@ -22,4 +22,7 @@ export const CONSTANTS = {
   /** Minimum absolute difference between user-entered score and AI-recognised score
    *  to flag a transaction as anomalous. Increase to reduce false-positives. */
   ANOMALY_SCORE_DIFF_THRESHOLD: 50,
+  /** Hard cap on user-entered score values to prevent absurd amounts
+   *  from producing astronomical diff/revenue calculations. */
+  MAX_REASONABLE_SCORE: 100000,
 } as const;

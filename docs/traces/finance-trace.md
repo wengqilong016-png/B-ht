@@ -291,7 +291,7 @@ END IF;
 
 | 迁移文件 | 内容 |
 |----------|------|
-| `20260325155000_calculate_finance_v2.sql` | 初始 finance 计算 |
+| `20260424043000_fix_merchant_debt_repayment_cash_direction.sql` | 最新 finance 计算（9参数含startupDebt） |
 | `20260325156000_submit_collection_v2.sql` | 初始 submit_collection_v2 |
 | `20260404010000_admin_approval_actions.sql` | reset + payout 审批 |
 | `20260404020000_settlement_actions.sql` | 日结创建+审核 |

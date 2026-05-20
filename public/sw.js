@@ -33,7 +33,22 @@ self.addEventListener('message', (event) => {
   }
 });
 
+// ── Background sync: notify all clients to flush the offline queue ────────
+self.addEventListener('sync', (event) => {
+  if (event.tag === 'bahati-flush-queue') {
+    event.waitUntil(
+      self.clients.matchAll().then((clients) => {
+        clients.forEach((client) => {
+          client.postMessage({ type: 'FLUSH_OFFLINE_QUEUE' });
+        });
+      })
+    );
+  }
+});
+
 self.addEventListener('fetch', (event) => {
+  const url = new URL(event.request.url);
+
   // Always use the network for HTML navigation requests so that a fresh
   // index.html (with the correct asset hashes) is returned after each
   // Vercel deployment.  Fall back to cache only when offline.
@@ -56,7 +71,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For all other requests (assets, API calls) use cache-first.
+  // API calls: network-first, fallback to cache when offline.
+  // Prevents stale data from being served when the network is available.
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch((err) => {
+          console.warn('[SW] API request failed, falling back to cache:', err);
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // For all other requests (assets: JS, CSS, images, fonts) use cache-first.
   event.respondWith(
     caches.match(event.request).then((cached) => cached || fetch(event.request))
   );

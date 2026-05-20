@@ -28,6 +28,13 @@ export interface ChainMock {
 /** The resolved value that terminates the chain. */
 let currentChainValue: { data: unknown; error: unknown } = { data: [], error: null };
 
+let _applyFilters = true;
+
+/** Enable or disable predicate filtering (useful for RLS-violation tests). */
+export function setApplyFilters(apply: boolean): void {
+  _applyFilters = apply;
+}
+
 type Row = Record<string, unknown>;
 type FilterPredicate = (row: Row) => boolean;
 
@@ -43,8 +50,10 @@ function resolveFilteredValue(
   if (!Array.isArray(baseValue.data)) return baseValue;
 
   let data = baseValue.data.filter((row): row is Row => isRow(row));
-  for (const predicate of predicates) {
-    data = data.filter(predicate);
+  if (_applyFilters) {
+    for (const predicate of predicates) {
+      data = data.filter(predicate);
+    }
   }
   if (typeof resultLimit === 'number') {
     data = data.slice(0, resultLimit);
@@ -55,6 +64,7 @@ function resolveFilteredValue(
 
 export function setChainResult(data: unknown, error: unknown = null): void {
   currentChainValue = { data, error };
+  _applyFilters = true;
 }
 
 export function makeChain(): ChainMock {
@@ -129,6 +139,7 @@ export function makeSupabaseMock(chain: ChainMock) {
       getUser: jest.fn(() => Promise.resolve({ data: { user: null }, error: null })),
       signInWithPassword: jest.fn(),
       signOut: jest.fn(),
+      updateUser: jest.fn(() => Promise.resolve({ data: null, error: null })),
       onAuthStateChange: jest.fn(() => ({ data: { subscription: { unsubscribe: jest.fn() } } })),
     },
     channel: jest.fn(() => ({

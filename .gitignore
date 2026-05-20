@@ -82,3 +82,5 @@ IMPLEMENTATION_PLAN.md
 
 # Never ship APK binaries inside web assets
 public/downloads/*.apk
+.worktrees/
+.claude/

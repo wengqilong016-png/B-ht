@@ -613,4 +613,116 @@ describe('offline-to-online transition', () => {
     expect(await firstFlush).toBe(1);
     expect(submitCollection).toHaveBeenCalledTimes(1);
   });
+
+  // ── 离线 replay 时间戳排序测试 (M4 coverage) ────────────────────────────
+
+  it('sorts same-location entries by timestamp ascending before replay', async () => {
+    const { enqueueTransaction, flushQueue, getPendingTransactions } = await import('../offlineQueue');
+
+    const baseTime = new Date('2026-05-19T10:00:00Z');
+    const tx1 = makeTx({
+      id: 'tx-order-1',
+      locationId: 'loc-same',
+      timestamp: new Date(baseTime.getTime() + 2000).toISOString(), // +2s
+    });
+    const tx2 = makeTx({
+      id: 'tx-order-2',
+      locationId: 'loc-same',
+      timestamp: new Date(baseTime.getTime() + 1000).toISOString(), // +1s (earlier)
+    });
+
+    // Enqueue tx1 first (later timestamp), then tx2 (earlier timestamp)
+    await enqueueTransaction(tx1, makeRawInput('tx-order-1'));
+    await enqueueTransaction(tx2, makeRawInput('tx-order-2'));
+
+    // Pending should contain both in enqueue order (tx1, tx2)
+    const pending = await getPendingTransactions();
+    expect(pending).toHaveLength(2);
+
+    // Collect submission order
+    const submissionOrder: string[] = [];
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>(
+      async (input) => {
+        submissionOrder.push(input.txId);
+        return { success: true, transaction: {} as any, source: 'server' };
+      }
+    );
+
+    const flushed = await flushQueue(makeSupabaseStub(), { submitCollection });
+
+    // sort() should reorder by timestamp ascending → tx-order-2 (earlier) first
+    expect(submissionOrder).toEqual(['tx-order-2', 'tx-order-1']);
+    expect(flushed).toBe(2);
+  });
+
+  it('preserves chronological order when entries are already in timestamp order', async () => {
+    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+
+    const baseTime = new Date('2026-05-19T10:00:00Z');
+    const tx1 = makeTx({
+      id: 'tx-chrono-1',
+      locationId: 'loc-same',
+      timestamp: new Date(baseTime.getTime()).toISOString(), // +0s
+    });
+    const tx2 = makeTx({
+      id: 'tx-chrono-2',
+      locationId: 'loc-same',
+      timestamp: new Date(baseTime.getTime() + 1000).toISOString(), // +1s
+    });
+
+    // Enqueue in chronological order
+    await enqueueTransaction(tx1, makeRawInput('tx-chrono-1'));
+    await enqueueTransaction(tx2, makeRawInput('tx-chrono-2'));
+
+    const submissionOrder: string[] = [];
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>(
+      async (input) => {
+        submissionOrder.push(input.txId);
+        return { success: true, transaction: {} as any, source: 'server' };
+      }
+    );
+
+    await flushQueue(makeSupabaseStub(), { submitCollection });
+
+    // Already in order → sort should preserve chronological sequence
+    expect(submissionOrder).toEqual(['tx-chrono-1', 'tx-chrono-2']);
+  });
+
+  it('sorts mixed-location entries globally by timestamp', async () => {
+    const { enqueueTransaction, flushQueue } = await import('../offlineQueue');
+
+    const baseTime = new Date('2026-05-19T10:00:00Z');
+    const tx1 = makeTx({
+      id: 'tx-mix-1',
+      locationId: 'loc-a',
+      timestamp: new Date(baseTime.getTime() + 3000).toISOString(),
+    });
+    const tx2 = makeTx({
+      id: 'tx-mix-2',
+      locationId: 'loc-b',
+      timestamp: new Date(baseTime.getTime() + 1000).toISOString(),
+    });
+    const tx3 = makeTx({
+      id: 'tx-mix-3',
+      locationId: 'loc-a',
+      timestamp: new Date(baseTime.getTime() + 2000).toISOString(),
+    });
+
+    await enqueueTransaction(tx1, makeRawInput('tx-mix-1'));
+    await enqueueTransaction(tx2, makeRawInput('tx-mix-2'));
+    await enqueueTransaction(tx3, makeRawInput('tx-mix-3'));
+
+    const submissionOrder: string[] = [];
+    const submitCollection = jest.fn<(input: CollectionSubmissionInput) => Promise<CollectionSubmissionResult>>(
+      async (input) => {
+        submissionOrder.push(input.txId);
+        return { success: true, transaction: {} as any, source: 'server' };
+      }
+    );
+
+    await flushQueue(makeSupabaseStub(), { submitCollection });
+
+    // Sorted by timestamp ascending across all locations
+    expect(submissionOrder).toEqual(['tx-mix-2', 'tx-mix-3', 'tx-mix-1']);
+  });
 });

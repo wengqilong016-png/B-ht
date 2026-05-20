@@ -48,6 +48,7 @@ export default {
     '/e2e/',
     '__tests__/helpers/',
   ],
+  modulePathIgnorePatterns: ['<rootDir>/.worktrees/'],
   coverageReporters: ['text-summary', 'json-summary', 'lcov'],
   coverageThreshold: {
     global: {

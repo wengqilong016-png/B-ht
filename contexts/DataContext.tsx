@@ -2,7 +2,7 @@ import React, { createContext, useContext } from 'react';
 
 import type { Location, Driver, Transaction, DailySettlement, AILog } from '../types';
 
-interface DataContextValue {
+export interface DataContextValue {
   isOnline: boolean;
   isLoadingLocations: boolean;
   locations: Location[];

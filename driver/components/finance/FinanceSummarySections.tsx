@@ -1,5 +1,4 @@
 import { ArrowRight, Banknote, ChevronRight, Coins, HandCoins, ShieldAlert, Trophy } from 'lucide-react';
-import React from 'react';
 
 import type { FinanceCalculationSource } from '../../../services/financeCalculator';
 import type { Location } from '../../../types';

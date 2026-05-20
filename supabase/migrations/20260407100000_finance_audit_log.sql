@@ -8,7 +8,8 @@ CREATE TABLE IF NOT EXISTS public.finance_audit_log (
         'driver_debt_change',
         'commission_rate_change',
         'startup_debt_edit',
-        'floating_coins_change'
+        'floating_coins_change',
+        'collection_submission'
     )),
     entity_type TEXT NOT NULL CHECK (entity_type IN ('location', 'driver')),
     entity_id   TEXT NOT NULL,

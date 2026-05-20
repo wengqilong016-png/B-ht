@@ -259,5 +259,38 @@ export async function submitCollectionV2(
                              : undefined,
   };
 
+  // ── Write finance audit to Postgres (fire-and-forget, must not block main flow) ──
+  void (async () => {
+    try {
+      if (supabase) {
+        await supabase.from('finance_audit_log').insert({
+          event_type: 'collection_submission',
+          entity_type: 'location',
+          entity_id: input.locationId,
+          entity_name: transaction.locationName || null,
+          actor_id: input.driverId,
+          old_value: transaction.previousScore,
+          new_value: transaction.currentScore,
+          payload: {
+            txId: transaction.id,
+            revenue: transaction.revenue,
+            commission: transaction.commission,
+            debtDeduction: transaction.debtDeduction,
+            startupDebtDeduction: transaction.startupDebtDeduction,
+            expenses: transaction.expenses,
+            tip: transaction.tip,
+            coinExchange: transaction.coinExchange,
+            netPayable: transaction.netPayable,
+            isOwnerRetaining: transaction.isOwnerRetaining,
+            ownerRetention: transaction.ownerRetention,
+            timestamp: transaction.timestamp,
+          },
+        });
+      }
+    } catch {
+      // Audit must never block the main flow
+    }
+  })();
+
   return { success: true, transaction, source: 'server' };
 }

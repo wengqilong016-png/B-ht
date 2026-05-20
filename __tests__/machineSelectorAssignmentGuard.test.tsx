@@ -1,6 +1,5 @@
 import { describe, it, expect, jest, beforeEach } from '@jest/globals';
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
 
 import MachineSelector from '../driver/components/MachineSelector';
 

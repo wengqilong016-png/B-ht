@@ -1,0 +1,163 @@
+{
+  "findings": [
+    {
+      "severity": "medium",
+      "category": "security",
+      "file": "components/TransactionHistory.tsx",
+      "line": 299,
+      "issue": "使用 btn.innerHTML 设置静态文本'翻译中...'和'翻译失败'。虽当前为硬编码字符串，但 innerHTML 会禁用 React 的 XSS 防护机制，未来若引入动态内容将产生 XSS 风险。",
+      "recommendation": "替换为 btn.textContent = '翻译中...'。静态文本无需 HTML 解析器。",
+      "confidence": "high"
+    },
+    {
+      "severity": "medium",
+      "category": "security",
+      "file": "hooks/useSupabaseData.ts",
+      "line": 18,
+      "issue": "sanitizeDrivers() 在客户端侧删除 password 字段，但 Driver TypeScript 类型中并无 password 字段。若数据库中存在 password 列，应该在 Supabase RLS 层面就直接屏蔽（列级权限或排除列），而非依赖前端过滤——攻击者可通过 DevTools 看到完整响应。",
+      "recommendation": "检查 profiles/drivers 表是否真的有 password 列；若有，在 Supabase query 中显式排除该列，或通过 RLS 列级权限阻止；移除前端 sanitizeDrivers 函数。",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "category": "security",
+      "file": "vite-env.d.ts",
+      "line": 11,
+      "issue": "VITE_GOOGLE_MAPS_API_KEY 暴露在客户端 bundle 中。虽然只是环境变量引用，但 VITE_ 前缀的变量在构建时会被内联到 JS 中，任何人都能从 source map 或浏览器 DevTools 提取。",
+      "recommendation": "如果 Google Maps API 不需要服务端密钥，确保该 key 已按 Google 的 API key 限制（HTTP referrer / IP 限制）配置。或者迁移至同源 API 代理。",
+      "confidence": "medium"
+    },
+    {
+      "severity": "low",
+      "category": "security",
+      "file": "supabaseClient.ts",
+      "line": 95,
+      "issue": "checkDbHealth() 使用 fetch() 直接调用 Supabase auth health 端点，并传入 apikey header。该 key 为 public anon key，风险低，但 health check 端点暴露了 Supabase URL。",
+      "recommendation": "无风险 — anon key 本就应该公开。仅做记录。",
+      "confidence": "high"
+    },
+    {
+      "severity": "medium",
+      "category": "performance",
+      "file": "hooks/useSupabaseData.ts",
+      "line": 75,
+      "issue": "数据库健康检查轮询间隔仅 5 秒（refetchInterval: 5_000），在 Tanzania 移动网络上每分钟 12 次 HTTP 请求。即使使用轻量级端点，也对电池和数据流量有显著影响。",
+      "recommendation": "延长至 15-30 秒，配合 navigator.onLine 事件做即时检查。在线→离线事件触发检查比轮询更节能。",
+      "confidence": "high"
+    },
+    {
+      "severity": "medium",
+      "category": "performance",
+      "file": "hooks/useSupabaseData.ts",
+      "line": 100,
+      "issue": "所有核心数据（locations, drivers, transactions, settlements, AI logs）无条件一次加载。driver 用户虽然 scope 更小但仍加载了 transactions/settlements（有 isDriver filter）。对于 100+ 点位的大型路线，初始加载可能达数 MB。",
+      "recommendation": "考虑分页加载 transactions（已有 limit 参数但未使用默认值），或对 driver 端做更激进的惰性加载。admin 端可增加分页控件。",
+      "confidence": "medium"
+    },
+    {
+      "severity": "low",
+      "category": "performance",
+      "file": "components/dashboard/DashboardPage.tsx",
+      "line": 135,
+      "issue": "useDashboardData 在所有 Tab 下无条件调用，即使 activeTab 是 'settlement' 时也在计算 tracking/locations 数据。导致不必要的 useMemo 计算和内存占用。",
+      "recommendation": "按 activeTab 条件化调用 hooks：例如 useTrackingData 仅在 tracking tab 激活时执行。或让 useDashboardData 内部用条件 useMemo。",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "components/dashboard/DashboardPage.tsx",
+      "line": 31,
+      "issue": "onNavigate 参数类型为 (view: any) => void，any 类型削弱了类型安全。",
+      "recommendation": "定义 View 联合类型替代 any。",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "category": "quality",
+      "file": "components/driver-management/DriverManagementPage.tsx",
+      "line": 81,
+      "issue": "使用 let valA: any, valB: any 进行排序比较。any 绕过了 TypeScript 的类型检查。",
+      "recommendation": "使用泛型 <T> 或显式类型声明。",
+      "confidence": "high"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "services/localDB.ts",
+      "line": 1,
+      "issue": "IndexedDB 使用 idb-keyval 库，但整个离线队列系统 (offlineQueue.ts) 直接操作原生 IDB API。存在两套 IDB 上层抽象，冗余且维护成本高。",
+      "recommendation": "考虑将 localDB 和 offlineQueue 统一为一个持久化层。当前 localDB 仅用于缓存 RQ 数据，offlineQueue 用于离线事务队列。",
+      "confidence": "medium"
+    },
+    {
+      "severity": "info",
+      "category": "quality",
+      "file": "components/TransactionHistory.tsx",
+      "line": 296,
+      "issue": "翻译按钮使用 async IIFE 内联在 onClick 中，错误处理只显示'翻译失败'文本，没有日志上报。",
+      "recommendation": "提取为独立 handler 函数，加入 Sentry 错误捕获，并用 state 而非 DOM 操作控制按钮状态。",
+      "confidence": "medium"
+    },
+    {
+      "severity": "medium",
+      "category": "offline",
+      "file": "public/sw.js",
+      "line": 59,
+      "issue": "Service Worker 对非导航请求采用 Cache-First 策略。对使用 Supabase REST API 的 GET 请求（如数据获取），若本地缓存了旧版本数据，用户会看到过时信息直到下次部署更新缓存。在 Tanzanian 移动网络环境下，cache-first 会在网络可用时仍提供陈旧内容。",
+      "recommendation": "对 API 请求（/rest/v1/、/auth/v1/ 等）使用 Network-First 或 Stale-While-Revalidate 策略；对 JS/CSS/图片等静态资源保留 Cache-First。",
+      "confidence": "high"
+    },
+    {
+      "severity": "low",
+      "category": "offline",
+      "file": "public/sw.js",
+      "line": 36,
+      "issue": "Service Worker fetch 处理中没有对 opaque 响应（如 CDN 跨域请求）的特殊处理，也没有 fetch 超时保护。网络不稳定时，缓存优先策略的 fetch 兜底可能长时间挂起。",
+      "recommendation": "添加 fetch timeout（如 10s），超时后直接返回缓存内容。若项目不使用跨域 CDN，此问题影响有限。",
+      "confidence": "medium"
+    },
+    {
+      "severity": "low",
+      "category": "offline",
+      "file": "public/sw.js",
+      "line": 1,
+      "issue": "Service Worker 缺少 Background Sync 事件监听器 (sync event)。离线队列 (offlineQueue.ts) 的 useOfflineSyncLoop 尝试注册 sync tag 但 SW 没有对应 handler。",
+      "recommendation": "在 SW 中添加 self.addEventListener('sync', ...) 处理 'flush-offline-queue' tag，同步触发 flushQueue。这样即使浏览器关闭后重启在线，也能自动同步。注意 Safari 不支持 Background Sync。",
+      "confidence": "high"
+    },
+    {
+      "severity": "info",
+      "category": "offline",
+      "file": "offlineQueue.ts",
+      "line": 1,
+      "issue": "离线队列系统（1625 行）整体设计优秀：IDB 主存储 + localStorage 兜底 + 内存缓存三级降级、指数退避、dead-letter 可见性、entityVersion 冲突检测、photo 持久化管线。但缺乏离线冲突自动合并策略。",
+      "recommendation": "当前 entityVersion 策略为 server-authoritative（覆盖本地）。考虑记录冲突历史，允许管理员 review 离线期间的并行编辑。当前方案作为 MVP 足够。",
+      "confidence": "medium"
+    }
+  ],
+  "summary": "BHT 项目代码审查完成：检查 25 个文件，发现 6 个中风险、7 个低风险、3 个信息性问题。无严重/高危问题。",
+  "stats": {
+    "files_checked": 25,
+    "critical_count": 0,
+    "high_count": 0,
+    "medium_count": 6,
+    "low_count": 7,
+    "info_count": 3
+  },
+  "automated_checks": {
+    "typecheck": "pass (0 errors)",
+    "lint": "pass (0 errors)",
+    "npm_audit": "pass (0 vulnerabilities)",
+    "test_runner": "blocked (jest config issue — jest.setup.js exists but resolution failed)"
+  },
+  "positive_highlights": [
+    "RLS 策略持续迭代优化 — 最近 3 次迁移持续加强权限控制",
+    "Supabase 查询全部使用参数化 API，无 SQL 注入风险",
+    "离线队列实现扎实：IDB + localStorage + 内存三级降级、指数退避、entityVersion 冲突检测",
+    "类型安全总体良好：~25 个文件仅 2 处 any 滥用",
+    "错误处理统一：tagged union 类型 + Sentry 集成 + console.warn 兜底",
+    "npm audit 零漏洞，依赖管理健康",
+    "TypeScript 类型检查零错误，ESLint 零错误"
+  ]
+}
